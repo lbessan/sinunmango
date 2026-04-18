@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import {
   User, Shield, Palette, Moon, Sun, Check,
   ChevronRight, Mail, KeyRound, ShieldCheck, ShieldAlert,
-  Info, Loader2, Smartphone,
+  Loader2, Smartphone,
 } from 'lucide-react'
 import {
-  THEMES, ThemeKey, applyTheme, applyDarkMode,
-  STORAGE_THEME, STORAGE_DARKMODE,
+  THEMES, ThemeKey, applyTheme,
+  STORAGE_THEME, useTheme,
 } from '@/components/theme-provider'
 import { createClient } from '@/lib/supabase/client'
 
@@ -297,16 +297,11 @@ export function ConfiguracionClient({
     localStorage.setItem(STORAGE_THEME, key)
   }
 
-  // ── Dark mode ──────────────────────────────────────────────────────────────
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem(STORAGE_DARKMODE) === 'true'
-  })
+  // ── Dark mode — usa el mismo contexto que el toggle del sidebar ────────────
+  const { isDark: darkMode, toggleDark } = useTheme()
 
   const handleDarkMode = (val: boolean) => {
-    setDarkMode(val)
-    applyDarkMode(val)
-    localStorage.setItem(STORAGE_DARKMODE, String(val))
+    if (val !== darkMode) toggleDark()
   }
 
   // ── Reset password ─────────────────────────────────────────────────────────
