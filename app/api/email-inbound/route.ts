@@ -1,0 +1,134 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { adminClient } from '@/lib/supabase/admin'
+import { parseEmail } from '@/lib/email-parsers'
+
+// ─── Period + date helpers (mirrors cuenta-movimientos-table logic) ───────────
+function calcularPeriodo(
+  fechaStr: string,
+  cierreDay: number | null,
+  venceDay:  number | null,
+  isTarjeta: boolean
+): string {
+  const d    = new Date(fechaStr + 'T12:00:00')
+  let mes    = d.getMonth()
+  let anio   = d.getFullYear()
+  if (isTarjeta && cierreDay && venceDay) {
+    const day = d.getDate()
+    if (day <= cierreDay) {
+      if (venceDay <= cierreDay) mes += 1
+    } else {
+      if (venceDay > cierreDay) mes += 1
+      else                       mes += 2
+    }
+    while (mes > 11) { mes -= 12; anio++ }
+  }
+  return `${anio}-${String(mes + 1).padStart(2, '0')}-01`
+}
+
+function addMeses(fechaStr: string, n: number): string {
+  const d = new Date(fechaStr + 'T12:00:00')
+  d.setMonth(d.getMonth() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+// ─── Route handler ────────────────────────────────────────────────────────────
+export async function POST(req: NextRequest) {
+  // Verify shared secret to prevent unauthorized calls
+  const secret = process.env.EMAIL_INBOUND_SECRET
+  if (secret) {
+    const auth = req.headers.get('authorization')
+    if (auth !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
+
+  const body = (await req.json()) as { texto: string; from?: string; subject?: string }
+  const texto = body.texto?.trim() ?? ''
+
+  if (!texto) {
+    return NextResponse.json({ ok: false, skipped: true, reason: 'empty body' })
+  }
+
+  // ── Parse email ─────────────────────────────────────────────────────────────
+  const parsed = parseEmail(texto)
+  if (!parsed) {
+    return NextResponse.json({ ok: false, skipped: true, reason: 'unrecognized format' })
+  }
+
+  // ── Find matching cuenta by terminacion_tarjeta ──────────────────────────────
+  const { data: cuentas } = await adminClient
+    .from('cuentas')
+    .select('id, nombre_cuenta, tipo_cuenta, moneda, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta, terminacion_tarjeta')
+    .eq('activa', true)
+
+  const cuenta = cuentas?.find(c => {
+    if (!c.terminacion_tarjeta || !parsed.terminacion) return false
+    return String(c.terminacion_tarjeta) === String(parsed.terminacion)
+  })
+
+  if (!cuenta) {
+    // No mapping configured — log and skip gracefully (don't fail, it's not retryable)
+    console.warn(
+      `[email-inbound] No cuenta found for terminacion=${parsed.terminacion} ` +
+      `(${parsed.detalle} $${parsed.monto} ${parsed.moneda}). ` +
+      `Configurá terminacion_tarjeta en la cuenta correspondiente.`
+    )
+    return NextResponse.json({
+      ok: false,
+      skipped: true,
+      reason: `No cuenta configured for terminacion ${parsed.terminacion}`,
+    })
+  }
+
+  // ── Build cuota records ──────────────────────────────────────────────────────
+  const isTarjeta = cuenta.tipo_cuenta === 'Tarjeta Credito'
+  const cierreDay = cuenta.fecha_cierre_tarjeta
+    ? new Date(cuenta.fecha_cierre_tarjeta + 'T12:00:00').getDate() : null
+  const venceDay  = cuenta.fecha_vencimiento_tarjeta
+    ? new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
+  const montoCuota = parsed.monto / parsed.cuotas
+
+  const records = Array.from({ length: parsed.cuotas }, (_, i) => {
+    const fechaCuota   = addMeses(parsed.fecha, i)
+    const periodoCuota = calcularPeriodo(fechaCuota, cierreDay, venceDay, isTarjeta && parsed.moneda !== 'USD')
+    return {
+      id:              crypto.randomUUID(),
+      fecha:           fechaCuota,
+      detalle:         parsed.cuotas > 1
+        ? `${parsed.detalle} (Cuota ${i + 1}/${parsed.cuotas})`
+        : parsed.detalle,
+      monto:           montoCuota,
+      moneda:          parsed.moneda,
+      tipo_movimiento: 'Gasto',
+      cuenta_origen:   cuenta.id,
+      cuenta_destino:  null,
+      categoria:       null,
+      subcategoria:    null,
+      cotizacion:      null,
+      conciliado:      false,
+      periodo_tarjeta: periodoCuota,
+      cuotas_total:    parsed.cuotas,
+      cuota_actual:    i + 1,
+      ciclo_actual:    1,
+    }
+  })
+
+  // ── Insert into Supabase ─────────────────────────────────────────────────────
+  const { error } = await adminClient.from('movimientos').insert(records)
+  if (error) {
+    console.error('[email-inbound] Insert error:', error.message)
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+  }
+
+  console.log(
+    `[email-inbound] ✓ Imported ${parsed.cuotas} record(s): ` +
+    `${parsed.detalle} $${parsed.monto} ${parsed.moneda} → ${cuenta.nombre_cuenta}`
+  )
+  return NextResponse.json({
+    ok:      true,
+    cuenta:  cuenta.nombre_cuenta,
+    detalle: parsed.detalle,
+    monto:   parsed.monto,
+    cuotas:  parsed.cuotas,
+  })
+}

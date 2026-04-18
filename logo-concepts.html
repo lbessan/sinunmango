@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sin Un Mango — Logo Concepts</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 40px 24px; }
+    h1 { font-size: 13px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 32px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 900px; }
+    .card { background: white; border-radius: 20px; padding: 32px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .card h2 { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 24px; }
+    .preview-dark { background: #0d2137; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 16px; }
+    .preview-light { background: #f8fafc; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .wordmark-dark { color: white; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .wordmark-dark span { color: #4ade80; }
+    .wordmark-light { color: #1e293b; font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .wordmark-light span { color: #1a6b5a; }
+    .tagline { font-size: 10px; color: #64748b; letter-spacing: 0.5px; margin-top: 4px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Sin Un Mango — Conceptos de logo</h1>
+
+  <div class="grid">
+
+    <!-- ── CONCEPT 1: Bolsillo ─────────────────────────────────────────── -->
+    <div class="card">
+      <h2>A — El bolsillo</h2>
+
+      <div class="preview-dark">
+        <!-- Icon: bolsillo dado vuelta -->
+        <svg width="72" height="72" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" rx="22" fill="#1B3A6B"/>
+          <!-- Denim area top -->
+          <rect x="0" y="0" width="100" height="52" rx="0" fill="#22437a"/>
+          <rect x="0" y="0" width="100" height="22" rx="22" fill="#22437a"/>
+          <!-- Pocket seam stitching -->
+          <path d="M18 48 Q50 42 82 48" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" stroke-dasharray="3 2.5" stroke-linecap="round"/>
+          <!-- Pocket mouth (the opening) -->
+          <path d="M18 49 Q50 44 82 49" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Lining colgando -->
+          <path d="M22 48 C17 57 16 68 19 77 C26 90 38 96 50 96 C62 96 74 90 81 77 C84 68 83 57 78 48 Q50 43 22 48Z" fill="#f5efe2"/>
+          <!-- Shading on lining left side -->
+          <path d="M22 48 C17 57 16 68 19 77 C26 90 38 96 50 96 L50 43 Q36 43 22 48Z" fill="#ede7d8" opacity="0.6"/>
+          <!-- Fold wrinkle lines -->
+          <path d="M31 62 Q50 58 69 62" fill="none" stroke="#d6cdb8" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+          <path d="M28 72 Q50 68 72 72" fill="none" stroke="#d6cdb8" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+          <!-- Lint: vacío total -->
+          <circle cx="44" cy="83" r="1.3" fill="#c4b89e" opacity="0.5"/>
+          <circle cx="57" cy="79" r="1" fill="#c4b89e" opacity="0.4"/>
+        </svg>
+        <div>
+          <div class="wordmark-dark">sin un <span>mango</span></div>
+        </div>
+      </div>
+
+      <div class="preview-light">
+        <svg width="52" height="52" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" rx="22" fill="#1B3A6B"/>
+          <rect x="0" y="0" width="100" height="52" rx="0" fill="#22437a"/>
+          <rect x="0" y="0" width="100" height="22" rx="22" fill="#22437a"/>
+          <path d="M18 49 Q50 44 82 49" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M22 48 C17 57 16 68 19 77 C26 90 38 96 50 96 C62 96 74 90 81 77 C84 68 83 57 78 48 Q50 43 22 48Z" fill="#f5efe2"/>
+          <path d="M22 48 C17 57 16 68 19 77 C26 90 38 96 50 96 L50 43 Q36 43 22 48Z" fill="#ede7d8" opacity="0.6"/>
+          <path d="M31 62 Q50 58 69 62" fill="none" stroke="#d6cdb8" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+          <circle cx="44" cy="83" r="1.3" fill="#c4b89e" opacity="0.5"/>
+          <circle cx="57" cy="79" r="1" fill="#c4b89e" opacity="0.4"/>
+        </svg>
+        <div class="wordmark-light">sin un <span>mango</span></div>
+        <div class="tagline">tus finanzas, en orden</div>
+      </div>
+    </div>
+
+    <!-- ── CONCEPT 2: Saldo negativo ──────────────────────────────────── -->
+    <div class="card">
+      <h2>B — Saldo negativo</h2>
+
+      <div class="preview-dark">
+        <svg width="72" height="72" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" rx="22" fill="#1B3A6B"/>
+          <!-- Phone silhouette -->
+          <rect x="22" y="12" width="56" height="76" rx="10" fill="#0d2137"/>
+          <!-- Screen -->
+          <rect x="26" y="18" width="48" height="64" rx="7" fill="#111c2d"/>
+          <!-- Notch -->
+          <rect x="38" y="15" width="24" height="6" rx="3" fill="#0d2137"/>
+          <!-- App UI: header bar -->
+          <rect x="26" y="18" width="48" height="14" rx="7" fill="#182640"/>
+          <rect x="26" y="25" width="48" height="7" fill="#182640"/>
+          <!-- Balance label -->
+          <rect x="34" y="37" width="20" height="3" rx="1.5" fill="#334155" opacity="0.8"/>
+          <!-- Negative balance number -->
+          <text x="50" y="55" text-anchor="middle" font-family="-apple-system,sans-serif" font-weight="800" font-size="16" fill="#f87171" letter-spacing="-0.5">-$0</text>
+          <!-- Small sad line chart -->
+          <polyline points="30,72 38,68 46,70 54,65 62,67 70,63" fill="none" stroke="#f87171" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+          <!-- Red dot at end -->
+          <circle cx="70" cy="63" r="2" fill="#f87171"/>
+        </svg>
+        <div class="wordmark-dark">sin un <span>mango</span></div>
+      </div>
+
+      <div class="preview-light">
+        <svg width="52" height="52" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" rx="22" fill="#1B3A6B"/>
+          <rect x="22" y="12" width="56" height="76" rx="10" fill="#0d2137"/>
+          <rect x="26" y="18" width="48" height="64" rx="7" fill="#111c2d"/>
+          <rect x="38" y="15" width="24" height="6" rx="3" fill="#0d2137"/>
+          <rect x="26" y="18" width="48" height="14" rx="7" fill="#182640"/>
+          <rect x="26" y="25" width="48" height="7" fill="#182640"/>
+          <rect x="34" y="37" width="20" height="3" rx="1.5" fill="#334155" opacity="0.8"/>
+          <text x="50" y="55" text-anchor="middle" font-family="-apple-system,sans-serif" font-weight="800" font-size="16" fill="#f87171" letter-spacing="-0.5">-$0</text>
+          <polyline points="30,72 38,68 46,70 54,65 62,67 70,63" fill="none" stroke="#f87171" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+          <circle cx="70" cy="63" r="2" fill="#f87171"/>
+        </svg>
+        <div class="wordmark-light">sin un <span>mango</span></div>
+        <div class="tagline">tus finanzas, en orden</div>
+      </div>
+    </div>
+
+    <!-- ── CONCEPT 3: Mango tachado ───────────────────────────────────── -->
+    <div class="card">
+      <h2>C — El mango</h2>
+
+      <div class="preview-dark">
+        <svg width="72" height="72" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" rx="22" fill="#1B3A6B"/>
+          <!-- Mango shape -->
+          <ellipse cx="50" cy="56" rx="26" ry="32" fill="#fb923c" transform="rotate(-8,50,56)"/>
+          <!-- Mango highlight -->
+          <ellipse cx="42" cy="46" rx="8" ry="12" fill="#fbbf24" opacity="0.45" transform="rotate(-8,42,46)"/>
+          <!-- Stem -->
+          <path d="M53 26 Q58 16 65 19" fill="none" stroke="#15803d" stroke-width="3.5" stroke-linecap="round"/>
+          <!-- Leaf -->
+          <ellipse cx="67" cy="17" rx="7" ry="4" fill="#16a34a" transform="rotate(30,67,17)"/>
+          <!-- Tachado: círculo rojo -->
+          <circle cx="50" cy="52" r="36" fill="none" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/>
+          <!-- Línea diagonal -->
+          <line x1="25" y1="27" x2="75" y2="77" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+        <div class="wordmark-dark">sin un <span>mango</span></div>
+      </div>
+
+      <div class="preview-light">
+        <svg width="52" height="52" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" rx="22" fill="#1B3A6B"/>
+          <ellipse cx="50" cy="56" rx="26" ry="32" fill="#fb923c" transform="rotate(-8,50,56)"/>
+          <ellipse cx="42" cy="46" rx="8" ry="12" fill="#fbbf24" opacity="0.45" transform="rotate(-8,42,46)"/>
+          <path d="M53 26 Q58 16 65 19" fill="none" stroke="#15803d" stroke-width="3.5" stroke-linecap="round"/>
+          <ellipse cx="67" cy="17" rx="7" ry="4" fill="#16a34a" transform="rotate(30,67,17)"/>
+          <circle cx="50" cy="52" r="36" fill="none" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/>
+          <line x1="25" y1="27" x2="75" y2="77" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+        <div class="wordmark-light">sin un <span>mango</span></div>
+        <div class="tagline">tus finanzas, en orden</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Tamaños chicos ──────────────────────────────────────────────────── -->
+  <h1 style="margin-top:48px; margin-bottom:24px;">Cómo se ven en tamaño de app icon</h1>
+  <div style="display:flex; gap:20px; align-items:flex-end; flex-wrap:wrap;">
+
+    <!-- Bolsillo en distintos tamaños -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <svg width="60" height="60" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#1B3A6B"/><rect x="0" y="0" width="100" height="52" rx="0" fill="#22437a"/><rect x="0" y="0" width="100" height="22" rx="22" fill="#22437a"/><path d="M18 49 Q50 44 82 49" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2.5" stroke-linecap="round"/><path d="M22 48 C17 57 16 68 19 77 C26 90 38 96 50 96 C62 96 74 90 81 77 C84 68 83 57 78 48 Q50 43 22 48Z" fill="#f5efe2"/><path d="M22 48 C17 57 16 68 19 77 C26 90 38 96 50 96 L50 43 Q36 43 22 48Z" fill="#ede7d8" opacity="0.6"/><path d="M31 62 Q50 58 69 62" fill="none" stroke="#d6cdb8" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/></svg>
+      <span style="font-size:10px;color:#94a3b8;">60px</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <svg width="44" height="44" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#1B3A6B"/><rect x="0" y="0" width="100" height="52" rx="0" fill="#22437a"/><rect x="0" y="0" width="100" height="22" rx="22" fill="#22437a"/><path d="M18 49 Q50 44 82 49" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2.5" stroke-linecap="round"/><path d="M22 48 C17 57 16 68 19 77 C26 90 38 96 50 96 C62 96 74 90 81 77 C84 68 83 57 78 48 Q50 43 22 48Z" fill="#f5efe2"/><path d="M31 62 Q50 58 69 62" fill="none" stroke="#d6cdb8" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/></svg>
+      <span style="font-size:10px;color:#94a3b8;">44px</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <svg width="32" height="32" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#1B3A6B"/><rect x="0" y="0" width="100" height="52" rx="0" fill="#22437a"/><rect x="0" y="0" width="100" height="22" rx="22" fill="#22437a"/><path d="M18 49 Q50 44 82 49" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2.5" stroke-linecap="round"/><path d="M22 48 C17 57 16 68 19 77 C26 90 38 96 50 96 C62 96 74 90 81 77 C84 68 83 57 78 48 Q50 43 22 48Z" fill="#f5efe2"/></svg>
+      <span style="font-size:10px;color:#94a3b8;">32px</span>
+    </div>
+
+    <div style="width:1px;height:60px;background:#e2e8f0;margin:0 8px;"></div>
+
+    <!-- Mango en distintos tamaños -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <svg width="60" height="60" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#1B3A6B"/><ellipse cx="50" cy="56" rx="26" ry="32" fill="#fb923c" transform="rotate(-8,50,56)"/><ellipse cx="42" cy="46" rx="8" ry="12" fill="#fbbf24" opacity="0.45" transform="rotate(-8,42,46)"/><path d="M53 26 Q58 16 65 19" fill="none" stroke="#15803d" stroke-width="3.5" stroke-linecap="round"/><ellipse cx="67" cy="17" rx="7" ry="4" fill="#16a34a" transform="rotate(30,67,17)"/><circle cx="50" cy="52" r="36" fill="none" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/><line x1="25" y1="27" x2="75" y2="77" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/></svg>
+      <span style="font-size:10px;color:#94a3b8;">60px</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <svg width="44" height="44" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#1B3A6B"/><ellipse cx="50" cy="56" rx="26" ry="32" fill="#fb923c" transform="rotate(-8,50,56)"/><ellipse cx="42" cy="46" rx="8" ry="12" fill="#fbbf24" opacity="0.45" transform="rotate(-8,42,46)"/><path d="M53 26 Q58 16 65 19" fill="none" stroke="#15803d" stroke-width="3.5" stroke-linecap="round"/><ellipse cx="67" cy="17" rx="7" ry="4" fill="#16a34a" transform="rotate(30,67,17)"/><circle cx="50" cy="52" r="36" fill="none" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/><line x1="25" y1="27" x2="75" y2="77" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/></svg>
+      <span style="font-size:10px;color:#94a3b8;">44px</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <svg width="32" height="32" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#1B3A6B"/><ellipse cx="50" cy="56" rx="26" ry="32" fill="#fb923c" transform="rotate(-8,50,56)"/><path d="M53 26 Q58 16 65 19" fill="none" stroke="#15803d" stroke-width="3.5" stroke-linecap="round"/><circle cx="50" cy="52" r="36" fill="none" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/><line x1="25" y1="27" x2="75" y2="77" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/></svg>
+      <span style="font-size:10px;color:#94a3b8;">32px</span>
+    </div>
+  </div>
+
+</body>
+</html>
