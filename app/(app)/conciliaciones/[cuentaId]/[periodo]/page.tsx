@@ -1,6 +1,7 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { ConciliacionControls } from '@/components/conciliacion-controls'
 
@@ -15,26 +16,32 @@ export default async function ConciliacionDetallePage({
 }: {
   params: Promise<{ cuentaId: string; periodo: string }>
 }) {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
   const { cuentaId, periodo } = await params
 
   const [{ data: cuenta }, { data: movimientos }, { data: categorias }, { data: subcategorias }] =
     await Promise.all([
-      adminClient.from('cuentas').select('*').eq('id', cuentaId).single(),
+      adminClient.from('cuentas').select('*').eq('id', cuentaId).eq('user_id', user.id).single(),
       adminClient
         .from('movimientos_completos')
         .select('*')
         .eq('cuenta_origen', cuentaId)
         .eq('periodo_tarjeta', periodo)
         .eq('tipo_movimiento', 'Gasto')
+        .eq('user_id', user.id)
         .order('fecha', { ascending: true }),
       adminClient
         .from('categorias')
         .select('id, nombre_categoria, icono, tipo_default')
         .eq('tipo_default', 'Gasto')
+        .eq('user_id', user.id)
         .order('nombre_categoria'),
       adminClient
         .from('subcategorias')
-        .select('id, categoria_padre, nombre_subcategoria'),
+        .select('id, categoria_padre, nombre_subcategoria')
+        .eq('user_id', user.id),
     ])
 
   if (!cuenta) notFound()

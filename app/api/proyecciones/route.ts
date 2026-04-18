@@ -1,22 +1,26 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
+  const user = await getCurrentUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const meses = parseInt(new URL(req.url).searchParams.get('meses') ?? '4')
   const today = new Date()
 
   // ── Datos base ────────────────────────────────────────────────────────────
   const [{ data: resumen }, { data: gastosFijos }, { data: tarjetas }, { data: params }] =
     await Promise.all([
-      adminClient.from('dashboard_resumen').select('*').single(),
+      adminClient.from('dashboard_resumen').select('*').eq('user_id', user.id).single(),
       adminClient.from('gastos_fijos')
         .select('*, cuentas(tipo_cuenta)')
-        .eq('activo', true),
+        .eq('activo', true).eq('user_id', user.id),
       adminClient.from('cuentas')
         .select('id')
         .eq('tipo_cuenta', 'Tarjeta Credito')
-        .eq('activa', true),
-      adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').single(),
+        .eq('activa', true).eq('user_id', user.id),
+      adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', user.id).single(),
     ])
 
   if (!resumen) return NextResponse.json({ error: 'Sin datos' }, { status: 500 })
@@ -54,6 +58,7 @@ export async function GET(req: NextRequest) {
       .select('monto, moneda, cotizacion, conciliado')
       .eq('tipo_movimiento', 'Ingreso')
       .eq('periodo_tarjeta', periodo)
+      .eq('user_id', user.id)
 
     const totalIngresos = (ingresos ?? []).reduce((acc, m) => {
       const monto = m.moneda === 'USD'
@@ -68,6 +73,7 @@ export async function GET(req: NextRequest) {
       .select('monto, moneda, cotizacion, conciliado, cuenta_origen')
       .eq('tipo_movimiento', 'Gasto')
       .eq('periodo_tarjeta', periodo)
+      .eq('user_id', user.id)
 
     const totalGastosTC = (gastosTC ?? [])
       .filter(m => tarjetaIds.has(m.cuenta_origen))

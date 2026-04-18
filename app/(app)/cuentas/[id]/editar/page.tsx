@@ -1,17 +1,22 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
 import { CuentaFormClient } from '@/components/cuenta-form-client'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 
 export default async function EditarCuentaPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
   const { id } = await params
   const { data: cuenta } = await adminClient
     .from('cuentas')
     .select('*')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single()
 
   if (!cuenta) notFound()

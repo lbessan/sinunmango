@@ -1,5 +1,7 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
 
@@ -18,6 +20,9 @@ export default async function ResumenPage({
 }: {
   searchParams: Promise<{ tipo?: string }>
 }) {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
   const { tipo = 'ingresos' } = await searchParams
   const meta = TIPOS[tipo as keyof typeof TIPOS] ?? TIPOS.ingresos
 
@@ -35,6 +40,7 @@ export default async function ResumenPage({
       .from('movimientos_completos').select('*')
       .eq('tipo_movimiento', 'Ingreso')
       .eq('periodo_tarjeta', periodoActual)
+      .eq('user_id', user.id)
       .lte('fecha', todayStr)
       .order('fecha', { ascending: false })
     movimientos = data ?? []
@@ -44,28 +50,30 @@ export default async function ResumenPage({
     const { data } = await adminClient
       .from('movimientos_completos').select('*')
       .eq('tipo_movimiento', 'Gasto')
+      .eq('user_id', user.id)
       .gte('fecha', inicioMes)
       .lte('fecha', todayStr)
       .order('fecha', { ascending: false })
     movimientos = data ?? []
 
   } else if (tipo === 'tarjetas') {
-    const { data: tarjetas } = await adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito')
+    const { data: tarjetas } = await adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('user_id', user.id)
     const tarjetaIds = new Set((tarjetas ?? []).map(t => t.id))
     const { data } = await adminClient
       .from('movimientos_completos').select('*')
       .eq('tipo_movimiento', 'Gasto')
       .eq('periodo_tarjeta', periodoActual)
+      .eq('user_id', user.id)
       .order('cuenta_origen_nombre', { ascending: true })
       .order('fecha', { ascending: false })
     movimientos = (data ?? []).filter(m => tarjetaIds.has(m.cuenta_origen))
 
   } else if (tipo === 'proyectado') {
     const [{ data: res }, { data: gastosFijos }, { data: ingresosFuturos }, { data: params }] = await Promise.all([
-      adminClient.from('dashboard_resumen').select('*').single(),
-      adminClient.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta), categorias(nombre_categoria, icono)').eq('activo', true).order('dia_vencimiento'),
-      adminClient.from('movimientos_completos').select('*').eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodoActual).gt('fecha', todayStr),
-      adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').single(),
+      adminClient.from('dashboard_resumen').select('*').eq('user_id', user.id).single(),
+      adminClient.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta), categorias(nombre_categoria, icono)').eq('activo', true).eq('user_id', user.id).order('dia_vencimiento'),
+      adminClient.from('movimientos_completos').select('*').eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodoActual).eq('user_id', user.id).gt('fecha', todayStr),
+      adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', user.id).single(),
     ])
     resumenData = { res, gastosFijos, ingresosFuturos, dolarBna: params?.valor ?? 1410 }
   }

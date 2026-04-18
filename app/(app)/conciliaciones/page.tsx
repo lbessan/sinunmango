@@ -1,4 +1,6 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CheckCircle, AlertCircle, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react'
 
@@ -17,6 +19,9 @@ export default async function ConciliacionesPage({
 }: {
   searchParams: Promise<{ periodo?: string }>
 }) {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
   const { periodo: periodoParam } = await searchParams
   const today        = new Date()
   const mesActualStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
@@ -28,6 +33,7 @@ export default async function ConciliacionesPage({
     .select('*')
     .eq('tipo_cuenta', 'Tarjeta Credito')
     .eq('activa', true)
+    .eq('user_id', user.id)
     .order('nombre_cuenta')
 
   const tarjetaIds = (tarjetas ?? []).map(t => t.id)
@@ -46,6 +52,7 @@ export default async function ConciliacionesPage({
     .select('periodo_tarjeta')
     .in('cuenta_origen', tarjetaIds)
     .eq('tipo_movimiento', 'Gasto')
+    .eq('user_id', user.id)
     .not('periodo_tarjeta', 'is', null)
 
   const todosPeriodos = [
@@ -66,6 +73,7 @@ export default async function ConciliacionesPage({
     .in('cuenta_origen', tarjetaIds)
     .eq('tipo_movimiento', 'Gasto')
     .eq('conciliado', false)
+    .eq('user_id', user.id)
     .lt('periodo_tarjeta', periodoActual)
     .not('periodo_tarjeta', 'is', null)
     .limit(1)
@@ -79,6 +87,7 @@ export default async function ConciliacionesPage({
     .in('cuenta_origen', tarjetaIds)
     .eq('tipo_movimiento', 'Gasto')
     .eq('periodo_tarjeta', periodoActual)
+    .eq('user_id', user.id)
 
   const movsByTarjeta: Record<string, { monto: number; conciliado: boolean }[]> = {}
   for (const m of movsDelPeriodo ?? []) {

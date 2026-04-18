@@ -1,4 +1,6 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -23,14 +25,14 @@ function Thumbnail({ imagenUrl, colorPrim, tipo, nombre }: {
   )
 }
 
-async function calcularProyecciones(meses = 4) {
+async function calcularProyecciones(userId: string, meses = 4) {
   const today = new Date()
   const [{ data: resumen }, { data: gastosFijos }, { data: tarjetas }, { data: params }] =
     await Promise.all([
-      adminClient.from('dashboard_resumen').select('*').single(),
-      adminClient.from('gastos_fijos').select('*, cuentas(tipo_cuenta)').eq('activo', true),
-      adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true),
-      adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').single(),
+      adminClient.from('dashboard_resumen').select('*').eq('user_id', userId).single(),
+      adminClient.from('gastos_fijos').select('*, cuentas(tipo_cuenta)').eq('activo', true).eq('user_id', userId),
+      adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true).eq('user_id', userId),
+      adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', userId).single(),
     ])
   if (!resumen) return { proyectadoActual: 0, proyecciones: [] }
   const dolar      = params?.valor ?? 1410
@@ -46,8 +48,8 @@ async function calcularProyecciones(meses = 4) {
     const fecha   = new Date(today.getFullYear(), today.getMonth() + i, 1)
     const periodo = fecha.toISOString().slice(0, 10)
     const [{ data: ingresos }, { data: gastosTC }] = await Promise.all([
-      adminClient.from('movimientos').select('monto, moneda').eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodo),
-      adminClient.from('movimientos').select('monto, moneda, cuenta_origen').eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', periodo),
+      adminClient.from('movimientos').select('monto, moneda').eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodo).eq('user_id', userId),
+      adminClient.from('movimientos').select('monto, moneda, cuenta_origen').eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', periodo).eq('user_id', userId),
     ])
     const totalIng = (ingresos ?? []).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
     const totalTC  = (gastosTC ?? []).filter(m => tarjetaIds.has(m.cuenta_origen)).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
@@ -63,16 +65,19 @@ async function calcularProyecciones(meses = 4) {
 }
 
 export default async function DashboardPage() {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
   const today    = new Date()
   const todayDay = today.getDate()
 
   const [{ data: resumen }, { data: cuentas }, { data: gastosFijos }, { data: cuentasExtra }, { proyectadoActual, proyecciones }] =
     await Promise.all([
-      adminClient.from('dashboard_resumen').select('*').single(),
-      adminClient.from('saldo_actual_cuentas').select('*').eq('activa', true),
-      adminClient.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta)').eq('activo', true).order('dia_vencimiento'),
-      adminClient.from('cuentas').select('id, imagen_url, color_primario'),
-      calcularProyecciones(4),
+      adminClient.from('dashboard_resumen').select('*').eq('user_id', user.id).single(),
+      adminClient.from('saldo_actual_cuentas').select('*').eq('activa', true).eq('user_id', user.id),
+      adminClient.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta)').eq('activo', true).eq('user_id', user.id).order('dia_vencimiento'),
+      adminClient.from('cuentas').select('id, imagen_url, color_primario').eq('user_id', user.id),
+      calcularProyecciones(user.id, 4),
     ])
 
   if (!resumen) return <p className="text-red-500">Error cargando datos</p>

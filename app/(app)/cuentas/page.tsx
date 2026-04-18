@@ -1,4 +1,6 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Pencil, ChevronRight } from 'lucide-react'
 
@@ -44,15 +46,20 @@ function Thumbnail({ imagenUrl, colorPrim, tipo, nombre }: {
 }
 
 export default async function CuentasPage() {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
   const { data: cuentas } = await adminClient
     .from('saldo_actual_cuentas')
     .select('*')
     .eq('activa', true)
+    .eq('user_id', user.id)
     .order('tipo_cuenta')
 
   const { data: cuentasExtra } = await adminClient
     .from('cuentas')
     .select('id, imagen_url, color_primario')
+    .eq('user_id', user.id)
 
   const extraMap = Object.fromEntries((cuentasExtra ?? []).map(c => [c.id, c]))
 

@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   // ── Find matching cuenta by terminacion_tarjeta ──────────────────────────────
   const { data: cuentas } = await adminClient
     .from('cuentas')
-    .select('id, nombre_cuenta, tipo_cuenta, moneda, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta, terminacion_tarjeta')
+    .select('id, user_id, nombre_cuenta, tipo_cuenta, moneda, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta, terminacion_tarjeta')
     .eq('activa', true)
 
   const cuenta = cuentas?.find(c => {
@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
       cuotas_total:    parsed.cuotas,
       cuota_actual:    i + 1,
       ciclo_actual:    1,
+      user_id:         cuenta.user_id,
     }
   })
 

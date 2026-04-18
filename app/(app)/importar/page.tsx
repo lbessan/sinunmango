@@ -1,16 +1,22 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import { ImportarEmailClient } from '@/components/importar-email-client'
 import { Mail } from 'lucide-react'
 
 export default async function ImportarEmailPage() {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
   const [{ data: cuentas }, { data: categorias }] =
     await Promise.all([
       adminClient
         .from('cuentas')
         .select('id, nombre_cuenta, tipo_cuenta, moneda, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta')
         .eq('activa', true)
+        .eq('user_id', user.id)
         .order('nombre_cuenta'),
-      adminClient.from('categorias').select('id, nombre_categoria, icono, tipo_default').order('nombre_categoria'),
+      adminClient.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', user.id).order('nombre_categoria'),
     ])
 
   return (

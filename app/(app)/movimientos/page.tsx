@@ -1,4 +1,6 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Pencil, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { Suspense } from 'react'
@@ -33,6 +35,9 @@ function SortHeader({ col, label, currentSort, currentDir, sp }: {
 }
 
 export default async function MovimientosPage({ searchParams }: { searchParams: Promise<SP> }) {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
   const sp       = await searchParams
   const page     = parseInt(sp.page ?? '1')
   const pageSize = 50
@@ -48,6 +53,7 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
   let query = adminClient
     .from('movimientos_completos')
     .select('*', { count: 'exact' })
+    .eq('user_id', user.id)
     .order(orderCol, { ascending: sortDir })
     .order('created_at', { ascending: false })
     .range(from, from + pageSize - 1)
@@ -67,10 +73,10 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
     { count: countFuturos },
   ] = await Promise.all([
     query,
-    adminClient.from('movimientos').select('periodo_tarjeta').order('periodo_tarjeta', { ascending: false }),
-    adminClient.from('categorias').select('id, nombre_categoria, icono').order('nombre_categoria'),
-    adminClient.from('cuentas').select('id, nombre_cuenta').eq('activa', true).order('nombre_cuenta'),
-    adminClient.from('movimientos').select('*', { count: 'exact', head: true }).gt('fecha', today),
+    adminClient.from('movimientos').select('periodo_tarjeta').eq('user_id', user.id).order('periodo_tarjeta', { ascending: false }),
+    adminClient.from('categorias').select('id, nombre_categoria, icono').eq('user_id', user.id).order('nombre_categoria'),
+    adminClient.from('cuentas').select('id, nombre_cuenta').eq('activa', true).eq('user_id', user.id).order('nombre_cuenta'),
+    adminClient.from('movimientos').select('*', { count: 'exact', head: true }).eq('user_id', user.id).gt('fecha', today),
   ])
 
   const totalPages = Math.ceil((count ?? 0) / pageSize)

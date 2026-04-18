@@ -1,5 +1,7 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
 
@@ -24,6 +26,9 @@ export default async function ProyeccionMesPage({
 }: {
   searchParams: Promise<{ periodo?: string }>
 }) {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
   const { periodo } = await searchParams
   if (!periodo) return <p className="text-slate-400">Periodo no especificado</p>
 
@@ -34,12 +39,12 @@ export default async function ProyeccionMesPage({
   // ── Datos base ────────────────────────────────────────────────────────────
   const [{ data: resumen }, { data: gastosFijos }, { data: tarjetas }, { data: params }] =
     await Promise.all([
-      adminClient.from('dashboard_resumen').select('*').single(),
+      adminClient.from('dashboard_resumen').select('*').eq('user_id', user.id).single(),
       adminClient.from('gastos_fijos')
         .select('*, cuentas(id, nombre_cuenta, tipo_cuenta), categorias(nombre_categoria, icono)')
-        .eq('activo', true).order('dia_vencimiento'),
-      adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true),
-      adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').single(),
+        .eq('activo', true).eq('user_id', user.id).order('dia_vencimiento'),
+      adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true).eq('user_id', user.id),
+      adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', user.id).single(),
     ])
 
   const dolar      = params?.valor ?? 1410
@@ -69,10 +74,10 @@ export default async function ProyeccionMesPage({
   while (cursor < periodo) {
     const { data: ingM } = await adminClient
       .from('movimientos').select('monto, moneda, cotizacion, conciliado')
-      .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', cursor)
+      .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', cursor).eq('user_id', user.id)
     const { data: gasM } = await adminClient
       .from('movimientos').select('monto, moneda, cotizacion, conciliado, cuenta_origen')
-      .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', cursor)
+      .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', cursor).eq('user_id', user.id)
 
     const ingTotal = (ingM ?? []).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
     const tcTotal  = (gasM ?? []).filter(m => tarjetaIds.has(m.cuenta_origen))
@@ -85,9 +90,9 @@ export default async function ProyeccionMesPage({
   // ── Datos del periodo objetivo ────────────────────────────────────────────
   const [{ data: ingresosMes }, { data: gastosTC }] = await Promise.all([
     adminClient.from('movimientos_completos').select('*')
-      .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodo).order('fecha'),
+      .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodo).eq('user_id', user.id).order('fecha'),
     adminClient.from('movimientos_completos').select('*')
-      .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', periodo).order('fecha'),
+      .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', periodo).eq('user_id', user.id).order('fecha'),
   ])
 
   const gastosTC_filtrados = (gastosTC ?? []).filter(m => tarjetaIds.has(m.cuenta_origen))

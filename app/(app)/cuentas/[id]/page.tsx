@@ -1,6 +1,7 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { Pencil, ArrowLeft } from 'lucide-react'
 import { CuentaSaldoReactivo } from '@/components/cuenta-saldo-reactivo'
 import { CuentaMovimientosTable } from '@/components/cuenta-movimientos-table'
@@ -21,23 +22,28 @@ function esColorOscuro(hex: string): boolean {
 }
 
 export default async function CuentaDetallePage({ params }: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
   const { id } = await params
   const today   = new Date().toISOString().slice(0, 10)
 
   const [{ data: cuenta }, { data: extra }, { data: movPasados }, { data: movFuturos }, { data: categorias }, { data: subcategorias }, { data: otrasCuentas }] =
     await Promise.all([
-      adminClient.from('saldo_actual_cuentas').select('*').eq('id', id).single(),
-      adminClient.from('cuentas').select('imagen_url, imagen_banner_url, color_primario').eq('id', id).single(),
+      adminClient.from('saldo_actual_cuentas').select('*').eq('id', id).eq('user_id', user.id).single(),
+      adminClient.from('cuentas').select('imagen_url, imagen_banner_url, color_primario').eq('id', id).eq('user_id', user.id).single(),
       adminClient.from('movimientos_completos').select('*')
         .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
+        .eq('user_id', user.id)
         .lte('fecha', today).order('fecha', { ascending: false }).limit(200),
       adminClient.from('movimientos_completos').select('*')
         .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
+        .eq('user_id', user.id)
         .gt('fecha', today)
         .order('periodo_tarjeta', { ascending: true }).order('fecha', { ascending: true }),
-      adminClient.from('categorias').select('id, nombre_categoria, icono, tipo_default').order('nombre_categoria'),
-      adminClient.from('subcategorias').select('id, categoria_padre, nombre_subcategoria'),
-      adminClient.from('cuentas').select('id, nombre_cuenta').eq('activa', true).neq('id', id).order('nombre_cuenta'),
+      adminClient.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', user.id).order('nombre_categoria'),
+      adminClient.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', user.id),
+      adminClient.from('cuentas').select('id, nombre_cuenta').eq('activa', true).eq('user_id', user.id).neq('id', id).order('nombre_cuenta'),
     ])
 
   if (!cuenta) notFound()

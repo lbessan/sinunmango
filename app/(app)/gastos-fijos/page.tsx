@@ -1,4 +1,6 @@
 import { adminClient } from '@/lib/supabase/admin'
+import { getCurrentUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Pencil, ArrowDownCircle } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
@@ -18,11 +20,15 @@ type GastoFijo = {
 }
 
 export default async function GastosFijosPage() {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
   const [{ data: gastosRaw }, { data: params }] = await Promise.all([
     adminClient.from('gastos_fijos')
       .select('*, cuentas(id, nombre_cuenta, tipo_cuenta), categorias(id, nombre_categoria, icono)')
+      .eq('user_id', user.id)
       .order('dia_vencimiento'),
-    adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').single(),
+    adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', user.id).single(),
   ])
 
   const dolarBna = params?.valor ?? 1410

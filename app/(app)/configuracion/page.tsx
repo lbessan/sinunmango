@@ -1,10 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import { ConfiguracionClient } from '@/components/configuracion-client'
 import { Settings } from 'lucide-react'
 
 export default async function ConfiguracionPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
 
   return (
     <div>
