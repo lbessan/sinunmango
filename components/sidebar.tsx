@@ -57,21 +57,23 @@ export async function Sidebar() {
       </nav>
 
       {/* Footer — siempre visible al fondo */}
-      <div className="px-5 py-5 border-t border-white/8 space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="px-4 py-4 border-t border-white/8 space-y-3">
+        {/* Toggle Claro / Oscuro */}
+        <DarkModeToggle />
+
+        {/* Dólar BNA */}
+        <div className="flex items-center justify-between px-1">
           <div>
-            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#4b6a8a' }}>
+            <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#4b6a8a' }}>
               Dólar BNA
             </p>
             <p className="text-base font-bold" style={{ color: '#4ade80' }}>
               {dolarBna > 0 ? `$ ${dolarBna.toLocaleString('es-AR')}` : '—'}
             </p>
           </div>
-          <div className="flex items-center gap-1">
-            <DarkModeToggle />
-            <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
-          </div>
+          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
         </div>
+
         <LogoutButton />
       </div>
 
