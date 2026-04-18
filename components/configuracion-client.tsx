@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import {
   User, Shield, Palette, Moon, Sun, Check,
   ChevronRight, Mail, KeyRound, ShieldCheck, ShieldAlert,
-  Loader2, Smartphone,
+  Info, Loader2, Smartphone,
 } from 'lucide-react'
 import {
   THEMES, ThemeKey, applyTheme,
