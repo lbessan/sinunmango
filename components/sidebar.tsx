@@ -1,6 +1,7 @@
-import { LayoutDashboard, ArrowLeftRight, PlusCircle, CreditCard, Receipt, ShieldCheck, BarChart2, Settings, Mail } from 'lucide-react'
+import { LayoutDashboard, ArrowLeftRight, PlusCircle, CreditCard, Receipt, ShieldCheck, BarChart2, Settings, Bot } from 'lucide-react'
 import { NavItem } from './nav-item'
 import { LogoutButton } from './logout-button'
+import { DarkModeToggle } from './dark-mode-toggle'
 import { Tag } from 'lucide-react'
 
 async function getDolarBNA(): Promise<number> {
@@ -42,10 +43,10 @@ export async function Sidebar() {
         <NavItem href="/dashboard"         icon={<LayoutDashboard size={17} />} label="Dashboard" />
         <NavItem href="/movimientos"       icon={<ArrowLeftRight size={17} />}  label="Movimientos" />
         <NavItem href="/movimientos/nuevo" icon={<PlusCircle size={17} />}      label="Nuevo movimiento" />
-        <NavItem href="/importar"          icon={<Mail size={17} />}            label="Importar email" />
-        <NavItem href="/categorias"        icon={<Tag size={17} />}             label="Categorías" />
+<NavItem href="/categorias"        icon={<Tag size={17} />}             label="Categorías" />
         <NavItem href="/conciliaciones"    icon={<ShieldCheck size={17} />}     label="Conciliaciones" />
         <NavItem href="/analitica"         icon={<BarChart2 size={17} />}       label="Analítica" />
+        <NavItem href="/asistente"         icon={<Bot size={17} />}             label="Asistente IA" />
 
         <p className="text-xs uppercase tracking-widest px-5 py-2 mt-3" style={{ color: '#4b6a8a' }}>
           Configuración
@@ -63,10 +64,13 @@ export async function Sidebar() {
               Dólar BNA
             </p>
             <p className="text-base font-bold" style={{ color: '#4ade80' }}>
-            {dolarBna > 0 ? `$ ${dolarBna.toLocaleString('es-AR')}` : '—'}
-          </p>
+              {dolarBna > 0 ? `$ ${dolarBna.toLocaleString('es-AR')}` : '—'}
+            </p>
           </div>
-          <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
+          <div className="flex items-center gap-1">
+            <DarkModeToggle />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
+          </div>
         </div>
         <LogoutButton />
       </div>

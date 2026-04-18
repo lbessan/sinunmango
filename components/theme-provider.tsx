@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, createContext, useContext, useState, useCallback } from 'react'
 
 // ─── Presets ──────────────────────────────────────────────────────────────────
 export const THEMES = {
@@ -43,10 +43,10 @@ export const THEMES = {
 
 export type ThemeKey = keyof typeof THEMES
 
-export const STORAGE_THEME   = 'finanzas-theme'
+export const STORAGE_THEME    = 'finanzas-theme'
 export const STORAGE_DARKMODE = 'finanzas-darkmode'
 
-// Applies a theme by setting CSS custom properties on <html>
+// Applies a color theme by setting CSS custom properties on <html>
 export function applyTheme(key: ThemeKey) {
   const t    = THEMES[key]
   const root = document.documentElement
@@ -55,13 +55,59 @@ export function applyTheme(key: ThemeKey) {
   root.style.setProperty('--sidebar-bg', t.sidebar)
 }
 
+// Applies or removes the .dark class on <html>
+export function applyDarkMode(dark: boolean) {
+  if (dark) {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+}
+
+// ─── Context ──────────────────────────────────────────────────────────────────
+interface ThemeCtx {
+  isDark: boolean
+  toggleDark: () => void
+}
+
+const ThemeContext = createContext<ThemeCtx>({ isDark: false, toggleDark: () => {} })
+
+export function useTheme() {
+  return useContext(ThemeContext)
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
-// Wrap the app layout with this to restore saved theme on mount.
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [isDark, setIsDark] = useState(false)
+
+  // Restore on mount (before first paint — also in <script> below for SSR)
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_THEME) as ThemeKey | null
-    if (saved && THEMES[saved]) applyTheme(saved)
+    const savedTheme = localStorage.getItem(STORAGE_THEME) as ThemeKey | null
+    const savedDark  = localStorage.getItem(STORAGE_DARKMODE) === 'true'
+
+    if (savedTheme && THEMES[savedTheme]) applyTheme(savedTheme)
+    applyDarkMode(savedDark)
+    setIsDark(savedDark)
   }, [])
 
-  return <>{children}</>
+  const toggleDark = useCallback(() => {
+    setIsDark(prev => {
+      const next = !prev
+      applyDarkMode(next)
+      localStorage.setItem(STORAGE_DARKMODE, String(next))
+      return next
+    })
+  }, [])
+
+  return (
+    <ThemeContext.Provider value={{ isDark, toggleDark }}>
+      {/* Inline script to apply dark mode before first paint (no flash) */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `(function(){try{var d=localStorage.getItem('${STORAGE_DARKMODE}');if(d==='true')document.documentElement.classList.add('dark');}catch(e){}})()`,
+        }}
+      />
+      {children}
+    </ThemeContext.Provider>
+  )
 }

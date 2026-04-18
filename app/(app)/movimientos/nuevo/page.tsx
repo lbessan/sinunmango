@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus } from 'lucide-react'
+import { Plus, Camera, Loader2 } from 'lucide-react'
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
 import { CategoriaSelect } from '@/components/categoria-select'
 
@@ -52,6 +52,9 @@ function NuevoMovimientoContent() {
   const [saved, setSaved]               = useState(false)
   const [modal, setModal]               = useState<'categoria' | 'subcategoria' | null>(null)
   const [cargado, setCargado]           = useState(false)
+  const [scanningTicket, setScanningTicket] = useState(false)
+  const [scanMsg, setScanMsg]           = useState<string | null>(null)
+  const fileInputRef                    = useRef<HTMLInputElement>(null)
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -90,6 +93,44 @@ function NuevoMovimientoContent() {
   }, [])
 
   const set = (k: string, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
+
+  const handleScanTicket = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setScanningTicket(true)
+    setScanMsg(null)
+    try {
+      // Convert to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve((reader.result as string).split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const res  = await fetch('/api/leer-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64, mimeType: file.type }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        setScanMsg(data.error ?? 'No se pudo leer el ticket.')
+        return
+      }
+      // Pre-fill form fields
+      if (data.detalle) set('detalle', data.detalle)
+      if (data.monto)   set('monto',   String(data.monto))
+      if (data.moneda)  set('moneda',  data.moneda)
+      if (data.fecha)   set('fecha',   data.fecha)
+      if (data.cuotas)  set('cuotas_total', String(data.cuotas))
+      setScanMsg('✓ Ticket leído — revisá los datos antes de guardar.')
+    } catch {
+      setScanMsg('Error al procesar la imagen.')
+    } finally {
+      setScanningTicket(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   const cuentaSeleccionada    = cuentas.find(c => c.id === form.cuenta_origen)
   const categoriaSeleccionada = categorias.find(c => c.id === form.categoria)
@@ -150,9 +191,41 @@ function NuevoMovimientoContent() {
 
   return (
     <div className="max-w-xl mx-auto">
-      <h1 className="text-xl font-semibold text-slate-800 mb-6">Nuevo movimiento</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold text-slate-800">Nuevo movimiento</h1>
+        {/* Escanear ticket con IA */}
+        <div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleScanTicket}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={scanningTicket}
+            title="Fotografiar ticket"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-colors"
+            style={{ borderColor: 'var(--accent)', color: 'var(--accent)', background: 'transparent' }}
+          >
+            {scanningTicket
+              ? <><Loader2 size={15} className="animate-spin" /> Leyendo...</>
+              : <><Camera size={15} /> Escanear ticket</>
+            }
+          </button>
+        </div>
+      </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
+
+        {/* Mensaje de escaneo */}
+        {scanMsg && (
+          <div className={`rounded-xl px-4 py-3 text-xs font-medium ${scanMsg.startsWith('✓') ? 'bg-green-50 border border-green-100 text-green-700' : 'bg-red-50 border border-red-100 text-red-600'}`}>
+            {scanMsg}
+          </div>
+        )}
 
         {/* Aviso de pre-llenado desde gasto fijo */}
         {vieneDePago && (

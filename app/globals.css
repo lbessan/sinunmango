@@ -1,7 +1,113 @@
 @import "tailwindcss";
 
+/* ── Color theme (light) ───────────────────────────────────────────────────── */
 :root {
   --accent:     #1a6b5a;
   --accent2:    #1B3A6B;
   --sidebar-bg: #0d2137;
+
+  /* Light-mode surface tokens */
+  --bg-main:        #f1f5f9;
+  --bg-card:        #ffffff;
+  --bg-card-alt:    #f8fafc;
+  --bg-input:       #ffffff;
+  --text-primary:   #1e293b;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+  --border:         #e2e8f0;
+  --ring:           rgba(0,0,0,.06);
+}
+
+/* ── Color theme (dark) ────────────────────────────────────────────────────── */
+html.dark {
+  color-scheme: dark;
+
+  --bg-main:        #0f172a;
+  --bg-card:        #1e293b;
+  --bg-card-alt:    #162032;
+  --bg-input:       #1e293b;
+  --text-primary:   #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted:     #64748b;
+  --border:         #334155;
+  --ring:           rgba(255,255,255,.04);
+}
+
+/* ── Global resets using tokens ────────────────────────────────────────────── */
+body {
+  background-color: var(--bg-main);
+  color:            var(--text-primary);
+  transition: background-color .2s, color .2s;
+}
+
+/* ── Tailwind utility overrides for dark mode ──────────────────────────────── */
+/* Backgrounds */
+html.dark .bg-white          { background-color: var(--bg-card) !important; }
+html.dark .bg-slate-50       { background-color: var(--bg-card-alt) !important; }
+html.dark .bg-slate-100      { background-color: var(--bg-main) !important; }
+html.dark .bg-slate-200      { background-color: #1e293b !important; }
+html.dark .bg-gray-50        { background-color: var(--bg-card-alt) !important; }
+html.dark .bg-gray-100       { background-color: var(--bg-main) !important; }
+
+/* Text */
+html.dark .text-slate-900    { color: var(--text-primary)   !important; }
+html.dark .text-slate-800    { color: var(--text-primary)   !important; }
+html.dark .text-slate-700    { color: var(--text-secondary) !important; }
+html.dark .text-slate-600    { color: var(--text-secondary) !important; }
+html.dark .text-slate-500    { color: var(--text-muted)     !important; }
+html.dark .text-slate-400    { color: var(--text-muted)     !important; }
+html.dark .text-gray-900     { color: var(--text-primary)   !important; }
+html.dark .text-gray-800     { color: var(--text-primary)   !important; }
+html.dark .text-gray-700     { color: var(--text-secondary) !important; }
+html.dark .text-gray-600     { color: var(--text-secondary) !important; }
+html.dark .text-gray-500     { color: var(--text-muted)     !important; }
+html.dark .text-gray-400     { color: var(--text-muted)     !important; }
+
+/* Borders */
+html.dark .border-slate-200  { border-color: var(--border) !important; }
+html.dark .border-slate-100  { border-color: var(--border) !important; }
+html.dark .border-gray-200   { border-color: var(--border) !important; }
+html.dark .border-gray-100   { border-color: var(--border) !important; }
+html.dark .divide-slate-100  > * + * { border-color: var(--border) !important; }
+html.dark .divide-slate-200  > * + * { border-color: var(--border) !important; }
+html.dark .divide-gray-100   > * + * { border-color: var(--border) !important; }
+
+/* Ring / shadow */
+html.dark .shadow-sm         { box-shadow: 0 1px 3px var(--ring) !important; }
+html.dark .ring-1            { --tw-ring-color: var(--border) !important; }
+
+/* Inputs / selects / textareas */
+html.dark input:not([type=checkbox]):not([type=radio]):not([type=range]),
+html.dark select,
+html.dark textarea {
+  background-color: var(--bg-input) !important;
+  color:            var(--text-primary) !important;
+  border-color:     var(--border) !important;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: var(--text-muted) !important; }
+
+/* Tables */
+html.dark thead tr            { background-color: var(--bg-card-alt) !important; }
+html.dark thead th            { color: var(--text-muted) !important; border-color: var(--border) !important; }
+html.dark tbody tr:hover      { background-color: var(--bg-card-alt) !important; }
+html.dark tbody td            { border-color: var(--border) !important; }
+
+/* Modals / dialogs */
+html.dark [role="dialog"],
+html.dark [data-radix-popper-content-wrapper] > * {
+  background-color: var(--bg-card) !important;
+  border-color:     var(--border) !important;
+  color:            var(--text-primary) !important;
+}
+
+/* Dropdown menus */
+html.dark [role="menu"],
+html.dark [role="listbox"] {
+  background-color: var(--bg-card) !important;
+  border-color:     var(--border) !important;
+}
+html.dark [role="option"]:hover,
+html.dark [role="menuitem"]:hover {
+  background-color: var(--bg-card-alt) !important;
 }
