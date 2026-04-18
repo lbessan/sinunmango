@@ -72,13 +72,26 @@ html.dark .border            { border-color: var(--border)        !important; }
 html.dark .border-slate-50   { border-color: var(--border-subtle) !important; }
 html.dark .border-slate-100  { border-color: var(--border-subtle) !important; }
 html.dark .border-slate-200  { border-color: var(--border)        !important; }
+html.dark .border-gray-50    { border-color: var(--border-subtle) !important; }
 html.dark .border-gray-100   { border-color: var(--border-subtle) !important; }
 html.dark .border-gray-200   { border-color: var(--border)        !important; }
 
+/* Borders direccionales — aplica para border-t, border-b, border-l, border-r */
+html.dark [class*="border-t"][class*="border-slate-50"],
+html.dark [class*="border-b"][class*="border-slate-50"],
+html.dark [class*="border-t"][class*="border-slate-100"],
+html.dark [class*="border-b"][class*="border-slate-100"] {
+  border-color: var(--border-subtle) !important;
+}
+
 /* --- Dividers --- */
-html.dark .divide-slate-100 > * + * { border-color: var(--divider) !important; }
-html.dark .divide-slate-200 > * + * { border-color: var(--divider) !important; }
-html.dark .divide-gray-100  > * + * { border-color: var(--divider) !important; }
+html.dark .divide-y > * + *,
+html.dark .divide-x > * + *      { border-color: var(--border-subtle) !important; }
+html.dark .divide-slate-50  > * + * { border-color: var(--border-subtle) !important; }
+html.dark .divide-slate-100 > * + * { border-color: var(--border-subtle) !important; }
+html.dark .divide-slate-200 > * + * { border-color: var(--divider)       !important; }
+html.dark .divide-gray-50   > * + * { border-color: var(--border-subtle) !important; }
+html.dark .divide-gray-100  > * + * { border-color: var(--border-subtle) !important; }
 
 /* --- Shadows: mucho más sutiles en dark --- */
 html.dark .shadow-sm  { box-shadow: 0 1px 4px rgba(0,0,0,.4)  !important; }

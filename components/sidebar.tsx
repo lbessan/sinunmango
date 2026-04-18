@@ -46,7 +46,7 @@ export async function Sidebar() {
 <NavItem href="/categorias"        icon={<Tag size={17} />}             label="Categorías" />
         <NavItem href="/conciliaciones"    icon={<ShieldCheck size={17} />}     label="Conciliaciones" />
         <NavItem href="/analitica"         icon={<BarChart2 size={17} />}       label="Analítica" />
-        <NavItem href="/asistente"         icon={<Bot size={17} />}             label="Asistente IA" />
+        <NavItem href="/asistente"         icon={<Bot size={17} />}             label="Manguito" />
 
         <p className="text-xs uppercase tracking-widest px-5 py-2 mt-3" style={{ color: '#4b6a8a' }}>
           Configuración

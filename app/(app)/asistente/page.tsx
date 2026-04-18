@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { Send, User, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 
 type Message = {
   id:      string
@@ -84,6 +84,21 @@ const EJEMPLOS = [
   'Pagué $12.000 de nafta en efectivo',
   '¿Cuál es mi cuenta con más gastos?',
 ]
+
+function ManguitoAvatar({ size = 28 }: { size?: number }) {
+  return (
+    <div
+      className="rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+      style={{
+        width: size, height: size,
+        background: 'linear-gradient(135deg, #0d2137 0%, #1a6b5a 100%)',
+        boxShadow: '0 0 0 2px rgba(26,107,90,0.3)',
+      }}
+    >
+      <img src="/logo.png" alt="Manguito" style={{ width: size * 0.75, height: size * 0.75, objectFit: 'contain' }} />
+    </div>
+  )
+}
 
 export default function AsistentePage() {
   const [messages, setMessages] = useState<Message[]>([])
@@ -211,13 +226,10 @@ export default function AsistentePage() {
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-4 shrink-0">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}>
-          <Bot size={18} className="text-white" />
-        </div>
+        <ManguitoAvatar size={40} />
         <div>
-          <h1 className="text-xl font-semibold text-slate-800">Asistente financiero</h1>
-          <p className="text-xs text-slate-400">Preguntá sobre tus finanzas o registrá gastos en lenguaje natural</p>
+          <h1 className="text-xl font-semibold text-slate-800">Manguito</h1>
+          <p className="text-xs text-slate-400">Tu asistente financiero — preguntá o dictale un gasto</p>
         </div>
       </div>
 
@@ -245,13 +257,14 @@ export default function AsistentePage() {
 
         {messages.map(msg => (
           <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-            <div className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-white text-xs mt-1 ${
-              msg.role === 'user'
-                ? 'bg-slate-600'
-                : 'bg-gradient-to-br from-blue-600 to-teal-500'
-            }`}>
-              {msg.role === 'user' ? <User size={13} /> : <Bot size={13} />}
-            </div>
+            {msg.role === 'assistant'
+              ? <ManguitoAvatar size={28} />
+              : (
+                <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center bg-slate-600 text-white mt-1">
+                  <User size={13} />
+                </div>
+              )
+            }
             <div className={`max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
               <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                 msg.role === 'user'
