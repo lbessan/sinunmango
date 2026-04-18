@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
@@ -41,7 +41,7 @@ function addMonths(dateStr: string, months: number): string {
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-white'
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
 
-export default function NuevoMovimientoPage() {
+function NuevoMovimientoContent() {
   const router       = useRouter()
   const searchParams = useSearchParams()
 
@@ -359,5 +359,19 @@ export default function NuevoMovimientoPage() {
         />
       )}
     </div>
+  )
+}
+
+export default function NuevoMovimientoPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-xl mx-auto">
+        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400 text-sm">
+          Cargando...
+        </div>
+      </div>
+    }>
+      <NuevoMovimientoContent />
+    </Suspense>
   )
 }
