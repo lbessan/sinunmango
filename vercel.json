@@ -1,7 +1,8 @@
 {
   "crons": [
-    { "path": "/api/auto-conciliar",            "schedule": "0 6 * * *"  },
-    { "path": "/api/ping",                      "schedule": "0 12 * * *" },
-    { "path": "/api/cron/alertas-vencimientos", "schedule": "0 11 * * *" }
+    { "path": "/api/auto-conciliar",              "schedule": "0 6 * * *"  },
+    { "path": "/api/ping",                        "schedule": "0 12 * * *" },
+    { "path": "/api/cron/alertas-vencimientos",   "schedule": "0 11 * * *" },
+    { "path": "/api/cron/actualizar-dolar",       "schedule": "0 10 * * 1-5" }
   ]
 }

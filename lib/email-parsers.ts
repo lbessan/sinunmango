@@ -28,11 +28,11 @@ export function fechaARtoISO(str: string): string {
 //  L BESSAN NOFAL finalizada en 1955"
 // USD variant:  "de US$ 5,00 en el establecimiento ANTHROPIC"
 // Con cuotas:   "de $ 99.600,00 en 18 cuotas en el establecimiento..."
-export function parseInfomistarjetas(texto: string): ParsedMov | null {
-  const re = /autorizaci[oó]n de consumo de\s+(US\$\s*)?([\d.,]+)(?:\s+en\s+(\d+)\s+cuotas?)?\s+en el establecimiento\s+(.+?)\s*,\s+el d[ií]a\s+(\d{2}\/\d{2}\/\d{4})[\s\S]+?finalizada en\s+(\d+)/i
-  const m = texto.match(re)
-  if (!m) return null
+// Nota: (?:(US\$)|\$)?\s* captura "US$" en grupo 1 (→ USD), o "$" sin captura (→ ARS)
+const INFOMIS_RE = () =>
+  /autorizaci[oó]n de consumo de\s+(?:(US\$)|\$)?\s*([\d.,]+)(?:\s+en\s+(\d+)\s+cuotas?)?\s+en el establecimiento\s+(.+?)\s*,\s+el d[ií]a\s+(\d{2}\/\d{2}\/\d{4})[\s\S]+?finalizada en\s+(\d+)/gi
 
+function infomisMatch(m: RegExpExecArray): ParsedMov {
   return {
     fecha:       fechaARtoISO(m[5]),
     detalle:     m[4].trim(),
@@ -42,6 +42,23 @@ export function parseInfomistarjetas(texto: string): ParsedMov | null {
     terminacion: m[6],
     fuente:      'infomistarjetas',
   }
+}
+
+export function parseInfomistarjetas(texto: string): ParsedMov | null {
+  const re = INFOMIS_RE()
+  const m = re.exec(texto)
+  return m ? infomisMatch(m) : null
+}
+
+// Digest emails ("Novedades de tus transacciones") may contain multiple transactions
+export function parseAllInfomistarjetas(texto: string): ParsedMov[] {
+  const re = INFOMIS_RE()
+  const results: ParsedMov[] = []
+  let m: RegExpExecArray | null
+  while ((m = re.exec(texto)) !== null) {
+    results.push(infomisMatch(m))
+  }
+  return results
 }
 
 // ─── Mercado Pago ─────────────────────────────────────────────────────────────
@@ -67,7 +84,46 @@ export function parseMercadoPago(texto: string): ParsedMov | null {
   }
 }
 
-// ─── Auto-detect parser ───────────────────────────────────────────────────────
+// ─── Mercado Pago — Transferencia enviada ────────────────────────────────────
+// "Tu transferencia fue enviada" — envíos de dinero entre cuentas MP
+// Formato típico: "Enviaste $X,XX a [Nombre]" o "Transferiste $X,XX a [Nombre]"
+export function parseMercadoPagoTransferencia(texto: string): ParsedMov | null {
+  // Detectar el monto — "Enviaste $X,XX" o "Transferiste $X,XX"
+  const montoM = texto.match(/(?:Enviaste|Transferiste)\s+\$\s*([\d.,]+)/i)
+  if (!montoM) return null
+
+  // Destinatario — "a [Nombre]" después del monto
+  const destinoM = texto.match(/(?:Enviaste|Transferiste)\s+\$\s*[\d.,]+\s+a\s+(.+)/i)
+
+  // Fecha — "el DD/MM/YYYY" o extraer de la fecha del mail (fallback: hoy)
+  const fechaM = texto.match(/(\d{2}\/\d{2}\/\d{4})/)
+
+  return {
+    fecha:       fechaM ? fechaARtoISO(fechaM[1]) : new Date().toISOString().slice(0, 10),
+    detalle:     destinoM ? `MP → ${destinoM[1].trim()}` : 'Transferencia Mercado Pago',
+    monto:       parseMontoAR(montoM[1]),
+    moneda:      'ARS',
+    cuotas:      1,
+    terminacion: null,   // transferencias no tienen terminación de tarjeta
+    fuente:      'mercadopago',
+  }
+}
+
+// ─── Auto-detect parser (single) ─────────────────────────────────────────────
 export function parseEmail(texto: string): ParsedMov | null {
-  return parseInfomistarjetas(texto) ?? parseMercadoPago(texto)
+  return parseInfomistarjetas(texto)
+    ?? parseMercadoPago(texto)
+    ?? parseMercadoPagoTransferencia(texto)
+}
+
+// ─── Auto-detect parser (all matches) ────────────────────────────────────────
+// Handles digest emails with multiple transactions (e.g. "Novedades de tus transacciones")
+export function parseAllEmails(texto: string): ParsedMov[] {
+  // Try infomistarjetas multi-match first (digest format)
+  const infomis = parseAllInfomistarjetas(texto)
+  if (infomis.length > 0) return infomis
+
+  // For other parsers (single-transaction), wrap result in array
+  const single = parseMercadoPago(texto) ?? parseMercadoPagoTransferencia(texto)
+  return single ? [single] : []
 }

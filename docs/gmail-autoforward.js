@@ -25,11 +25,15 @@ const SENDERS = [
 ]
 
 function checkTransactionEmails() {
-  // Buscar todos los senders en un query de Gmail
+  // Buscar todos los senders en un query de Gmail — solo emails no leídos del último día
   const query = SENDERS.map(s => `from:${s}`).join(' OR ')
-  const fullQuery = `(${query}) is:unread`
+  const fullQuery = `(${query}) is:unread newer_than:1d`
 
   const threads = GmailApp.search(fullQuery, 0, 50)
+
+  // Fecha de hoy en la zona horaria del script (Argentina = GMT-3)
+  const tz    = Session.getScriptTimeZone()
+  const today = Utilities.formatDate(new Date(), tz, 'yyyyMMdd')
 
   let processed = 0
   let skipped   = 0
@@ -38,6 +42,13 @@ function checkTransactionEmails() {
   threads.forEach(thread => {
     thread.getMessages().forEach(msg => {
       if (!msg.isUnread()) return
+
+      // Solo procesar emails del día de hoy
+      const msgDate = Utilities.formatDate(msg.getDate(), tz, 'yyyyMMdd')
+      if (msgDate !== today) {
+        Logger.log(`- Omitido por fecha: "${msg.getSubject()}" (${msgDate})`)
+        return
+      }
 
       const from    = msg.getFrom()
       const subject = msg.getSubject()

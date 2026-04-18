@@ -3,7 +3,22 @@ import { NavItem } from './nav-item'
 import { LogoutButton } from './logout-button'
 import { Tag } from 'lucide-react'
 
-export function Sidebar() {
+async function getDolarBNA(): Promise<number> {
+  try {
+    const res = await fetch('https://dolarapi.com/v1/dolares/oficial', {
+      next: { revalidate: 3600 }, // cache 1 hora
+    })
+    if (!res.ok) return 0
+    const data = await res.json()
+    // dolarapi devuelve { compra, venta } — usamos venta (tipo vendedor BNA)
+    return Math.round(data.venta ?? data.compra ?? 0)
+  } catch {
+    return 0
+  }
+}
+
+export async function Sidebar() {
+  const dolarBna = await getDolarBNA()
   return (
     <aside className="w-64 h-screen sticky top-0 flex flex-col shrink-0" style={{ background: 'var(--sidebar-bg, #0d2137)' }}>
 
@@ -47,7 +62,9 @@ export function Sidebar() {
             <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#4b6a8a' }}>
               Dólar BNA
             </p>
-            <p className="text-base font-bold" style={{ color: '#4ade80' }}>$ 1.410</p>
+            <p className="text-base font-bold" style={{ color: '#4ade80' }}>
+            {dolarBna > 0 ? `$ ${dolarBna.toLocaleString('es-AR')}` : '—'}
+          </p>
           </div>
           <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
         </div>
