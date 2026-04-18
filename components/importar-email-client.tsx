@@ -63,10 +63,9 @@ const FUENTE_LABEL: Record<ParsedMov['fuente'], string> = {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export function ImportarEmailClient({ cuentas, categorias, subcategorias }: {
-  cuentas:       Cuenta[]
-  categorias:    Categoria[]
-  subcategorias: Subcategoria[]
+export function ImportarEmailClient({ cuentas, categorias }: {
+  cuentas:    Cuenta[]
+  categorias: Categoria[]
 }) {
   const router = useRouter()
 
@@ -352,12 +351,9 @@ export function ImportarEmailClient({ cuentas, categorias, subcategorias }: {
               <label className={labelClass}>Categoría</label>
               <CategoriaSelect
                 categorias={categorias}
-                subcategorias={subcategorias}
-                catId={catId}
-                subcatId={subcatId}
-                onCatChange={setCatId}
-                onSubcatChange={setSubcatId}
-                tipoMovimiento="Gasto"
+                value={catId}
+                onChange={setCatId}
+                filtroTipo="Gasto"
               />
             </div>
 
