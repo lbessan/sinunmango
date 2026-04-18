@@ -1,5 +1,6 @@
 import { Sidebar } from '@/components/sidebar'
 import { ThemeProvider } from '@/components/theme-provider'
+import { AppShell } from '@/components/app-shell'
 
 export default function AppLayout({
   children,
@@ -8,12 +9,9 @@ export default function AppLayout({
 }) {
   return (
     <ThemeProvider>
-      <div className="flex min-h-screen bg-slate-100">
-        <Sidebar />
-        <main className="flex-1 p-8 overflow-y-auto min-w-0">
-          {children}
-        </main>
-      </div>
+      <AppShell sidebar={<Sidebar />}>
+        {children}
+      </AppShell>
     </ThemeProvider>
   )
 }

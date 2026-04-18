@@ -1,18 +1,28 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+import { AlertCircle } from 'lucide-react'
 
-export default function LoginPage() {
-  const supabase = createClient()
+function LoginContent() {
+  const supabase     = createClient()
+  const searchParams = useSearchParams()
+  const errorParam   = searchParams.get('error')
 
   const handleGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
   }
+
+  const errorMsg =
+    errorParam === 'not_authorized'
+      ? 'Tu cuenta no tiene acceso a esta app. Contactá al administrador.'
+      : errorParam === 'auth'
+      ? 'Hubo un error al iniciar sesión. Intentá de nuevo.'
+      : null
 
   return (
     <div className="min-h-screen flex">
@@ -22,17 +32,9 @@ export default function LoginPage() {
         className="hidden lg:flex lg:w-1/2 relative items-center justify-center overflow-hidden"
         style={{ background: 'linear-gradient(135deg, var(--accent2, #0d3b6e) 0%, var(--accent, #1a6b5a) 100%)' }}
       >
-        <img
-          src="/fondo.png"
-          alt="Fondo"
-          className="absolute inset-0 w-full h-full object-cover opacity-20"
-        />
+        <img src="/fondo.png" alt="Fondo" className="absolute inset-0 w-full h-full object-cover opacity-20" />
         <div className="relative z-10 text-center px-12">
-          <img
-            src="/logo.png"
-            alt="Logo sinunmango"
-            className="w-36 h-36 mx-auto mb-8 object-contain"
-          />
+          <img src="/logo.png" alt="Logo sinunmango" className="w-36 h-36 mx-auto mb-8 object-contain" />
           <h1 className="text-5xl font-bold mb-3">
             <span className="text-white">sinun</span><span style={{ color: '#f97316' }}>mango</span>
           </h1>
@@ -42,7 +44,7 @@ export default function LoginPage() {
 
       {/* Panel derecho — formulario */}
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-white px-8">
-        <div className="w-full max-w-sm space-y-8">
+        <div className="w-full max-w-sm space-y-6">
 
           <div className="lg:hidden text-center">
             <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto mb-4 object-contain" />
@@ -55,6 +57,14 @@ export default function LoginPage() {
             <h2 className="text-2xl font-bold text-slate-800">Bienvenido</h2>
             <p className="text-slate-500 mt-1 text-sm">Ingresá a sinunmango</p>
           </div>
+
+          {/* Error message */}
+          {errorMsg && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+              <AlertCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-600">{errorMsg}</p>
+            </div>
+          )}
 
           <button
             onClick={handleGoogle}
@@ -76,5 +86,13 @@ export default function LoginPage() {
       </div>
 
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
   )
 }
