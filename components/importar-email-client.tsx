@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Clipboard, CheckCircle, AlertCircle, Loader2, ChevronRight, CreditCard, ArrowLeft } from 'lucide-react'
 import { CategoriaSelect } from '@/components/categoria-select'
-import type { ParsedMov } from '@/app/api/importar-email/route'
+import type { ParsedMov } from '@/lib/email-parsers'
 
 const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-white'
