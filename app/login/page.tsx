@@ -28,15 +28,11 @@ export default function LoginPage() {
           className="absolute inset-0 w-full h-full object-cover opacity-20"
         />
         <div className="relative z-10 text-center px-12">
-          {/* Mostramos solo el ícono del bolsillo, recortando el texto del PNG */}
-          <div className="w-40 h-40 mx-auto mb-8 overflow-hidden rounded-2xl">
-            <img
-              src="/logo.png"
-              alt="Logo sinunmango"
-              className="w-full"
-              style={{ marginTop: '-4%', transform: 'scale(1.1)' }}
-            />
-          </div>
+          <img
+            src="/logo.png"
+            alt="Logo sinunmango"
+            className="w-36 h-36 mx-auto mb-8 object-contain"
+          />
           <h1 className="text-5xl font-bold mb-3">
             <span className="text-white">sinun</span><span style={{ color: '#f97316' }}>mango</span>
           </h1>
@@ -49,9 +45,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm space-y-8">
 
           <div className="lg:hidden text-center">
-            <div className="w-16 h-16 mx-auto mb-4 overflow-hidden rounded-xl">
-              <img src="/logo.png" alt="Logo" className="w-full" style={{ marginTop: '-4%', transform: 'scale(1.1)' }} />
-            </div>
+            <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto mb-4 object-contain" />
             <p className="text-2xl font-bold">
               <span className="text-slate-800">sinun</span><span style={{ color: '#f97316' }}>mango</span>
             </p>
