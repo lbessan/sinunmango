@@ -3,7 +3,7 @@ import { ImportarEmailClient } from '@/components/importar-email-client'
 import { Mail } from 'lucide-react'
 
 export default async function ImportarEmailPage() {
-  const [{ data: cuentas }, { data: categorias }, { data: subcategorias }] =
+  const [{ data: cuentas }, { data: categorias }] =
     await Promise.all([
       adminClient
         .from('cuentas')
@@ -11,7 +11,6 @@ export default async function ImportarEmailPage() {
         .eq('activa', true)
         .order('nombre_cuenta'),
       adminClient.from('categorias').select('id, nombre_categoria, icono, tipo_default').order('nombre_categoria'),
-      adminClient.from('subcategorias').select('id, categoria_padre, nombre_subcategoria'),
     ])
 
   return (
@@ -30,7 +29,6 @@ export default async function ImportarEmailPage() {
       <ImportarEmailClient
         cuentas={cuentas ?? []}
         categorias={categorias ?? []}
-        subcategorias={subcategorias ?? []}
       />
     </div>
   )
