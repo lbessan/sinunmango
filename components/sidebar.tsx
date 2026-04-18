@@ -14,7 +14,9 @@ export function Sidebar() {
           className="w-9 h-9 rounded-full"
         />
         <div>
-          <p className="text-white font-semibold text-sm leading-tight">Finanzas LB</p>
+          <p className="font-semibold text-sm leading-tight">
+            <span className="text-white">sinun</span><span style={{ color: '#f97316' }}>mango</span>
+          </p>
           <p className="text-xs leading-tight" style={{ color: '#4ade80' }}>Bimonetario ARS/USD</p>
         </div>
       </div>
