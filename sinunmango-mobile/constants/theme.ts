@@ -1,9 +1,9 @@
-// Tokens de color que replican el theme de la web (globals.css)
+// Tokens de color — replicando el theme de la web del usuario (magenta/rosa oscuro)
 export const Colors = {
-  // Brand — rosa/magenta como la configuración del usuario en la web
-  accent:   '#d946ef',
-  accent2:  '#9333ea',
-  sidebar:  '#0d2137',
+  // Brand
+  accent:   '#d81b60',   // hot pink / magenta (igual que la web)
+  accent2:  '#880e4f',   // dark pink (punto medio del gradiente)
+  sidebar:  '#1a0028',   // fondo oscuro casi negro con tinte púrpura
 
   // Backgrounds
   bgMain:   '#f1f5f9',
@@ -19,7 +19,7 @@ export const Colors = {
   borderSubtle: '#f1f5f9',
 
   // Semantic
-  green:  '#1a6b5a',
+  green:  '#16a34a',
   red:    '#ef4444',
   orange: '#f97316',
 
@@ -27,7 +27,7 @@ export const Colors = {
   white: '#ffffff',
 }
 
-// Gradiente del banner (igual que en la web)
+// Gradiente del banner: oscuro → magenta (igual que la web)
 export const BANNER_GRADIENT = {
   colors: [Colors.sidebar, Colors.accent2, Colors.accent],
   start:  { x: 0, y: 0 },

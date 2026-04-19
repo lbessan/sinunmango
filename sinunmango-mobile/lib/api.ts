@@ -1,27 +1,20 @@
 import { supabase } from './supabase'
-import type { Session } from '@supabase/supabase-js'
+import { getStoredSession } from './session-store'
 
 export const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? ''
 
-// Guardamos la sesión en memoria apenas onAuthStateChange dispara.
-// Esto es más confiable que getSession() cuando setSession() fue llamado
-// desde el deep-link handler, ya que la escritura en AsyncStorage puede
-// estar pendiente al momento de la primera llamada a la API.
-let _cachedSession: Session | null = null
-supabase.auth.onAuthStateChange((_event, session) => {
-  _cachedSession = session
-})
-
 /**
  * Devuelve el access token del usuario logueado.
- * Se pasa como Bearer token en las llamadas a los API routes de la web.
+ * Prioridad: session-store (escrito por _layout.tsx al recibir onAuthStateChange)
+ * → getSession() desde AsyncStorage como fallback.
  */
 export async function getAuthHeader(): Promise<Record<string, string>> {
-  // Prioridad 1: sesión en memoria (actualizada por onAuthStateChange)
-  if (_cachedSession?.access_token) {
-    return { Authorization: `Bearer ${_cachedSession.access_token}` }
+  // Prioridad 1: sesión guardada por _layout.tsx (siempre actualizada)
+  const stored = getStoredSession()
+  if (stored?.access_token) {
+    return { Authorization: `Bearer ${stored.access_token}` }
   }
-  // Prioridad 2: getSession() desde AsyncStorage
+  // Prioridad 2: AsyncStorage fallback
   const { data: { session } } = await supabase.auth.getSession()
   if (session?.access_token) {
     return { Authorization: `Bearer ${session.access_token}` }

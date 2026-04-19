@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Stack, router } from 'expo-router'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { storeSession } from '@/lib/session-store'
 import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import * as Linking from 'expo-linking'
@@ -19,6 +20,7 @@ export default function RootLayout() {
 
     // Listen for auth changes (incl. OAuth callback)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      storeSession(session)   // guardar en store compartido para api.ts
       setSession(session)
     })
 
