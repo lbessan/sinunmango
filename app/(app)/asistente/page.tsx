@@ -25,11 +25,7 @@ function parseAccion(text: string): { clean: string; accion: Record<string, unkn
 }
 
 function AccionCard({
-  accion,
-  estado,
-  msg,
-  onConfirmar,
-  onCancelar,
+  accion, estado, msg, onConfirmar, onCancelar,
 }: {
   accion:      Record<string, unknown>
   estado:      'pendiente' | 'confirmando' | 'ok' | 'error'
@@ -65,7 +61,9 @@ function AccionCard({
           className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center justify-center gap-1"
           style={{ background: 'var(--accent, #1a6b5a)' }}
         >
-          {estado === 'confirmando' ? <><Loader2 size={12} className="animate-spin" /> Guardando...</> : '✓ Confirmar'}
+          {estado === 'confirmando'
+            ? <><Loader2 size={12} className="animate-spin" /> Guardando...</>
+            : '✓ Confirmar'}
         </button>
         <button
           onClick={onCancelar}
@@ -95,7 +93,11 @@ function ManguitoAvatar({ size = 28 }: { size?: number }) {
         boxShadow: '0 0 0 2px rgba(26,107,90,0.3)',
       }}
     >
-      <img src="/manguito.png" alt="Manguito" style={{ width: size * 0.8, height: size * 0.8, objectFit: 'contain' }} />
+      <img
+        src="/manguito.png"
+        alt="Manguito"
+        style={{ width: size * 0.8, height: size * 0.8, objectFit: 'contain' }}
+      />
     </div>
   )
 }
@@ -125,7 +127,6 @@ export default function AsistentePage() {
 
     try {
       const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }))
-
       const res = await fetch('/api/asistente', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -140,7 +141,6 @@ export default function AsistentePage() {
         return
       }
 
-      // Parse the SSE stream
       const reader  = res.body!.getReader()
       const decoder = new TextDecoder()
       let fullText  = ''
@@ -149,8 +149,7 @@ export default function AsistentePage() {
         const { done, value } = await reader.read()
         if (done) break
         const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
-        for (const line of lines) {
+        for (const line of chunk.split('\n')) {
           if (!line.startsWith('data: ')) continue
           const data = line.slice(6)
           if (data === '[DONE]') break
@@ -166,7 +165,6 @@ export default function AsistentePage() {
         }
       }
 
-      // Final parse: extract <accion> block if present
       const { clean, accion } = parseAccion(fullText)
       setMessages(prev => prev.map(m =>
         m.id === assistantId
@@ -221,59 +219,58 @@ export default function AsistentePage() {
   }
 
   return (
-    <div className="flex flex-col" style={{ minHeight: 'calc(100vh - 0px)' }}>
+    <div className="flex flex-col overflow-hidden h-[calc(100dvh-4.5rem)] lg:h-[calc(100dvh-2rem)]">
 
-      {/* ── BANNER FULL-BLEED ──────────────────────────────────────────────────
-          -mx-8 -mt-8 escapa el p-8 del <main> para cubrir todo el ancho       */}
+      {/* ── BANNER FULL-BLEED ─────────────────────────────────────────────────
+          -mx-4 -mt-4 / lg:-mx-8 lg:-mt-8 escapa el padding del <main>        */}
       <div
-        className="-mx-4 -mt-4 lg:-mx-8 lg:-mt-8 mb-8 text-white shrink-0"
+        className="-mx-4 -mt-4 lg:-mx-8 lg:-mt-8 shrink-0 text-white"
         style={{ background: 'linear-gradient(135deg, var(--sidebar-bg, #07192b) 0%, var(--accent2, #1B3A6B) 50%, var(--accent, #1a6b5a) 100%)' }}
       >
-        <div className="px-6 lg:px-10 py-10 flex flex-col items-center text-center">
-          {/* Logo grande */}
+        <div className="px-6 lg:px-10 pt-7 pb-5 flex flex-col items-center text-center">
+          {/* Logo — más grande, menos margen inferior para acercarlo al nombre */}
           <div
-            className="rounded-full flex items-center justify-center mb-4"
+            className="rounded-full flex items-center justify-center mb-2"
             style={{
-              width: 80, height: 80,
+              width: 96, height: 96,
               background: 'rgba(255,255,255,0.12)',
               backdropFilter: 'blur(8px)',
               boxShadow: '0 0 0 3px rgba(255,255,255,0.15), 0 8px 32px rgba(0,0,0,0.3)',
             }}
           >
-            <img src="/manguito.png" alt="Manguito" style={{ width: 60, height: 60, objectFit: 'contain' }} />
+            <img src="/manguito.png" alt="Manguito" style={{ width: 76, height: 76, objectFit: 'contain' }} />
           </div>
 
-          {/* Nombre */}
-          <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-white leading-none mb-2">
-            Manguito
+          {/* Nombre — todo mayúsculas */}
+          <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-white leading-none mb-1.5" style={{ letterSpacing: '0.05em' }}>
+            MANGUITO
           </h1>
-          <p className="text-sm text-white/60 font-medium">
+          <p className="text-xs text-white/55 font-medium">
             Tu asistente financiero personal — preguntá o dictale un gasto
           </p>
         </div>
       </div>
 
-      {/* ── CHAT AREA ────────────────────────────────────────────────────────── */}
-      <div className="max-w-2xl w-full mx-auto flex flex-col flex-1">
+      {/* ── CHAT SECTION ──────────────────────────────────────────────────────
+          flex-1 + min-h-0 para que no desborde el contenedor padre             */}
+      <div className="max-w-2xl w-full mx-auto flex flex-col flex-1 min-h-0 pt-5">
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+        {/* Messages — scrollable */}
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-3">
 
           {messages.length === 0 && (
-            <div className="space-y-4">
-              <div className="bg-white rounded-2xl border border-slate-100 p-5">
-                <p className="text-sm text-slate-500 mb-3">Podés preguntarme cosas como:</p>
-                <div className="grid grid-cols-1 gap-2">
-                  {EJEMPLOS.map(ej => (
-                    <button
-                      key={ej}
-                      onClick={() => sendMessage(ej)}
-                      className="text-left px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:border-blue-200 hover:bg-blue-50 transition-colors"
-                    >
-                      {ej}
-                    </button>
-                  ))}
-                </div>
+            <div className="bg-white rounded-2xl border border-slate-100 p-5">
+              <p className="text-sm text-slate-500 mb-3">Podés preguntarme cosas como:</p>
+              <div className="grid grid-cols-1 gap-2">
+                {EJEMPLOS.map(ej => (
+                  <button
+                    key={ej}
+                    onClick={() => sendMessage(ej)}
+                    className="text-left px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:border-blue-200 hover:bg-blue-50 transition-colors"
+                  >
+                    {ej}
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -294,7 +291,9 @@ export default function AsistentePage() {
                     ? 'bg-slate-700 text-white rounded-tr-sm'
                     : 'bg-white border border-slate-100 text-slate-800 rounded-tl-sm'
                 }`}>
-                  {msg.content || (loading && msg.role === 'assistant' ? <span className="flex gap-1 items-center text-slate-400"><Loader2 size={13} className="animate-spin" /> pensando...</span> : '')}
+                  {msg.content || (loading && msg.role === 'assistant'
+                    ? <span className="flex gap-1 items-center text-slate-400"><Loader2 size={13} className="animate-spin" /> pensando...</span>
+                    : '')}
                 </div>
                 {msg.accion && msg.accionEstado && (
                   <div className="w-full">
@@ -314,9 +313,12 @@ export default function AsistentePage() {
           <div ref={bottomRef} />
         </div>
 
-        {/* ── INPUT BAR ──────────────────────────────────────────────────────── */}
-        <div className="shrink-0 pb-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-3 flex gap-3 items-end shadow-sm">
+        {/* ── INPUT BAR — siempre visible al fondo ──────────────────────────── */}
+        <div className="shrink-0 pb-3 pt-2">
+          <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 flex gap-2.5 items-center shadow-sm">
+            {/* Avatar de Manguito a la izquierda */}
+            <ManguitoAvatar size={30} />
+
             <textarea
               ref={textareaRef}
               value={input}
@@ -324,14 +326,15 @@ export default function AsistentePage() {
               onKeyDown={handleKeyDown}
               placeholder="Escribí un mensaje... (Enter para enviar)"
               rows={1}
-              className="flex-1 resize-none text-sm text-slate-800 outline-none bg-transparent placeholder-slate-400 max-h-32"
-              style={{ minHeight: '36px' }}
+              className="flex-1 resize-none text-sm text-slate-800 outline-none bg-transparent placeholder-slate-400 max-h-32 self-center"
+              style={{ minHeight: '28px', lineHeight: '1.5' }}
               onInput={e => {
                 const t = e.target as HTMLTextAreaElement
                 t.style.height = 'auto'
                 t.style.height = Math.min(t.scrollHeight, 128) + 'px'
               }}
             />
+
             <button
               onClick={() => sendMessage()}
               disabled={!input.trim() || loading}
@@ -340,7 +343,7 @@ export default function AsistentePage() {
                 background: input.trim() && !loading
                   ? 'linear-gradient(135deg, var(--accent2, #1B3A6B) 0%, var(--accent, #1a6b5a) 100%)'
                   : '#cbd5e1',
-                minWidth: '80px',
+                minWidth: '84px',
               }}
             >
               {loading
