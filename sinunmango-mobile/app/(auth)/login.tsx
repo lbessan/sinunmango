@@ -54,10 +54,9 @@ export default function LoginScreen() {
         await Linking.openURL(data.url)
         return // el finally también llama setLoading(false) pero ya lo hicimos
       } else {
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
-        if (result.type === 'success') {
-          await supabase.auth.getSessionFromUrl({ url: result.url })
-        }
+        // En iOS, WebBrowser captura el redirect y devuelve la URL con tokens.
+        // La sesión se establece vía el listener de _layout.tsx cuando el deep link llega.
+        await WebBrowser.openAuthSessionAsync(data.url, appUrl)
       }
     } catch (e) {
       Alert.alert('Error', 'Algo salió mal. Intentá de nuevo.')

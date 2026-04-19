@@ -89,8 +89,8 @@ function ManguitoAvatar({ size = 28 }: { size?: number }) {
       className="rounded-full flex items-center justify-center shrink-0 overflow-hidden"
       style={{
         width: size, height: size,
-        background: 'linear-gradient(135deg, #0d2137 0%, #1a6b5a 100%)',
-        boxShadow: '0 0 0 2px rgba(26,107,90,0.3)',
+        background: 'linear-gradient(135deg, var(--sidebar-bg, #07192b) 0%, var(--accent, #1a6b5a) 100%)',
+        boxShadow: '0 0 0 2px rgba(var(--accent-rgb, 26,107,90),0.3)',
       }}
     >
       <img
@@ -219,12 +219,13 @@ export default function AsistentePage() {
   }
 
   return (
-    <div className="flex flex-col overflow-hidden h-[calc(100dvh-4.5rem)] lg:h-[calc(100dvh-2rem)]">
+    {/* -mx-4 -mt-4 / lg:-mx-8 lg:-mt-8 escapa el padding del <main>.
+        overflow-hidden va acá (no adentro) para que los márgenes negativos no se corten. */}
+    <div className="flex flex-col overflow-hidden h-[calc(100dvh-4.5rem)] lg:h-[calc(100dvh-2rem)] -mx-4 -mt-4 lg:-mx-8 lg:-mt-8">
 
-      {/* ── BANNER FULL-BLEED ─────────────────────────────────────────────────
-          -mx-4 -mt-4 / lg:-mx-8 lg:-mt-8 escapa el padding del <main>        */}
+      {/* ── BANNER FULL-BLEED ──────────────────────────────────────────────── */}
       <div
-        className="-mx-4 -mt-4 lg:-mx-8 lg:-mt-8 shrink-0 text-white"
+        className="shrink-0 text-white"
         style={{ background: 'linear-gradient(135deg, var(--sidebar-bg, #07192b) 0%, var(--accent2, #1B3A6B) 50%, var(--accent, #1a6b5a) 100%)' }}
       >
         <div className="px-6 lg:px-10 pt-7 pb-5 flex flex-col items-center text-center">
@@ -253,7 +254,7 @@ export default function AsistentePage() {
 
       {/* ── CHAT SECTION ──────────────────────────────────────────────────────
           flex-1 + min-h-0 para que no desborde el contenedor padre             */}
-      <div className="max-w-2xl w-full mx-auto flex flex-col flex-1 min-h-0 pt-5">
+      <div className="max-w-2xl w-full mx-auto flex flex-col flex-1 min-h-0 pt-5 px-4 lg:px-8">
 
         {/* Messages — scrollable */}
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-3">

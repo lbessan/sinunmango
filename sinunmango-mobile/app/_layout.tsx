@@ -41,14 +41,25 @@ export default function RootLayout() {
   useEffect(() => {
     const handleUrl = async ({ url }: { url: string }) => {
       // Supabase puede devolver tokens en el hash (#access_token=...) o como query (?code=...)
-      if (
-        url.includes('access_token=') ||
-        url.includes('refresh_token=') ||
-        url.includes('code=')
-      ) {
-        // getSessionFromUrl acepta tanto el hash como el query string
-        const { error } = await supabase.auth.getSessionFromUrl({ url })
-        if (error) console.error('[OAuth] getSessionFromUrl error:', error.message)
+      if (!url.includes('access_token=') && !url.includes('refresh_token=') && !url.includes('code=')) return
+
+      // Extraer parámetros del hash o del query string
+      const hashPart  = url.includes('#') ? url.split('#')[1] : ''
+      const queryPart = url.includes('?') ? url.split('?')[1]?.split('#')[0] : ''
+      const params    = new URLSearchParams(hashPart || queryPart)
+
+      const access_token  = params.get('access_token')
+      const refresh_token = params.get('refresh_token')
+      const code          = params.get('code')
+
+      if (access_token && refresh_token) {
+        // Flujo implícito: tokens en el hash
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token })
+        if (error) console.error('[OAuth] setSession error:', error.message)
+      } else if (code) {
+        // Flujo PKCE: código en el query string
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) console.error('[OAuth] exchangeCodeForSession error:', error.message)
       }
     }
 
