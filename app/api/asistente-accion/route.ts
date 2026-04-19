@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
+import { getUserFromRequest } from '@/lib/auth'
 import { adminClient } from '@/lib/supabase/admin'
 
 // ─── POST /api/asistente-accion ───────────────────────────────────────────────
@@ -41,7 +41,7 @@ function addMonths(d: string, n: number): string {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getCurrentUser()
+  const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const accion = (await req.json()) as AccionMovimiento

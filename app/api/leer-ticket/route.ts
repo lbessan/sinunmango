@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
+import { getUserFromRequest } from '@/lib/auth'
 
 // ─── POST /api/leer-ticket ───────────────────────────────────────────────────
 // Receives a base64 image of a receipt/ticket, sends it to Claude Vision,
@@ -8,7 +8,7 @@ import { getCurrentUser } from '@/lib/auth'
 // Body: { image: string (base64), mimeType: "image/jpeg" | "image/png" | "image/webp" }
 
 export async function POST(req: NextRequest) {
-  const user = await getCurrentUser()
+  const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const apiKey = process.env.ANTHROPIC_API_KEY

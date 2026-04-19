@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { adminClient } from '@/lib/supabase/admin'
 
-// ─── POST /api/asistente ─────────────────────────────────────────────────────
-// Streaming chat with Claude.
-// Body: { messages: [{role, content}], context: { cuentas, categorias, saldo } }
+// ─── POST /api/asistente-mobile ───────────────────────────────────────────────
+// Non-streaming version of /api/asistente for the mobile app.
+// Returns a JSON response instead of an SSE stream.
+//
+// Body: { messages: [{role, content}] }
+// Auth: Authorization: Bearer <supabase-access-token>
+// Response: { text: string, accion: object | null }
 
 export const runtime = 'nodejs'
 
@@ -15,7 +19,7 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'ANTHROPIC_API_KEY no configurada. Agregala en las variables de entorno de Vercel.' },
+      { error: 'ANTHROPIC_API_KEY no configurada.' },
       { status: 503 }
     )
   }
@@ -24,7 +28,7 @@ export async function POST(req: NextRequest) {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>
   }
 
-  // ── Load user context for the system prompt ──────────────────────────────
+  // ── Load user context ────────────────────────────────────────────────────
   const [{ data: cuentas }, { data: categorias }, { data: movRecientes }] =
     await Promise.all([
       adminClient.from('cuentas').select('id, nombre_cuenta, tipo_cuenta, moneda').eq('activa', true).eq('user_id', user.id),
@@ -80,7 +84,7 @@ REGLAS:
 - Para análisis financieros, sé específico con números
 - No inventes datos que no están en el contexto`
 
-  // ── Stream from Claude API ────────────────────────────────────────────────
+  // ── Call Claude (no streaming) ────────────────────────────────────────────
   const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -92,41 +96,31 @@ REGLAS:
       model:      'claude-opus-4-6',
       max_tokens: 1024,
       system:     systemPrompt,
-      stream:     true,
+      stream:     false,
       messages,
     }),
   })
 
   if (!claudeRes.ok) {
     const err = await claudeRes.text()
-    console.error('[asistente] Claude API error:', err)
+    console.error('[asistente-mobile] Claude API error:', err)
     return NextResponse.json({ error: 'Error del asistente de IA.' }, { status: 502 })
   }
 
-  // Proxy the SSE stream back to the client
-  const stream = new ReadableStream({
-    async start(controller) {
-      const reader  = claudeRes.body!.getReader()
-      const decoder = new TextDecoder()
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        controller.enqueue(value)
-        const chunk = decoder.decode(value)
-        // Check for stream errors
-        if (chunk.includes('"type":"error"')) {
-          console.error('[asistente] Stream error:', chunk)
-        }
-      }
-      controller.close()
-    },
-  })
+  const claudeData = await claudeRes.json()
+  const fullText   = claudeData.content?.[0]?.text ?? ''
 
-  return new NextResponse(stream, {
-    headers: {
-      'Content-Type':  'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection':    'keep-alive',
-    },
-  })
+  // ── Extract <accion> block if present ────────────────────────────────────
+  const accionMatch = fullText.match(/<accion>([\s\S]*?)<\/accion>/)
+  let accion: Record<string, unknown> | null = null
+  let text = fullText
+
+  if (accionMatch) {
+    try {
+      accion = JSON.parse(accionMatch[1].trim())
+      text   = fullText.replace(/<accion>[\s\S]*?<\/accion>/, '').trim()
+    } catch { /* keep text as-is */ }
+  }
+
+  return NextResponse.json({ text, accion })
 }
