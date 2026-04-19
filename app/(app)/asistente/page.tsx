@@ -95,7 +95,7 @@ function ManguitoAvatar({ size = 28 }: { size?: number }) {
         boxShadow: '0 0 0 2px rgba(26,107,90,0.3)',
       }}
     >
-      <img src="/logo.png" alt="Manguito" style={{ width: size * 0.75, height: size * 0.75, objectFit: 'contain' }} />
+      <img src="/manguito.png" alt="Manguito" style={{ width: size * 0.8, height: size * 0.8, objectFit: 'contain' }} />
     </div>
   )
 }
@@ -158,7 +158,6 @@ export default function AsistentePage() {
             const parsed = JSON.parse(data)
             if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
               fullText += parsed.delta.text
-              // Update the streaming message in real time (without parsing accion yet)
               setMessages(prev => prev.map(m =>
                 m.id === assistantId ? { ...m, content: fullText } : m
               ))
@@ -222,104 +221,137 @@ export default function AsistentePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col" style={{ minHeight: 'calc(100vh - 0px)' }}>
 
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-4 shrink-0">
-        <ManguitoAvatar size={40} />
-        <div>
-          <h1 className="text-xl font-semibold text-slate-800">Manguito</h1>
-          <p className="text-xs text-slate-400">Tu asistente financiero — preguntá o dictale un gasto</p>
+      {/* ── BANNER FULL-BLEED ──────────────────────────────────────────────────
+          -mx-8 -mt-8 escapa el p-8 del <main> para cubrir todo el ancho       */}
+      <div
+        className="-mx-4 -mt-4 lg:-mx-8 lg:-mt-8 mb-8 text-white shrink-0"
+        style={{ background: 'linear-gradient(135deg, var(--sidebar-bg, #07192b) 0%, var(--accent2, #1B3A6B) 50%, var(--accent, #1a6b5a) 100%)' }}
+      >
+        <div className="px-6 lg:px-10 py-10 flex flex-col items-center text-center">
+          {/* Logo grande */}
+          <div
+            className="rounded-full flex items-center justify-center mb-4"
+            style={{
+              width: 80, height: 80,
+              background: 'rgba(255,255,255,0.12)',
+              backdropFilter: 'blur(8px)',
+              boxShadow: '0 0 0 3px rgba(255,255,255,0.15), 0 8px 32px rgba(0,0,0,0.3)',
+            }}
+          >
+            <img src="/manguito.png" alt="Manguito" style={{ width: 60, height: 60, objectFit: 'contain' }} />
+          </div>
+
+          {/* Nombre */}
+          <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-white leading-none mb-2">
+            Manguito
+          </h1>
+          <p className="text-sm text-white/60 font-medium">
+            Tu asistente financiero personal — preguntá o dictale un gasto
+          </p>
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+      {/* ── CHAT AREA ────────────────────────────────────────────────────────── */}
+      <div className="max-w-2xl w-full mx-auto flex flex-col flex-1">
 
-        {messages.length === 0 && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-slate-100 p-5">
-              <p className="text-sm text-slate-500 mb-3">Podés preguntarme cosas como:</p>
-              <div className="grid grid-cols-1 gap-2">
-                {EJEMPLOS.map(ej => (
-                  <button
-                    key={ej}
-                    onClick={() => sendMessage(ej)}
-                    className="text-left px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:border-blue-200 hover:bg-blue-50 transition-colors"
-                  >
-                    {ej}
-                  </button>
-                ))}
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+
+          {messages.length === 0 && (
+            <div className="space-y-4">
+              <div className="bg-white rounded-2xl border border-slate-100 p-5">
+                <p className="text-sm text-slate-500 mb-3">Podés preguntarme cosas como:</p>
+                <div className="grid grid-cols-1 gap-2">
+                  {EJEMPLOS.map(ej => (
+                    <button
+                      key={ej}
+                      onClick={() => sendMessage(ej)}
+                      className="text-left px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:border-blue-200 hover:bg-blue-50 transition-colors"
+                    >
+                      {ej}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {messages.map(msg => (
-          <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-            {msg.role === 'assistant'
-              ? <ManguitoAvatar size={28} />
-              : (
-                <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center bg-slate-600 text-white mt-1">
-                  <User size={13} />
+          {messages.map(msg => (
+            <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              {msg.role === 'assistant'
+                ? <ManguitoAvatar size={28} />
+                : (
+                  <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center bg-slate-600 text-white mt-1">
+                    <User size={13} />
+                  </div>
+                )
+              }
+              <div className={`max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
+                <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                  msg.role === 'user'
+                    ? 'bg-slate-700 text-white rounded-tr-sm'
+                    : 'bg-white border border-slate-100 text-slate-800 rounded-tl-sm'
+                }`}>
+                  {msg.content || (loading && msg.role === 'assistant' ? <span className="flex gap-1 items-center text-slate-400"><Loader2 size={13} className="animate-spin" /> pensando...</span> : '')}
                 </div>
-              )
-            }
-            <div className={`max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
-              <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                msg.role === 'user'
-                  ? 'bg-slate-700 text-white rounded-tr-sm'
-                  : 'bg-white border border-slate-100 text-slate-800 rounded-tl-sm'
-              }`}>
-                {msg.content || (loading && msg.role === 'assistant' ? <span className="flex gap-1 items-center text-slate-400"><Loader2 size={13} className="animate-spin" /> pensando...</span> : '')}
+                {msg.accion && msg.accionEstado && (
+                  <div className="w-full">
+                    <AccionCard
+                      accion={msg.accion}
+                      estado={msg.accionEstado}
+                      msg={msg.accionMsg}
+                      onConfirmar={() => confirmarAccion(msg.id)}
+                      onCancelar={() => cancelarAccion(msg.id)}
+                    />
+                  </div>
+                )}
               </div>
-              {msg.accion && msg.accionEstado && (
-                <div className="w-full">
-                  <AccionCard
-                    accion={msg.accion}
-                    estado={msg.accionEstado}
-                    msg={msg.accionMsg}
-                    onConfirmar={() => confirmarAccion(msg.id)}
-                    onCancelar={() => cancelarAccion(msg.id)}
-                  />
-                </div>
-              )}
             </div>
+          ))}
+
+          <div ref={bottomRef} />
+        </div>
+
+        {/* ── INPUT BAR ──────────────────────────────────────────────────────── */}
+        <div className="shrink-0 pb-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-3 flex gap-3 items-end shadow-sm">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Escribí un mensaje... (Enter para enviar)"
+              rows={1}
+              className="flex-1 resize-none text-sm text-slate-800 outline-none bg-transparent placeholder-slate-400 max-h-32"
+              style={{ minHeight: '36px' }}
+              onInput={e => {
+                const t = e.target as HTMLTextAreaElement
+                t.style.height = 'auto'
+                t.style.height = Math.min(t.scrollHeight, 128) + 'px'
+              }}
+            />
+            <button
+              onClick={() => sendMessage()}
+              disabled={!input.trim() || loading}
+              className="h-9 px-4 rounded-xl flex items-center justify-center gap-2 text-white text-sm font-semibold transition-all shrink-0"
+              style={{
+                background: input.trim() && !loading
+                  ? 'linear-gradient(135deg, var(--accent2, #1B3A6B) 0%, var(--accent, #1a6b5a) 100%)'
+                  : '#cbd5e1',
+                minWidth: '80px',
+              }}
+            >
+              {loading
+                ? <Loader2 size={14} className="animate-spin" />
+                : <><Send size={14} /><span>Enviar</span></>
+              }
+            </button>
           </div>
-        ))}
+        </div>
 
-        <div ref={bottomRef} />
       </div>
-
-      {/* Input */}
-      <div className="shrink-0 bg-white border border-slate-200 rounded-2xl p-3 flex gap-3 items-end">
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Escribí un mensaje... (Enter para enviar)"
-          rows={1}
-          className="flex-1 resize-none text-sm text-slate-800 outline-none bg-transparent placeholder-slate-400 max-h-32"
-          style={{ minHeight: '36px' }}
-          onInput={e => {
-            const t = e.target as HTMLTextAreaElement
-            t.style.height = 'auto'
-            t.style.height = Math.min(t.scrollHeight, 128) + 'px'
-          }}
-        />
-        <button
-          onClick={() => sendMessage()}
-          disabled={!input.trim() || loading}
-          className="w-9 h-9 rounded-xl flex items-center justify-center text-white transition-all shrink-0"
-          style={{
-            background: input.trim() && !loading ? 'var(--accent, #1a6b5a)' : '#cbd5e1',
-          }}
-        >
-          <Send size={15} />
-        </button>
-      </div>
-
     </div>
   )
 }
