@@ -219,8 +219,6 @@ export default function AsistentePage() {
   }
 
   return (
-    {/* -mx-4 -mt-4 / lg:-mx-8 lg:-mt-8 escapa el padding del <main>.
-        overflow-hidden va acá (no adentro) para que los márgenes negativos no se corten. */}
     <div className="flex flex-col overflow-hidden h-[calc(100dvh-4.5rem)] lg:h-[calc(100dvh-2rem)] -mx-4 -mt-4 lg:-mx-8 lg:-mt-8">
 
       {/* ── BANNER FULL-BLEED ──────────────────────────────────────────────── */}
