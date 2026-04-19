@@ -1,20 +1,23 @@
 import { Tabs } from 'expo-router'
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, Image, StyleSheet } from 'react-native'
 import { Colors } from '@/constants/theme'
 
-// Simple icon components (avoids adding lucide-react-native dependency)
 function PlusIcon({ color }: { color: string }) {
   return (
-    <View style={[styles.iconWrap]}>
+    <View style={styles.iconWrap}>
       <Text style={[styles.icon, { color }]}>＋</Text>
     </View>
   )
 }
 
-function ChatIcon({ color }: { color: string }) {
+function ManguitoIcon({ focused }: { focused: boolean }) {
   return (
-    <View style={styles.iconWrap}>
-      <Text style={[styles.icon, { color }]}>🤖</Text>
+    <View style={[styles.manguitoWrap, focused && { backgroundColor: Colors.accent }]}>
+      <Image
+        source={require('@/assets/manguito.png')}
+        style={styles.manguitoImg}
+        resizeMode="contain"
+      />
     </View>
   )
 }
@@ -57,7 +60,7 @@ export default function TabsLayout() {
         name="manguito"
         options={{
           title: 'Manguito',
-          tabBarIcon: ({ color }) => <ChatIcon color={color} />,
+          tabBarIcon: ({ focused }) => <ManguitoIcon focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -78,5 +81,17 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: 20,
+  },
+  manguitoWrap: {
+    width:          32,
+    height:         32,
+    borderRadius:   16,
+    alignItems:     'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  manguitoImg: {
+    width:  26,
+    height: 26,
   },
 })
