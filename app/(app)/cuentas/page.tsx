@@ -32,7 +32,7 @@ function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
 
   // Efectivo y Banco/Billetera — cuadrado con logo
   // Si Efectivo y no hay imagen personalizada, usar ícono por moneda
-  const efectivoFallback = moneda === 'USD' ? '/efectivo-usd.svg' : '/efectivo-ars.svg'
+  const efectivoFallback = moneda === 'USD' ? '/logo_dollar.png' : '/logo_peso.png'
   const srcImg = imagenUrl ?? (tipo === 'Efectivo' ? efectivoFallback : null)
 
   return (

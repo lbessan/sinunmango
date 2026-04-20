@@ -20,7 +20,7 @@ function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
     )
   }
   // Efectivo y banco: cuadrado con logo
-  const efectivoSrc = tipo === 'Efectivo' ? (moneda === 'USD' ? '/efectivo-usd.svg' : '/efectivo-ars.svg') : null
+  const efectivoSrc = tipo === 'Efectivo' ? (moneda === 'USD' ? '/logo_dollar.png' : '/logo_peso.png') : null
   const src = imagenUrl ?? efectivoSrc
   return (
     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 overflow-hidden" style={{ background: '#f1f5f9' }}>

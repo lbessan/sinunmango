@@ -252,12 +252,12 @@ export default async function ConciliacionesPage({
                 {/* Izquierda: mini card + info */}
                 <div className="flex items-center gap-4">
                   <div
-                    className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
-                    style={{ width: 64, height: 40, background: colorPrim }}
+                    className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-white border border-slate-100"
+                    style={{ width: 64, height: 40 }}
                   >
                     {imagenUrl
-                      ? <img src={imagenUrl} alt={tarjeta.nombre_cuenta} className="w-full h-full object-cover" />
-                      : <CreditCard size={20} className="text-white/60" />
+                      ? <img src={imagenUrl} alt={tarjeta.nombre_cuenta} className="w-full h-full object-contain" />
+                      : <CreditCard size={20} className="text-slate-400" />
                     }
                   </div>
                   <div>
