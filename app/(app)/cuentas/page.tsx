@@ -15,15 +15,15 @@ function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
   nombre: string
   moneda?: string | null
 }) {
-  // Tarjeta de crédito — landscape con fondo neutro
+  // Tarjeta de crédito — landscape, object-cover para llenar limpio
   if (tipo === 'Tarjeta Credito') {
     return (
       <div
         className="shrink-0 rounded-lg overflow-hidden flex items-center justify-center"
-        style={{ width: 72, height: 46, background: '#e8edf2' }}
+        style={{ width: 72, height: 46, background: '#1e293b' }}
       >
         {imagenUrl
-          ? <img src={imagenUrl} alt={nombre} className="w-full h-full object-contain" />
+          ? <img src={imagenUrl} alt={nombre} className="w-full h-full object-cover" />
           : <span className="text-xl">💳</span>
         }
       </div>
