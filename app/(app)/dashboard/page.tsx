@@ -212,7 +212,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Estado de cuentas */}
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-50">
+          <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-subtle, #f1f5f9)' }}>
             <h2 className="text-sm font-semibold text-slate-700">Estado de cuentas</h2>
           </div>
           <div className="divide-y divide-slate-50">
@@ -234,7 +234,7 @@ export default async function DashboardPage() {
               )
             })}
           </div>
-          <div className="px-5 py-2 border-t border-slate-100 bg-slate-50">
+          <div className="px-5 py-2" style={{ borderTop: '1px solid var(--border-subtle, #f1f5f9)', background: 'var(--bg-card-alt, #f8fafc)' }}>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Tarjetas de crédito</p>
           </div>
           <div className="divide-y divide-slate-50">
@@ -265,7 +265,7 @@ export default async function DashboardPage() {
 
         {/* Gastos fijos por vencer */}
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
+          <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-subtle, #f1f5f9)' }}>
             <div>
               <h2 className="text-sm font-semibold text-slate-700">Gastos fijos por vencer</h2>
               <p className="text-xs text-slate-400 mt-0.5">Pendientes este mes · día {todayDay} en adelante</p>
