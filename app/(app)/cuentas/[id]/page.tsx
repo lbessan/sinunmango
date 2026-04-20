@@ -100,9 +100,9 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
 
-      {/* Banner — tarjeta: fondo oscuro neutro para que la imagen de la tarjeta se vea limpia */}
+      {/* Banner tarjeta: fondo de color de la tarjeta, imagen sin recorte */}
       {isTarjeta ? (
-        <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
+        <div className="rounded-2xl overflow-hidden" style={{ background: colorPrim }}>
           {navBar}
           <div className="flex items-center justify-center px-8 pb-6">
             {imagenUrl
@@ -110,9 +110,9 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
                   src={imagenUrl}
                   alt={cuenta.nombre_cuenta}
                   className="w-full max-w-sm rounded-xl shadow-2xl"
-                  style={{ aspectRatio: '1.586/1', objectFit: 'contain' }}
+                  style={{ aspectRatio: '1.586/1', objectFit: 'cover' }}
                 />
-              : <div className="w-full max-w-sm rounded-xl flex items-center justify-center" style={{ aspectRatio: '1.586/1', background: 'rgba(255,255,255,0.06)' }}>
+              : <div className="w-full max-w-sm rounded-xl flex items-center justify-center" style={{ aspectRatio: '1.586/1', background: 'rgba(255,255,255,0.1)' }}>
                   <span className="text-7xl">{fallbackEmoji}</span>
                 </div>
             }
