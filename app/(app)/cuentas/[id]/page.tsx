@@ -100,16 +100,19 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
 
-      {/* Banner — tarjeta: landscape con bg y fondo blanco; efectivo y banco: logo cuadrado */}
+      {/* Banner — tarjeta: fondo oscuro neutro para que la imagen de la tarjeta se vea limpia */}
       {isTarjeta ? (
-        <div className="rounded-2xl overflow-hidden" style={{ background: colorPrim }}>
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
           {navBar}
           <div className="flex items-center justify-center px-8 pb-6">
             {imagenUrl
-              ? <div className="w-full max-w-sm rounded-xl overflow-hidden bg-white shadow-2xl" style={{ aspectRatio: '1.586/1' }}>
-                  <img src={imagenUrl} alt={cuenta.nombre_cuenta} className="w-full h-full object-contain" />
-                </div>
-              : <div className="w-full max-w-sm rounded-xl flex items-center justify-center" style={{ aspectRatio: '1.586/1', background: 'rgba(255,255,255,0.1)' }}>
+              ? <img
+                  src={imagenUrl}
+                  alt={cuenta.nombre_cuenta}
+                  className="w-full max-w-sm rounded-xl shadow-2xl"
+                  style={{ aspectRatio: '1.586/1', objectFit: 'contain' }}
+                />
+              : <div className="w-full max-w-sm rounded-xl flex items-center justify-center" style={{ aspectRatio: '1.586/1', background: 'rgba(255,255,255,0.06)' }}>
                   <span className="text-7xl">{fallbackEmoji}</span>
                 </div>
             }
@@ -126,7 +129,7 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
               : (() => {
                   // Efectivo sin imagen personalizada → ícono por moneda
                   const efectivoSrc = isEfectivo
-                    ? (cuenta.moneda === 'USD' ? '/efectivo-usd.svg' : '/efectivo-ars.svg')
+                    ? (cuenta.moneda === 'USD' ? '/logo_dollar.png' : '/logo_peso.png')
                     : null
                   const src = imagenUrl ?? efectivoSrc
                   return src
