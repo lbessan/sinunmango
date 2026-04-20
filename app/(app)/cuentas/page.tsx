@@ -7,39 +7,42 @@ import { Plus, Pencil, ChevronRight } from 'lucide-react'
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-// Tarjetas y Efectivo → landscape 72×46; Bancos → cuadrado 40×40
-function Thumbnail({ imagenUrl, colorPrim, tipo, nombre }: {
+// Tarjetas → landscape 72×46 con fondo blanco; Efectivo y Bancos → cuadrado 40×40
+function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
   imagenUrl?: string | null
   colorPrim: string
   tipo: string
   nombre: string
+  moneda?: string | null
 }) {
-  const useLandscape = tipo === 'Tarjeta Credito' || tipo === 'Efectivo'
-  const fallback = tipo === 'Efectivo' ? '💵' : tipo === 'Tarjeta Credito' ? '💳' : '🏦'
-
-  if (useLandscape) {
+  // Tarjeta de crédito — landscape con fondo BLANCO para que la imagen llene limpio
+  if (tipo === 'Tarjeta Credito') {
     return (
       <div
-        className="shrink-0 rounded-lg overflow-hidden flex items-center justify-center"
-        style={{ width: 72, height: 46, background: imagenUrl ? colorPrim : colorPrim }}
+        className="shrink-0 rounded-lg overflow-hidden flex items-center justify-center bg-white"
+        style={{ width: 72, height: 46 }}
       >
         {imagenUrl
-          ? <img src={imagenUrl} alt={nombre} className="w-full h-full object-cover" />
-          : <span className="text-xl">{fallback}</span>
+          ? <img src={imagenUrl} alt={nombre} className="w-full h-full object-contain" />
+          : <span className="text-xl">💳</span>
         }
       </div>
     )
   }
 
-  // Banco — cuadrado
+  // Efectivo y Banco/Billetera — cuadrado con logo
+  // Si Efectivo y no hay imagen personalizada, usar ícono por moneda
+  const efectivoFallback = moneda === 'USD' ? '/efectivo-usd.svg' : '/efectivo-ars.svg'
+  const srcImg = imagenUrl ?? (tipo === 'Efectivo' ? efectivoFallback : null)
+
   return (
     <div
       className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0 overflow-hidden"
       style={{ background: '#f1f5f9' }}
     >
-      {imagenUrl
-        ? <img src={imagenUrl} alt={nombre} className="w-10 h-10 object-cover rounded-lg" />
-        : fallback
+      {srcImg
+        ? <img src={srcImg} alt={nombre} className="w-10 h-10 object-contain p-1 rounded-lg" />
+        : <span>🏦</span>
       }
     </div>
   )
@@ -119,7 +122,7 @@ export default async function CuentasPage() {
                     className="bg-white rounded-xl border border-slate-100 flex items-center justify-between hover:border-slate-200 transition-colors overflow-hidden"
                   >
                     <Link href={`/cuentas/${c.id}`} className="flex items-center gap-4 flex-1 min-w-0 px-4 py-3">
-                      <Thumbnail imagenUrl={imgUrl} colorPrim={colorPrim} tipo={tipo} nombre={c.nombre_cuenta} />
+                      <Thumbnail imagenUrl={imgUrl} colorPrim={colorPrim} tipo={tipo} nombre={c.nombre_cuenta} moneda={c.moneda} />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-700 truncate">{c.nombre_cuenta}</p>
                         {isTarjeta && cierre && vence ? (
