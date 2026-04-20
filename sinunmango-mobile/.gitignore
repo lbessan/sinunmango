@@ -4,3 +4,19 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+# Dependencies — never commit node_modules
+node_modules/
+
+# Expo build output
+.expo/
+dist/
+web-build/
+
+# Native builds
+android/
+ios/
+
+# Misc
+.DS_Store
+*.log
