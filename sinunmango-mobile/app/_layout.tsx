@@ -56,12 +56,23 @@ export default function RootLayout() {
 
       if (access_token && refresh_token) {
         // Flujo implícito: tokens en el hash
-        const { error } = await supabase.auth.setSession({ access_token, refresh_token })
-        if (error) console.error('[OAuth] setSession error:', error.message)
+        const { data, error } = await supabase.auth.setSession({ access_token, refresh_token })
+        if (error) {
+          console.error('[OAuth] setSession error:', error.message)
+        } else if (data.session) {
+          // Guardar explícitamente — no esperamos al evento async de onAuthStateChange
+          storeSession(data.session)
+          console.log('[OAuth] session stored, token:', data.session.access_token.slice(0, 20) + '...')
+        }
       } else if (code) {
         // Flujo PKCE: código en el query string
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) console.error('[OAuth] exchangeCodeForSession error:', error.message)
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) {
+          console.error('[OAuth] exchangeCodeForSession error:', error.message)
+        } else if (data.session) {
+          storeSession(data.session)
+          console.log('[OAuth] PKCE session stored')
+        }
       }
     }
 

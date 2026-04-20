@@ -29,18 +29,25 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Load user context ────────────────────────────────────────────────────
-  const [{ data: cuentas }, { data: categorias }, { data: movRecientes }] =
+  const firstOfMonth = new Date(); firstOfMonth.setDate(1)
+  const firstOfMonthStr = firstOfMonth.toISOString().slice(0, 10)
+
+  const [{ data: cuentas }, { data: categorias }, { data: movRecientes }, { data: movMes }] =
     await Promise.all([
       adminClient.from('cuentas').select('id, nombre_cuenta, tipo_cuenta, moneda').eq('activa', true).eq('user_id', user.id),
       adminClient.from('categorias').select('id, nombre_categoria, tipo_default').eq('user_id', user.id).order('nombre_categoria'),
-      adminClient.from('movimientos').select('fecha, detalle, monto, moneda, tipo_movimiento').eq('user_id', user.id).order('fecha', { ascending: false }).limit(20),
+      adminClient.from('movimientos').select('fecha, detalle, monto, moneda, tipo_movimiento').eq('user_id', user.id).order('fecha', { ascending: false }).limit(50),
+      adminClient.from('movimientos').select('monto, moneda, tipo_movimiento').eq('user_id', user.id).gte('fecha', firstOfMonthStr),
     ])
 
   const cuentasStr    = (cuentas ?? []).map(c => `- ${c.nombre_cuenta} (${c.tipo_cuenta}, ${c.moneda}) [id: ${c.id}]`).join('\n')
   const categoriasStr = (categorias ?? []).map(c => `- ${c.nombre_categoria} (${c.tipo_default}) [id: ${c.id}]`).join('\n')
-  const movStr        = (movRecientes ?? []).slice(0, 10).map(m =>
+  const movStr        = (movRecientes ?? []).map(m =>
     `- ${m.fecha}: ${m.detalle ?? '—'} $${m.monto} ${m.moneda} (${m.tipo_movimiento})`
   ).join('\n')
+  const gastosMes   = (movMes ?? []).filter(m => m.tipo_movimiento === 'Gasto').reduce((s, m) => s + Number(m.monto), 0)
+  const ingresosMes = (movMes ?? []).filter(m => m.tipo_movimiento === 'Ingreso').reduce((s, m) => s + Number(m.monto), 0)
+  const resumenMes  = `Gastos del mes: $${gastosMes.toLocaleString('es-AR')} ARS | Ingresos del mes: $${ingresosMes.toLocaleString('es-AR')} ARS`
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -48,27 +55,31 @@ export async function POST(req: NextRequest) {
 Tu personalidad: sos amigable, directo y un poco informal (tuteo siempre). Usás emojis con moderación. Sos muy bueno con los números y no te perdés en detalles innecesarios.
 Hoy es ${today}.
 
+RESUMEN DEL MES ACTUAL:
+${resumenMes}
+
 CUENTAS DISPONIBLES:
 ${cuentasStr || '(sin cuentas configuradas)'}
 
 CATEGORÍAS DISPONIBLES:
 ${categoriasStr || '(sin categorías)'}
 
-ÚLTIMOS MOVIMIENTOS:
+ÚLTIMOS 50 MOVIMIENTOS:
 ${movStr || '(sin movimientos recientes)'}
 
 TUS CAPACIDADES:
 1. Respondés preguntas sobre finanzas personales
-2. Analizás los movimientos recientes y hacés observaciones útiles
+2. Analizás los movimientos y hacés observaciones útiles
 3. PODÉS REGISTRAR MOVIMIENTOS directamente cuando el usuario te lo pide
 
 PARA REGISTRAR UN MOVIMIENTO, respondé con un bloque JSON especial al FINAL de tu mensaje:
 <accion>
 {
   "tipo": "nuevo_movimiento",
-  "detalle": "descripción del gasto",
+  "detalle": "descripción",
   "monto": 4500,
   "moneda": "ARS",
+  "tipo_movimiento": "Gasto",
   "cuotas": 1,
   "cuenta_id": "uuid-de-la-cuenta",
   "categoria_id": "uuid-de-la-categoria",
@@ -76,12 +87,12 @@ PARA REGISTRAR UN MOVIMIENTO, respondé con un bloque JSON especial al FINAL de 
 }
 </accion>
 
-REGLAS:
-- Siempre intentá identificar la cuenta y categoría correctas de la lista de arriba
-- Si el usuario no especifica la cuenta, usá la más probable según el contexto
-- Si no podés identificar cuenta o categoría, pedí aclaración ANTES de registrar
+REGLAS CRÍTICAS:
+- El campo "monto" SIEMPRE es POSITIVO (ej: 5000, nunca -5000)
+- Para gastos: "tipo_movimiento": "Gasto" — Para ingresos/sueldos/cobros: "tipo_movimiento": "Ingreso"
+- El signo lo determina tipo_movimiento, NUNCA el monto
+- Siempre identificá cuenta y categoría de la lista; si no podés, pedí aclaración
 - Contestá en español, de forma concisa y amigable
-- Para análisis financieros, sé específico con números
 - No inventes datos que no están en el contexto`
 
   // ── Call Claude (no streaming) ────────────────────────────────────────────

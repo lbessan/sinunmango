@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
-import { adminClient } from './supabase/admin'
 
 export async function getCurrentUser() {
   const cookieStore = await cookies()
@@ -23,12 +23,20 @@ export async function requireUser() {
 /**
  * Obtiene el usuario desde una request — soporta tanto cookies (web)
  * como Bearer token en el header Authorization (app mobile).
+ *
+ * Para Bearer token usamos un cliente con anon key — es suficiente para
+ * validar el JWT del usuario (no hace falta service role key).
  */
 export async function getUserFromRequest(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (auth?.startsWith('Bearer ')) {
     const token = auth.slice(7)
-    const { data: { user } } = await adminClient.auth.getUser(token)
+    // Cliente temporal solo para validar el JWT — anon key alcanza
+    const client = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    )
+    const { data: { user } } = await client.auth.getUser(token)
     return user ?? null
   }
   return getCurrentUser()
