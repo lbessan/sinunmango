@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react'
 import {
   User, Shield, Palette, Moon, Sun, Check,
   ChevronRight, Mail, KeyRound, ShieldCheck, ShieldAlert,
-  Info, Loader2, Smartphone,
+  Info, Loader2, Smartphone, Bell, BellOff, CalendarClock,
+  BarChart2, Save,
 } from 'lucide-react'
 import {
   THEMES, ThemeKey, applyTheme,
   STORAGE_THEME, useTheme,
 } from '@/components/theme-provider'
 import { createClient } from '@/lib/supabase/client'
+import type { UserPreferences } from '@/app/api/user-preferences/route'
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 function Section({
@@ -277,6 +279,212 @@ function MfaSection() {
   )
 }
 
+// ─── Toggle switch ────────────────────────────────────────────────────────────
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none disabled:opacity-40 disabled:cursor-not-allowed ${
+        checked ? 'bg-[var(--accent,#94184A)]' : 'bg-slate-200'
+      }`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition-transform ${
+          checked ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  )
+}
+
+// ─── Notifications section ────────────────────────────────────────────────────
+function NotificacionesSection() {
+  const [prefs, setPrefs]       = useState<UserPreferences | null>(null)
+  const [saving, setSaving]     = useState(false)
+  const [saved, setSaved]       = useState(false)
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState('')
+
+  // Load on mount
+  useEffect(() => {
+    fetch('/api/user-preferences')
+      .then(r => r.json())
+      .then((data: UserPreferences) => { setPrefs(data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const save = async (updated: UserPreferences) => {
+    setSaving(true)
+    setSaved(false)
+    setError('')
+    try {
+      const res = await fetch('/api/user-preferences', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(updated),
+      })
+      if (!res.ok) throw new Error('Error al guardar')
+      const data = await res.json()
+      setPrefs(data)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch {
+      setError('No se pudo guardar. Intentá de nuevo.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const updateAndSave = (patch: Partial<UserPreferences>) => {
+    if (!prefs) return
+    const updated = { ...prefs, ...patch }
+    setPrefs(updated)
+    save(updated)
+  }
+
+  const toggleDia = (dia: number) => {
+    if (!prefs) return
+    const dias = prefs.alerta_vencimientos_dias.includes(dia)
+      ? prefs.alerta_vencimientos_dias.filter(d => d !== dia)
+      : [...prefs.alerta_vencimientos_dias, dia].sort((a, b) => a - b)
+    updateAndSave({ alerta_vencimientos_dias: dias })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-slate-400 text-sm py-2">
+        <Loader2 size={15} className="animate-spin" /> Cargando preferencias…
+      </div>
+    )
+  }
+
+  if (!prefs) {
+    return (
+      <p className="text-sm text-slate-400">
+        No se pudieron cargar las preferencias. Asegurate de haber ejecutado la migración SQL.
+      </p>
+    )
+  }
+
+  const DIAS = [
+    { value: 0, label: 'El día del vencimiento',  sublabel: '(día 0)' },
+    { value: 1, label: '1 día antes',              sublabel: '' },
+    { value: 3, label: '3 días antes',             sublabel: '' },
+  ]
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Vencimientos ─────────────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <div>
+            <p className="text-sm font-medium text-slate-700">Alertas de vencimientos</p>
+            <p className="text-xs text-slate-400 mt-0.5">Recordatorios de gastos fijos por email</p>
+          </div>
+          <Toggle
+            checked={prefs.alerta_vencimientos_activa}
+            onChange={v => updateAndSave({ alerta_vencimientos_activa: v })}
+            disabled={saving}
+          />
+        </div>
+
+        {prefs.alerta_vencimientos_activa && (
+          <div className="mt-4 bg-slate-50 rounded-xl p-4 space-y-3">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+              <CalendarClock size={12} /> ¿Cuándo querés recibir el recordatorio?
+            </p>
+            {DIAS.map(({ value, label, sublabel }) => {
+              const active = prefs.alerta_vencimientos_dias.includes(value)
+              return (
+                <button
+                  key={value}
+                  onClick={() => toggleDia(value)}
+                  disabled={saving}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left disabled:opacity-50 ${
+                    active
+                      ? 'border-[var(--accent,#94184A)] bg-white'
+                      : 'border-slate-200 bg-white hover:border-slate-300'
+                  }`}
+                >
+                  <div>
+                    <span className={`text-sm font-medium ${active ? 'text-slate-800' : 'text-slate-500'}`}>
+                      {label}
+                    </span>
+                    {sublabel && (
+                      <span className="ml-1.5 text-xs text-slate-400">{sublabel}</span>
+                    )}
+                  </div>
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                      active
+                        ? 'bg-[var(--accent,#94184A)] border-[var(--accent,#94184A)]'
+                        : 'border-slate-300'
+                    }`}
+                  >
+                    {active && <Check size={10} className="text-white" strokeWidth={3} />}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Resumen semanal ───────────────────────────────────────────────── */}
+      <div className="border-t border-slate-50 pt-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-slate-700">Resumen semanal</p>
+            <p className="text-xs text-slate-400 mt-0.5">Email los lunes con tus gastos e ingresos de la semana</p>
+          </div>
+          <Toggle
+            checked={prefs.alerta_resumen_semanal}
+            onChange={v => updateAndSave({ alerta_resumen_semanal: v })}
+            disabled={saving}
+          />
+        </div>
+      </div>
+
+      {/* ── Resumen mensual ───────────────────────────────────────────────── */}
+      <div className="border-t border-slate-50 pt-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-slate-700">Resumen mensual</p>
+            <p className="text-xs text-slate-400 mt-0.5">Informe el 1° de cada mes con el resumen del mes anterior</p>
+          </div>
+          <Toggle
+            checked={prefs.alerta_resumen_mensual}
+            onChange={v => updateAndSave({ alerta_resumen_mensual: v })}
+            disabled={saving}
+          />
+        </div>
+      </div>
+
+      {/* ── Status ───────────────────────────────────────────────────────── */}
+      <div className="h-5">
+        {saving && (
+          <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            <Loader2 size={12} className="animate-spin" /> Guardando…
+          </div>
+        )}
+        {saved && !saving && (
+          <div className="flex items-center gap-1.5 text-xs text-emerald-500">
+            <Check size={12} strokeWidth={3} /> Guardado
+          </div>
+        )}
+        {error && (
+          <p className="text-xs text-red-500">{error}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export function ConfiguracionClient({
   email,
@@ -376,6 +584,15 @@ export function ConfiguracionClient({
         description="Autenticación de dos factores (MFA)"
       >
         <MfaSection />
+      </Section>
+
+      {/* ── NOTIFICACIONES ─────────────────────────────────────────────────── */}
+      <Section
+        icon={<Bell size={16} />}
+        title="Notificaciones"
+        description="Alertas y reportes por email"
+      >
+        <NotificacionesSection />
       </Section>
 
       {/* ── APARIENCIA ─────────────────────────────────────────────────────── */}

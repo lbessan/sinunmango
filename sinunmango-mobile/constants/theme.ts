@@ -1,8 +1,8 @@
 // Tokens de color — replicando el theme de la web del usuario (magenta/rosa oscuro)
 export const Colors = {
   // Brand
-  accent:   '#d81b60',   // hot pink / magenta (igual que la web)
-  accent2:  '#880e4f',   // dark pink (punto medio del gradiente)
+  accent:   '#94184A',   // magenta oscuro (color del usuario)
+  accent2:  '#5c0f2e',   // dark pink (punto medio del gradiente)
   sidebar:  '#1a0028',   // fondo oscuro casi negro con tinte púrpura
 
   // Backgrounds
