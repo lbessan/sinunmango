@@ -8,11 +8,11 @@ const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0,
 function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
   imagenUrl?: string | null; colorPrim: string; tipo: string; nombre: string; moneda?: string | null
 }) {
-  // Tarjeta: landscape con fondo blanco
+  // Tarjeta: landscape con fondo neutro
   if (tipo === 'Tarjeta Credito') {
     return (
-      <div className="shrink-0 rounded-md overflow-hidden flex items-center justify-center bg-white"
-        style={{ width: 56, height: 36 }}>
+      <div className="shrink-0 rounded-md overflow-hidden flex items-center justify-center"
+        style={{ width: 56, height: 36, background: '#e8edf2' }}>
         {imagenUrl
           ? <img src={imagenUrl} alt={nombre} className="w-full h-full object-contain" />
           : <span className="text-sm">💳</span>}

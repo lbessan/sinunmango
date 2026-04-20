@@ -252,7 +252,8 @@ export default async function ConciliacionesPage({
                 {/* Izquierda: mini card + info */}
                 <div className="flex items-center gap-4">
                   <div
-                    className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-white border border-slate-100"
+                    className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
+                    style={{ background: '#e8edf2' }}
                     style={{ width: 64, height: 40 }}
                   >
                     {imagenUrl
