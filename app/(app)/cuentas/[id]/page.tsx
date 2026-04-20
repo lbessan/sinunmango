@@ -100,13 +100,15 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
 
-      {/* Banner con imagen de tarjeta/efectivo */}
-      {(isTarjeta || isEfectivo) ? (
+      {/* Banner — tarjeta: landscape con bg y fondo blanco; efectivo y banco: logo cuadrado */}
+      {isTarjeta ? (
         <div className="rounded-2xl overflow-hidden" style={{ background: colorPrim }}>
           {navBar}
           <div className="flex items-center justify-center px-8 pb-6">
             {imagenUrl
-              ? <img src={imagenUrl} alt={cuenta.nombre_cuenta} className="w-full max-w-sm rounded-xl shadow-2xl" style={{ aspectRatio: '1.586/1', objectFit: 'cover' }} />
+              ? <div className="w-full max-w-sm rounded-xl overflow-hidden bg-white shadow-2xl" style={{ aspectRatio: '1.586/1' }}>
+                  <img src={imagenUrl} alt={cuenta.nombre_cuenta} className="w-full h-full object-contain" />
+                </div>
               : <div className="w-full max-w-sm rounded-xl flex items-center justify-center" style={{ aspectRatio: '1.586/1', background: 'rgba(255,255,255,0.1)' }}>
                   <span className="text-7xl">{fallbackEmoji}</span>
                 </div>
@@ -115,15 +117,22 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
           <CuentaSaldoReactivo {...saldoProps} />
         </div>
       ) : (
-        /* Banner con logo de banco/billetera */
+        /* Banner con logo: banco/billetera/efectivo */
         <div className="rounded-2xl overflow-hidden" style={{ background: colorPrim }}>
           {navBar}
           <div className="flex items-center justify-center px-8 py-6">
             {bannerUrl
               ? <img src={bannerUrl} alt={cuenta.nombre_cuenta} className="max-h-16 max-w-xs object-contain" style={{ filter: textoClaro ? 'brightness(0) invert(1)' : 'none' }} />
-              : imagenUrl
-              ? <img src={imagenUrl} alt={cuenta.nombre_cuenta} className="h-14 w-14 object-cover rounded-xl" />
-              : <p className="text-2xl font-bold" style={{ color: textColor }}>{cuenta.nombre_cuenta}</p>
+              : (() => {
+                  // Efectivo sin imagen personalizada → ícono por moneda
+                  const efectivoSrc = isEfectivo
+                    ? (cuenta.moneda === 'USD' ? '/efectivo-usd.svg' : '/efectivo-ars.svg')
+                    : null
+                  const src = imagenUrl ?? efectivoSrc
+                  return src
+                    ? <img src={src} alt={cuenta.nombre_cuenta} className="h-16 w-16 object-contain" />
+                    : <p className="text-2xl font-bold" style={{ color: textColor }}>{cuenta.nombre_cuenta}</p>
+                })()
             }
           </div>
           <CuentaSaldoReactivo {...saldoProps} />

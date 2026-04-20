@@ -5,22 +5,26 @@ import Link from 'next/link'
 
 const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
-function Thumbnail({ imagenUrl, colorPrim, tipo, nombre }: {
-  imagenUrl?: string | null; colorPrim: string; tipo: string; nombre: string
+function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
+  imagenUrl?: string | null; colorPrim: string; tipo: string; nombre: string; moneda?: string | null
 }) {
-  const useLandscape = tipo === 'Tarjeta Credito' || tipo === 'Efectivo'
-  const fallback = tipo === 'Efectivo' ? '💵' : tipo === 'Tarjeta Credito' ? '💳' : '🏦'
-  if (useLandscape) {
+  // Tarjeta: landscape con fondo blanco
+  if (tipo === 'Tarjeta Credito') {
     return (
-      <div className="shrink-0 rounded-md overflow-hidden flex items-center justify-center"
-        style={{ width: 56, height: 36, background: colorPrim }}>
-        {imagenUrl ? <img src={imagenUrl} alt={nombre} className="w-full h-full object-cover" /> : <span className="text-sm">{fallback}</span>}
+      <div className="shrink-0 rounded-md overflow-hidden flex items-center justify-center bg-white"
+        style={{ width: 56, height: 36 }}>
+        {imagenUrl
+          ? <img src={imagenUrl} alt={nombre} className="w-full h-full object-contain" />
+          : <span className="text-sm">💳</span>}
       </div>
     )
   }
+  // Efectivo y banco: cuadrado con logo
+  const efectivoSrc = tipo === 'Efectivo' ? (moneda === 'USD' ? '/efectivo-usd.svg' : '/efectivo-ars.svg') : null
+  const src = imagenUrl ?? efectivoSrc
   return (
     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 overflow-hidden" style={{ background: '#f1f5f9' }}>
-      {imagenUrl ? <img src={imagenUrl} alt={nombre} className="w-8 h-8 object-cover rounded-lg" /> : fallback}
+      {src ? <img src={src} alt={nombre} className="w-8 h-8 object-contain p-0.5 rounded-lg" /> : <span>🏦</span>}
     </div>
   )
 }
@@ -217,7 +221,7 @@ export default async function DashboardPage() {
               return (
                 <Link key={c.id} href={`/cuentas/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <Thumbnail imagenUrl={extra?.imagen_url} colorPrim={extra?.color_primario ?? '#0d3b6e'} tipo={c.tipo_cuenta} nombre={c.nombre_cuenta} />
+                    <Thumbnail imagenUrl={extra?.imagen_url} colorPrim={extra?.color_primario ?? '#0d3b6e'} tipo={c.tipo_cuenta} nombre={c.nombre_cuenta} moneda={c.moneda} />
                     <div>
                       <p className="text-sm font-medium text-slate-700">{c.nombre_cuenta}</p>
                       <p className="text-xs text-slate-400">{c.tipo_cuenta}</p>
@@ -241,7 +245,7 @@ export default async function DashboardPage() {
               return (
                 <Link key={c.id} href={`/cuentas/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <Thumbnail imagenUrl={extra?.imagen_url} colorPrim={extra?.color_primario ?? '#0d3b6e'} tipo={c.tipo_cuenta} nombre={c.nombre_cuenta} />
+                    <Thumbnail imagenUrl={extra?.imagen_url} colorPrim={extra?.color_primario ?? '#0d3b6e'} tipo={c.tipo_cuenta} nombre={c.nombre_cuenta} moneda={c.moneda} />
                     <div>
                       <p className="text-sm font-medium text-slate-700">{c.nombre_cuenta}</p>
                       <p className="text-xs text-slate-400">Cierre {cierre} · Vence {vence}</p>
