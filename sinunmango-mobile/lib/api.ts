@@ -23,6 +23,20 @@ export async function getAuthHeader(): Promise<Record<string, string>> {
 }
 
 /**
+ * GET a un API route con auth automática.
+ */
+export async function apiGet<T>(path: string): Promise<T> {
+  const authHeaders = await getAuthHeader()
+  const res = await fetch(`${API_BASE}${path}`, {
+    method:  'GET',
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data?.error ?? `Error ${res.status}`)
+  return data as T
+}
+
+/**
  * POST a un API route con auth automática.
  */
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {

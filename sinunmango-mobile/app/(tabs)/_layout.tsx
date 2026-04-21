@@ -1,6 +1,14 @@
 import { Tabs } from 'expo-router'
 import { View, Text, Image, StyleSheet } from 'react-native'
-import { Colors } from '@/constants/theme'
+import { useTheme } from '@/context/ThemeContext'
+
+function HomeIcon({ color }: { color: string }) {
+  return (
+    <View style={styles.iconWrap}>
+      <Text style={[styles.icon, { color }]}>⌂</Text>
+    </View>
+  )
+}
 
 function PlusIcon({ color }: { color: string }) {
   return (
@@ -10,9 +18,13 @@ function PlusIcon({ color }: { color: string }) {
   )
 }
 
-function ManguitoIcon({ focused }: { focused: boolean }) {
+function ManguitoIcon({ focused, sidebarColor, accentColor }: {
+  focused:      boolean
+  sidebarColor: string
+  accentColor:  string
+}) {
   return (
-    <View style={[styles.manguitoWrap, focused && { backgroundColor: Colors.accent }]}>
+    <View style={[styles.manguitoWrap, focused && { backgroundColor: accentColor }]}>
       <Image
         source={require('@/assets/manguito.png')}
         style={styles.manguitoImg}
@@ -31,17 +43,19 @@ function GearIcon({ color }: { color: string }) {
 }
 
 export default function TabsLayout() {
+  const { colors } = useTheme()
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.sidebar,
+          backgroundColor: colors.sidebar,
           borderTopColor:  'rgba(255,255,255,0.08)',
           height:          60,
           paddingBottom:   8,
         },
-        tabBarActiveTintColor:   Colors.accent,
+        tabBarActiveTintColor:   colors.accent,
         tabBarInactiveTintColor: 'rgba(255,255,255,0.4)',
         tabBarLabelStyle: {
           fontSize:   11,
@@ -49,6 +63,13 @@ export default function TabsLayout() {
         },
       }}
     >
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: 'Inicio',
+          tabBarIcon: ({ color }) => <HomeIcon color={color} />,
+        }}
+      />
       <Tabs.Screen
         name="nuevo"
         options={{
@@ -60,7 +81,13 @@ export default function TabsLayout() {
         name="manguito"
         options={{
           title: 'Manguito',
-          tabBarIcon: ({ focused }) => <ManguitoIcon focused={focused} />,
+          tabBarIcon: ({ focused, color }) => (
+            <ManguitoIcon
+              focused={focused}
+              sidebarColor={colors.sidebar}
+              accentColor={colors.accent}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -83,11 +110,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   manguitoWrap: {
-    width:          32,
-    height:         32,
-    borderRadius:   16,
-    alignItems:     'center',
-    justifyContent: 'center',
+    width:           32,
+    height:          32,
+    borderRadius:    16,
+    alignItems:      'center',
+    justifyContent:  'center',
     backgroundColor: 'transparent',
   },
   manguitoImg: {
