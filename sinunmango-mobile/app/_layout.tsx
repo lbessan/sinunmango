@@ -6,6 +6,7 @@ import { storeSession } from '@/lib/session-store'
 import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import * as Linking from 'expo-linking'
+import { ThemeProvider } from '@/context/ThemeContext'
 
 SplashScreen.preventAutoHideAsync()
 
@@ -33,7 +34,7 @@ export default function RootLayout() {
     SplashScreen.hideAsync()
 
     if (session) {
-      router.replace('/(tabs)/manguito')
+      router.replace('/(tabs)/dashboard')
     } else {
       router.replace('/(auth)/login')
     }
@@ -84,9 +85,9 @@ export default function RootLayout() {
   }, [])
 
   return (
-    <>
+    <ThemeProvider>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }} />
-    </>
+    </ThemeProvider>
   )
 }

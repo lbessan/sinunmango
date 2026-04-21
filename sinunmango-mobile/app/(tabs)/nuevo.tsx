@@ -11,7 +11,7 @@ import { apiPost } from '@/lib/api'
 import { Colors } from '@/constants/theme'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Cuenta    = { id: string; nombre_cuenta: string; tipo_cuenta: string; moneda: string }
+type Cuenta    = { id: string; nombre_cuenta: string; tipo_cuenta: string; moneda: string; fecha_cierre_tarjeta: string | null; fecha_vencimiento_tarjeta: string | null }
 type Categoria = { id: string; nombre_categoria: string; tipo_default: string }
 
 type Form = {
@@ -112,7 +112,7 @@ export default function NuevoMovimientoScreen() {
       if (!session?.user) return
 
       const [{ data: c }, { data: cat }] = await Promise.all([
-        supabase.from('cuentas').select('id, nombre_cuenta, tipo_cuenta, moneda').eq('activa', true).eq('user_id', session.user.id).order('nombre_cuenta'),
+        supabase.from('cuentas').select('id, nombre_cuenta, tipo_cuenta, moneda, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta').eq('activa', true).eq('user_id', session.user.id).order('nombre_cuenta'),
         supabase.from('categorias').select('id, nombre_categoria, tipo_default').eq('user_id', session.user.id).order('nombre_categoria'),
       ])
       setCuentas(c ?? [])
@@ -183,9 +183,16 @@ export default function NuevoMovimientoScreen() {
       if (!cuenta) throw new Error('Cuenta no encontrada')
 
       const isTarjeta = cuenta.tipo_cuenta === 'Tarjeta Credito'
-      // Note: cierre/vence dates not loaded in mobile (simplified). Period calculation uses null.
-      const monto   = parseFloat(form.monto.replace(',', '.'))
-      const cuotas  = parseInt(form.cuotas) || 1
+      // Extraer día de cierre y vencimiento para calcular período correcto
+      const cierre = cuenta.fecha_cierre_tarjeta
+        ? new Date(cuenta.fecha_cierre_tarjeta + 'T12:00:00').getDate()
+        : null
+      const vence = cuenta.fecha_vencimiento_tarjeta
+        ? new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate()
+        : null
+
+      const monto      = parseFloat(form.monto.replace(',', '.'))
+      const cuotas     = parseInt(form.cuotas) || 1
       const montoCuota = monto / cuotas
 
       const records = Array.from({ length: cuotas }, (_, i) => {
@@ -203,7 +210,7 @@ export default function NuevoMovimientoScreen() {
           subcategoria:    null,
           cotizacion:      null,
           conciliado:      false,
-          periodo_tarjeta: calcularPeriodo(fechaCuota, null, null, isTarjeta),
+          periodo_tarjeta: calcularPeriodo(fechaCuota, cierre, vence, isTarjeta),
           cuotas_total:    cuotas,
           cuota_actual:    i + 1,
           ciclo_actual:    1,

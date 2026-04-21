@@ -5,17 +5,8 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from '@/lib/supabase'
-import { Colors } from '@/constants/theme'
+import { useTheme, PALETAS, STATIC_COLORS, type PaletaId } from '@/context/ThemeContext'
 import type { User } from '@supabase/supabase-js'
-
-// ─── Paletas de color ─────────────────────────────────────────────────────────
-const PALETAS = [
-  { id: 'verde',   label: 'Verde',   color: '#1a6b5a', bg: '#07192b' },
-  { id: 'azul',    label: 'Azul',    color: '#1B3A6B', bg: '#0a1628' },
-  { id: 'violeta', label: 'Violeta', color: '#6d28d9', bg: '#1a0a3b' },
-  { id: 'naranja', label: 'Naranja', color: '#c2410c', bg: '#1a0f07' },
-  { id: 'rosa',    label: 'Rosa',    color: '#be185d', bg: '#1a0716' },
-] as const
 
 // ─── Sección visual ───────────────────────────────────────────────────────────
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -45,8 +36,8 @@ function Row({ label, value, onPress, danger }: {
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function ConfiguracionScreen() {
+  const { colors, paletaId, setPaleta } = useTheme()
   const [user, setUser] = useState<User | null>(null)
-  const [paleta, setPaleta] = useState('verde')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -70,9 +61,9 @@ export default function ConfiguracionScreen() {
   const email     = user?.email ?? '—'
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.bgMain }]}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, { backgroundColor: colors.sidebar }]}>
         <Text style={s.headerTitle}>Configuración</Text>
       </View>
 
@@ -84,7 +75,7 @@ export default function ConfiguracionScreen() {
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={s.avatar} />
             ) : (
-              <View style={s.avatarFallback}>
+              <View style={[s.avatarFallback, { backgroundColor: colors.accent }]}>
                 <Text style={s.avatarInitial}>{nombre[0]?.toUpperCase() ?? '?'}</Text>
               </View>
             )}
@@ -102,24 +93,39 @@ export default function ConfiguracionScreen() {
             {PALETAS.map(p => (
               <TouchableOpacity
                 key={p.id}
-                onPress={() => setPaleta(p.id)}
-                style={[s.paletaBtn, { backgroundColor: p.color }, paleta === p.id && s.paletaBtnActive]}
+                onPress={() => setPaleta(p.id as PaletaId)}
+                style={[
+                  s.paletaBtn,
+                  { backgroundColor: p.accent },
+                  paletaId === p.id && s.paletaBtnActive,
+                ]}
                 activeOpacity={0.8}
               >
-                {paleta === p.id && <Text style={s.paletaCheck}>✓</Text>}
+                {paletaId === p.id && <Text style={s.paletaCheck}>✓</Text>}
               </TouchableOpacity>
             ))}
           </View>
           <View style={s.paletaNames}>
             {PALETAS.map(p => (
-              <Text key={p.id} style={[s.paletaName, paleta === p.id && s.paletaNameActive]}>
+              <Text
+                key={p.id}
+                style={[
+                  s.paletaName,
+                  paletaId === p.id && { color: colors.accent, fontWeight: '700' },
+                ]}
+              >
                 {p.label}
               </Text>
             ))}
           </View>
-          <Text style={s.paletaNote}>
-            Los cambios de color se aplicarán en la próxima actualización de la app.
-          </Text>
+          {/* Preview en vivo */}
+          <View style={[s.previewRow, { backgroundColor: colors.sidebar }]}>
+            <View style={[s.previewDot, { backgroundColor: colors.accent }]} />
+            <Text style={s.previewText}>Vista previa del tema</Text>
+            <View style={[s.previewBtn, { backgroundColor: colors.accent }]}>
+              <Text style={s.previewBtnText}>Activo</Text>
+            </View>
+          </View>
         </Section>
 
         {/* Versión */}
@@ -141,16 +147,15 @@ export default function ConfiguracionScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: Colors.bgMain },
+  safe:   { flex: 1 },
   header: {
-    backgroundColor:   Colors.sidebar,
     paddingHorizontal: 20,
     paddingVertical:   16,
   },
   headerTitle: {
     fontSize:   20,
     fontWeight: '800',
-    color:      Colors.white,
+    color:      STATIC_COLORS.white,
   },
   scroll:  { flex: 1 },
   content: { padding: 20 },
@@ -159,16 +164,16 @@ const s = StyleSheet.create({
   sectionTitle: {
     fontSize:     11,
     fontWeight:   '700',
-    color:        Colors.textMuted,
+    color:        STATIC_COLORS.textMuted,
     letterSpacing: 0.8,
     marginBottom:  8,
     marginLeft:    4,
   },
   sectionCard: {
-    backgroundColor: Colors.bgCard,
+    backgroundColor: STATIC_COLORS.bgCard,
     borderRadius:    16,
     borderWidth:     1,
-    borderColor:     Colors.border,
+    borderColor:     STATIC_COLORS.border,
     overflow:        'hidden',
   },
 
@@ -183,14 +188,13 @@ const s = StyleSheet.create({
   },
   avatarFallback: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: Colors.accent,
     justifyContent:  'center',
     alignItems:      'center',
   },
-  avatarInitial: { fontSize: 22, fontWeight: '700', color: Colors.white },
+  avatarInitial: { fontSize: 22, fontWeight: '700', color: STATIC_COLORS.white },
   profileInfo:   { flex: 1 },
-  profileName:   { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, marginBottom: 2 },
-  profileEmail:  { fontSize: 13, color: Colors.textSecondary },
+  profileName:   { fontSize: 16, fontWeight: '700', color: STATIC_COLORS.textPrimary, marginBottom: 2 },
+  profileEmail:  { fontSize: 13, color: STATIC_COLORS.textSecondary },
 
   row: {
     flexDirection:    'row',
@@ -199,15 +203,15 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical:   14,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: STATIC_COLORS.border,
   },
-  rowLabel:       { fontSize: 15, color: Colors.textPrimary },
+  rowLabel:       { fontSize: 15, color: STATIC_COLORS.textPrimary },
   rowLabelDanger: { color: '#ef4444' },
-  rowValue:       { fontSize: 14, color: Colors.textMuted },
+  rowValue:       { fontSize: 14, color: STATIC_COLORS.textMuted },
 
   paletaLabel: {
     fontSize:     13,
-    color:        Colors.textSecondary,
+    color:        STATIC_COLORS.textSecondary,
     marginBottom: 12,
     paddingHorizontal: 16,
     paddingTop:   16,
@@ -227,9 +231,9 @@ const s = StyleSheet.create({
   },
   paletaBtnActive: {
     borderWidth: 3,
-    borderColor: Colors.white,
+    borderColor: STATIC_COLORS.white,
   },
-  paletaCheck: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+  paletaCheck: { color: STATIC_COLORS.white, fontSize: 16, fontWeight: '700' },
   paletaNames: {
     flexDirection: 'row',
     gap:           12,
@@ -239,16 +243,36 @@ const s = StyleSheet.create({
   paletaName: {
     width:      40,
     fontSize:   10,
-    color:      Colors.textMuted,
+    color:      STATIC_COLORS.textMuted,
     textAlign:  'center',
   },
-  paletaNameActive: { color: Colors.accent, fontWeight: '700' },
-  paletaNote: {
-    fontSize:         12,
-    color:            Colors.textMuted,
-    paddingHorizontal: 16,
-    paddingBottom:    14,
-    fontStyle:        'italic',
+
+  previewRow: {
+    flexDirection:    'row',
+    alignItems:       'center',
+    gap:              10,
+    marginHorizontal: 16,
+    marginBottom:     16,
+    padding:          12,
+    borderRadius:     12,
+  },
+  previewDot: {
+    width: 12, height: 12, borderRadius: 6,
+  },
+  previewText: {
+    flex:     1,
+    fontSize: 12,
+    color:    'rgba(255,255,255,0.7)',
+  },
+  previewBtn: {
+    paddingHorizontal: 12,
+    paddingVertical:   5,
+    borderRadius:      8,
+  },
+  previewBtnText: {
+    fontSize:   11,
+    fontWeight: '700',
+    color:      STATIC_COLORS.white,
   },
 
   logoutBtn: {
