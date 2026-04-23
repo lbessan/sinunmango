@@ -14,8 +14,10 @@ export default function RootLayout() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
 
   useEffect(() => {
-    // Initial session check
+    // Initial session check — también guardamos en el store para que api.ts
+    // tenga el token disponible antes de que dispare onAuthStateChange
     supabase.auth.getSession().then(({ data: { session } }) => {
+      storeSession(session)
       setSession(session)
     })
 
