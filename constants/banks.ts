@@ -15,38 +15,39 @@ export type BankEntry = {
 
 export const BANKS: BankEntry[] = [
   // ── Bancos tradicionales ──────────────────────────────────────────────────
-  { id: 'galicia',      nombre: 'Banco Galicia',       color: '#E6001A', tipo: 'banco' },
-  { id: 'bbva',         nombre: 'BBVA',                color: '#004B8D', tipo: 'banco' },
-  { id: 'santander',    nombre: 'Santander',           color: '#EC0000', tipo: 'banco' },
-  { id: 'hsbc',         nombre: 'HSBC',                color: '#DB0011', tipo: 'banco' },
-  { id: 'nacion',       nombre: 'Banco Nación',        color: '#00529B', tipo: 'banco' },
-  { id: 'provincia',    nombre: 'Banco Provincia',     color: '#0066CC', tipo: 'banco' },
-  { id: 'macro',        nombre: 'Banco Macro',         color: '#FF6B00', tipo: 'banco' },
-  { id: 'supervielle',  nombre: 'Supervielle',         color: '#00A651', tipo: 'banco' },
-  { id: 'icbc',         nombre: 'ICBC',                color: '#C8102E', tipo: 'banco' },
-  { id: 'comafi',       nombre: 'Banco Comafi',        color: '#004990', tipo: 'banco' },
-  { id: 'ciudad',       nombre: 'Banco Ciudad',        color: '#007DC3', tipo: 'banco' },
-  { id: 'patagonia',    nombre: 'Banco Patagonia',     color: '#005A9C', tipo: 'banco' },
-  { id: 'hipotecario',  nombre: 'Banco Hipotecario',   color: '#1D3D8F', tipo: 'banco' },
-  { id: 'industrial',   nombre: 'Banco Industrial',    color: '#0066A1', tipo: 'banco' },
-  { id: 'piano',        nombre: 'Banco Piano',         color: '#1A3A6B', tipo: 'banco' },
-  { id: 'credicoop',    nombre: 'Banco Credicoop',     color: '#E31837', tipo: 'banco' },
-  { id: 'columbia',     nombre: 'Banco Columbia',      color: '#003087', tipo: 'banco' },
+  { id: 'galicia',      nombre: 'Banco Galicia',       color: '#FD6400', tipo: 'banco' },  // naranja
+  { id: 'bbva',         nombre: 'BBVA',                color: '#001491', tipo: 'banco' },  // azul BBVA
+  { id: 'santander',    nombre: 'Santander',           color: '#EC0000', tipo: 'banco' },  // rojo
+  { id: 'hsbc',         nombre: 'HSBC',                color: '#DB0011', tipo: 'banco' },  // rojo
+  { id: 'nacion',       nombre: 'Banco Nación',        color: '#007993', tipo: 'banco' },  // teal
+  { id: 'provincia',    nombre: 'Banco Provincia',     color: '#269E37', tipo: 'banco' },  // verde
+  { id: 'macro',        nombre: 'Banco Macro',         color: '#113250', tipo: 'banco' },  // azul marino
+  { id: 'supervielle',  nombre: 'Supervielle',         color: '#EC1C24', tipo: 'banco' },  // rojo
+  { id: 'icbc',         nombre: 'ICBC',                color: '#C8102E', tipo: 'banco' },  // rojo
+  { id: 'comafi',       nombre: 'Banco Comafi',        color: '#82955C', tipo: 'banco' },  // oliva
+  { id: 'ciudad',       nombre: 'Banco Ciudad',        color: '#25AAE2', tipo: 'banco' },  // celeste
+  { id: 'patagonia',    nombre: 'Banco Patagonia',     color: '#012D5A', tipo: 'banco' },  // azul marino oscuro
+  { id: 'hipotecario',  nombre: 'Banco Hipotecario',   color: '#F27321', tipo: 'banco' },  // naranja
+  { id: 'industrial',   nombre: 'Banco Industrial',    color: '#013766', tipo: 'banco' },  // azul marino oscuro (Bind)
+  { id: 'piano',        nombre: 'Banco Piano',         color: '#13294B', tipo: 'banco' },  // azul marino oscuro
+  { id: 'credicoop',    nombre: 'Banco Credicoop',     color: '#E31837', tipo: 'banco' },  // rojo
+  { id: 'columbia',     nombre: 'Banco Columbia',      color: '#004B8E', tipo: 'banco' },  // azul
+  { id: 'carrefour',    nombre: 'Carrefour Banco',     color: '#254F9B', tipo: 'banco' },  // azul Carrefour
   // ── Billeteras virtuales ──────────────────────────────────────────────────
-  { id: 'mercadopago',  nombre: 'Mercado Pago',        color: '#009EE3', tipo: 'billetera' },
-  { id: 'naranjax',     nombre: 'Naranja X',           color: '#FF6200', tipo: 'billetera' },
-  { id: 'personalpay',  nombre: 'Personal Pay',        color: '#6B00F5', tipo: 'billetera' },
-  { id: 'uala',         nombre: 'Ualá',                color: '#7B2FBE', tipo: 'billetera' },
-  { id: 'brubank',      nombre: 'Brubank',             color: '#1C00FF', tipo: 'billetera' },
-  { id: 'lemon',        nombre: 'Lemon',               color: '#00B24B', tipo: 'billetera' },
-  { id: 'prex',         nombre: 'Prex',                color: '#FF4444', tipo: 'billetera' },
-  { id: 'bimo',         nombre: 'Bimo',                color: '#00C2FF', tipo: 'billetera' },
-  { id: 'cuenta-dni',   nombre: 'Cuenta DNI (BNA)',    color: '#00529B', tipo: 'billetera' },
-  { id: 'modo',         nombre: 'Modo',                color: '#1B1B2F', tipo: 'billetera' },
+  { id: 'mercadopago',  nombre: 'Mercado Pago',        color: '#009EE3', tipo: 'billetera' },  // celeste
+  { id: 'naranjax',     nombre: 'Naranja X',           color: '#FE5000', tipo: 'billetera' },  // naranja
+  { id: 'personalpay',  nombre: 'Personal Pay',        color: '#5C4FF6', tipo: 'billetera' },  // violeta
+  { id: 'uala',         nombre: 'Ualá',                color: '#4168E2', tipo: 'billetera' },  // azul
+  { id: 'brubank',      nombre: 'Brubank',             color: '#614AD9', tipo: 'billetera' },  // violeta
+  { id: 'lemon',        nombre: 'Lemon',               color: '#00D15C', tipo: 'billetera' },  // verde
+  { id: 'prex',         nombre: 'Prex',                color: '#7128D8', tipo: 'billetera' },  // violeta
+  { id: 'cuenta-dni',   nombre: 'Cuenta DNI',          color: '#269E37', tipo: 'billetera' },  // verde Provincia (es su billetera)
+  { id: 'modo',         nombre: 'Modo',                color: '#008859', tipo: 'billetera' },  // verde teal
   // ── Crypto / fintech ──────────────────────────────────────────────────────
-  { id: 'ripio',        nombre: 'Ripio',               color: '#00D4AA', tipo: 'crypto' },
-  { id: 'belo',         nombre: 'Belo',                color: '#6C3EFF', tipo: 'crypto' },
-  { id: 'buenbit',      nombre: 'Buenbit',             color: '#1DC9B7', tipo: 'crypto' },
+  { id: 'ripio',        nombre: 'Ripio',               color: '#7908FF', tipo: 'crypto' },  // violeta
+  { id: 'belo',         nombre: 'Belo',                color: '#3B00FF', tipo: 'crypto' },  // azul eléctrico
+  { id: 'buenbit',      nombre: 'Buenbit',             color: '#FF78C8', tipo: 'crypto' },  // rosa
+  { id: 'cocos',        nombre: 'Cocos Capital',       color: '#3EBD8F', tipo: 'crypto' },  // verde fintech
 ]
 
 export function getBankById(id: string): BankEntry | undefined {
