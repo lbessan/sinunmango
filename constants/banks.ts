@@ -47,7 +47,7 @@ export const BANKS: BankEntry[] = [
   { id: 'ripio',        nombre: 'Ripio',               color: '#7908FF', tipo: 'crypto' },  // violeta
   { id: 'belo',         nombre: 'Belo',                color: '#3B00FF', tipo: 'crypto' },  // azul eléctrico
   { id: 'buenbit',      nombre: 'Buenbit',             color: '#FF78C8', tipo: 'crypto' },  // rosa
-  { id: 'cocos',        nombre: 'Cocos Capital',       color: '#3EBD8F', tipo: 'crypto' },  // verde fintech
+  { id: 'cocos',        nombre: 'Cocos Capital',       color: '#00609D', tipo: 'crypto' },  // azul
 ]
 
 export function getBankById(id: string): BankEntry | undefined {
