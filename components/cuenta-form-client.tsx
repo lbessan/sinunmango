@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ImagenUploader } from './imagen-uploader'
-import { BankSelector, CardNetworkSelector } from './bank-selector'
-import { bankLogoUrl, cardImageUrl, type BankEntry, type CardNetwork } from '@/constants/banks'
+import { BankSelector, CardNetworkSelector, CardVariantSelector } from './bank-selector'
+import { bankIconUrl, bankBannerUrl, cardImageUrl, type BankEntry, type CardNetwork, type CardVariant } from '@/constants/banks'
 
 type CuentaForm = {
   id?: string
@@ -33,6 +33,7 @@ export function CuentaFormClient({ inicial }: { inicial: CuentaForm }) {
   const [error, setError]   = useState('')
   const [selectedBank, setSelectedBank]       = useState<BankEntry | null>(null)
   const [selectedNetwork, setSelectedNetwork] = useState<CardNetwork | null>(null)
+  const [selectedVariant, setSelectedVariant] = useState<CardVariant | null>(null)
 
   const set = (k: keyof CuentaForm, v: string | boolean) =>
     setForm(prev => ({ ...prev, [k]: v }))
@@ -40,17 +41,32 @@ export function CuentaFormClient({ inicial }: { inicial: CuentaForm }) {
   // Cuando el usuario selecciona un banco, auto-complete color e imagen
   const handleBankChange = (bank: BankEntry) => {
     setSelectedBank(bank.id ? bank : null)
+    setSelectedVariant(null)
     if (!bank.id) return
     if (!form.nombre_cuenta) set('nombre_cuenta', bank.nombre)
     set('color_primario', bank.color)
-    set('imagen_url', bankLogoUrl(bank.id))
+    set('imagen_url', bankIconUrl(bank.id))
+    set('imagen_banner_url', bankBannerUrl(bank.id))
   }
 
   // Cuando selecciona red de tarjeta, auto-complete imagen de tarjeta
   const handleNetworkChange = (net: CardNetwork) => {
     setSelectedNetwork(net)
+    setSelectedVariant(null)
+    if (selectedBank?.id) {
+      // default to standard variant
+      set('imagen_url', cardImageUrl(selectedBank.id, net.id, 'standard'))
+    }
     set('color_primario', net.color)
-    set('imagen_url', cardImageUrl(net.id))
+  }
+
+  // Cuando selecciona variante de tarjeta
+  const handleVariantChange = (variant: CardVariant) => {
+    setSelectedVariant(variant)
+    if (selectedBank?.id && selectedNetwork?.id) {
+      set('imagen_url', cardImageUrl(selectedBank.id, selectedNetwork.id, variant.id))
+    }
+    set('color_primario', variant.color)
   }
 
   const isTarjeta = form.tipo_cuenta === 'Tarjeta Credito'
@@ -111,6 +127,17 @@ export function CuentaFormClient({ inicial }: { inicial: CuentaForm }) {
           <CardNetworkSelector
             value={selectedNetwork?.id ?? ''}
             onChange={handleNetworkChange}
+          />
+        )}
+
+        {/* ── Selector de variante (tarjetas) ── */}
+        {form.tipo_cuenta === 'Tarjeta Credito' && selectedBank?.id && selectedNetwork?.id && (
+          <CardVariantSelector
+            bankId={selectedBank.id}
+            networkId={selectedNetwork.id}
+            bankColor={selectedBank.color}
+            value={selectedVariant?.id ?? 'standard'}
+            onChange={handleVariantChange}
           />
         )}
 

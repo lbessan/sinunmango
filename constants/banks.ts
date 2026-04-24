@@ -1,7 +1,10 @@
 // ─── Bancos y billeteras de Argentina ─────────────────────────────────────────
-// id: nombre del archivo en /public/banks/{id}.png
-// color: color primario para fallback y temas de tarjeta
-// Para agregar un banco: añadir la entrada acá + poner el PNG en /public/banks/
+// Archivos de imagen esperados en /public/:
+//   Ícono cuadrado:   /banks/{id}.png          (200×200px, fondo transparente)
+//   Logo banner:      /banks/{id}-banner.png   (600×200px, fondo transparente, se superpone sobre el color)
+//   Imagen de tarjeta:/cards/{bankId}-{networkId}-{variant}.png  (800×504px)
+//
+// Si un archivo no existe, el código muestra el color como fallback.
 
 export type BankEntry = {
   id:     string
@@ -22,7 +25,6 @@ export const BANKS: BankEntry[] = [
   { id: 'supervielle',  nombre: 'Supervielle',         color: '#00A651', tipo: 'banco' },
   { id: 'icbc',         nombre: 'ICBC',                color: '#C8102E', tipo: 'banco' },
   { id: 'comafi',       nombre: 'Banco Comafi',        color: '#004990', tipo: 'banco' },
-  { id: 'frances',      nombre: 'BBVA Francés',        color: '#004B8D', tipo: 'banco' },
   { id: 'ciudad',       nombre: 'Banco Ciudad',        color: '#007DC3', tipo: 'banco' },
   { id: 'patagonia',    nombre: 'Banco Patagonia',     color: '#005A9C', tipo: 'banco' },
   { id: 'hipotecario',  nombre: 'Banco Hipotecario',   color: '#1D3D8F', tipo: 'banco' },
@@ -39,12 +41,10 @@ export const BANKS: BankEntry[] = [
   { id: 'lemon',        nombre: 'Lemon',               color: '#00B24B', tipo: 'billetera' },
   { id: 'prex',         nombre: 'Prex',                color: '#FF4444', tipo: 'billetera' },
   { id: 'bimo',         nombre: 'Bimo',                color: '#00C2FF', tipo: 'billetera' },
-  { id: 'cuenta-dni',   nombre: 'Cuenta DNI (BNA)',   color: '#00529B', tipo: 'billetera' },
+  { id: 'cuenta-dni',   nombre: 'Cuenta DNI (BNA)',    color: '#00529B', tipo: 'billetera' },
   { id: 'modo',         nombre: 'Modo',                color: '#1B1B2F', tipo: 'billetera' },
-  { id: 'pluscard',     nombre: 'Plus Card',           color: '#1A237E', tipo: 'billetera' },
   // ── Crypto / fintech ──────────────────────────────────────────────────────
   { id: 'ripio',        nombre: 'Ripio',               color: '#00D4AA', tipo: 'crypto' },
-  { id: 'satoshitango', nombre: 'SatoshiTango',        color: '#F7931A', tipo: 'crypto' },
   { id: 'belo',         nombre: 'Belo',                color: '#6C3EFF', tipo: 'crypto' },
   { id: 'buenbit',      nombre: 'Buenbit',             color: '#1DC9B7', tipo: 'crypto' },
 ]
@@ -54,13 +54,10 @@ export function getBankById(id: string): BankEntry | undefined {
 }
 
 // ── Redes de tarjetas de crédito ──────────────────────────────────────────────
-// Imágenes en /public/cards/{id}.png
-// El archivo debería ser una tarjeta horizontal (por ej. 400×250px)
-
 export type CardNetwork = {
   id:     string
   nombre: string
-  color:  string   // color de fondo de la mini-tarjeta si no hay imagen
+  color:  string
 }
 
 export const CARD_NETWORKS: CardNetwork[] = [
@@ -72,16 +69,63 @@ export const CARD_NETWORKS: CardNetwork[] = [
   { id: 'maestro',    nombre: 'Maestro',           color: '#CC0000' },
 ]
 
-export function getCardNetworkById(id: string): CardNetwork | undefined {
-  return CARD_NETWORKS.find(c => c.id === id)
+// ── Variantes de tarjeta ──────────────────────────────────────────────────────
+// Archivo esperado: /public/cards/{bankId}-{networkId}-{variantId}.png
+// Si el archivo no existe el código muestra un placeholder con el color del banco.
+
+export type CardVariant = {
+  id:    string   // slug usado en el nombre del archivo
+  label: string   // nombre visible
+  color: string   // color de fondo cuando no hay imagen
 }
 
-// ── Helpers para construir rutas de imágenes ──────────────────────────────────
+// Variantes genéricas que aplican a cualquier banco + red
+export const CARD_VARIANTS: CardVariant[] = [
+  { id: 'standard',  label: 'Clásica',   color: '#1e293b' },
+  { id: 'black',     label: 'Black',     color: '#0f0f0f' },
+  { id: 'gold',      label: 'Gold',      color: '#7c5c1e' },
+  { id: 'platinum',  label: 'Platinum',  color: '#475569' },
+  { id: 'signature', label: 'Signature', color: '#1e3a5f' },
+  { id: 'infinite',  label: 'Infinite',  color: '#0d1117' },
+]
 
-export function bankLogoUrl(bankId: string): string {
+// Configuración específica por banco: qué variantes tienen imágenes disponibles.
+// Cuando el repositorio de imágenes esté cargado, completar/ajustar esta lista.
+// Si un banco no aparece acá, se muestran las variantes genéricas sin imagen previa.
+export const BANK_CARD_VARIANTS: Record<string, Record<string, string[]>> = {
+  // bankId → networkId → variantes con imagen disponible
+  bbva:        { mastercard: ['black', 'standard'], visa: ['black', 'standard'] },
+  galicia:     { visa: ['standard', 'black', 'signature'], mastercard: ['standard'] },
+  provincia:   { visa: ['standard', 'platinum'] },
+  santander:   { visa: ['standard', 'black', 'gold'], mastercard: ['standard'] },
+  macro:       { visa: ['standard', 'gold'], mastercard: ['standard'] },
+  naranjax:    { mastercard: ['standard'] },
+  mercadopago: { mastercard: ['standard', 'black'] },
+  hsbc:        { visa: ['standard', 'black', 'platinum'] },
+  icbc:        { visa: ['standard', 'gold', 'platinum'] },
+  supervielle: { visa: ['standard', 'black'], mastercard: ['standard'] },
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Ícono cuadrado del banco (200×200px, fondo transparente) */
+export function bankIconUrl(bankId: string): string {
   return `/banks/${bankId}.png`
 }
 
-export function cardImageUrl(networkId: string): string {
-  return `/cards/${networkId}.png`
+/** Logo horizontal para el banner (600×200px, fondo transparente) */
+export function bankBannerUrl(bankId: string): string {
+  return `/banks/${bankId}-banner.png`
+}
+
+/** Imagen de tarjeta de crédito (800×504px) */
+export function cardImageUrl(bankId: string, networkId: string, variantId: string): string {
+  return `/cards/${bankId}-${networkId}-${variantId}.png`
+}
+
+/** Variantes disponibles para una combinación banco+red */
+export function getCardVariants(bankId: string, networkId: string): CardVariant[] {
+  const available = BANK_CARD_VARIANTS[bankId]?.[networkId]
+  if (!available) return CARD_VARIANTS  // mostrar todas si no hay config específica
+  return CARD_VARIANTS.filter(v => available.includes(v.id))
 }
