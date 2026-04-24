@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle, ChevronRight, Landmark, Wallet, CreditCard, DollarSign } from 'lucide-react'
-import { BankSelector, CardNetworkSelector, BankLogo } from '@/components/bank-selector'
-import { bankLogoUrl, cardImageUrl, type BankEntry, type CardNetwork } from '@/constants/banks'
+import { BankSelector, CardNetworkSelector, CardVariantSelector, BankLogo } from '@/components/bank-selector'
+import { bankIconUrl, bankBannerUrl, cardImageUrl, type BankEntry, type CardNetwork, type CardVariant } from '@/constants/banks'
 
 // ─── Tipos de cuenta ──────────────────────────────────────────────────────────
 const TIPOS = [
@@ -27,22 +27,32 @@ export default function OnboardingPage() {
   const [saldo, setSaldo]       = useState('0')
   const [bank, setBank]         = useState<BankEntry | null>(null)
   const [network, setNetwork]   = useState<CardNetwork | null>(null)
+  const [variant, setVariant]   = useState<CardVariant | null>(null)
   const [saving, setSaving]     = useState(false)
   const [error, setError]       = useState<string | null>(null)
 
   // Cuando seleccionan un banco, auto-completar el nombre si está vacío
   const handleBankChange = (b: BankEntry) => {
     setBank(b.id ? b : null)
+    setVariant(null)
     if (b.id && !nombre) setNombre(b.nombre)
+  }
+
+  const handleNetworkChange = (net: CardNetwork) => {
+    setNetwork(net)
+    setVariant(null)
   }
 
   // Imagen y color que se guardan en la cuenta
   const resolvedImageUrl = () => {
-    if (tipo === 'Tarjeta Credito' && network) return cardImageUrl(network.id)
-    if (bank?.id) return bankLogoUrl(bank.id)
+    if (tipo === 'Tarjeta Credito' && bank?.id && network) {
+      return cardImageUrl(bank.id, network.id, variant?.id ?? 'standard')
+    }
+    if (bank?.id) return bankIconUrl(bank.id)
     return ''
   }
   const resolvedColor = () => {
+    if (tipo === 'Tarjeta Credito' && variant) return variant.color
     if (tipo === 'Tarjeta Credito' && network) return network.color
     if (bank?.id) return bank.color
     return '#475569'
@@ -180,7 +190,18 @@ export default function OnboardingPage() {
                 {tipo === 'Tarjeta Credito' && (
                   <CardNetworkSelector
                     value={network?.id ?? ''}
-                    onChange={setNetwork}
+                    onChange={handleNetworkChange}
+                  />
+                )}
+
+                {/* ── Selector de variante (solo tarjetas con banco y red) ── */}
+                {tipo === 'Tarjeta Credito' && bank?.id && network?.id && (
+                  <CardVariantSelector
+                    bankId={bank.id}
+                    networkId={network.id}
+                    bankColor={bank.color}
+                    value={variant?.id ?? 'standard'}
+                    onChange={setVariant}
                   />
                 )}
 
@@ -227,12 +248,14 @@ export default function OnboardingPage() {
                     {tipo === 'Tarjeta Credito' && network ? (
                       <div
                         className="rounded-lg overflow-hidden flex items-center justify-center shrink-0"
-                        style={{ width: 56, height: 36, background: network.color }}
+                        style={{ width: 56, height: 36, background: resolvedColor() }}
                       >
-                        <img src={cardImageUrl(network.id)} alt={network.nombre}
-                          className="w-full h-full object-cover"
-                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                        />
+                        {bank?.id && (
+                          <img src={cardImageUrl(bank.id, network.id, variant?.id ?? 'standard')} alt={network.nombre}
+                            className="w-full h-full object-cover"
+                            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                          />
+                        )}
                       </div>
                     ) : bank?.id ? (
                       <BankLogo id={bank.id} nombre={bank.nombre} color={bank.color} size={36} />
