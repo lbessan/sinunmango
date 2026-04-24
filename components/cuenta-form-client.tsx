@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ImagenUploader } from './imagen-uploader'
+import { BankSelector, CardNetworkSelector } from './bank-selector'
+import { bankLogoUrl, cardImageUrl, type BankEntry, type CardNetwork } from '@/constants/banks'
 
 type CuentaForm = {
   id?: string
@@ -20,34 +22,36 @@ type CuentaForm = {
   color_primario: string
 }
 
-// Colores predefinidos de bancos argentinos comunes
-const COLORES_BANCO = [
-  { nombre: 'BBVA Francés',    color: '#004999' },
-  { nombre: 'Banco Galicia',   color: '#E30613' },
-  { nombre: 'Banco Provincia', color: '#005CA9' },
-  { nombre: 'Santander',       color: '#EC0000' },
-  { nombre: 'Mercado Pago',    color: '#009EE3' },
-  { nombre: 'Naranja X',       color: '#FF6200' },
-  { nombre: 'Brubank',         color: '#6100FF' },
-  { nombre: 'Uala',            color: '#7B2D8B' },
-  { nombre: 'Carrefour',       color: '#004A97' },
-  { nombre: 'Macro',           color: '#FFCC00' },
-  { nombre: 'HSBC',            color: '#DB0011' },
-  { nombre: 'Personalizado',   color: '#0d3b6e' },
-]
-
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-white'
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
 
 export function CuentaFormClient({ inicial }: { inicial: CuentaForm }) {
   const router = useRouter()
-  const [form, setForm] = useState<CuentaForm>(inicial)
+  const [form, setForm]     = useState<CuentaForm>(inicial)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
   const [error, setError]   = useState('')
+  const [selectedBank, setSelectedBank]       = useState<BankEntry | null>(null)
+  const [selectedNetwork, setSelectedNetwork] = useState<CardNetwork | null>(null)
 
   const set = (k: keyof CuentaForm, v: string | boolean) =>
     setForm(prev => ({ ...prev, [k]: v }))
+
+  // Cuando el usuario selecciona un banco, auto-complete color e imagen
+  const handleBankChange = (bank: BankEntry) => {
+    setSelectedBank(bank.id ? bank : null)
+    if (!bank.id) return
+    if (!form.nombre_cuenta) set('nombre_cuenta', bank.nombre)
+    set('color_primario', bank.color)
+    set('imagen_url', bankLogoUrl(bank.id))
+  }
+
+  // Cuando selecciona red de tarjeta, auto-complete imagen de tarjeta
+  const handleNetworkChange = (net: CardNetwork) => {
+    setSelectedNetwork(net)
+    set('color_primario', net.color)
+    set('imagen_url', cardImageUrl(net.id))
+  }
 
   const isTarjeta = form.tipo_cuenta === 'Tarjeta Credito'
   const isEditing = !!form.id
@@ -93,6 +97,23 @@ export function CuentaFormClient({ inicial }: { inicial: CuentaForm }) {
 
       <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
 
+        {/* ── Selector de banco / billetera ── */}
+        {(form.tipo_cuenta === 'Billetera/Banco' || form.tipo_cuenta === 'Tarjeta Credito') && (
+          <BankSelector
+            value={selectedBank?.id ?? ''}
+            onChange={handleBankChange}
+            label={form.tipo_cuenta === 'Tarjeta Credito' ? 'Banco emisor' : 'Banco o billetera'}
+          />
+        )}
+
+        {/* ── Selector de red (tarjetas) ── */}
+        {form.tipo_cuenta === 'Tarjeta Credito' && (
+          <CardNetworkSelector
+            value={selectedNetwork?.id ?? ''}
+            onChange={handleNetworkChange}
+          />
+        )}
+
         {/* Preview del banner */}
         <div
           className="rounded-xl h-20 flex items-center justify-center overflow-hidden relative"
@@ -106,20 +127,14 @@ export function CuentaFormClient({ inicial }: { inicial: CuentaForm }) {
 
         {/* Color de marca */}
         <div>
-          <label className={labelClass}>Color de marca</label>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {COLORES_BANCO.map(c => (
-              <button
-                key={c.color}
-                onClick={() => set('color_primario', c.color)}
-                title={c.nombre}
-                className={`w-7 h-7 rounded-full transition-all border-2 ${
-                  form.color_primario === c.color ? 'border-slate-800 scale-110' : 'border-transparent hover:scale-105'
-                }`}
-                style={{ background: c.color }}
-              />
-            ))}
-          </div>
+          <label className={labelClass}>
+            Color de marca
+            {(selectedBank || selectedNetwork) && (
+              <span className="ml-2 text-emerald-500 font-normal normal-case">
+                — asignado automáticamente
+              </span>
+            )}
+          </label>
           <div className="flex items-center gap-3">
             <input
               type="color"
@@ -133,6 +148,10 @@ export function CuentaFormClient({ inicial }: { inicial: CuentaForm }) {
               onChange={e => set('color_primario', e.target.value)}
               placeholder="#004999"
               className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono outline-none"
+            />
+            <div
+              className="w-10 h-10 rounded-lg shrink-0"
+              style={{ background: form.color_primario }}
             />
           </div>
         </div>
