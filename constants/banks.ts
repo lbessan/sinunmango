@@ -30,7 +30,7 @@ export const BANKS: BankEntry[] = [
   { id: 'hipotecario',  nombre: 'Banco Hipotecario',   color: '#F27321', tipo: 'banco' },  // naranja
   { id: 'industrial',   nombre: 'Banco Industrial',    color: '#013766', tipo: 'banco' },  // azul marino oscuro (Bind)
   { id: 'piano',        nombre: 'Banco Piano',         color: '#13294B', tipo: 'banco' },  // azul marino oscuro
-  { id: 'credicoop',    nombre: 'Banco Credicoop',     color: '#E31837', tipo: 'banco' },  // rojo
+  { id: 'credicoop',    nombre: 'Banco Credicoop',     color: '#605C50', tipo: 'banco' },  // gris/taupe (color del ícono)
   { id: 'columbia',     nombre: 'Banco Columbia',      color: '#004B8E', tipo: 'banco' },  // azul
   { id: 'carrefour',    nombre: 'Carrefour Banco',     color: '#254F9B', tipo: 'banco' },  // azul Carrefour
   // ── Billeteras virtuales ──────────────────────────────────────────────────
