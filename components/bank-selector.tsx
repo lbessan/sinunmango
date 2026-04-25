@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Search, X } from 'lucide-react'
 import {
-  BANKS, CARD_NETWORKS, CARD_VARIANTS, getCardVariants,
+  BANKS, CARD_NETWORKS, getNetworkVariants,
   bankIconUrl, bankBannerUrl, cardImageUrl,
   type BankEntry, type CardNetwork, type CardVariant,
 } from '@/constants/banks'
@@ -36,15 +36,16 @@ export function BankLogo({ id, nombre, color, size = 36 }: {
 }
 
 // ─── CardThumbnail ────────────────────────────────────────────────────────────
-// Miniatura de tarjeta de crédito. Carga la imagen específica de la variante;
+// Miniatura de tarjeta de crédito. Carga la imagen de /cards/{networkId}-{variantId}.png;
 // si no existe, muestra un placeholder con el color correspondiente.
-export function CardThumbnail({ bankId, networkId, variantId, bankColor, width = 72, height = 46 }: {
-  bankId: string; networkId: string; variantId: string
+export function CardThumbnail({ networkId, variantId, bankId, bankColor, width = 72, height = 46 }: {
+  networkId: string; variantId: string; bankId?: string
   bankColor: string; width?: number; height?: number
 }) {
   const [err, setErr] = useState(false)
-  const variant = CARD_VARIANTS.find(v => v.id === variantId)
-  const bg = variant?.color ?? bankColor
+  const variants = getNetworkVariants(networkId)
+  const variant  = variants.find(v => v.id === variantId)
+  const bg       = variant?.color ?? bankColor
 
   return (
     <div
@@ -53,7 +54,7 @@ export function CardThumbnail({ bankId, networkId, variantId, bankColor, width =
     >
       {!err && (
         <img
-          src={cardImageUrl(bankId, networkId, variantId)}
+          src={cardImageUrl(networkId, variantId, bankId)}
           alt={variantId}
           onError={() => setErr(true)}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -194,18 +195,17 @@ export function CardNetworkSelector({ value, onChange }: {
 
 // ─── CardVariantSelector ──────────────────────────────────────────────────────
 // Selector visual de variantes de tarjeta (Standard, Black, Gold, etc.)
-// Muestra una miniatura de cada variante. Si la imagen no existe, muestra
-// un placeholder con el color correspondiente.
-export function CardVariantSelector({ bankId, networkId, bankColor, value, onChange }: {
-  bankId:    string
+// Las variantes dependen de la red (visa/mastercard/amex/etc.), no del banco.
+export function CardVariantSelector({ networkId, bankId, bankColor, value, onChange }: {
   networkId: string
+  bankId?:   string   // opcional — solo para el caso especial NaranjaX
   bankColor: string
   value:     string
   onChange:  (variant: CardVariant) => void
 }) {
-  const variants = getCardVariants(bankId, networkId)
+  const variants = getNetworkVariants(networkId)
 
-  if (!bankId || !networkId) return null
+  if (!networkId) return null
 
   return (
     <div>
@@ -222,7 +222,7 @@ export function CardVariantSelector({ bankId, networkId, bankColor, value, onCha
               }`}
             >
               <CardThumbnail
-                bankId={bankId} networkId={networkId} variantId={v.id}
+                networkId={networkId} variantId={v.id} bankId={bankId}
                 bankColor={bankColor} width={88} height={56}
               />
               <span className={`text-[10px] font-semibold ${active ? 'text-slate-800' : 'text-slate-400'}`}>

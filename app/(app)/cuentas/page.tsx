@@ -69,14 +69,14 @@ export default async function CuentasPage() {
   const grupos: Record<string, typeof cuentas> = {
     'Billetera/Banco': [],
     'Efectivo': [],
-    'Tarjeta Credito': [],
   }
-  for (const c of cuentas ?? []) grupos[c.tipo_cuenta]?.push(c)
+  for (const c of cuentas ?? []) {
+    if (c.tipo_cuenta !== 'Tarjeta Credito') grupos[c.tipo_cuenta]?.push(c)
+  }
 
   const labelGrupo: Record<string, string> = {
     'Billetera/Banco': 'Billeteras y bancos',
     'Efectivo': 'Efectivo',
-    'Tarjeta Credito': 'Tarjetas de crédito',
   }
 
   return (
@@ -103,9 +103,7 @@ export default async function CuentasPage() {
           <div key={tipo}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{labelGrupo[tipo]}</h2>
-              {!isTarjeta && (
-                <span className="text-sm font-medium text-slate-500">Total: ${fmt(totalARS)}</span>
-              )}
+              <span className="text-sm font-medium text-slate-500">Total: ${fmt(totalARS)}</span>
             </div>
 
             <div className="space-y-2">
@@ -113,8 +111,6 @@ export default async function CuentasPage() {
                 const extra     = extraMap[c.id]
                 const imgUrl    = extra?.imagen_url
                 const colorPrim = extra?.color_primario ?? '#0d3b6e'
-                const cierre    = c.fecha_cierre_tarjeta ? new Date(c.fecha_cierre_tarjeta + 'T12:00:00').getDate() : null
-                const vence     = c.fecha_vencimiento_tarjeta ? new Date(c.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
 
                 return (
                   <div
@@ -125,26 +121,13 @@ export default async function CuentasPage() {
                       <Thumbnail imagenUrl={imgUrl} colorPrim={colorPrim} tipo={tipo} nombre={c.nombre_cuenta} moneda={c.moneda} />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-700 truncate">{c.nombre_cuenta}</p>
-                        {isTarjeta && cierre && vence ? (
-                          <p className="text-xs text-slate-400">Cierre {cierre} · Vence {vence}</p>
-                        ) : (
-                          <p className="text-xs text-slate-400">{c.tipo_cuenta} · {c.moneda}</p>
-                        )}
+                        <p className="text-xs text-slate-400">{c.tipo_cuenta} · {c.moneda}</p>
                       </div>
                     </Link>
                     <div className="flex items-center gap-3 shrink-0 px-4 py-3">
-                      {isTarjeta ? (
-                        <div className="text-right">
-                          <p className={`text-sm font-semibold ${(c.saldo_actual ?? 0) < 0 ? 'text-red-500' : 'text-slate-800'}`}>
-                            ${fmt(c.saldo_actual ?? 0)}
-                          </p>
-                          <p className="text-xs text-slate-400">acumulado</p>
-                        </div>
-                      ) : (
-                        <p className="text-sm font-semibold text-slate-800">
-                          {c.moneda === 'USD' ? 'US$' : '$'}{fmt(c.saldo_actual ?? 0)}
-                        </p>
-                      )}
+                      <p className="text-sm font-semibold text-slate-800">
+                        {c.moneda === 'USD' ? 'US$' : '$'}{fmt(c.saldo_actual ?? 0)}
+                      </p>
                       <Link href={`/cuentas/${c.id}`} className="text-slate-300 hover:text-slate-500">
                         <ChevronRight size={16} />
                       </Link>

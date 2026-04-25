@@ -70,41 +70,53 @@ export const CARD_NETWORKS: CardNetwork[] = [
   { id: 'maestro',    nombre: 'Maestro',           color: '#CC0000' },
 ]
 
-// ── Variantes de tarjeta ──────────────────────────────────────────────────────
-// Archivo esperado: /public/cards/{bankId}-{networkId}-{variantId}.png
-// Si el archivo no existe el código muestra un placeholder con el color del banco.
+// ── Variantes de tarjeta por red ──────────────────────────────────────────────
+// Imágenes en /public/cards/{networkId}-{variantId}.png
+// Casos especiales:
+//   Cabal    → /cards/cabal.png  (única variante)
+//   Naranjax → /cards/naranjax.png  (banco=naranjax + red=naranja)
 
 export type CardVariant = {
-  id:    string   // slug usado en el nombre del archivo
+  id:    string   // slug del archivo
   label: string   // nombre visible
-  color: string   // color de fondo cuando no hay imagen
+  color: string   // color de fondo fallback
 }
 
-// Variantes genéricas que aplican a cualquier banco + red
-export const CARD_VARIANTS: CardVariant[] = [
-  { id: 'standard',  label: 'Clásica',   color: '#1e293b' },
-  { id: 'black',     label: 'Black',     color: '#0f0f0f' },
-  { id: 'gold',      label: 'Gold',      color: '#7c5c1e' },
-  { id: 'platinum',  label: 'Platinum',  color: '#475569' },
-  { id: 'signature', label: 'Signature', color: '#1e3a5f' },
-  { id: 'infinite',  label: 'Infinite',  color: '#0d1117' },
-]
+export const CARD_VARIANTS_BY_NETWORK: Record<string, CardVariant[]> = {
+  visa: [
+    { id: 'standard',  label: 'Standard',        color: '#1A1F71' },
+    { id: 'gold',      label: 'Gold',            color: '#7c5c1e' },
+    { id: 'platinum',  label: 'Platinum',        color: '#475569' },
+    { id: 'signature', label: 'Signature',       color: '#1e3a5f' },
+  ],
+  mastercard: [
+    { id: 'standard',  label: 'Standard',        color: '#252525' },
+    { id: 'gold',      label: 'Gold',            color: '#7c5c1e' },
+    { id: 'platinum',  label: 'Platinum',        color: '#475569' },
+    { id: 'black',     label: 'Black',           color: '#0f0f0f' },
+  ],
+  amex: [
+    { id: 'standard',  label: 'Standard',        color: '#007BC1' },
+    { id: 'gold',      label: 'Gold',            color: '#7c5c1e' },
+    { id: 'platinum',  label: 'Platinum',        color: '#475569' },
+    { id: 'aplus',     label: 'Aerolíneas Plus', color: '#003580' },
+    { id: 'green',     label: 'Green',           color: '#2d6a4f' },
+  ],
+  naranja: [
+    { id: 'standard',  label: 'Standard',        color: '#FF6B00' },
+  ],
+  cabal: [
+    { id: 'standard',  label: 'Standard',        color: '#00529B' },
+  ],
+  maestro: [
+    { id: 'standard',  label: 'Standard',        color: '#CC0000' },
+  ],
+}
 
-// Configuración específica por banco: qué variantes tienen imágenes disponibles.
-// Cuando el repositorio de imágenes esté cargado, completar/ajustar esta lista.
-// Si un banco no aparece acá, se muestran las variantes genéricas sin imagen previa.
-export const BANK_CARD_VARIANTS: Record<string, Record<string, string[]>> = {
-  // bankId → networkId → variantes con imagen disponible
-  bbva:        { mastercard: ['black', 'standard'], visa: ['black', 'standard'] },
-  galicia:     { visa: ['standard', 'black', 'signature'], mastercard: ['standard'] },
-  provincia:   { visa: ['standard', 'platinum'] },
-  santander:   { visa: ['standard', 'black', 'gold'], mastercard: ['standard'] },
-  macro:       { visa: ['standard', 'gold'], mastercard: ['standard'] },
-  naranjax:    { mastercard: ['standard'] },
-  mercadopago: { mastercard: ['standard', 'black'] },
-  hsbc:        { visa: ['standard', 'black', 'platinum'] },
-  icbc:        { visa: ['standard', 'gold', 'platinum'] },
-  supervielle: { visa: ['standard', 'black'], mastercard: ['standard'] },
+/** Variantes disponibles para una red de tarjeta */
+export function getNetworkVariants(networkId: string): CardVariant[] {
+  return CARD_VARIANTS_BY_NETWORK[networkId]
+    ?? [{ id: 'standard', label: 'Standard', color: '#1e293b' }]
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -119,14 +131,14 @@ export function bankBannerUrl(bankId: string): string {
   return `/banks/${bankId}-banner.png`
 }
 
-/** Imagen de tarjeta de crédito (800×504px) */
-export function cardImageUrl(bankId: string, networkId: string, variantId: string): string {
-  return `/cards/${bankId}-${networkId}-${variantId}.png`
-}
-
-/** Variantes disponibles para una combinación banco+red */
-export function getCardVariants(bankId: string, networkId: string): CardVariant[] {
-  const available = BANK_CARD_VARIANTS[bankId]?.[networkId]
-  if (!available) return CARD_VARIANTS  // mostrar todas si no hay config específica
-  return CARD_VARIANTS.filter(v => available.includes(v.id))
+/**
+ * Imagen de tarjeta de crédito (800×504px).
+ * - Cabal:    /cards/cabal.png
+ * - NaranjaX: /cards/naranjax.png  (solo cuando bankId='naranjax' y networkId='naranja')
+ * - Resto:    /cards/{networkId}-{variantId}.png
+ */
+export function cardImageUrl(networkId: string, variantId: string, bankId?: string): string {
+  if (networkId === 'cabal') return '/cards/cabal.png'
+  if (bankId === 'naranjax' && networkId === 'naranja') return '/cards/naranjax.png'
+  return `/cards/${networkId}-${variantId}.png`
 }
