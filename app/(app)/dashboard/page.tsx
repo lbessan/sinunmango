@@ -2,6 +2,7 @@ import { adminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { TourTrigger } from '@/components/tour-trigger'
 
 const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
@@ -68,9 +69,14 @@ async function calcularProyecciones(userId: string, meses = 4) {
   return { proyectadoActual: Math.round(proyectadoActual), proyecciones }
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tour?: string }>
+}) {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
+  const { tour } = await searchParams
 
   const today    = new Date()
   const todayDay = today.getDate()
@@ -318,6 +324,8 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+      {/* Tour overlay — visible when ?tour=1 */}
+      {tour === '1' && <TourTrigger />}
     </div>
   )
 }
