@@ -84,7 +84,20 @@ export default async function DashboardPage() {
       calcularProyecciones(user.id, 4),
     ])
 
-  if (!resumen) return <p className="text-red-500">Error cargando datos</p>
+  if (!resumen) return (
+    <div className="max-w-lg mx-auto mt-20 text-center space-y-4">
+      <p className="text-5xl">🥭</p>
+      <h2 className="text-xl font-semibold text-slate-800">¡Bienvenido a sinunmango!</h2>
+      <p className="text-slate-500 text-sm">Todavía no tenés cuentas cargadas. Creá tu primera cuenta para ver el dashboard.</p>
+      <a
+        href="/onboarding"
+        className="inline-block mt-2 px-6 py-3 rounded-xl text-sm font-semibold text-white"
+        style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
+      >
+        Configurar mi primera cuenta →
+      </a>
+    </div>
+  )
 
   const extraMap = Object.fromEntries((cuentasExtra ?? []).map(c => [c.id, c]))
 

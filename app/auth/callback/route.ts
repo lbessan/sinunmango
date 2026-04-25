@@ -70,6 +70,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login?error=not_authorized', request.url))
   }
 
+  // Si el usuario nunca completó el onboarding (no tiene cuentas), mandarlo ahí
+  const { count } = await adminClient
+    .from('cuentas')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+
+  if (!count || count === 0) {
+    return NextResponse.redirect(new URL('/onboarding', request.url))
+  }
+
   return NextResponse.redirect(new URL('/dashboard', request.url))
 }
 
