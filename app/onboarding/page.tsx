@@ -182,9 +182,7 @@ export default function OnboardingPage() {
                     value={nombre}
                     onChange={e => setNombre(e.target.value)}
                     placeholder={
-                      tipo === 'Tarjeta Credito'
-                        ? bank ? `${network?.nombre ?? 'Visa'} ${bank.nombre}` : 'Ej: Visa Galicia'
-                        : tipo === 'Billetera/Banco'
+                      tipo === 'Billetera/Banco'
                         ? bank?.nombre ?? 'Ej: Mercado Pago'
                         : tipo === 'Efectivo-USD' ? 'Efectivo USD' : 'Efectivo ARS'
                     }
@@ -193,8 +191,8 @@ export default function OnboardingPage() {
                   />
                 </div>
 
-                {/* ── Saldo inicial (no para tarjetas) ── */}
-                {tipo !== 'Tarjeta Credito' && (
+                {/* ── Saldo inicial ── */}
+                {(
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
                       Saldo actual {tipo === 'Efectivo-USD' ? '(USD)' : '(ARS)'}
