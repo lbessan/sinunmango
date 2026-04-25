@@ -52,6 +52,7 @@ export async function Sidebar() {
           Configuración
         </p>
         <NavItem href="/cuentas"       icon={<CreditCard size={17} />} label="Cuentas" />
+        <NavItem href="/tarjetas"      icon={<CreditCard size={17} />} label="Tarjetas" />
         <NavItem href="/gastos-fijos"  icon={<Receipt size={17} />}    label="Gastos fijos" />
         <NavItem href="/configuracion" icon={<Settings size={17} />}   label="Configuración" />
       </nav>

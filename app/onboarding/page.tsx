@@ -3,16 +3,15 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle, ChevronRight, Landmark, Wallet, CreditCard, DollarSign } from 'lucide-react'
-import { BankSelector, CardNetworkSelector, CardVariantSelector, BankLogo } from '@/components/bank-selector'
-import { bankIconUrl, bankBannerUrl, cardImageUrl, type BankEntry, type CardNetwork, type CardVariant } from '@/constants/banks'
+import { CheckCircle, ChevronRight, Landmark, Wallet, DollarSign } from 'lucide-react'
+import { BankSelector, BankLogo } from '@/components/bank-selector'
+import { bankIconUrl, bankBannerUrl, type BankEntry } from '@/constants/banks'
 
 // ─── Tipos de cuenta ──────────────────────────────────────────────────────────
 const TIPOS = [
-  { id: 'Billetera/Banco', label: 'Banco o billetera', sub: 'Mercado Pago, Galicia, Brubank...', icon: <Landmark size={20} /> },
-  { id: 'Efectivo',        label: 'Efectivo en pesos',  sub: 'Dinero físico ARS',                icon: <Wallet size={20} /> },
+  { id: 'Billetera/Banco', label: 'Banco o billetera',  sub: 'Mercado Pago, Galicia, Brubank...', icon: <Landmark size={20} /> },
+  { id: 'Efectivo',        label: 'Efectivo en pesos',   sub: 'Dinero físico ARS',                icon: <Wallet size={20} /> },
   { id: 'Efectivo-USD',    label: 'Efectivo en dólares', sub: 'Dinero físico USD',               icon: <DollarSign size={20} /> },
-  { id: 'Tarjeta Credito', label: 'Tarjeta de crédito', sub: 'Visa, Mastercard, Amex...',        icon: <CreditCard size={20} /> },
 ] as const
 
 type TipoId = typeof TIPOS[number]['id']
@@ -21,39 +20,26 @@ export default function OnboardingPage() {
   const router   = useRouter()
   const supabase = createClient()
 
-  const [step, setStep]         = useState<1 | 2>(1)
-  const [tipo, setTipo]         = useState<TipoId | ''>('')
-  const [nombre, setNombre]     = useState('')
-  const [saldo, setSaldo]       = useState('0')
-  const [bank, setBank]         = useState<BankEntry | null>(null)
-  const [network, setNetwork]   = useState<CardNetwork | null>(null)
-  const [variant, setVariant]   = useState<CardVariant | null>(null)
-  const [saving, setSaving]     = useState(false)
-  const [error, setError]       = useState<string | null>(null)
+  const [step, setStep]     = useState<1 | 2>(1)
+  const [tipo, setTipo]     = useState<TipoId | ''>('')
+  const [nombre, setNombre] = useState('')
+  const [saldo, setSaldo]   = useState('0')
+  const [bank, setBank]     = useState<BankEntry | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState<string | null>(null)
 
-  // Cuando seleccionan un banco, auto-completar el nombre si está vacío
+  // Cuando seleccionan un banco, auto-completar nombre e institución
   const handleBankChange = (b: BankEntry) => {
     setBank(b.id ? b : null)
-    setVariant(null)
     if (b.id && !nombre) setNombre(b.nombre)
-  }
-
-  const handleNetworkChange = (net: CardNetwork) => {
-    setNetwork(net)
-    setVariant(null)
   }
 
   // Imagen y color que se guardan en la cuenta
   const resolvedImageUrl = () => {
-    if (tipo === 'Tarjeta Credito' && bank?.id && network) {
-      return cardImageUrl(bank.id, network.id, variant?.id ?? 'standard')
-    }
     if (bank?.id) return bankIconUrl(bank.id)
     return ''
   }
   const resolvedColor = () => {
-    if (tipo === 'Tarjeta Credito' && variant) return variant.color
-    if (tipo === 'Tarjeta Credito' && network) return network.color
     if (bank?.id) return bank.color
     return '#475569'
   }
@@ -177,31 +163,12 @@ export default function OnboardingPage() {
 
               <div className="space-y-4">
 
-                {/* ── Selector de banco (Billetera/Banco y Tarjeta) ── */}
-                {(tipo === 'Billetera/Banco' || tipo === 'Tarjeta Credito') && (
+                {/* ── Selector de banco (solo para Billetera/Banco) ── */}
+                {tipo === 'Billetera/Banco' && (
                   <BankSelector
                     value={bank?.id ?? ''}
                     onChange={handleBankChange}
-                    label={tipo === 'Tarjeta Credito' ? 'Banco emisor' : 'Banco o billetera'}
-                  />
-                )}
-
-                {/* ── Selector de red (solo tarjetas) ── */}
-                {tipo === 'Tarjeta Credito' && (
-                  <CardNetworkSelector
-                    value={network?.id ?? ''}
-                    onChange={handleNetworkChange}
-                  />
-                )}
-
-                {/* ── Selector de variante (solo tarjetas con banco y red) ── */}
-                {tipo === 'Tarjeta Credito' && bank?.id && network?.id && (
-                  <CardVariantSelector
-                    bankId={bank.id}
-                    networkId={network.id}
-                    bankColor={bank.color}
-                    value={variant?.id ?? 'standard'}
-                    onChange={setVariant}
+                    label="Banco o billetera"
                   />
                 )}
 
@@ -245,19 +212,7 @@ export default function OnboardingPage() {
                 {/* ── Preview de la cuenta que se va a crear ── */}
                 {nombre.trim() && (
                   <div className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    {tipo === 'Tarjeta Credito' && network ? (
-                      <div
-                        className="rounded-lg overflow-hidden flex items-center justify-center shrink-0"
-                        style={{ width: 56, height: 36, background: resolvedColor() }}
-                      >
-                        {bank?.id && (
-                          <img src={cardImageUrl(bank.id, network.id, variant?.id ?? 'standard')} alt={network.nombre}
-                            className="w-full h-full object-cover"
-                            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                          />
-                        )}
-                      </div>
-                    ) : bank?.id ? (
+                    {bank?.id ? (
                       <BankLogo id={bank.id} nombre={bank.nombre} color={bank.color} size={36} />
                     ) : (
                       <div className="w-9 h-9 rounded-lg bg-slate-200 shrink-0" />
@@ -265,7 +220,7 @@ export default function OnboardingPage() {
                     <div>
                       <p className="text-sm font-semibold text-slate-800">{nombre}</p>
                       <p className="text-xs text-slate-400">
-                        {tipo === 'Efectivo-USD' ? 'Efectivo · USD' : tipo === 'Tarjeta Credito' ? 'Tarjeta de crédito' : tipo} ·{' '}
+                        {tipo === 'Efectivo-USD' ? 'Efectivo · USD' : tipo} ·{' '}
                         {tipo === 'Efectivo-USD' ? 'USD' : 'ARS'}
                       </p>
                     </div>
