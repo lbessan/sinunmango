@@ -32,7 +32,6 @@ function LoginContent() {
         className="hidden lg:flex lg:w-1/2 relative items-center justify-center overflow-hidden"
         style={{ background: 'linear-gradient(135deg, var(--accent2, #0d3b6e) 0%, var(--accent, #1a6b5a) 100%)' }}
       >
-        <img src="/fondo.png" alt="Fondo" className="absolute inset-0 w-full h-full object-cover opacity-20" />
         <div className="relative z-10 text-center px-12">
           <img src="/logo.png" alt="Logo sinunmango" className="w-36 h-36 mx-auto mb-8 object-contain" />
           <h1 className="text-5xl font-bold mb-3">
