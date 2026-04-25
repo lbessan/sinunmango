@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { CheckCircle, ChevronRight, Landmark, Wallet, DollarSign } from 'lucide-react'
 import { BankSelector, BankLogo } from '@/components/bank-selector'
 import { bankIconUrl, bankBannerUrl, type BankEntry } from '@/constants/banks'
@@ -17,8 +16,7 @@ const TIPOS = [
 type TipoId = typeof TIPOS[number]['id']
 
 export default function OnboardingPage() {
-  const router   = useRouter()
-  const supabase = createClient()
+  const router = useRouter()
 
   const [step, setStep]     = useState<1 | 2>(1)
   const [tipo, setTipo]     = useState<TipoId | ''>('')
@@ -48,25 +46,27 @@ export default function OnboardingPage() {
     if (!nombre.trim()) { setError('Ingresá un nombre para la cuenta'); return }
     setSaving(true); setError(null)
 
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) { router.replace('/login'); return }
-
     const tipoReal   = tipo === 'Efectivo-USD' ? 'Efectivo' : tipo as string
     const monedaReal = tipo === 'Efectivo-USD' ? 'USD' : 'ARS'
 
-    const { error: err } = await supabase.from('cuentas').insert({
-      nombre_cuenta:   nombre.trim(),
-      tipo_cuenta:     tipoReal,
-      moneda:          monedaReal,
-      saldo_inicial:   parseFloat(saldo) || 0,
-      activa:          true,
-      user_id:         session.user.id,
-      imagen_url:      resolvedImageUrl() || null,
-      color_primario:  resolvedColor(),
+    const res = await fetch('/api/cuentas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre_cuenta:  nombre.trim(),
+        tipo_cuenta:    tipoReal,
+        moneda:         monedaReal,
+        saldo_inicial:  parseFloat(saldo) || 0,
+        activa:         true,
+        imagen_url:     resolvedImageUrl() || null,
+        imagen_banner_url: bank?.id ? `/banks/${bank.id}-banner.png` : null,
+        color_primario: resolvedColor(),
+        institucion:    bank?.nombre ?? null,
+      }),
     })
 
     setSaving(false)
-    if (err) { setError('No se pudo crear la cuenta. Intentá de nuevo.'); return }
+    if (!res.ok) { setError('No se pudo crear la cuenta. Intentá de nuevo.'); return }
     router.push('/dashboard')
   }
 
