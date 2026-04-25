@@ -406,11 +406,11 @@ export default function OnboardingPage() {
                           >
                             <img
                               src={`/cards/${net.id}-standard.png`}
-                              alt={net.label}
+                              alt={net.nombre}
                               className="w-10 h-7 object-cover rounded"
                               onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
                             />
-                            <span className="text-xs font-medium text-slate-700">{net.label}</span>
+                            <span className="text-xs font-medium text-slate-700">{net.nombre}</span>
                           </button>
                         ))}
                       </div>
