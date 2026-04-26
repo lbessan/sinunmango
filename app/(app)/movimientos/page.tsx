@@ -186,7 +186,7 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
                     <td className="px-4 py-3">
                       <p className="font-medium text-slate-700 max-w-xs truncate">{mov.detalle ?? '—'}</p>
                       {mov.cuotas_total > 1 && (
-                        <p className="text-xs text-slate-400">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>
+                        <p className="text-xs text-slate-400">Cuota {Math.min(mov.cuota_actual, mov.cuotas_total)}/{Math.max(mov.cuota_actual, mov.cuotas_total)}</p>
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-sm">

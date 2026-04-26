@@ -142,7 +142,7 @@ export default async function ResumenPage({
                       <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{m.fecha}</td>
                       <td className="px-4 py-3">
                         <p className="text-sm font-medium text-slate-700 max-w-xs truncate">{m.detalle ?? '—'}</p>
-                        {m.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {m.cuota_actual}/{m.cuotas_total}</p>}
+                        {m.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {Math.min(m.cuota_actual, m.cuotas_total)}/{Math.max(m.cuota_actual, m.cuotas_total)}</p>}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
                       <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{m.cuenta_origen_nombre ?? '—'}</td>
@@ -216,7 +216,7 @@ export default async function ResumenPage({
                           <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{m.fecha}</td>
                           <td className="px-4 py-3">
                             <p className="text-sm font-medium text-slate-700 max-w-xs truncate">{m.detalle ?? '—'}</p>
-                            {m.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {m.cuota_actual}/{m.cuotas_total}</p>}
+                            {m.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {Math.min(m.cuota_actual, m.cuotas_total)}/{Math.max(m.cuota_actual, m.cuotas_total)}</p>}
                           </td>
                           <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
                           <td className="px-4 py-3 font-semibold text-right text-amber-700 whitespace-nowrap">${fmt(m.monto_estimado ?? m.monto)}</td>

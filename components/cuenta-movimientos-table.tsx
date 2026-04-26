@@ -479,7 +479,12 @@ export function CuentaMovimientosTable({
                     <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{mov.fecha}</td>
                     <td className="px-4 py-3">
                       <p className="text-sm font-medium text-slate-700 max-w-xs truncate">{mov.detalle ?? '—'}</p>
-                      {mov.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>}
+                      {mov.cuotas_total > 1 && (() => {
+                        // Normaliza datos viejos donde actual/total pudieran estar invertidos
+                        const ca = Math.min(mov.cuota_actual, mov.cuotas_total)
+                        const ct = Math.max(mov.cuota_actual, mov.cuotas_total)
+                        return <p className="text-xs text-slate-400">Cuota {ca}/{ct}</p>
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap">
                       <span className="flex items-center gap-1.5">

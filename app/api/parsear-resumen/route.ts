@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
 1. CONSUMOS del titular principal (sección "Consumos" o similar — NO los de tarjetas adicionales)
 2. DESCUENTOS Y CRÉDITOS A FAVOR que aparezcan EN CUALQUIER PARTE del resumen (incluso fuera de la sección de consumos, en el encabezado o en secciones propias). Ejemplos: "CR.RG ...", "BONIF. CONSUMO ...", "REINTEGRO ...", "DESCUENTO ...", ajustes con monto negativo.
-3. UN ÚNICO item agrupado con el TOTAL de la sección "Impuestos, cargos e intereses" (si existe)
+3. TODOS los items INDIVIDUALES de la sección "Impuestos, cargos e intereses" (si existe), cada uno por separado
 ${movsResumen}
 Para cada item extraé:
 - fecha (formato YYYY-MM-DD)
@@ -73,10 +73,10 @@ Para cada item extraé:
 - cuotas (número de cuota actual si dice "C.XX/YY", sino 1)
 - cuotas_total (total de cuotas si dice "C.XX/YY", sino 1)
 - ya_existe (true si coincide con alguno de los movimientos ya cargados por fecha y monto similar)
-- es_impuesto (true SOLO para el item agrupado de impuestos/cargos)
+- es_impuesto (true para CADA item de la sección impuestos/cargos/intereses, individualmente)
 - es_descuento (true para bonificaciones, reintegros, descuentos y créditos a favor — siempre monto POSITIVO)
 
-Para los impuestos: sumá todos los montos de esa sección en UN SOLO item con detalle "Impuestos y cargos" y la fecha del cierre del resumen.
+Para los impuestos: listá CADA LÍNEA individualmente (no las sumes). Si el PDF tiene varias páginas, asegurate de incluir todos los items de impuestos de todas las páginas. Cada item va con es_impuesto: true.
 Para descuentos: incluílos individualmente con monto POSITIVO y es_descuento: true. Buscalos en TODO el documento, no solo en la sección de consumos.
 
 Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni texto adicional:
@@ -117,8 +117,19 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
     },
     {
       "fecha": "2026-04-23",
-      "detalle": "Impuestos y cargos",
-      "monto_ars": 108504.06,
+      "detalle": "Impuesto de Sellos",
+      "monto_ars": 19351.77,
+      "monto_usd": null,
+      "cuotas": 1,
+      "cuotas_total": 1,
+      "ya_existe": false,
+      "es_impuesto": true,
+      "es_descuento": false
+    },
+    {
+      "fecha": "2026-04-23",
+      "detalle": "DB IVA 21%",
+      "monto_ars": 12842.97,
       "monto_usd": null,
       "cuotas": 1,
       "cuotas_total": 1,
@@ -136,7 +147,8 @@ Notas importantes:
 - Para cuotas: si dice "C.04/12" significa cuota 4 de 12 — extraé SOLO esa cuota tal cual aparece
 - Limpiá el detalle: "CARREFOUR MAR DEL PLATA" → "Carrefour Mar del Plata"
 - Si no hay sección de impuestos/cargos, no incluyas ningún item con es_impuesto: true
-- Los montos siempre van como número POSITIVO — es_descuento: true indica que es un crédito a favor`,
+- Los montos siempre van como número POSITIVO — es_descuento: true indica que es un crédito a favor
+- IMPORTANTE: si el documento tiene múltiples páginas, revisá TODAS las páginas para impuestos y descuentos`,
             },
           ],
         },
