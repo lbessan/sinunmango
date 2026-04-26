@@ -13,9 +13,10 @@ export default async function EditarGastoFijoPage({
 
   const { id } = await params
 
-  const [{ data: gasto }, { data: categorias }, { data: cuentas }] = await Promise.all([
+  const [{ data: gasto }, { data: categorias }, { data: subcategorias }, { data: cuentas }] = await Promise.all([
     adminClient.from('gastos_fijos').select('*').eq('id', id).eq('user_id', user.id).single(),
     adminClient.from('categorias').select('id, nombre_categoria, icono').eq('user_id', user.id).order('nombre_categoria'),
+    adminClient.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', user.id),
     adminClient.from('cuentas').select('id, nombre_cuenta, tipo_cuenta').eq('activa', true).eq('user_id', user.id),
   ])
 
@@ -27,6 +28,7 @@ export default async function EditarGastoFijoPage({
         id: gasto.id,
         nombre_gasto: gasto.nombre_gasto ?? '',
         id_categoria: gasto.id_categoria ?? '',
+        id_subcategoria: gasto.id_subcategoria ?? '',
         monto_estimado: String(gasto.monto_estimado ?? ''),
         moneda: gasto.moneda ?? 'ARS',
         dia_vencimiento: String(gasto.dia_vencimiento ?? ''),
@@ -34,6 +36,7 @@ export default async function EditarGastoFijoPage({
         activo: gasto.activo ?? true,
       }}
       categorias={categorias ?? []}
+      subcategorias={subcategorias ?? []}
       cuentas={cuentas ?? []}
     />
   )
