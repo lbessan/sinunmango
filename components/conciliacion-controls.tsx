@@ -12,6 +12,7 @@ const fmt = (n: number) =>
 type Mov = {
   id: string; fecha: string; detalle: string | null
   monto: number; monto_estimado: number | null; conciliado: boolean
+  moneda: string; cotizacion: number | null
   categoria_icono: string | null; categoria_nombre: string | null
   cuotas_total: number; cuota_actual: number
 }
@@ -44,25 +45,36 @@ function formatPeriodo(p: string): string {
 function EditModal({ mov, onSave, onClose }: {
   mov: Mov; onSave: (u: Partial<Mov>) => void; onClose: () => void
 }) {
-  const [fecha,   setFecha]   = useState(mov.fecha)
-  const [detalle, setDetalle] = useState(mov.detalle ?? '')
-  const [monto,   setMonto]   = useState(String(mov.monto))
-  const [saving,  setSaving]  = useState(false)
-  const [error,   setError]   = useState('')
+  const [fecha,      setFecha]      = useState(mov.fecha)
+  const [detalle,    setDetalle]    = useState(mov.detalle ?? '')
+  const [monto,      setMonto]      = useState(String(mov.monto))
+  const [cotizacion, setCotizacion] = useState(String(mov.cotizacion ?? ''))
+  const [saving,     setSaving]     = useState(false)
+  const [error,      setError]      = useState('')
+  const isUSD = mov.moneda === 'USD'
 
   const handleGuardar = async () => {
     if (!monto) { setError('El monto es obligatorio'); return }
     setSaving(true)
+    const body: any = { fecha, detalle: detalle || null, monto: parseFloat(monto) }
+    if (isUSD && cotizacion) body.cotizacion = parseFloat(cotizacion)
     const res = await fetch(`/api/movimientos/${mov.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fecha, detalle: detalle || null, monto: parseFloat(monto) }),
+      body: JSON.stringify(body),
     })
     setSaving(false)
-    if (res.ok) { onSave({ fecha, detalle: detalle || null, monto: parseFloat(monto) }); onClose() }
-    else { const d = await res.json(); setError(d.error ?? 'Error') }
+    const montoEstimado = isUSD && cotizacion ? parseFloat(monto) * parseFloat(cotizacion) : parseFloat(monto)
+    if (res.ok) {
+      onSave({ fecha, detalle: detalle || null, monto: parseFloat(monto),
+        cotizacion: isUSD && cotizacion ? parseFloat(cotizacion) : mov.cotizacion,
+        monto_estimado: montoEstimado })
+      onClose()
+    } else { const d = await res.json(); setError(d.error ?? 'Error') }
   }
 
   const inputClass = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 bg-white'
+  const montoArs = isUSD && monto && cotizacion ? parseFloat(monto) * parseFloat(cotizacion) : null
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
@@ -73,7 +85,27 @@ function EditModal({ mov, onSave, onClose }: {
         <div className="px-5 py-4 space-y-3">
           <div><label className="block text-xs text-slate-500 mb-1">Fecha</label><input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} /></div>
           <div><label className="block text-xs text-slate-500 mb-1">Detalle</label><input type="text" value={detalle} onChange={e => setDetalle(e.target.value)} className={inputClass} /></div>
-          <div><label className="block text-xs text-slate-500 mb-1">Monto</label><input type="number" step="0.01" value={monto} onChange={e => setMonto(e.target.value)} className={`${inputClass} font-mono`} /></div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">
+              Monto {isUSD ? '(U$S)' : '($)'}
+            </label>
+            <input type="number" step="0.01" value={monto} onChange={e => setMonto(e.target.value)} className={`${inputClass} font-mono`} />
+          </div>
+          {isUSD && (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-2">
+              <label className="block text-xs font-medium text-blue-700">Tipo de cambio ($ por U$S)</label>
+              <input type="number" step="0.01" value={cotizacion} onChange={e => setCotizacion(e.target.value)}
+                placeholder="Ej: 1250" className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm outline-none bg-white font-mono" />
+              {montoArs !== null && (
+                <p className="text-xs text-blue-600 font-medium">
+                  = ${fmt(montoArs)} ARS
+                </p>
+              )}
+              {!cotizacion && (
+                <p className="text-xs text-blue-500 opacity-70">Sin tipo de cambio — se mostrará solo en U$S</p>
+              )}
+            </div>
+          )}
           {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
         </div>
         <div className="px-5 pb-5 flex gap-3">
@@ -599,6 +631,9 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
   const [importPdf,   setImportPdf]  = useState(false)
   const [sortKey,     setSortKey]    = useState<'fecha' | 'detalle' | 'categoria_nombre' | 'monto'>('fecha')
   const [sortDir,     setSortDir]    = useState<'asc' | 'desc'>('asc')
+  // USD bulk cotización
+  const [usdRate,     setUsdRate]    = useState('')
+  const [usdSaving,   setUsdSaving]  = useState(false)
 
   const toggleSort = (key: typeof sortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -620,9 +655,43 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
 
   const noConciliados   = movs.filter(m => !m.conciliado)
   const conciliados     = movs.filter(m => m.conciliado)
-  const totalPeriodo    = movs.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
-  const totalConciliado = conciliados.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
-  const totalPendiente  = noConciliados.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
+
+  // USD tracking
+  const movsUSD        = movs.filter(m => m.moneda === 'USD')
+  const totalUSD       = movsUSD.reduce((a, m) => a + m.monto, 0)
+  const hasUSD         = movsUSD.length > 0
+  const usdSinCotiz    = movsUSD.filter(m => !m.cotizacion).length
+  const currentAvgRate = movsUSD.length > 0 && movsUSD.every(m => m.cotizacion)
+    ? movsUSD.reduce((a, m) => a + m.cotizacion!, 0) / movsUSD.length
+    : null
+
+  const aplicarCotizacionUSD = async () => {
+    if (!usdRate) return
+    const rate = parseFloat(usdRate)
+    if (isNaN(rate) || rate <= 0) return
+    setUsdSaving(true)
+    await Promise.all(
+      movsUSD.map(m =>
+        fetch(`/api/movimientos/${m.id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cotizacion: rate }),
+        })
+      )
+    )
+    setUsdSaving(false)
+    setUsdRate('')
+    setMovs(prev => prev.map(m =>
+      m.moneda === 'USD' ? { ...m, cotizacion: rate, monto_estimado: m.monto * rate } : m
+    ))
+  }
+
+  const movsARS        = movs.filter(m => m.moneda !== 'USD')
+  const totalPeriodo    = movsARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
+    + movsUSD.reduce((a, m) => a + (m.cotizacion ? m.monto * m.cotizacion : 0), 0)
+  const totalConciliado = conciliados.reduce((a, m) =>
+    a + (m.moneda === 'USD' ? (m.cotizacion ? m.monto * m.cotizacion : 0) : (m.monto_estimado ?? m.monto)), 0)
+  const totalPendiente  = noConciliados.reduce((a, m) =>
+    a + (m.moneda === 'USD' ? (m.cotizacion ? m.monto * m.cotizacion : 0) : (m.monto_estimado ?? m.monto)), 0)
 
   const toggle = async (id: string, actual: boolean) => {
     setLoading(id)
@@ -648,30 +717,44 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
     </th>
   )
 
-  const MovRow = ({ mov }: { mov: Mov }) => (
-    <tr className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-      <td className="px-4 py-3">
-        <button onClick={() => toggle(mov.id, mov.conciliado)} disabled={loading === mov.id}>
-          {loading === mov.id ? <span className="text-slate-300 text-xs">···</span>
-            : mov.conciliado ? <CheckCircle size={18} className="text-emerald-500" />
-            : <Circle size={18} className="text-slate-300 hover:text-slate-400" />}
-        </button>
-      </td>
-      <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{mov.fecha}</td>
-      <td className="px-4 py-3">
-        <p className={`text-sm font-medium max-w-xs truncate ${mov.conciliado ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{mov.detalle ?? '—'}</p>
-        {mov.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>}
-      </td>
-      <td className="px-4 py-3 whitespace-nowrap">
-        <span className="flex items-center gap-1.5 text-sm text-slate-500">
-          <IconoCategoria icono={mov.categoria_icono} size={16} />
-          {mov.categoria_nombre ?? '—'}
-        </span>
-      </td>
-      <td className="px-4 py-3 font-semibold text-right text-slate-800 whitespace-nowrap">${fmt(mov.monto_estimado ?? mov.monto)}</td>
-      <td className="px-4 py-3"><button onClick={() => setEditando(mov)} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100"><Pencil size={13} /></button></td>
-    </tr>
-  )
+  const MovRow = ({ mov }: { mov: Mov }) => {
+    const isUSD = mov.moneda === 'USD'
+    return (
+      <tr className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+        <td className="px-4 py-3">
+          <button onClick={() => toggle(mov.id, mov.conciliado)} disabled={loading === mov.id}>
+            {loading === mov.id ? <span className="text-slate-300 text-xs">···</span>
+              : mov.conciliado ? <CheckCircle size={18} className="text-emerald-500" />
+              : <Circle size={18} className="text-slate-300 hover:text-slate-400" />}
+          </button>
+        </td>
+        <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{mov.fecha}</td>
+        <td className="px-4 py-3">
+          <p className={`text-sm font-medium max-w-xs truncate ${mov.conciliado ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{mov.detalle ?? '—'}</p>
+          {mov.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>}
+        </td>
+        <td className="px-4 py-3 whitespace-nowrap">
+          <span className="flex items-center gap-1.5 text-sm text-slate-500">
+            <IconoCategoria icono={mov.categoria_icono} size={16} />
+            {mov.categoria_nombre ?? '—'}
+          </span>
+        </td>
+        <td className="px-4 py-3 text-right whitespace-nowrap">
+          {isUSD ? (
+            <div>
+              <p className="text-sm font-semibold text-blue-700">U$S {fmt(mov.monto)}</p>
+              {mov.cotizacion
+                ? <p className="text-xs text-slate-400">≈ ${fmt(mov.monto * mov.cotizacion)}</p>
+                : <p className="text-xs text-amber-500">sin cotización</p>}
+            </div>
+          ) : (
+            <p className="text-sm font-semibold text-slate-800">${fmt(mov.monto_estimado ?? mov.monto)}</p>
+          )}
+        </td>
+        <td className="px-4 py-3"><button onClick={() => setEditando(mov)} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100"><Pencil size={13} /></button></td>
+      </tr>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -680,6 +763,60 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
         <div className="bg-emerald-50 rounded-xl p-4"><p className="text-xs text-emerald-600 uppercase tracking-wide mb-1">Conciliados</p><p className="text-xl font-bold text-emerald-700">${fmt(totalConciliado)}</p><p className="text-xs text-emerald-500 mt-1">{conciliados.length} movimientos</p></div>
         <div className={`rounded-xl p-4 ${noConciliados.length > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}><p className={`text-xs uppercase tracking-wide mb-1 ${noConciliados.length > 0 ? 'text-amber-600' : 'text-slate-400'}`}>Pendientes</p><p className={`text-xl font-bold ${noConciliados.length > 0 ? 'text-amber-700' : 'text-slate-400'}`}>${fmt(totalPendiente)}</p><p className={`text-xs mt-1 ${noConciliados.length > 0 ? 'text-amber-500' : 'text-slate-400'}`}>{noConciliados.length} movimientos</p></div>
       </div>
+
+      {/* Panel USD */}
+      {hasUSD && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-1">
+                Gastos en dólares · {movsUSD.length} movimiento{movsUSD.length !== 1 ? 's' : ''}
+              </p>
+              <p className="text-2xl font-bold text-blue-800">U$S {fmt(totalUSD)}</p>
+              {currentAvgRate && (
+                <p className="text-xs text-blue-500 mt-0.5">
+                  Cotización actual: ${fmt(currentAvgRate)} por U$S
+                  → Total estimado ${fmt(totalUSD * currentAvgRate)}
+                </p>
+              )}
+              {usdSinCotiz > 0 && (
+                <p className="text-xs text-amber-600 mt-0.5">
+                  ⚠ {usdSinCotiz} movimiento{usdSinCotiz !== 1 ? 's' : ''} sin cotización asignada
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div>
+                <p className="text-xs text-blue-600 mb-1 font-medium">
+                  {currentAvgRate ? 'Actualizar tipo de cambio real' : 'Ingresar tipo de cambio'}
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="number" step="0.01" value={usdRate}
+                    onChange={e => setUsdRate(e.target.value)}
+                    placeholder={currentAvgRate ? fmt(currentAvgRate) : 'Ej: 1250'}
+                    className="w-36 px-3 py-2 border border-blue-200 rounded-lg text-sm font-mono bg-white outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                  <button
+                    onClick={aplicarCotizacionUSD}
+                    disabled={usdSaving || !usdRate}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 whitespace-nowrap"
+                    style={{ background: 'linear-gradient(90deg, #1e40af, #1d4ed8)' }}
+                  >
+                    {usdSaving ? 'Aplicando...' : 'Aplicar a todos'}
+                  </button>
+                </div>
+                {usdRate && !isNaN(parseFloat(usdRate)) && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    U$S {fmt(totalUSD)} × ${parseFloat(usdRate).toLocaleString('es-AR')} = <strong>${fmt(totalUSD * parseFloat(usdRate))}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-end gap-2">
         <button onClick={() => setImportPdf(true)} className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-medium border border-slate-200 text-slate-600 hover:bg-white transition-colors"><FileText size={15} />Importar PDF</button>
         <button onClick={() => setAgregando(true)} className="flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium" style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}><Plus size={15} />Agregar movimiento</button>
