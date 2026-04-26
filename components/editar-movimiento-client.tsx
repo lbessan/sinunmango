@@ -55,47 +55,57 @@ export function EditarMovimientoClient({
   const [error, setError] = useState('')
 
   const [form, setForm] = useState({
-    fecha:         movimiento.fecha ?? '',
-    detalle:       movimiento.detalle ?? '',
-    monto:         String(movimiento.monto ?? ''),
-    moneda:        movimiento.moneda ?? 'ARS',
-    cotizacion:    String(movimiento.cotizacion ?? ''),
-    conciliado:    movimiento.conciliado ?? false,
-    cuenta_origen: movimiento.cuenta_origen ?? '',
-    categoria:     movimiento.categoria ?? '',
-    subcategoria:  movimiento.subcategoria ?? '',
+    fecha:          movimiento.fecha ?? '',
+    detalle:        movimiento.detalle ?? '',
+    monto:          String(movimiento.monto ?? ''),
+    moneda:         movimiento.moneda ?? 'ARS',
+    cotizacion:     String(movimiento.cotizacion ?? ''),
+    conciliado:     movimiento.conciliado ?? false,
+    cuenta_origen:  movimiento.cuenta_origen ?? '',
+    categoria:      movimiento.categoria ?? '',
+    subcategoria:   movimiento.subcategoria ?? '',
+    // Período: guardado en YYYY-MM para <input type="month">; se puede pisar manualmente
+    periodo_mes:    (movimiento.periodo_tarjeta ?? '').slice(0, 7),
+    periodo_manual: false as boolean,
   })
 
   const set = (k: string, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
 
-  const cuentaSeleccionada  = cuentas.find(c => c.id === form.cuenta_origen)
+  const cuentaSeleccionada    = cuentas.find(c => c.id === form.cuenta_origen)
   const categoriaSeleccionada = categorias.find(c => c.id === form.categoria)
-  const subcatsFiltradas    = subcategorias.filter(s => s.categoria_padre === form.categoria)
-  const isUSD               = form.moneda === 'USD'
-  const isTarjeta           = cuentaSeleccionada?.tipo_cuenta === 'Tarjeta Credito'
-  const periodoPreview      = form.fecha && form.cuenta_origen
-    ? new Date(calcularPeriodo(form.fecha, cuentaSeleccionada) + 'T12:00:00')
+  const subcatsFiltradas      = subcategorias.filter(s => s.categoria_padre === form.categoria)
+  const isUSD                 = form.moneda === 'USD'
+  const isTarjeta             = cuentaSeleccionada?.tipo_cuenta === 'Tarjeta Credito'
+
+  // Período auto-calculado (cuando el usuario no lo pisó manualmente)
+  const periodoAuto = form.fecha && form.cuenta_origen
+    ? calcularPeriodo(form.fecha, cuentaSeleccionada).slice(0, 7)
+    : ''
+  const periodoEfectivo = form.periodo_manual ? form.periodo_mes : periodoAuto
+
+  const periodoLabel = periodoEfectivo
+    ? new Date(periodoEfectivo + '-01T12:00:00')
         .toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
     : null
 
   const handleGuardar = async () => {
     setSaving(true)
     setError('')
-    const periodo = calcularPeriodo(form.fecha, cuentaSeleccionada)
+    const periodo = (periodoEfectivo || periodoAuto) + '-01'
 
     const res = await fetch(`/api/movimientos/${movimiento.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        fecha:          form.fecha,
-        detalle:        form.detalle || null,
-        monto:          parseFloat(form.monto) || 0,
-        moneda:         form.moneda,
-        cotizacion:     isUSD && form.cotizacion ? parseFloat(form.cotizacion) : null,
-        conciliado:     form.conciliado,
-        cuenta_origen:  form.cuenta_origen,
-        categoria:      form.categoria || null,
-        subcategoria:   form.subcategoria || null,
+        fecha:           form.fecha,
+        detalle:         form.detalle || null,
+        monto:           parseFloat(form.monto) || 0,
+        moneda:          form.moneda,
+        cotizacion:      isUSD && form.cotizacion ? parseFloat(form.cotizacion) : null,
+        conciliado:      form.conciliado,
+        cuenta_origen:   form.cuenta_origen,
+        categoria:       form.categoria || null,
+        subcategoria:    form.subcategoria || null,
         tipo_movimiento: categoriaSeleccionada?.tipo_default ?? movimiento.tipo_movimiento,
         periodo_tarjeta: periodo,
       }),
@@ -195,13 +205,42 @@ export function EditarMovimientoClient({
           </select>
         </div>
 
-        {periodoPreview && (
-          <div className="bg-slate-50 rounded-xl px-4 py-3 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Período de imputación</span>
-            <span className="font-semibold text-slate-700">
-              {periodoPreview}
-              {isTarjeta && <span className="ml-2 text-amber-600 font-normal">(tarjeta)</span>}
-            </span>
+        {/* Período de imputación — editable */}
+        {(isTarjeta || form.cuenta_origen) && (
+          <div className="bg-slate-50 rounded-xl px-4 py-3 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">Período de imputación</span>
+              {!form.periodo_manual && periodoLabel && (
+                <span className="text-slate-400">
+                  Auto: <span className="font-semibold text-slate-600">{periodoLabel}</span>
+                  {isTarjeta && <span className="ml-1 text-amber-500">(tarjeta)</span>}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="month"
+                value={form.periodo_manual ? form.periodo_mes : periodoAuto}
+                onChange={e => {
+                  set('periodo_mes', e.target.value)
+                  set('periodo_manual', true)
+                }}
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 bg-white"
+              />
+              {form.periodo_manual && (
+                <button
+                  onClick={() => set('periodo_manual', false)}
+                  className="text-xs text-blue-500 hover:text-blue-700 whitespace-nowrap"
+                >
+                  Restaurar auto
+                </button>
+              )}
+            </div>
+            {form.periodo_manual && periodoEfectivo && (
+              <p className="text-xs text-amber-600">
+                ⚠ Período sobreescrito manualmente
+              </p>
+            )}
           </div>
         )}
 

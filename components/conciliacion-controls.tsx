@@ -2,9 +2,12 @@
 
 import { useState, useMemo, useRef } from 'react'
 import { CheckCircle, Circle, Pencil, X, Plus, Save, ArrowUpDown, ArrowUp, ArrowDown, FileText, Upload, AlertCircle, CheckSquare, Square } from 'lucide-react'
-import { NuevoItemModal } from '@/components/nuevo-item-modal'
-import { IconoCategoria } from '@/components/icono-categoria'
+import { NuevoItemModal }  from '@/components/nuevo-item-modal'
+import { IconoCategoria }  from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
+
+// Re-export calcularPeriodo signature compatible with conciliacion helpers
+// (uses cierreDay/venceDay numbers, not cuenta objects)
 
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -16,6 +19,8 @@ type Mov = {
   categoria_icono: string | null; categoria_nombre: string | null
   cuotas_total: number; cuota_actual: number
   tipo_movimiento?: string   // 'Gasto' | 'Ingreso' — Ingreso = descuento/bonificación
+  categoria?: string | null; subcategoria?: string | null
+  periodo_tarjeta?: string | null
 }
 type Categoria   = { id: string; nombre_categoria: string; icono: string | null; tipo_default?: string }
 type Subcategoria = { id: string; categoria_padre: string; nombre_subcategoria: string }
@@ -42,76 +47,194 @@ function formatPeriodo(p: string): string {
     .replace(/^\w/, c => c.toUpperCase())
 }
 
-// ─── Modal editar movimiento ──────────────────────────────────────────────────
-function EditModal({ mov, onSave, onClose }: {
-  mov: Mov; onSave: (u: Partial<Mov>) => void; onClose: () => void
+// ─── Modal editar movimiento (full) ──────────────────────────────────────────
+function EditModal({ mov, categorias, subcategorias, cierreDay, venceDay, onSave, onClose }: {
+  mov: Mov
+  categorias: Categoria[]; subcategorias: Subcategoria[]
+  cierreDay?: number | null; venceDay?: number | null
+  onSave: (u: Partial<Mov>) => void; onClose: () => void
 }) {
-  const [fecha,      setFecha]      = useState(mov.fecha)
-  const [detalle,    setDetalle]    = useState(mov.detalle ?? '')
-  const [monto,      setMonto]      = useState(String(mov.monto))
-  const [cotizacion, setCotizacion] = useState(String(mov.cotizacion ?? ''))
-  const [saving,     setSaving]     = useState(false)
-  const [error,      setError]      = useState('')
-  const isUSD = mov.moneda === 'USD'
+  const ic = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 bg-white'
+
+  const [fecha,        setFecha]        = useState(mov.fecha)
+  const [detalle,      setDetalle]      = useState(mov.detalle ?? '')
+  const [monto,        setMonto]        = useState(String(mov.monto))
+  const [moneda,       setMoneda]       = useState(mov.moneda ?? 'ARS')
+  const [cotizacion,   setCotizacion]   = useState(String(mov.cotizacion ?? ''))
+  const [conciliado,   setConciliado]   = useState(mov.conciliado)
+  const [catId,        setCatId]        = useState(mov.categoria ?? '')
+  const [subcatId,     setSubcatId]     = useState(mov.subcategoria ?? '')
+  const [periodoMes,   setPeriodoMes]   = useState((mov.periodo_tarjeta ?? '').slice(0, 7))
+  const [periodoManual,setPeriodoManual]= useState(false)
+  const [saving,       setSaving]       = useState(false)
+  const [error,        setError]        = useState('')
+
+  const isUSD        = moneda === 'USD'
+  const isTarjeta    = !!(cierreDay && venceDay)
+  const subcatsOfCat = subcategorias.filter(s => s.categoria_padre === catId)
+  const cat          = categorias.find(c => c.id === catId)
+
+  // Período auto
+  const periodoAuto = fecha ? calcularPeriodo(fecha, cierreDay ?? null, venceDay ?? null, isTarjeta).slice(0, 7) : ''
+  const periodoEfectivo = periodoManual ? periodoMes : periodoAuto
+  const periodoLabel = periodoEfectivo
+    ? new Date(periodoEfectivo + '-01T12:00:00').toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+    : null
+
+  const montoArs = isUSD && monto && cotizacion
+    ? parseFloat(monto) * parseFloat(cotizacion)
+    : null
 
   const handleGuardar = async () => {
     if (!monto) { setError('El monto es obligatorio'); return }
     setSaving(true)
-    const body: any = { fecha, detalle: detalle || null, monto: parseFloat(monto) }
-    if (isUSD && cotizacion) body.cotizacion = parseFloat(cotizacion)
+    const periodo = (periodoEfectivo || periodoAuto) + '-01'
+    const body: any = {
+      fecha,
+      detalle:         detalle || null,
+      monto:           parseFloat(monto),
+      moneda,
+      cotizacion:      isUSD && cotizacion ? parseFloat(cotizacion) : null,
+      conciliado,
+      categoria:       catId   || null,
+      subcategoria:    subcatId || null,
+      tipo_movimiento: cat?.tipo_default ?? mov.tipo_movimiento,
+      periodo_tarjeta: periodo,
+    }
     const res = await fetch(`/api/movimientos/${mov.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
     setSaving(false)
-    const montoEstimado = isUSD && cotizacion ? parseFloat(monto) * parseFloat(cotizacion) : parseFloat(monto)
     if (res.ok) {
-      onSave({ fecha, detalle: detalle || null, monto: parseFloat(monto),
+      const montoEst = isUSD && cotizacion ? parseFloat(monto) * parseFloat(cotizacion) : parseFloat(monto)
+      onSave({
+        fecha, detalle: detalle || null,
+        monto: parseFloat(monto),
+        moneda,
         cotizacion: isUSD && cotizacion ? parseFloat(cotizacion) : mov.cotizacion,
-        monto_estimado: montoEstimado })
+        monto_estimado: montoEst,
+        conciliado,
+        categoria:    catId   || null,
+        subcategoria: subcatId || null,
+        categoria_nombre: cat?.nombre_categoria ?? mov.categoria_nombre,
+        categoria_icono:  cat?.icono          ?? mov.categoria_icono,
+        periodo_tarjeta:  periodo,
+        tipo_movimiento:  cat?.tipo_default ?? mov.tipo_movimiento,
+      })
       onClose()
     } else { const d = await res.json(); setError(d.error ?? 'Error') }
   }
 
-  const inputClass = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 bg-white'
-  const montoArs = isUSD && monto && cotizacion ? parseFloat(monto) * parseFloat(cotizacion) : null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
           <h3 className="text-sm font-semibold text-slate-800">Editar movimiento</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X size={15} /></button>
         </div>
-        <div className="px-5 py-4 space-y-3">
-          <div><label className="block text-xs text-slate-500 mb-1">Fecha</label><input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} /></div>
-          <div><label className="block text-xs text-slate-500 mb-1">Detalle</label><input type="text" value={detalle} onChange={e => setDetalle(e.target.value)} className={inputClass} /></div>
-          <div>
-            <label className="block text-xs text-slate-500 mb-1">
-              Monto {isUSD ? '(U$S)' : '($)'}
-            </label>
-            <input type="number" step="0.01" value={monto} onChange={e => setMonto(e.target.value)} className={`${inputClass} font-mono`} />
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          {/* Fecha + Detalle */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Fecha</label>
+              <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className={ic} />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Detalle</label>
+              <input type="text" value={detalle} onChange={e => setDetalle(e.target.value)} className={ic} />
+            </div>
           </div>
+
+          {/* Moneda + Monto */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Moneda</label>
+              <select value={moneda} onChange={e => setMoneda(e.target.value)} className={ic}>
+                <option value="ARS">ARS</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs text-slate-500 mb-1">Monto {isUSD ? '(U$S)' : '($)'}</label>
+              <input type="number" step="0.01" value={monto} onChange={e => setMonto(e.target.value)} className={`${ic} font-mono`} />
+            </div>
+          </div>
+
+          {/* USD cotización + conciliado */}
           {isUSD && (
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-2">
               <label className="block text-xs font-medium text-blue-700">Tipo de cambio ($ por U$S)</label>
-              <input type="number" step="0.01" value={cotizacion} onChange={e => setCotizacion(e.target.value)}
-                placeholder="Ej: 1250" className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm outline-none bg-white font-mono" />
-              {montoArs !== null && (
-                <p className="text-xs text-blue-600 font-medium">
-                  = ${fmt(montoArs)} ARS
-                </p>
-              )}
-              {!cotizacion && (
-                <p className="text-xs text-blue-500 opacity-70">Sin tipo de cambio — se mostrará solo en U$S</p>
-              )}
+              <div className="flex gap-3 items-center">
+                <input type="number" step="0.01" value={cotizacion} onChange={e => setCotizacion(e.target.value)}
+                  placeholder="Ej: 1420" className="flex-1 px-3 py-2 border border-blue-200 rounded-lg text-sm outline-none bg-white font-mono" />
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs text-blue-700 shrink-0">
+                  <input type="checkbox" checked={conciliado} onChange={e => setConciliado(e.target.checked)} className="w-3.5 h-3.5" />
+                  Conciliado
+                </label>
+              </div>
+              {montoArs !== null && <p className="text-xs text-blue-600 font-medium">= ${fmt(montoArs)} ARS</p>}
+              {!cotizacion && <p className="text-xs text-blue-400">Sin tipo de cambio — solo en U$S</p>}
             </div>
           )}
+
+          {/* Categoría */}
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Categoría</label>
+            <CategoriaSelect
+              categorias={categorias}
+              value={catId}
+              onChange={id => { setCatId(id); setSubcatId('') }}
+            />
+          </div>
+
+          {/* Subcategoría */}
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Subcategoría</label>
+            <select value={subcatId} onChange={e => setSubcatId(e.target.value)} className={ic} disabled={subcatsOfCat.length === 0}>
+              <option value="">{subcatsOfCat.length === 0 ? '(sin subcats)' : '— elegir —'}</option>
+              {subcatsOfCat.map(s => <option key={s.id} value={s.id}>{s.nombre_subcategoria}</option>)}
+            </select>
+          </div>
+
+          {/* Período de imputación */}
+          <div className="bg-slate-50 rounded-xl px-4 py-3 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">Período de imputación</span>
+              {!periodoManual && periodoLabel && (
+                <span className="text-slate-400">
+                  Auto: <span className="font-semibold text-slate-600">{periodoLabel}</span>
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="month"
+                value={periodoManual ? periodoMes : periodoAuto}
+                onChange={e => { setPeriodoMes(e.target.value); setPeriodoManual(true) }}
+                className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 bg-white"
+              />
+              {periodoManual && (
+                <button onClick={() => setPeriodoManual(false)} className="text-xs text-blue-500 hover:text-blue-700 whitespace-nowrap">
+                  Restaurar auto
+                </button>
+              )}
+            </div>
+            {periodoManual && (
+              <p className="text-xs text-amber-600">⚠ Período sobreescrito manualmente</p>
+            )}
+          </div>
+
           {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
         </div>
-        <div className="px-5 pb-5 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
-          <button onClick={handleGuardar} disabled={saving} className="flex-1 py-2 rounded-lg text-sm font-medium text-white flex items-center justify-center gap-2" style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))', opacity: saving ? 0.7 : 1 }}>
+
+        <div className="px-5 pb-5 pt-3 border-t border-slate-100 flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+          <button onClick={handleGuardar} disabled={saving}
+            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white flex items-center justify-center gap-2 disabled:opacity-70"
+            style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}>
             <Save size={13} />{saving ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
@@ -954,7 +1077,17 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
       )}
 
       {movs.length === 0 && <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400 text-sm">No hay movimientos para este periodo</div>}
-      {editando && <EditModal mov={editando} onSave={u => setMovs(prev => prev.map(m => m.id === editando.id ? { ...m, ...u } : m))} onClose={() => setEditando(null)} />}
+      {editando && (
+        <EditModal
+          mov={editando}
+          categorias={categorias}
+          subcategorias={subcategorias}
+          cierreDay={cierreDay}
+          venceDay={venceDay}
+          onSave={u => setMovs(prev => prev.map(m => m.id === editando.id ? { ...m, ...u } : m))}
+          onClose={() => setEditando(null)}
+        />
+      )}
       {agregando && <AddModal cuentaId={cuentaId} periodo={periodo} cierreDay={cierreDay} venceDay={venceDay} categorias={categorias} subcategorias={subcategorias} onAdd={nuevos => setMovs(prev => [...prev, ...nuevos].sort((a, b) => a.fecha.localeCompare(b.fecha)))} onClose={() => setAgregando(false)} />}
       {importPdf && (
         <ImportarPdfModal
