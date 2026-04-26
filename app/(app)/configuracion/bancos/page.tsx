@@ -7,13 +7,11 @@ export default async function BancosPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  // Traemos todas las cuentas del usuario (incluyendo tarjetas)
-  const { data: cuentas } = await adminClient
-    .from('cuentas')
-    .select('id, nombre_cuenta, institucion, tipo_cuenta, imagen_url, imagen_banner_url, color_primario, activa')
+  const { data: bancosCustom } = await adminClient
+    .from('bancos_custom')
+    .select('*')
     .eq('user_id', user.id)
-    .order('institucion')
-    .order('nombre_cuenta')
+    .order('nombre')
 
-  return <BancosClient cuentas={cuentas ?? []} />
+  return <BancosClient bancosCustom={bancosCustom ?? []} />
 }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BankSelector, CardNetworkSelector, CardVariantSelector, CardThumbnail } from './bank-selector'
 import { cardImageUrl, getNetworkVariants, type BankEntry, type CardNetwork, type CardVariant } from '@/constants/banks'
+import { DeleteButton } from '@/components/delete-button'
 
 type TarjetaForm = {
   id?: string
@@ -256,6 +257,17 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
             {saved ? '✓ Guardado' : saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Agregar tarjeta'}
           </button>
         </div>
+
+        {isEditing && form.id && (
+          <div className="pt-2 flex justify-end">
+            <DeleteButton
+              endpoint={`/api/tarjetas/${form.id}`}
+              redirectTo="/tarjetas"
+              label={form.nombre}
+              variant="button"
+            />
+          </div>
+        )}
       </div>
     </div>
   )

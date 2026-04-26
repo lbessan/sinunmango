@@ -10,12 +10,13 @@ import {
 
 // ─── BankLogo ─────────────────────────────────────────────────────────────────
 // Muestra el ícono cuadrado del banco. Si el PNG no existe, muestra la inicial
-// con el color del banco como fallback.
-export function BankLogo({ id, nombre, color, size = 36 }: {
-  id: string; nombre: string; color: string; size?: number
+// con el color del banco como fallback. Si `directUrl` se proporciona, se usa en lugar de bankIconUrl.
+export function BankLogo({ id, nombre, color, size = 36, directUrl }: {
+  id: string; nombre: string; color: string; size?: number; directUrl?: string | null
 }) {
   const [err, setErr] = useState(false)
-  if (err) {
+  const src = directUrl || (id ? bankIconUrl(id) : null)
+  if (err || !src) {
     return (
       <div
         style={{ width: size, height: size, backgroundColor: color, borderRadius: 8, flexShrink: 0 }}
@@ -27,7 +28,7 @@ export function BankLogo({ id, nombre, color, size = 36 }: {
   }
   return (
     <img
-      src={bankIconUrl(id)}
+      src={src}
       alt={nombre}
       onError={() => setErr(true)}
       style={{ width: size, height: size, borderRadius: 8, objectFit: 'contain', flexShrink: 0, background: '#f1f5f9' }}
@@ -71,14 +72,26 @@ const TIPO_LABELS: Record<BankEntry['tipo'], string> = {
   crypto:    'Cripto / fintech',
 }
 
+// Bancos custom del usuario (fetched client-side)
+type CustomBank = { id: string; nombre: string; color: string; imagen_url: string | null }
+
 export function BankSelector({ value, onChange, label = 'Banco o billetera' }: {
   value: string; onChange: (bank: BankEntry) => void; label?: string
 }) {
-  const [open, setOpen]     = useState(false)
-  const [search, setSearch] = useState('')
-  const ref                 = useRef<HTMLDivElement>(null)
-  const selected            = BANKS.find(b => b.id === value)
+  const [open,         setOpen]         = useState(false)
+  const [search,       setSearch]       = useState('')
+  const [customBanks,  setCustomBanks]  = useState<CustomBank[]>([])
+  const ref = useRef<HTMLDivElement>(null)
 
+  // Fetch custom banks once on mount
+  useEffect(() => {
+    fetch('/api/bancos-custom')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCustomBanks(data))
+      .catch(() => {})
+  }, [])
+
+  // Click outside to close
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
@@ -87,9 +100,14 @@ export function BankSelector({ value, onChange, label = 'Banco o billetera' }: {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const filtered = search.trim()
-    ? BANKS.filter(b => b.nombre.toLowerCase().includes(search.toLowerCase()))
-    : BANKS
+  // Unify selected lookup: check both BANKS and customBanks
+  const selectedStd    = BANKS.find(b => b.id === value)
+  const selectedCustom = customBanks.find(b => b.id === value)
+  const selected       = selectedStd ?? (selectedCustom ? { ...selectedCustom, tipo: 'banco' as const } : null)
+
+  const q = search.toLowerCase()
+  const filtered = q ? BANKS.filter(b => b.nombre.toLowerCase().includes(q)) : BANKS
+  const filteredCustom = q ? customBanks.filter(b => b.nombre.toLowerCase().includes(q)) : customBanks
 
   const grouped = (Object.keys(TIPO_LABELS) as BankEntry['tipo'][]).reduce((acc, tipo) => {
     acc[tipo] = filtered.filter(b => b.tipo === tipo)
@@ -108,7 +126,8 @@ export function BankSelector({ value, onChange, label = 'Banco o billetera' }: {
       >
         {selected ? (
           <>
-            <BankLogo id={selected.id} nombre={selected.nombre} color={selected.color} size={32} />
+            <BankLogo id={selected.id} nombre={selected.nombre} color={selected.color} size={32}
+              directUrl={selectedCustom?.imagen_url ?? null} />
             <span className="flex-1 text-sm font-medium text-slate-800 truncate">{selected.nombre}</span>
             <button type="button" onClick={e => { e.stopPropagation(); onChange({ id: '', nombre: '', color: '', tipo: 'banco' }) }}
               className="text-slate-300 hover:text-slate-500 shrink-0">
@@ -136,6 +155,26 @@ export function BankSelector({ value, onChange, label = 'Banco o billetera' }: {
             </div>
           </div>
           <div className="max-h-72 overflow-y-auto">
+            {/* Bancos personalizados primero */}
+            {filteredCustom.length > 0 && (
+              <div>
+                <p className="px-3 py-1.5 text-[10px] font-bold text-amber-500 uppercase tracking-wider bg-amber-50 border-b border-amber-100">
+                  ✦ Mis bancos
+                </p>
+                {filteredCustom.map(bank => (
+                  <button key={bank.id} type="button"
+                    onClick={() => { onChange({ id: bank.id, nombre: bank.nombre, color: bank.color, tipo: 'banco' }); setOpen(false); setSearch('') }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left ${value === bank.id ? 'bg-slate-50' : ''}`}
+                  >
+                    <BankLogo id={bank.id} nombre={bank.nombre} color={bank.color} size={30} directUrl={bank.imagen_url} />
+                    <span className="text-sm text-slate-700 font-medium">{bank.nombre}</span>
+                    {value === bank.id && <span className="ml-auto text-xs font-bold" style={{ color: bank.color }}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Bancos de fábrica */}
             {(Object.keys(TIPO_LABELS) as BankEntry['tipo'][]).map(tipo => {
               const lista = grouped[tipo] ?? []
               if (!lista.length) return null
@@ -157,7 +196,7 @@ export function BankSelector({ value, onChange, label = 'Banco o billetera' }: {
                 </div>
               )
             })}
-            {!filtered.length && (
+            {!filtered.length && !filteredCustom.length && (
               <p className="text-sm text-slate-400 text-center py-6">No encontramos "{search}"</p>
             )}
           </div>
