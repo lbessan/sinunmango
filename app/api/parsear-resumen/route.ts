@@ -59,16 +59,22 @@ export async function POST(req: NextRequest) {
             },
             {
               type: 'text',
-              text: `Analizá este resumen de tarjeta de crédito y extraé TODOS los consumos/gastos del titular principal (no los de tarjetas adicionales, no los impuestos ni cargos administrativos).
+              text: `Analizá este resumen de tarjeta de crédito y extraé dos tipos de items:
+
+1. CONSUMOS del titular principal (sección "Consumos" o similar — NO los de tarjetas adicionales)
+2. UN ÚNICO item agrupado con el TOTAL de la sección "Impuestos, cargos e intereses" (si existe)
 ${movsResumen}
-Para cada transacción extraé:
+Para cada item extraé:
 - fecha (formato YYYY-MM-DD)
-- detalle (descripción limpia del comercio, sin códigos de cupón)
+- detalle (descripción limpia, sin códigos de cupón)
 - monto_ars (monto en pesos, número sin símbolo. Si es en dólares, poné null)
 - monto_usd (monto en dólares, número sin símbolo. Si es en pesos, poné null)
-- cuotas (número de cuota si dice "C.XX/YY" donde XX es la actual y YY el total, sino 1)
-- cuotas_total (total de cuotas, sino 1)
-- ya_existe (true si coincide exactamente con uno de los movimientos ya cargados por fecha y monto aproximado, false si no)
+- cuotas (número de cuota actual si dice "C.XX/YY", sino 1)
+- cuotas_total (total de cuotas si dice "C.XX/YY", sino 1)
+- ya_existe (true si coincide con uno de los movimientos ya cargados por fecha y monto similar)
+- es_impuesto (true SOLO para el item agrupado de impuestos/cargos, false para consumos normales)
+
+Para los impuestos: sumá todos los montos de esa sección en UN SOLO item con detalle "Impuestos y cargos" y la fecha del cierre del resumen.
 
 Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni texto adicional:
 {
@@ -80,16 +86,28 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
       "monto_usd": 5.00,
       "cuotas": 1,
       "cuotas_total": 1,
-      "ya_existe": false
+      "ya_existe": false,
+      "es_impuesto": false
+    },
+    {
+      "fecha": "2026-04-23",
+      "detalle": "Impuestos y cargos",
+      "monto_ars": 108504.06,
+      "monto_usd": null,
+      "cuotas": 1,
+      "cuotas_total": 1,
+      "ya_existe": false,
+      "es_impuesto": true
     }
   ]
 }
 
 Notas importantes:
-- Ignorá pagos, ajustes, créditos y devoluciones (montos negativos)
-- Ignorá impuestos, comisiones, percepciones e intereses
-- Para cuotas: si dice "C.04/12" significa cuota 4 de 12 — extraé SOLO esa cuota tal cual aparece en el resumen
-- Limpuá el detalle: "CARREFOUR MAR DEL PLATA" → "Carrefour Mar del Plata"`,
+- Ignorá pagos, ajustes, créditos y devoluciones (montos negativos o en la sección de pagos)
+- NO incluyas consumos de tarjetas adicionales (titular adicional)
+- Para cuotas: si dice "C.04/12" significa cuota 4 de 12 — extraé SOLO esa cuota tal cual aparece
+- Limpiá el detalle: "CARREFOUR MAR DEL PLATA" → "Carrefour Mar del Plata"
+- Si no hay sección de impuestos/cargos, no incluyas ningún item con es_impuesto: true`,
             },
           ],
         },
