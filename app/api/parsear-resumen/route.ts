@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model:      'claude-opus-4-6',
-      max_tokens: 4096,
+      max_tokens: 16000,
       messages: [
         {
           role: 'user',
@@ -145,7 +145,7 @@ Notas importantes:
 - SÍ incluí descuentos y créditos a favor aunque estén fuera de la sección de consumos
 - NO incluyas consumos de tarjetas adicionales (titular adicional)
 - Para cuotas: si dice "C.04/12" significa cuota 4 de 12 — extraé SOLO esa cuota tal cual aparece
-- Limpiá el detalle: "CARREFOUR MAR DEL PLATA" → "Carrefour Mar del Plata"
+- Limpiá el detalle: "CARREFOUR MAR DEL PLATA" → "Carrefour Mar del Plata". NUNCA uses markdown (no links, no asteriscos, solo texto plano)
 - Si no hay sección de impuestos/cargos, no incluyas ningún item con es_impuesto: true
 - Los montos siempre van como número POSITIVO — es_descuento: true indica que es un crédito a favor
 - IMPORTANTE: si el documento tiene múltiples páginas, revisá TODAS las páginas para impuestos y descuentos`,
@@ -166,14 +166,40 @@ Notas importantes:
   const rawText   = claudeData.content?.[0]?.text ?? ''
 
   try {
-    const clean  = rawText.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim()
-    const parsed = JSON.parse(clean)
-    return NextResponse.json({ ok: true, transacciones: parsed.transacciones ?? [] })
+    const clean = rawText
+      .replace(/```(?:json)?\n?/g, '')
+      .replace(/```/g, '')
+      .trim()
+
+    // Intento de parse normal
+    try {
+      const parsed = JSON.parse(clean)
+      return NextResponse.json({ ok: true, transacciones: parsed.transacciones ?? [] })
+    } catch {
+      // Si el JSON está truncado, intentar rescatar lo que se pudo parsear
+      // buscamos el array de transacciones e intentamos cerrar el JSON manualmente
+      const match = clean.match(/"transacciones"\s*:\s*(\[[\s\S]*)/)
+      if (match) {
+        let arr = match[1]
+        // Cerrar el array si está abierto: encontrar el último } completo
+        const lastBrace = arr.lastIndexOf('},')
+        if (lastBrace !== -1) arr = arr.slice(0, lastBrace + 1) + ']'
+        try {
+          const txs = JSON.parse(arr)
+          console.warn('[parsear-resumen] Partial parse recovered', txs.length, 'transactions')
+          return NextResponse.json({ ok: true, transacciones: txs })
+        } catch { /* fall through */ }
+      }
+      console.error('[parsear-resumen] Could not parse Claude response:', rawText.slice(0, 500))
+      return NextResponse.json(
+        { error: 'No se pudieron extraer los datos del resumen.' },
+        { status: 422 }
+      )
+    }
   } catch {
-    console.error('[parsear-resumen] Could not parse Claude response:', rawText)
     return NextResponse.json(
-      { error: 'No se pudieron extraer los datos del resumen.', raw: rawText },
-      { status: 422 }
+      { error: 'Error inesperado al procesar el resumen.' },
+      { status: 500 }
     )
   }
 }
