@@ -401,15 +401,16 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
     const nuevosMovs = seleccionadas.flatMap(tx => {
       const montoBase = tx.monto_ars ?? (tx.monto_usd ?? 0)
       const cat = categorias.find(c => c.id === tx.catId)
+      const tipoMov = tx.es_descuento ? 'Ingreso' : 'Gasto'
       return Array.from({ length: tx.cuotas_total }, (_, i) => {
         const fechaCuota   = addMeses(tx.fecha, i)
         const periodoCuota = calcularPeriodo(fechaCuota, cierreDay ?? null, venceDay ?? null, isTarjeta)
         return {
           id: crypto.randomUUID(), fecha: fechaCuota,
           detalle: tx.cuotas_total > 1 ? `${tx.detalle} (Cuota ${i + 1}/${tx.cuotas_total})` : tx.detalle,
-          monto: tx.monto_usd ? tx.monto_usd : montoBase / tx.cuotas_total,
+          monto: tx.monto_usd ? tx.monto_usd : Math.abs(montoBase) / tx.cuotas_total,
           moneda: tx.monto_usd ? 'USD' : 'ARS',
-          tipo_movimiento: 'Gasto',
+          tipo_movimiento: tipoMov,
           cuenta_origen: cuentaId, categoria: tx.catId || null, subcategoria: null,
           cotizacion: null, conciliado: true,
           periodo_tarjeta: periodoCuota,
@@ -430,11 +431,14 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       .map(tx => {
         const cat = categorias.find(c => c.id === tx.catId)
         const isUsdTx = !!tx.monto_usd
+        const montoAbs = Math.abs(tx.monto_ars ?? tx.monto_usd ?? 0)
+        // descuentos se guardan como Ingreso con monto positivo
+        const montoFinal = tx.es_descuento ? montoAbs : (tx.monto_usd ?? montoAbs)
         return {
           id: crypto.randomUUID(), fecha: tx.fecha,
           detalle: tx.detalle,
-          monto: tx.monto_usd ?? (tx.monto_ars ?? 0),
-          monto_estimado: tx.monto_ars ?? (tx.monto_usd ?? 0),
+          monto: montoFinal,
+          monto_estimado: tx.es_descuento ? montoAbs : (tx.monto_ars ?? montoAbs),
           moneda: isUsdTx ? 'USD' : 'ARS',
           cotizacion: null,
           conciliado: true,
@@ -460,29 +464,30 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const TxRow = ({ tx, idx }: { tx: Transaccion; idx: number }) => {
     const montoArs = tx.monto_ars
     const montoUsd = tx.monto_usd
-    const esNegativo = (montoArs !== null && montoArs < 0) || (montoUsd !== null && montoUsd < 0)
+    const esDescuento = tx.es_descuento
+    // El API ahora devuelve montos siempre positivos; es_descuento indica crédito a favor
     const montoLabel = montoArs !== null
-      ? `${esNegativo ? '−' : ''}$${Math.abs(montoArs).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
-      : `${esNegativo ? '−' : ''}U$S ${Math.abs(montoUsd ?? 0).toFixed(2)}`
-    const selBg = esNegativo ? 'bg-emerald-50' : 'bg-blue-50'
+      ? `${esDescuento ? '+' : ''}$${Math.abs(montoArs).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+      : `${esDescuento ? '+' : ''}U$S ${Math.abs(montoUsd ?? 0).toFixed(2)}`
+    const selBg = esDescuento ? 'bg-emerald-50' : 'bg-blue-50'
     return (
       <div className={`px-4 py-3 border-b border-slate-50 last:border-0 transition-colors ${tx.seleccionada ? selBg : 'hover:bg-slate-50'}`}>
         <div className="flex items-start gap-3 cursor-pointer" onClick={() => toggleTx(idx)}>
           <div className="mt-0.5 shrink-0">
             {tx.seleccionada
-              ? <CheckSquare size={17} className={esNegativo ? 'text-emerald-500' : 'text-blue-500'} />
+              ? <CheckSquare size={17} className={esDescuento ? 'text-emerald-500' : 'text-blue-500'} />
               : <Square size={17} className="text-slate-300" />}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-medium text-slate-700 truncate">{tx.detalle}</p>
-              {esNegativo && <span className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-1.5 py-0.5 rounded-full shrink-0">DESCUENTO</span>}
+              {esDescuento && <span className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-1.5 py-0.5 rounded-full shrink-0">DESCUENTO</span>}
             </div>
             <p className="text-xs text-slate-400">
               {tx.fecha}{tx.cuotas_total > 1 ? ` · Cuota ${tx.cuotas}/${tx.cuotas_total}` : ''}
             </p>
           </div>
-          <span className={`text-sm font-semibold whitespace-nowrap mt-0.5 ${esNegativo ? 'text-emerald-600' : 'text-slate-700'}`}>{montoLabel}</span>
+          <span className={`text-sm font-semibold whitespace-nowrap mt-0.5 ${esDescuento ? 'text-emerald-600' : 'text-slate-700'}`}>{montoLabel}</span>
         </div>
         {tx.seleccionada && (
           <div className="ml-8">
