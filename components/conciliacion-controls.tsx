@@ -318,7 +318,7 @@ function AddModal({ cuentaId, periodo: periodoBase, cierreDay, venceDay, categor
 type Transaccion = {
   fecha: string; detalle: string; monto_ars: number | null; monto_usd: number | null
   cuotas: number; cuotas_total: number; ya_existe: boolean; seleccionada: boolean
-  es_impuesto: boolean; catId: string
+  es_impuesto: boolean; es_descuento: boolean; catId: string
 }
 
 // Selector de categoría compacto, inline (sin label exterior)
@@ -370,6 +370,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       const d = await res.json()
       const parsed: Transaccion[] = (d.transacciones ?? []).map((t: any) => ({
         ...t,
+        es_descuento: t.es_descuento ?? false,
         seleccionada: !t.ya_existe,
         catId: '',
       }))
@@ -451,29 +452,37 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const existente = txs.filter(t => t.ya_existe)
   const selCount  = txs.filter(t => t.seleccionada).length
 
-  // Agrupar nuevas: consumos vs impuestos
-  const nuevasConsumos  = txs.map((t, i) => ({ t, i })).filter(({ t }) => !t.ya_existe && !t.es_impuesto)
-  const nuevasImpuestos = txs.map((t, i) => ({ t, i })).filter(({ t }) => !t.ya_existe && t.es_impuesto)
+  // Agrupar nuevas: consumos, descuentos, impuestos
+  const nuevasConsumos   = txs.map((t, i) => ({ t, i })).filter(({ t }) => !t.ya_existe && !t.es_impuesto && !t.es_descuento)
+  const nuevasDescuentos = txs.map((t, i) => ({ t, i })).filter(({ t }) => !t.ya_existe && t.es_descuento)
+  const nuevasImpuestos  = txs.map((t, i) => ({ t, i })).filter(({ t }) => !t.ya_existe && t.es_impuesto)
 
   const TxRow = ({ tx, idx }: { tx: Transaccion; idx: number }) => {
-    const monto = tx.monto_ars
-      ? `$${tx.monto_ars.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
-      : `U$S ${tx.monto_usd?.toFixed(2)}`
+    const montoArs = tx.monto_ars
+    const montoUsd = tx.monto_usd
+    const esNegativo = (montoArs !== null && montoArs < 0) || (montoUsd !== null && montoUsd < 0)
+    const montoLabel = montoArs !== null
+      ? `${esNegativo ? '−' : ''}$${Math.abs(montoArs).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+      : `${esNegativo ? '−' : ''}U$S ${Math.abs(montoUsd ?? 0).toFixed(2)}`
+    const selBg = esNegativo ? 'bg-emerald-50' : 'bg-blue-50'
     return (
-      <div className={`px-4 py-3 border-b border-slate-50 last:border-0 transition-colors ${tx.seleccionada ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+      <div className={`px-4 py-3 border-b border-slate-50 last:border-0 transition-colors ${tx.seleccionada ? selBg : 'hover:bg-slate-50'}`}>
         <div className="flex items-start gap-3 cursor-pointer" onClick={() => toggleTx(idx)}>
           <div className="mt-0.5 shrink-0">
             {tx.seleccionada
-              ? <CheckSquare size={17} className="text-blue-500" />
+              ? <CheckSquare size={17} className={esNegativo ? 'text-emerald-500' : 'text-blue-500'} />
               : <Square size={17} className="text-slate-300" />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-700 truncate">{tx.detalle}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium text-slate-700 truncate">{tx.detalle}</p>
+              {esNegativo && <span className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-1.5 py-0.5 rounded-full shrink-0">DESCUENTO</span>}
+            </div>
             <p className="text-xs text-slate-400">
               {tx.fecha}{tx.cuotas_total > 1 ? ` · Cuota ${tx.cuotas}/${tx.cuotas_total}` : ''}
             </p>
           </div>
-          <span className="text-sm font-semibold text-slate-700 whitespace-nowrap mt-0.5">{monto}</span>
+          <span className={`text-sm font-semibold whitespace-nowrap mt-0.5 ${esNegativo ? 'text-emerald-600' : 'text-slate-700'}`}>{montoLabel}</span>
         </div>
         {tx.seleccionada && (
           <div className="ml-8">
@@ -550,6 +559,18 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
                   <p className="text-[10px] text-slate-400 mt-1.5 ml-1">
                     Al seleccionar cada fila podés asignarle una categoría
                   </p>
+                </div>
+              )}
+
+              {/* Descuentos / bonificaciones */}
+              {nuevasDescuentos.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-2">
+                    Descuentos y bonificaciones ({nuevasDescuentos.length})
+                  </p>
+                  <div className="bg-white border border-emerald-100 rounded-xl overflow-hidden">
+                    {nuevasDescuentos.map(({ t, i }) => <TxRow key={i} tx={t} idx={i} />)}
+                  </div>
                 </div>
               )}
 
@@ -699,11 +720,16 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
     ))
   }
 
-  // Totales (USD se convierte a pesos vía cotización para sumar al total)
-  const usdEnPesos      = (arr: Mov[]) => arr.reduce((a, m) => a + (m.cotizacion ? m.monto * m.cotizacion : 0), 0)
-  const totalPeriodo    = movsARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0) + usdEnPesos(movsUSD)
-  const totalConciliado = conciliadosARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0) + usdEnPesos(conciliadosUSD)
-  const totalPendiente  = noConciliadosARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0) + usdEnPesos(noConciliadosUSD)
+  // Totales ARS (solo pesos)
+  const totalPeriodoPesos    = movsARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
+  const totalConciliadoPesos = conciliadosARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
+  const totalPendientePesos  = noConciliadosARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
+  // Totales USD (en dólares)
+  const totalUSDPeriodo    = movsUSD.reduce((a, m) => a + m.monto, 0)
+  const totalUSDConciliado = conciliadosUSD.reduce((a, m) => a + m.monto, 0)
+  const totalUSDPendiente  = noConciliadosUSD.reduce((a, m) => a + m.monto, 0)
+  // helper para convertir USD a pesos (panel informativo)
+  const usdEnPesos = (arr: Mov[]) => arr.reduce((a, m) => a + (m.cotizacion ? m.monto * m.cotizacion : 0), 0)
 
   const toggle = async (id: string, actual: boolean) => {
     setLoading(id)
@@ -712,24 +738,14 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
     if (res.ok) setMovs(prev => prev.map(m => m.id === id ? { ...m, conciliado: !actual } : m))
   }
 
-  // Conciliar todos los ARS pendientes
+  // Conciliar todos los pendientes (ARS + USD)
   const conciliarTodos = async () => {
     setBulkLoad(true)
-    await Promise.all(noConciliadosARS.map(m =>
+    await Promise.all(noConciliados.map(m =>
       fetch(`/api/movimientos/${m.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conciliado: true }) })
     ))
     setBulkLoad(false)
-    setMovs(prev => prev.map(m => m.moneda !== 'USD' ? { ...m, conciliado: true } : m))
-  }
-
-  // Conciliar todos los USD pendientes
-  const conciliarTodosUSD = async () => {
-    setBulkLoad(true)
-    await Promise.all(noConciliadosUSD.map(m =>
-      fetch(`/api/movimientos/${m.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conciliado: true }) })
-    ))
-    setBulkLoad(false)
-    setMovs(prev => prev.map(m => m.moneda === 'USD' ? { ...m, conciliado: true } : m))
+    setMovs(prev => prev.map(m => ({ ...m, conciliado: true })))
   }
 
   const thBase = 'text-left text-xs text-slate-400 uppercase tracking-wide px-4 py-3 font-medium whitespace-nowrap'
@@ -783,11 +799,45 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
 
   return (
     <div className="space-y-4">
+      {/* ── Tarjetas ARS ── */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-slate-50 rounded-xl p-4"><p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Total periodo</p><p className="text-xl font-bold text-slate-800">${fmt(totalPeriodo)}</p><p className="text-xs text-slate-400 mt-1">{movs.length} movimientos</p></div>
-        <div className="bg-emerald-50 rounded-xl p-4"><p className="text-xs text-emerald-600 uppercase tracking-wide mb-1">Conciliados</p><p className="text-xl font-bold text-emerald-700">${fmt(totalConciliado)}</p><p className="text-xs text-emerald-500 mt-1">{conciliados.length} movimientos</p></div>
-        <div className={`rounded-xl p-4 ${noConciliados.length > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}><p className={`text-xs uppercase tracking-wide mb-1 ${noConciliados.length > 0 ? 'text-amber-600' : 'text-slate-400'}`}>Pendientes</p><p className={`text-xl font-bold ${noConciliados.length > 0 ? 'text-amber-700' : 'text-slate-400'}`}>${fmt(totalPendiente)}</p><p className={`text-xs mt-1 ${noConciliados.length > 0 ? 'text-amber-500' : 'text-slate-400'}`}>{noConciliados.length} movimientos</p></div>
+        <div className="bg-slate-50 rounded-xl p-4">
+          <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Total periodo</p>
+          <p className="text-xl font-bold text-slate-800">${fmt(totalPeriodoPesos)}</p>
+          <p className="text-xs text-slate-400 mt-1">{movsARS.length} movimientos</p>
+        </div>
+        <div className="bg-emerald-50 rounded-xl p-4">
+          <p className="text-xs text-emerald-600 uppercase tracking-wide mb-1">Conciliados</p>
+          <p className="text-xl font-bold text-emerald-700">${fmt(totalConciliadoPesos)}</p>
+          <p className="text-xs text-emerald-500 mt-1">{conciliadosARS.length} movimientos</p>
+        </div>
+        <div className={`rounded-xl p-4 ${noConciliadosARS.length > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}>
+          <p className={`text-xs uppercase tracking-wide mb-1 ${noConciliadosARS.length > 0 ? 'text-amber-600' : 'text-slate-400'}`}>Pendientes</p>
+          <p className={`text-xl font-bold ${noConciliadosARS.length > 0 ? 'text-amber-700' : 'text-slate-400'}`}>${fmt(totalPendientePesos)}</p>
+          <p className={`text-xs mt-1 ${noConciliadosARS.length > 0 ? 'text-amber-500' : 'text-slate-400'}`}>{noConciliadosARS.length} movimientos</p>
+        </div>
       </div>
+
+      {/* ── Tarjetas USD (solo si hay movimientos en dólares) ── */}
+      {hasUSD && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+            <p className="text-xs text-blue-500 uppercase tracking-wide mb-1">Total U$S periodo</p>
+            <p className="text-xl font-bold text-blue-800">U$S {fmt(totalUSDPeriodo)}</p>
+            <p className="text-xs text-blue-400 mt-1">{movsUSD.length} movimientos</p>
+          </div>
+          <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+            <p className="text-xs text-emerald-600 uppercase tracking-wide mb-1">Conciliados U$S</p>
+            <p className="text-xl font-bold text-emerald-700">U$S {fmt(totalUSDConciliado)}</p>
+            <p className="text-xs text-emerald-500 mt-1">{conciliadosUSD.length} movimientos</p>
+          </div>
+          <div className={`rounded-xl p-4 border ${noConciliadosUSD.length > 0 ? 'bg-amber-50 border-amber-100' : 'bg-slate-50 border-slate-100'}`}>
+            <p className={`text-xs uppercase tracking-wide mb-1 ${noConciliadosUSD.length > 0 ? 'text-amber-600' : 'text-slate-400'}`}>Pendientes U$S</p>
+            <p className={`text-xl font-bold ${noConciliadosUSD.length > 0 ? 'text-amber-700' : 'text-slate-400'}`}>U$S {fmt(totalUSDPendiente)}</p>
+            <p className={`text-xs mt-1 ${noConciliadosUSD.length > 0 ? 'text-amber-500' : 'text-slate-400'}`}>{noConciliadosUSD.length} movimientos</p>
+          </div>
+        </div>
+      )}
 
       {/* Panel USD */}
       {hasUSD && (
@@ -847,51 +897,22 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
         <button onClick={() => setAgregando(true)} className="flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium" style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}><Plus size={15} />Agregar movimiento</button>
       </div>
 
-      {/* ── Sección PESOS ──────────────────────────────────────── */}
-      {noConciliadosARS.length > 0 && (
+      {/* ── Pendientes (ARS + USD juntos) ──────────────────────── */}
+      {noConciliados.length > 0 && (
         <div className="bg-white rounded-2xl border border-amber-100 overflow-hidden">
           <div className="px-5 py-3 border-b border-amber-50 bg-amber-50 flex items-center justify-between">
-            <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Pesos — Pendientes ({noConciliadosARS.length})</p>
+            <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Pendientes ({noConciliados.length})</p>
             <button onClick={conciliarTodos} disabled={bulkLoad} className="text-xs px-3 py-1.5 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))', opacity: bulkLoad ? 0.7 : 1 }}>{bulkLoad ? 'Conciliando...' : 'Conciliar todos'}</button>
           </div>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="$ Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(noConciliadosARS).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
-        </div>
-      )}
-      {conciliadosARS.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50"><p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pesos — Conciliados ({conciliadosARS.length})</p></div>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="$ Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(conciliadosARS).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(noConciliados).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
         </div>
       )}
 
-      {/* ── Sección DÓLARES ────────────────────────────────────── */}
-      {noConciliadosUSD.length > 0 && (
-        <div className="bg-white rounded-2xl border border-blue-100 overflow-hidden">
-          <div className="px-5 py-3 border-b border-blue-50 bg-blue-50 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">
-                Dólares — Pendientes ({noConciliadosUSD.length})
-              </p>
-              <p className="text-xs text-blue-400 mt-0.5">
-                U$S {fmt(noConciliadosUSD.reduce((a, m) => a + m.monto, 0))}
-                {noConciliadosUSD.every(m => m.cotizacion) && (
-                  <span> · ≈ ${fmt(usdEnPesos(noConciliadosUSD))}</span>
-                )}
-              </p>
-            </div>
-            <button onClick={conciliarTodosUSD} disabled={bulkLoad} className="text-xs px-3 py-1.5 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(90deg, #1e40af, #1d4ed8)', opacity: bulkLoad ? 0.7 : 1 }}>{bulkLoad ? 'Conciliando...' : 'Conciliar todos'}</button>
-          </div>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="U$S Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(noConciliadosUSD).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
-        </div>
-      )}
-      {conciliadosUSD.length > 0 && (
-        <div className="bg-white rounded-2xl border border-blue-50 overflow-hidden">
-          <div className="px-5 py-3 border-b border-blue-50 bg-slate-50">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Dólares — Conciliados ({conciliadosUSD.length}) · U$S {fmt(conciliadosUSD.reduce((a, m) => a + m.monto, 0))}
-            </p>
-          </div>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="U$S Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(conciliadosUSD).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
+      {/* ── Conciliados (ARS + USD juntos) ─────────────────────── */}
+      {conciliados.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50"><p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Conciliados ({conciliados.length})</p></div>
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(conciliados).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
         </div>
       )}
 

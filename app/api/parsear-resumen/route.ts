@@ -67,14 +67,16 @@ ${movsResumen}
 Para cada item extraé:
 - fecha (formato YYYY-MM-DD)
 - detalle (descripción limpia, sin códigos de cupón)
-- monto_ars (monto en pesos, número sin símbolo. Si es en dólares, poné null)
-- monto_usd (monto en dólares, número sin símbolo. Si es en pesos, poné null)
+- monto_ars (monto en pesos, número sin símbolo, NEGATIVO si es bonificación/crédito/devolución. Si es en dólares, poné null)
+- monto_usd (monto en dólares, número sin símbolo, NEGATIVO si es bonificación/crédito/devolución. Si es en pesos, poné null)
 - cuotas (número de cuota actual si dice "C.XX/YY", sino 1)
 - cuotas_total (total de cuotas si dice "C.XX/YY", sino 1)
 - ya_existe (true si coincide con uno de los movimientos ya cargados por fecha y monto similar)
-- es_impuesto (true SOLO para el item agrupado de impuestos/cargos, false para consumos normales)
+- es_impuesto (true SOLO para el item agrupado de impuestos/cargos, false para todo lo demás)
+- es_descuento (true si es una bonificación, descuento, reintegro o crédito a favor — monto NEGATIVO)
 
 Para los impuestos: sumá todos los montos de esa sección en UN SOLO item con detalle "Impuestos y cargos" y la fecha del cierre del resumen.
+Para bonificaciones/descuentos: incluílos individualmente con monto NEGATIVO. Son ítems como "BONIF. CONSUMO ...", "REINTEGRO ...", "DESCUENTO ...", "CR.RG ...", ajustes con signo negativo en el estado.
 
 Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni texto adicional:
 {
@@ -87,7 +89,19 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
       "cuotas": 1,
       "cuotas_total": 1,
       "ya_existe": false,
-      "es_impuesto": false
+      "es_impuesto": false,
+      "es_descuento": false
+    },
+    {
+      "fecha": "2026-04-14",
+      "detalle": "Bonif. Consumo Openpay Los Cinco Pinos",
+      "monto_ars": -12004.69,
+      "monto_usd": null,
+      "cuotas": 1,
+      "cuotas_total": 1,
+      "ya_existe": false,
+      "es_impuesto": false,
+      "es_descuento": true
     },
     {
       "fecha": "2026-04-23",
@@ -97,13 +111,15 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
       "cuotas": 1,
       "cuotas_total": 1,
       "ya_existe": false,
-      "es_impuesto": true
+      "es_impuesto": true,
+      "es_descuento": false
     }
   ]
 }
 
 Notas importantes:
-- Ignorá pagos, ajustes, créditos y devoluciones (montos negativos o en la sección de pagos)
+- Ignorá SOLO los pagos realizados (sección "Pagos" del resumen)
+- SÍ incluí bonificaciones, reintegros, descuentos y créditos a favor (con monto NEGATIVO)
 - NO incluyas consumos de tarjetas adicionales (titular adicional)
 - Para cuotas: si dice "C.04/12" significa cuota 4 de 12 — extraé SOLO esa cuota tal cual aparece
 - Limpiá el detalle: "CARREFOUR MAR DEL PLATA" → "Carrefour Mar del Plata"
