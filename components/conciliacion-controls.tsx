@@ -283,6 +283,22 @@ function AddModal({ cuentaId, periodo: periodoBase, cierreDay, venceDay, categor
 type Transaccion = {
   fecha: string; detalle: string; monto_ars: number | null; monto_usd: number | null
   cuotas: number; cuotas_total: number; ya_existe: boolean; seleccionada: boolean
+  es_impuesto: boolean; catId: string
+}
+
+// Selector de categoría compacto, inline (sin label exterior)
+function CatSelect({ categorias, value, onChange }: { categorias: Categoria[]; value: string; onChange: (id: string) => void }) {
+  return (
+    <select
+      value={value}
+      onChange={e => { e.stopPropagation(); onChange(e.target.value) }}
+      onClick={e => e.stopPropagation()}
+      className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 outline-none focus:ring-1 focus:ring-blue-200 mt-1.5"
+    >
+      <option value="">— sin categoría —</option>
+      {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre_categoria}</option>)}
+    </select>
+  )
 }
 
 function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosExistentes, categorias, subcategorias, onImported, onClose }: {
@@ -292,13 +308,12 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   categorias: Categoria[]; subcategorias: Subcategoria[]
   onImported: (movs: Mov[]) => void; onClose: () => void
 }) {
-  const fileRef    = useRef<HTMLInputElement>(null)
-  const [step,     setStep]     = useState<'upload' | 'review' | 'saving'>('upload')
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
-  const [txs,      setTxs]      = useState<Transaccion[]>([])
-  const [catId,    setCatId]    = useState(categorias[0]?.id ?? '')
-  const [saving,   setSaving]   = useState(false)
+  const fileRef   = useRef<HTMLInputElement>(null)
+  const [step,    setStep]   = useState<'upload' | 'review'>('upload')
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState('')
+  const [txs,     setTxs]     = useState<Transaccion[]>([])
+  const [saving,  setSaving]  = useState(false)
 
   const handleFile = async (file: File) => {
     if (file.type !== 'application/pdf') { setError('Solo se aceptan archivos PDF'); return }
@@ -319,7 +334,9 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al procesar el PDF'); return }
       const d = await res.json()
       const parsed: Transaccion[] = (d.transacciones ?? []).map((t: any) => ({
-        ...t, seleccionada: !t.ya_existe,
+        ...t,
+        seleccionada: !t.ya_existe,
+        catId: '',
       }))
       setTxs(parsed)
       setStep('review')
@@ -329,6 +346,9 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
 
   const toggleTx = (i: number) =>
     setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, seleccionada: !t.seleccionada } : t))
+
+  const setCatForTx = (i: number, catId: string) =>
+    setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, catId } : t))
 
   const toggleAll = () => {
     const allSel = txs.filter(t => !t.ya_existe).every(t => t.seleccionada)
@@ -341,10 +361,10 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
     setSaving(true); setError('')
 
     const isTarjeta = !!(cierreDay && venceDay)
-    const cat = categorias.find(c => c.id === catId)
 
     const nuevosMovs = seleccionadas.flatMap(tx => {
       const montoBase = tx.monto_ars ?? (tx.monto_usd ?? 0)
+      const cat = categorias.find(c => c.id === tx.catId)
       return Array.from({ length: tx.cuotas_total }, (_, i) => {
         const fechaCuota   = addMeses(tx.fecha, i)
         const periodoCuota = calcularPeriodo(fechaCuota, cierreDay ?? null, venceDay ?? null, isTarjeta)
@@ -354,7 +374,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
           monto: tx.monto_usd ? tx.monto_usd : montoBase / tx.cuotas_total,
           moneda: tx.monto_usd ? 'USD' : 'ARS',
           tipo_movimiento: 'Gasto',
-          cuenta_origen: cuentaId, categoria: catId || null, subcategoria: null,
+          cuenta_origen: cuentaId, categoria: tx.catId || null, subcategoria: null,
           cotizacion: null, conciliado: true,
           periodo_tarjeta: periodoCuota,
           cuotas_total: tx.cuotas_total, cuota_actual: i + 1, ciclo_actual: 1,
@@ -371,16 +391,19 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
     // Devolver solo los que caen en el período actual
     const movsDelPeriodo = seleccionadas
       .filter(tx => calcularPeriodo(tx.fecha, cierreDay ?? null, venceDay ?? null, isTarjeta) === periodo)
-      .map(tx => ({
-        id: crypto.randomUUID(), fecha: tx.fecha,
-        detalle: tx.detalle,
-        monto: tx.monto_usd ?? (tx.monto_ars ?? 0),
-        monto_estimado: tx.monto_ars ?? (tx.monto_usd ?? 0),
-        conciliado: true,
-        categoria_icono: cat?.icono ?? null,
-        categoria_nombre: cat?.nombre_categoria ?? null,
-        cuotas_total: tx.cuotas_total, cuota_actual: tx.cuotas,
-      }))
+      .map(tx => {
+        const cat = categorias.find(c => c.id === tx.catId)
+        return {
+          id: crypto.randomUUID(), fecha: tx.fecha,
+          detalle: tx.detalle,
+          monto: tx.monto_usd ?? (tx.monto_ars ?? 0),
+          monto_estimado: tx.monto_ars ?? (tx.monto_usd ?? 0),
+          conciliado: true,
+          categoria_icono: cat?.icono ?? null,
+          categoria_nombre: cat?.nombre_categoria ?? null,
+          cuotas_total: tx.cuotas_total, cuota_actual: tx.cuotas,
+        }
+      })
 
     onImported(movsDelPeriodo)
     onClose()
@@ -389,6 +412,39 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const nuevas    = txs.filter(t => !t.ya_existe)
   const existente = txs.filter(t => t.ya_existe)
   const selCount  = txs.filter(t => t.seleccionada).length
+
+  // Agrupar nuevas: consumos vs impuestos
+  const nuevasConsumos  = txs.map((t, i) => ({ t, i })).filter(({ t }) => !t.ya_existe && !t.es_impuesto)
+  const nuevasImpuestos = txs.map((t, i) => ({ t, i })).filter(({ t }) => !t.ya_existe && t.es_impuesto)
+
+  const TxRow = ({ tx, idx }: { tx: Transaccion; idx: number }) => {
+    const monto = tx.monto_ars
+      ? `$${tx.monto_ars.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+      : `U$S ${tx.monto_usd?.toFixed(2)}`
+    return (
+      <div className={`px-4 py-3 border-b border-slate-50 last:border-0 transition-colors ${tx.seleccionada ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+        <div className="flex items-start gap-3 cursor-pointer" onClick={() => toggleTx(idx)}>
+          <div className="mt-0.5 shrink-0">
+            {tx.seleccionada
+              ? <CheckSquare size={17} className="text-blue-500" />
+              : <Square size={17} className="text-slate-300" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-slate-700 truncate">{tx.detalle}</p>
+            <p className="text-xs text-slate-400">
+              {tx.fecha}{tx.cuotas_total > 1 ? ` · Cuota ${tx.cuotas}/${tx.cuotas_total}` : ''}
+            </p>
+          </div>
+          <span className="text-sm font-semibold text-slate-700 whitespace-nowrap mt-0.5">{monto}</span>
+        </div>
+        {tx.seleccionada && (
+          <div className="ml-8">
+            <CatSelect categorias={categorias} value={tx.catId} onChange={id => setCatForTx(idx, id)} />
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}
@@ -437,42 +493,36 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
         {step === 'review' && (
           <>
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Categoría para las nuevas */}
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                <p className="text-xs font-semibold text-blue-700 mb-2">Categoría para las transacciones importadas</p>
-                <CategoriaSelect categorias={categorias} value={catId} onChange={setCatId} />
-              </div>
 
-              {/* Nuevas (no existen) */}
-              {nuevas.length > 0 && (
+              {/* Consumos nuevos */}
+              {nuevasConsumos.length > 0 && (
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                      Nuevas ({nuevas.length})
+                      Consumos nuevos ({nuevasConsumos.length})
                     </p>
                     <button onClick={toggleAll} className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700">
-                      {nuevas.every(t => t.seleccionada) ? <CheckSquare size={13} /> : <Square size={13} />}
-                      {nuevas.every(t => t.seleccionada) ? 'Deseleccionar todo' : 'Seleccionar todo'}
+                      {nuevasConsumos.every(({ t }) => t.seleccionada) ? <CheckSquare size={13} /> : <Square size={13} />}
+                      {nuevasConsumos.every(({ t }) => t.seleccionada) ? 'Deseleccionar todo' : 'Seleccionar todo'}
                     </button>
                   </div>
-                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-50">
-                    {txs.map((tx, i) => {
-                      if (tx.ya_existe) return null
-                      const monto = tx.monto_ars ? `$${tx.monto_ars.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : `U$S ${tx.monto_usd?.toFixed(2)}`
-                      return (
-                        <div key={i} onClick={() => toggleTx(i)}
-                          className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors ${tx.seleccionada ? 'bg-blue-50 hover:bg-blue-50' : ''}`}>
-                          {tx.seleccionada
-                            ? <CheckSquare size={17} className="text-blue-500 shrink-0" />
-                            : <Square size={17} className="text-slate-300 shrink-0" />}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-700 truncate">{tx.detalle}</p>
-                            <p className="text-xs text-slate-400">{tx.fecha}{tx.cuotas_total > 1 ? ` · Cuota ${tx.cuotas}/${tx.cuotas_total}` : ''}</p>
-                          </div>
-                          <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">{monto}</span>
-                        </div>
-                      )
-                    })}
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    {nuevasConsumos.map(({ t, i }) => <TxRow key={i} tx={t} idx={i} />)}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1.5 ml-1">
+                    Al seleccionar cada fila podés asignarle una categoría
+                  </p>
+                </div>
+              )}
+
+              {/* Impuestos / cargos agrupados */}
+              {nuevasImpuestos.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+                    Impuestos y cargos ({nuevasImpuestos.length})
+                  </p>
+                  <div className="bg-white border border-amber-100 rounded-xl overflow-hidden">
+                    {nuevasImpuestos.map(({ t, i }) => <TxRow key={i} tx={t} idx={i} />)}
                   </div>
                 </div>
               )}
@@ -486,7 +536,9 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
                   <div className="bg-slate-50 border border-slate-100 rounded-xl overflow-hidden divide-y divide-slate-100">
                     {txs.map((tx, i) => {
                       if (!tx.ya_existe) return null
-                      const monto = tx.monto_ars ? `$${tx.monto_ars.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : `U$S ${tx.monto_usd?.toFixed(2)}`
+                      const monto = tx.monto_ars
+                        ? `$${tx.monto_ars.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+                        : `U$S ${tx.monto_usd?.toFixed(2)}`
                       return (
                         <div key={i} className="flex items-center gap-3 px-4 py-2.5 opacity-50">
                           <CheckCircle size={15} className="text-emerald-400 shrink-0" />
@@ -499,6 +551,12 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
                       )
                     })}
                   </div>
+                </div>
+              )}
+
+              {txs.length === 0 && (
+                <div className="text-center py-10 text-slate-400 text-sm">
+                  No se encontraron transacciones en el PDF
                 </div>
               )}
 
