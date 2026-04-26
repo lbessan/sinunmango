@@ -22,7 +22,17 @@ type CuentaForm = {
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-white'
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
 
-export function CuentaFormClient({ inicial }: { inicial: CuentaForm }) {
+export function CuentaFormClient({
+  inicial,
+  onSuccess,
+  title,
+}: {
+  inicial: CuentaForm
+  /** Si se define, se llama al guardar exitosamente en lugar de redirigir a /cuentas */
+  onSuccess?: () => void
+  /** Título opcional (por defecto "Nueva cuenta" / "Editar cuenta") */
+  title?: string
+}) {
   const router = useRouter()
   const [form, setForm]     = useState<CuentaForm>(inicial)
   const [saving, setSaving] = useState(false)
@@ -72,14 +82,19 @@ export function CuentaFormClient({ inicial }: { inicial: CuentaForm }) {
     )
 
     setSaving(false)
-    if (res.ok) { setSaved(true); setTimeout(() => router.push('/cuentas'), 1000) }
-    else { const d = await res.json(); setError(d.error ?? 'Error al guardar') }
+    if (res.ok) {
+      setSaved(true)
+      setTimeout(() => {
+        if (onSuccess) onSuccess()
+        else router.push('/cuentas')
+      }, 800)
+    } else { const d = await res.json(); setError(d.error ?? 'Error al guardar') }
   }
 
   return (
     <div className="max-w-lg mx-auto">
       <h1 className="text-xl font-semibold text-slate-800 mb-6">
-        {isEditing ? 'Editar cuenta' : 'Nueva cuenta'}
+        {title ?? (isEditing ? 'Editar cuenta' : 'Nueva cuenta')}
       </h1>
 
       <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
