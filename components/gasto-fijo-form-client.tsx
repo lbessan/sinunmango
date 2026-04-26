@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
 import { CategoriaSelect } from '@/components/categoria-select'
+import { DeleteButton } from '@/components/delete-button'
 
 type GastoFijoForm = {
   id?: string
@@ -147,6 +148,18 @@ export function GastoFijoFormClient({
               {saved ? '✓ Guardado' : saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear gasto fijo'}
             </button>
           </div>
+
+          {isEditing && form.id && (
+            <div className="pt-2 border-t border-slate-100">
+              <DeleteButton
+                endpoint={`/api/gastos-fijos/${form.id}`}
+                label={form.nombre_gasto}
+                description="El gasto fijo se eliminará permanentemente."
+                variant="button"
+                redirectTo="/gastos-fijos"
+              />
+            </div>
+          )}
         </div>
       </div>
 
