@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { CheckCircle, Circle, Pencil, X, Plus, Save, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { useState, useMemo, useRef } from 'react'
+import { CheckCircle, Circle, Pencil, X, Plus, Save, ArrowUpDown, ArrowUp, ArrowDown, FileText, Upload, AlertCircle, CheckSquare, Square } from 'lucide-react'
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
 import { IconoCategoria } from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
@@ -279,19 +279,268 @@ function AddModal({ cuentaId, periodo: periodoBase, cierreDay, venceDay, categor
   )
 }
 
+// ─── Modal importar PDF ───────────────────────────────────────────────────────
+type Transaccion = {
+  fecha: string; detalle: string; monto_ars: number | null; monto_usd: number | null
+  cuotas: number; cuotas_total: number; ya_existe: boolean; seleccionada: boolean
+}
+
+function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosExistentes, categorias, subcategorias, onImported, onClose }: {
+  cuentaId: string; periodo: string
+  cierreDay?: number | null; venceDay?: number | null
+  movimientosExistentes: Mov[]
+  categorias: Categoria[]; subcategorias: Subcategoria[]
+  onImported: (movs: Mov[]) => void; onClose: () => void
+}) {
+  const fileRef    = useRef<HTMLInputElement>(null)
+  const [step,     setStep]     = useState<'upload' | 'review' | 'saving'>('upload')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+  const [txs,      setTxs]      = useState<Transaccion[]>([])
+  const [catId,    setCatId]    = useState(categorias[0]?.id ?? '')
+  const [saving,   setSaving]   = useState(false)
+
+  const handleFile = async (file: File) => {
+    if (file.type !== 'application/pdf') { setError('Solo se aceptan archivos PDF'); return }
+    setLoading(true); setError('')
+
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const base64 = (e.target?.result as string).split(',')[1]
+      const movsExist = movimientosExistentes.map(m => ({
+        detalle: m.detalle, monto: m.monto_estimado ?? m.monto, fecha: m.fecha,
+      }))
+      const res = await fetch('/api/parsear-resumen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdf: base64, movimientosExistentes: movsExist }),
+      })
+      setLoading(false)
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al procesar el PDF'); return }
+      const d = await res.json()
+      const parsed: Transaccion[] = (d.transacciones ?? []).map((t: any) => ({
+        ...t, seleccionada: !t.ya_existe,
+      }))
+      setTxs(parsed)
+      setStep('review')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const toggleTx = (i: number) =>
+    setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, seleccionada: !t.seleccionada } : t))
+
+  const toggleAll = () => {
+    const allSel = txs.filter(t => !t.ya_existe).every(t => t.seleccionada)
+    setTxs(prev => prev.map(t => t.ya_existe ? t : { ...t, seleccionada: !allSel }))
+  }
+
+  const handleImportar = async () => {
+    const seleccionadas = txs.filter(t => t.seleccionada)
+    if (!seleccionadas.length) { setError('Seleccioná al menos una transacción'); return }
+    setSaving(true); setError('')
+
+    const isTarjeta = !!(cierreDay && venceDay)
+    const cat = categorias.find(c => c.id === catId)
+
+    const nuevosMovs = seleccionadas.flatMap(tx => {
+      const montoBase = tx.monto_ars ?? (tx.monto_usd ?? 0)
+      return Array.from({ length: tx.cuotas_total }, (_, i) => {
+        const fechaCuota   = addMeses(tx.fecha, i)
+        const periodoCuota = calcularPeriodo(fechaCuota, cierreDay ?? null, venceDay ?? null, isTarjeta)
+        return {
+          id: crypto.randomUUID(), fecha: fechaCuota,
+          detalle: tx.cuotas_total > 1 ? `${tx.detalle} (Cuota ${i + 1}/${tx.cuotas_total})` : tx.detalle,
+          monto: tx.monto_usd ? tx.monto_usd : montoBase / tx.cuotas_total,
+          moneda: tx.monto_usd ? 'USD' : 'ARS',
+          tipo_movimiento: 'Gasto',
+          cuenta_origen: cuentaId, categoria: catId || null, subcategoria: null,
+          cotizacion: null, conciliado: true,
+          periodo_tarjeta: periodoCuota,
+          cuotas_total: tx.cuotas_total, cuota_actual: i + 1, ciclo_actual: 1,
+        }
+      })
+    })
+
+    const res = await fetch('/api/movimientos', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nuevosMovs),
+    })
+    setSaving(false)
+    if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error'); return }
+
+    // Devolver solo los que caen en el período actual
+    const movsDelPeriodo = seleccionadas
+      .filter(tx => calcularPeriodo(tx.fecha, cierreDay ?? null, venceDay ?? null, isTarjeta) === periodo)
+      .map(tx => ({
+        id: crypto.randomUUID(), fecha: tx.fecha,
+        detalle: tx.detalle,
+        monto: tx.monto_usd ?? (tx.monto_ars ?? 0),
+        monto_estimado: tx.monto_ars ?? (tx.monto_usd ?? 0),
+        conciliado: true,
+        categoria_icono: cat?.icono ?? null,
+        categoria_nombre: cat?.nombre_categoria ?? null,
+        cuotas_total: tx.cuotas_total, cuota_actual: tx.cuotas,
+      }))
+
+    onImported(movsDelPeriodo)
+    onClose()
+  }
+
+  const nuevas    = txs.filter(t => !t.ya_existe)
+  const existente = txs.filter(t => t.ya_existe)
+  const selCount  = txs.filter(t => t.seleccionada).length
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <FileText size={18} className="text-slate-400" />
+            <h3 className="text-sm font-semibold text-slate-800">Importar resumen PDF</h3>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X size={15} /></button>
+        </div>
+
+        {step === 'upload' && (
+          <div className="flex-1 flex flex-col items-center justify-center p-10 gap-4">
+            {loading ? (
+              <div className="text-center">
+                <div className="w-10 h-10 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-sm text-slate-500">Analizando el resumen con IA...</p>
+                <p className="text-xs text-slate-400 mt-1">Puede tardar unos segundos</p>
+              </div>
+            ) : (
+              <>
+                <div
+                  onClick={() => fileRef.current?.click()}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
+                  className="w-full border-2 border-dashed border-slate-200 hover:border-blue-300 rounded-2xl p-10 flex flex-col items-center gap-3 cursor-pointer transition-colors hover:bg-blue-50"
+                >
+                  <Upload size={32} className="text-slate-300" />
+                  <p className="text-sm font-medium text-slate-600">Arrastrá el PDF o hacé click</p>
+                  <p className="text-xs text-slate-400">Resúmenes de BBVA, Santander, HSBC, Galicia, etc.</p>
+                  <input ref={fileRef} type="file" accept="application/pdf" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+                </div>
+                {error && (
+                  <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg w-full">
+                    <AlertCircle size={15} />{error}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {step === 'review' && (
+          <>
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Categoría para las nuevas */}
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                <p className="text-xs font-semibold text-blue-700 mb-2">Categoría para las transacciones importadas</p>
+                <CategoriaSelect categorias={categorias} value={catId} onChange={setCatId} />
+              </div>
+
+              {/* Nuevas (no existen) */}
+              {nuevas.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Nuevas ({nuevas.length})
+                    </p>
+                    <button onClick={toggleAll} className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700">
+                      {nuevas.every(t => t.seleccionada) ? <CheckSquare size={13} /> : <Square size={13} />}
+                      {nuevas.every(t => t.seleccionada) ? 'Deseleccionar todo' : 'Seleccionar todo'}
+                    </button>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-50">
+                    {txs.map((tx, i) => {
+                      if (tx.ya_existe) return null
+                      const monto = tx.monto_ars ? `$${tx.monto_ars.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : `U$S ${tx.monto_usd?.toFixed(2)}`
+                      return (
+                        <div key={i} onClick={() => toggleTx(i)}
+                          className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors ${tx.seleccionada ? 'bg-blue-50 hover:bg-blue-50' : ''}`}>
+                          {tx.seleccionada
+                            ? <CheckSquare size={17} className="text-blue-500 shrink-0" />
+                            : <Square size={17} className="text-slate-300 shrink-0" />}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-700 truncate">{tx.detalle}</p>
+                            <p className="text-xs text-slate-400">{tx.fecha}{tx.cuotas_total > 1 ? ` · Cuota ${tx.cuotas}/${tx.cuotas_total}` : ''}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">{monto}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Ya existen */}
+              {existente.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    Ya cargadas ({existente.length}) — no se duplicarán
+                  </p>
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl overflow-hidden divide-y divide-slate-100">
+                    {txs.map((tx, i) => {
+                      if (!tx.ya_existe) return null
+                      const monto = tx.monto_ars ? `$${tx.monto_ars.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : `U$S ${tx.monto_usd?.toFixed(2)}`
+                      return (
+                        <div key={i} className="flex items-center gap-3 px-4 py-2.5 opacity-50">
+                          <CheckCircle size={15} className="text-emerald-400 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-slate-500 truncate">{tx.detalle}</p>
+                            <p className="text-xs text-slate-400">{tx.fecha}</p>
+                          </div>
+                          <span className="text-sm text-slate-400 whitespace-nowrap">{monto}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">
+                  <AlertCircle size={15} />{error}
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 pb-5 pt-3 border-t border-slate-100 flex gap-3">
+              <button onClick={() => { setStep('upload'); setTxs([]) }}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50">
+                ← Cambiar PDF
+              </button>
+              <button onClick={handleImportar} disabled={saving || selCount === 0}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+                style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}>
+                {saving ? 'Importando...' : `Importar ${selCount} transacción${selCount !== 1 ? 'es' : ''}`}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, categorias, subcategorias, cierreDay, venceDay }: {
   movimientos: Mov[]; cuentaId: string; periodo: string
   categorias: Categoria[]; subcategorias: Subcategoria[]
   cierreDay?: number | null; venceDay?: number | null
 }) {
-  const [movs,      setMovs]     = useState([...inicial])
-  const [loading,   setLoading]  = useState<string | null>(null)
-  const [bulkLoad,  setBulkLoad] = useState(false)
-  const [editando,  setEditando] = useState<Mov | null>(null)
-  const [agregando, setAgregando] = useState(false)
-  const [sortKey,   setSortKey]  = useState<'fecha' | 'detalle' | 'categoria_nombre' | 'monto'>('fecha')
-  const [sortDir,   setSortDir]  = useState<'asc' | 'desc'>('asc')
+  const [movs,        setMovs]       = useState([...inicial])
+  const [loading,     setLoading]    = useState<string | null>(null)
+  const [bulkLoad,    setBulkLoad]   = useState(false)
+  const [editando,    setEditando]   = useState<Mov | null>(null)
+  const [agregando,   setAgregando]  = useState(false)
+  const [importPdf,   setImportPdf]  = useState(false)
+  const [sortKey,     setSortKey]    = useState<'fecha' | 'detalle' | 'categoria_nombre' | 'monto'>('fecha')
+  const [sortDir,     setSortDir]    = useState<'asc' | 'desc'>('asc')
 
   const toggleSort = (key: typeof sortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -373,7 +622,8 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
         <div className="bg-emerald-50 rounded-xl p-4"><p className="text-xs text-emerald-600 uppercase tracking-wide mb-1">Conciliados</p><p className="text-xl font-bold text-emerald-700">${fmt(totalConciliado)}</p><p className="text-xs text-emerald-500 mt-1">{conciliados.length} movimientos</p></div>
         <div className={`rounded-xl p-4 ${noConciliados.length > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}><p className={`text-xs uppercase tracking-wide mb-1 ${noConciliados.length > 0 ? 'text-amber-600' : 'text-slate-400'}`}>Pendientes</p><p className={`text-xl font-bold ${noConciliados.length > 0 ? 'text-amber-700' : 'text-slate-400'}`}>${fmt(totalPendiente)}</p><p className={`text-xs mt-1 ${noConciliados.length > 0 ? 'text-amber-500' : 'text-slate-400'}`}>{noConciliados.length} movimientos</p></div>
       </div>
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <button onClick={() => setImportPdf(true)} className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-medium border border-slate-200 text-slate-600 hover:bg-white transition-colors"><FileText size={15} />Importar PDF</button>
         <button onClick={() => setAgregando(true)} className="flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium" style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}><Plus size={15} />Agregar movimiento</button>
       </div>
       {noConciliados.length > 0 && (
@@ -394,6 +644,16 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
       {movs.length === 0 && <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400 text-sm">No hay movimientos para este periodo</div>}
       {editando && <EditModal mov={editando} onSave={u => setMovs(prev => prev.map(m => m.id === editando.id ? { ...m, ...u } : m))} onClose={() => setEditando(null)} />}
       {agregando && <AddModal cuentaId={cuentaId} periodo={periodo} cierreDay={cierreDay} venceDay={venceDay} categorias={categorias} subcategorias={subcategorias} onAdd={nuevos => setMovs(prev => [...prev, ...nuevos].sort((a, b) => a.fecha.localeCompare(b.fecha)))} onClose={() => setAgregando(false)} />}
+      {importPdf && (
+        <ImportarPdfModal
+          cuentaId={cuentaId} periodo={periodo}
+          cierreDay={cierreDay} venceDay={venceDay}
+          movimientosExistentes={movs}
+          categorias={categorias} subcategorias={subcategorias}
+          onImported={nuevos => setMovs(prev => [...prev, ...nuevos].sort((a, b) => a.fecha.localeCompare(b.fecha)))}
+          onClose={() => setImportPdf(false)}
+        />
+      )}
     </div>
   )
 }

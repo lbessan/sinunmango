@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ImagenUploader } from './imagen-uploader'
 import { BankSelector } from './bank-selector'
 import { bankIconUrl, bankBannerUrl, type BankEntry } from '@/constants/banks'
+import { DeleteButton } from './delete-button'
 
 type CuentaForm = {
   id?: string
@@ -216,6 +217,20 @@ export function CuentaFormClient({
             {saved ? '✓ Guardado' : saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear cuenta'}
           </button>
         </div>
+
+        {isEditing && form.id && (
+          <div className="pt-2 border-t border-slate-100">
+            <DeleteButton
+              endpoint={form.tipo_cuenta === 'Tarjeta Credito' ? `/api/tarjetas/${form.id}` : `/api/cuentas/${form.id}`}
+              label={form.nombre_cuenta}
+              description={form.tipo_cuenta === 'Tarjeta Credito'
+                ? 'La tarjeta se desactivará. Los movimientos existentes se conservan.'
+                : 'La cuenta se desactivará. El historial de movimientos se conserva.'}
+              variant="button"
+              redirectTo={form.tipo_cuenta === 'Tarjeta Credito' ? '/tarjetas' : '/cuentas'}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

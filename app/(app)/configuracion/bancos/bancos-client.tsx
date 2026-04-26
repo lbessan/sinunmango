@@ -105,20 +105,26 @@ function BancoCustomForm({ banco, onSaved, onCancel }: {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <ImagenUploader
-          valor={imagenUrl}
-          onChange={setImagenUrl}
-          label="Ícono cuadrado"
-          carpeta="bancos"
-          id={tempId.current + '-icon'}
-        />
-        <ImagenUploader
-          valor={bannerUrl}
-          onChange={setBannerUrl}
-          label="Logo / banner"
-          carpeta="bancos"
-          id={tempId.current + '-banner'}
-        />
+        <div>
+          <ImagenUploader
+            valor={imagenUrl}
+            onChange={setImagenUrl}
+            label="Ícono cuadrado"
+            carpeta="bancos"
+            id={tempId.current + '-icon'}
+          />
+          <p className="text-[10px] text-slate-400 mt-1">Recomendado: 200×200 px</p>
+        </div>
+        <div>
+          <ImagenUploader
+            valor={bannerUrl}
+            onChange={setBannerUrl}
+            label="Logo / banner"
+            carpeta="bancos"
+            id={tempId.current + '-banner'}
+          />
+          <p className="text-[10px] text-slate-400 mt-1">Recomendado: 600×200 px</p>
+        </div>
       </div>
       <p className="text-xs text-slate-400 -mt-2">PNG con fondo transparente · máx 2 MB</p>
 
