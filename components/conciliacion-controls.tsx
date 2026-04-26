@@ -461,6 +461,9 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const nuevasDescuentos = txs.map((t, i) => ({ t, i })).filter(({ t }) => !t.ya_existe && t.es_descuento)
   const nuevasImpuestos  = txs.map((t, i) => ({ t, i })).filter(({ t }) => !t.ya_existe && t.es_impuesto)
 
+  const categoriasGasto   = categorias.filter(c => c.tipo_default !== 'Ingreso')
+  const categoriasIngreso = categorias.filter(c => c.tipo_default === 'Ingreso')
+
   const TxRow = ({ tx, idx }: { tx: Transaccion; idx: number }) => {
     const montoArs = tx.monto_ars
     const montoUsd = tx.monto_usd
@@ -491,7 +494,11 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
         </div>
         {tx.seleccionada && (
           <div className="ml-8">
-            <CatSelect categorias={categorias} value={tx.catId} onChange={id => setCatForTx(idx, id)} />
+            <CatSelect
+              categorias={tx.es_descuento ? categoriasIngreso : categoriasGasto}
+              value={tx.catId}
+              onChange={id => setCatForTx(idx, id)}
+            />
           </div>
         )}
       </div>
@@ -579,12 +586,14 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
                 </div>
               )}
 
-              {/* Impuestos / cargos agrupados */}
+              {/* Impuestos / cargos — individuales */}
               {nuevasImpuestos.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
-                    Impuestos y cargos ({nuevasImpuestos.length})
-                  </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Impuestos y cargos ({nuevasImpuestos.length}) · Total ${nuevasImpuestos.reduce((s, { t }) => s + (t.monto_ars ?? 0), 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
                   <div className="bg-white border border-amber-100 rounded-xl overflow-hidden">
                     {nuevasImpuestos.map(({ t, i }) => <TxRow key={i} tx={t} idx={i} />)}
                   </div>

@@ -102,7 +102,7 @@ export function EditarMovimientoClient({
     })
 
     setSaving(false)
-    if (res.ok) { setSaved(true); setTimeout(() => router.push('/movimientos'), 1000) }
+    if (res.ok) { setSaved(true); setTimeout(() => router.back(), 1000) }
     else { const d = await res.json(); setError(d.error ?? 'Error al guardar') }
   }
 
@@ -111,7 +111,7 @@ export function EditarMovimientoClient({
     setDeleting(true)
     const res = await fetch(`/api/movimientos/${movimiento.id}`, { method: 'DELETE' })
     setDeleting(false)
-    if (res.ok) router.push('/movimientos')
+    if (res.ok) router.back()
     else { const d = await res.json(); setError(d.error ?? 'Error al eliminar') }
   }
 

@@ -35,7 +35,6 @@ export default async function ConciliacionDetallePage({
       adminClient
         .from('categorias')
         .select('id, nombre_categoria, icono, tipo_default')
-        .eq('tipo_default', 'Gasto')
         .eq('user_id', user.id)
         .order('nombre_categoria'),
       adminClient
