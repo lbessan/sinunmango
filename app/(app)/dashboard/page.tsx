@@ -2,7 +2,6 @@ import { adminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { TourTrigger } from '@/components/tour-trigger'
 
 const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
@@ -69,14 +68,9 @@ async function calcularProyecciones(userId: string, meses = 4) {
   return { proyectadoActual: Math.round(proyectadoActual), proyecciones }
 }
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tour?: string }>
-}) {
+export default async function DashboardPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
-  const { tour } = await searchParams
 
   const today    = new Date()
   const todayDay = today.getDate()
@@ -90,20 +84,7 @@ export default async function DashboardPage({
       calcularProyecciones(user.id, 4),
     ])
 
-  if (!resumen) return (
-    <div className="max-w-lg mx-auto mt-20 text-center space-y-4">
-      <p className="text-5xl">🥭</p>
-      <h2 className="text-xl font-semibold text-slate-800">¡Bienvenido a sinunmango!</h2>
-      <p className="text-slate-500 text-sm">Todavía no tenés cuentas cargadas. Creá tu primera cuenta para ver el dashboard.</p>
-      <a
-        href="/onboarding"
-        className="inline-block mt-2 px-6 py-3 rounded-xl text-sm font-semibold text-white"
-        style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
-      >
-        Configurar mi primera cuenta →
-      </a>
-    </div>
-  )
+  if (!resumen) return <p className="text-red-500">Error cargando datos</p>
 
   const extraMap = Object.fromEntries((cuentasExtra ?? []).map(c => [c.id, c]))
 
@@ -324,8 +305,6 @@ export default async function DashboardPage({
           )}
         </div>
       </div>
-      {/* Tour overlay — visible when ?tour=1 */}
-      {tour === '1' && <TourTrigger />}
     </div>
   )
 }

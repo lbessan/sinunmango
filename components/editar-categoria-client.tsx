@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { ICONOS_CATEGORIAS, GRUPOS, urlIcono } from '@/lib/iconos-categorias'
 import { IconoCategoria } from '@/components/icono-categoria'
 import { ImgIcono } from '@/components/img-icono'
-import { DeleteButton } from '@/components/delete-button'
 
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 bg-white'
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
@@ -139,18 +138,6 @@ export function EditarCategoriaClient({ categoria }: { categoria: any }) {
             {saved ? '✓ Guardado' : saving ? 'Guardando...' : isNew ? 'Crear' : 'Guardar cambios'}
           </button>
         </div>
-
-        {!isNew && categoria.id && (
-          <div className="pt-2 border-t border-slate-100">
-            <DeleteButton
-              endpoint={`/api/categorias/${categoria.id}`}
-              label={nombre}
-              description="La categoría se eliminará permanentemente. Los movimientos existentes no se ven afectados."
-              variant="button"
-              redirectTo="/categorias"
-            />
-          </div>
-        )}
       </div>
     </div>
   )

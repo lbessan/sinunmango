@@ -659,11 +659,19 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
     return sortDir === 'asc' ? (av < bv ? -1 : 1) : (av > bv ? -1 : 1)
   })
 
-  const noConciliados   = movs.filter(m => !m.conciliado)
-  const conciliados     = movs.filter(m => m.conciliado)
+  // Separar ARS y USD
+  const movsARS = movs.filter(m => m.moneda !== 'USD')
+  const movsUSD = movs.filter(m => m.moneda === 'USD')
 
-  // USD tracking
-  const movsUSD        = movs.filter(m => m.moneda === 'USD')
+  const noConciliadosARS = movsARS.filter(m => !m.conciliado)
+  const conciliadosARS   = movsARS.filter(m => m.conciliado)
+  const noConciliadosUSD = movsUSD.filter(m => !m.conciliado)
+  const conciliadosUSD   = movsUSD.filter(m => m.conciliado)
+  // kept for legacy references (e.g. conciliarTodos)
+  const noConciliados    = movs.filter(m => !m.conciliado)
+  const conciliados      = movs.filter(m => m.conciliado)
+
+  // USD info
   const totalUSD       = movsUSD.reduce((a, m) => a + m.monto, 0)
   const hasUSD         = movsUSD.length > 0
   const usdSinCotiz    = movsUSD.filter(m => !m.cotizacion).length
@@ -691,13 +699,11 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
     ))
   }
 
-  const movsARS        = movs.filter(m => m.moneda !== 'USD')
-  const totalPeriodo    = movsARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
-    + movsUSD.reduce((a, m) => a + (m.cotizacion ? m.monto * m.cotizacion : 0), 0)
-  const totalConciliado = conciliados.reduce((a, m) =>
-    a + (m.moneda === 'USD' ? (m.cotizacion ? m.monto * m.cotizacion : 0) : (m.monto_estimado ?? m.monto)), 0)
-  const totalPendiente  = noConciliados.reduce((a, m) =>
-    a + (m.moneda === 'USD' ? (m.cotizacion ? m.monto * m.cotizacion : 0) : (m.monto_estimado ?? m.monto)), 0)
+  // Totales (USD se convierte a pesos vía cotización para sumar al total)
+  const usdEnPesos      = (arr: Mov[]) => arr.reduce((a, m) => a + (m.cotizacion ? m.monto * m.cotizacion : 0), 0)
+  const totalPeriodo    = movsARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0) + usdEnPesos(movsUSD)
+  const totalConciliado = conciliadosARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0) + usdEnPesos(conciliadosUSD)
+  const totalPendiente  = noConciliadosARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0) + usdEnPesos(noConciliadosUSD)
 
   const toggle = async (id: string, actual: boolean) => {
     setLoading(id)
@@ -706,11 +712,24 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
     if (res.ok) setMovs(prev => prev.map(m => m.id === id ? { ...m, conciliado: !actual } : m))
   }
 
+  // Conciliar todos los ARS pendientes
   const conciliarTodos = async () => {
     setBulkLoad(true)
-    const res = await fetch('/api/conciliar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cuentaId, periodo }) })
+    await Promise.all(noConciliadosARS.map(m =>
+      fetch(`/api/movimientos/${m.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conciliado: true }) })
+    ))
     setBulkLoad(false)
-    if (res.ok) setMovs(prev => prev.map(m => ({ ...m, conciliado: true })))
+    setMovs(prev => prev.map(m => m.moneda !== 'USD' ? { ...m, conciliado: true } : m))
+  }
+
+  // Conciliar todos los USD pendientes
+  const conciliarTodosUSD = async () => {
+    setBulkLoad(true)
+    await Promise.all(noConciliadosUSD.map(m =>
+      fetch(`/api/movimientos/${m.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conciliado: true }) })
+    ))
+    setBulkLoad(false)
+    setMovs(prev => prev.map(m => m.moneda === 'USD' ? { ...m, conciliado: true } : m))
   }
 
   const thBase = 'text-left text-xs text-slate-400 uppercase tracking-wide px-4 py-3 font-medium whitespace-nowrap'
@@ -827,21 +846,55 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
         <button onClick={() => setImportPdf(true)} className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-medium border border-slate-200 text-slate-600 hover:bg-white transition-colors"><FileText size={15} />Importar PDF</button>
         <button onClick={() => setAgregando(true)} className="flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium" style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}><Plus size={15} />Agregar movimiento</button>
       </div>
-      {noConciliados.length > 0 && (
+
+      {/* ── Sección PESOS ──────────────────────────────────────── */}
+      {noConciliadosARS.length > 0 && (
         <div className="bg-white rounded-2xl border border-amber-100 overflow-hidden">
           <div className="px-5 py-3 border-b border-amber-50 bg-amber-50 flex items-center justify-between">
-            <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Pendientes ({noConciliados.length})</p>
+            <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Pesos — Pendientes ({noConciliadosARS.length})</p>
             <button onClick={conciliarTodos} disabled={bulkLoad} className="text-xs px-3 py-1.5 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))', opacity: bulkLoad ? 0.7 : 1 }}>{bulkLoad ? 'Conciliando...' : 'Conciliar todos'}</button>
           </div>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(noConciliados).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="$ Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(noConciliadosARS).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
         </div>
       )}
-      {conciliados.length > 0 && (
+      {conciliadosARS.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50"><p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Conciliados ({conciliados.length})</p></div>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(conciliados).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
+          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50"><p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pesos — Conciliados ({conciliadosARS.length})</p></div>
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="$ Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(conciliadosARS).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
         </div>
       )}
+
+      {/* ── Sección DÓLARES ────────────────────────────────────── */}
+      {noConciliadosUSD.length > 0 && (
+        <div className="bg-white rounded-2xl border border-blue-100 overflow-hidden">
+          <div className="px-5 py-3 border-b border-blue-50 bg-blue-50 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">
+                Dólares — Pendientes ({noConciliadosUSD.length})
+              </p>
+              <p className="text-xs text-blue-400 mt-0.5">
+                U$S {fmt(noConciliadosUSD.reduce((a, m) => a + m.monto, 0))}
+                {noConciliadosUSD.every(m => m.cotizacion) && (
+                  <span> · ≈ ${fmt(usdEnPesos(noConciliadosUSD))}</span>
+                )}
+              </p>
+            </div>
+            <button onClick={conciliarTodosUSD} disabled={bulkLoad} className="text-xs px-3 py-1.5 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(90deg, #1e40af, #1d4ed8)', opacity: bulkLoad ? 0.7 : 1 }}>{bulkLoad ? 'Conciliando...' : 'Conciliar todos'}</button>
+          </div>
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="U$S Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(noConciliadosUSD).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
+        </div>
+      )}
+      {conciliadosUSD.length > 0 && (
+        <div className="bg-white rounded-2xl border border-blue-50 overflow-hidden">
+          <div className="px-5 py-3 border-b border-blue-50 bg-slate-50">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              Dólares — Conciliados ({conciliadosUSD.length}) · U$S {fmt(conciliadosUSD.reduce((a, m) => a + m.monto, 0))}
+            </p>
+          </div>
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="U$S Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(conciliadosUSD).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
+        </div>
+      )}
+
       {movs.length === 0 && <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400 text-sm">No hay movimientos para este periodo</div>}
       {editando && <EditModal mov={editando} onSave={u => setMovs(prev => prev.map(m => m.id === editando.id ? { ...m, ...u } : m))} onClose={() => setEditando(null)} />}
       {agregando && <AddModal cuentaId={cuentaId} periodo={periodo} cierreDay={cierreDay} venceDay={venceDay} categorias={categorias} subcategorias={subcategorias} onAdd={nuevos => setMovs(prev => [...prev, ...nuevos].sort((a, b) => a.fecha.localeCompare(b.fecha)))} onClose={() => setAgregando(false)} />}

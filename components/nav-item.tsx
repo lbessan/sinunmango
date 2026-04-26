@@ -6,22 +6,20 @@ import { clsx } from 'clsx'
 import { useSidebar } from './sidebar-context'
 
 interface NavItemProps {
-  href:    string
-  icon:    React.ReactNode
-  label:   string
-  tourId?: string
+  href: string
+  icon: React.ReactNode
+  label: string
 }
 
-export function NavItem({ href, icon, label, tourId }: NavItemProps) {
-  const pathname         = usePathname()
-  const { closeSidebar } = useSidebar()
-  const isActive         = pathname === href || pathname.startsWith(href + '/')
+export function NavItem({ href, icon, label }: NavItemProps) {
+  const pathname            = usePathname()
+  const { closeSidebar }    = useSidebar()
+  const isActive            = pathname === href || pathname.startsWith(href + '/')
 
   return (
     <Link
       href={href}
       onClick={closeSidebar}
-      data-tour={tourId}
       className={clsx(
         'flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all mx-2 rounded-lg',
         isActive
