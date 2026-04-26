@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Pencil, Plus, X, Save } from 'lucide-react'
+import { Pencil, Plus, X, Save, Trash2 } from 'lucide-react'
+import { DeleteButton } from '@/components/delete-button'
 import { IconoCategoria } from '@/components/icono-categoria'
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
 import { ICONOS_CATEGORIAS, GRUPOS, urlIcono } from '@/lib/iconos-categorias'
@@ -158,11 +159,12 @@ export function CategoriasClient({ categorias: catInicial, subcategorias: subIni
   categorias: Categoria[]
   subcategorias: Subcategoria[]
 }) {
+  const [categorias,    setCategorias]    = useState(catInicial)
   const [subcategorias, setSubcategorias] = useState(subInicial)
   const [editandoSub,   setEditandoSub]   = useState<Subcategoria | null>(null)
   const [nuevaSubCatId, setNuevaSubCatId] = useState<string | null>(null)
 
-  const grupos = catInicial.reduce<Record<string, Categoria[]>>((acc, cat) => {
+  const grupos = categorias.reduce<Record<string, Categoria[]>>((acc, cat) => {
     const tipo = cat.tipo_default ?? 'Otros'
     if (!acc[tipo]) acc[tipo] = []
     acc[tipo].push(cat)
@@ -227,6 +229,16 @@ export function CategoriasClient({ categorias: catInicial, subcategorias: subIni
                         className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors">
                         <Pencil size={14} />
                       </Link>
+                      <DeleteButton
+                        endpoint={`/api/categorias/${cat.id}`}
+                        label={cat.nombre_categoria}
+                        description="Esta acción eliminará la categoría y no se puede deshacer."
+                        variant="icon"
+                        onSuccess={() => {
+                          setCategorias(prev => prev.filter(c => c.id !== cat.id))
+                          setSubcategorias(prev => prev.filter(s => s.categoria_padre !== cat.id))
+                        }}
+                      />
                     </div>
                   </div>
 

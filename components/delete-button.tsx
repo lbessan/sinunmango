@@ -7,15 +7,19 @@ import { Trash2, X, AlertTriangle } from 'lucide-react'
 interface DeleteButtonProps {
   /** URL del endpoint DELETE */
   endpoint: string
-  /** A dónde redirigir después de eliminar */
-  redirectTo: string
+  /** A dónde redirigir después de eliminar (no usar junto con onSuccess) */
+  redirectTo?: string
+  /** Callback alternativo al redirect — para componentes que manejan su propio estado */
+  onSuccess?: () => void
   /** Etiqueta del objeto que se está eliminando */
   label?: string
+  /** Descripción extra en el modal */
+  description?: string
   /** Variante visual */
   variant?: 'icon' | 'button'
 }
 
-export function DeleteButton({ endpoint, redirectTo, label = 'este elemento', variant = 'button' }: DeleteButtonProps) {
+export function DeleteButton({ endpoint, redirectTo, onSuccess, label = 'este elemento', description, variant = 'button' }: DeleteButtonProps) {
   const router = useRouter()
   const [open,    setOpen]    = useState(false)
   const [loading, setLoading] = useState(false)
@@ -31,8 +35,13 @@ export function DeleteButton({ endpoint, redirectTo, label = 'este elemento', va
       setError(d.error ?? 'No se pudo eliminar')
       return
     }
-    router.push(redirectTo)
-    router.refresh()
+    if (onSuccess) {
+      onSuccess()
+    } else if (redirectTo) {
+      router.push(redirectTo)
+      router.refresh()
+    }
+    setOpen(false)
   }
 
   return (
@@ -82,8 +91,7 @@ export function DeleteButton({ endpoint, redirectTo, label = 'este elemento', va
             </div>
 
             <p className="text-sm text-slate-500 mb-5">
-              El historial de movimientos se conserva, pero la cuenta quedará desactivada y
-              no aparecerá más en la app.
+              {description ?? 'El historial de movimientos se conserva, pero la cuenta quedará desactivada y no aparecerá más en la app.'}
             </p>
 
             {error && (

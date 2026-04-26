@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Pencil, ChevronRight } from 'lucide-react'
+import { DeleteButton } from '@/components/delete-button'
 
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -134,6 +135,12 @@ export default async function CuentasPage() {
                       <Link href={`/cuentas/${c.id}/editar`} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors">
                         <Pencil size={15} />
                       </Link>
+                      <DeleteButton
+                        endpoint={`/api/cuentas/${c.id}`}
+                        redirectTo="/cuentas"
+                        label={c.nombre_cuenta}
+                        variant="icon"
+                      />
                     </div>
                   </div>
                 )

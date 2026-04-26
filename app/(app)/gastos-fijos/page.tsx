@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Pencil, ArrowDownCircle } from 'lucide-react'
+import { DeleteButton } from '@/components/delete-button'
 import { IconoCategoria } from '@/components/icono-categoria'
 
 const fmt = (n: number) =>
@@ -141,6 +142,13 @@ export default async function GastosFijosPage() {
                     className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors">
                     <Pencil size={14} />
                   </Link>
+                  <DeleteButton
+                    endpoint={`/api/gastos-fijos/${g.id}`}
+                    redirectTo="/gastos-fijos"
+                    label={g.nombre_gasto}
+                    description="El gasto fijo se eliminará permanentemente."
+                    variant="icon"
+                  />
                 </div>
               </div>
             )
@@ -184,6 +192,13 @@ export default async function GastosFijosPage() {
                     className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors">
                     <Pencil size={14} />
                   </Link>
+                  <DeleteButton
+                    endpoint={`/api/gastos-fijos/${g.id}`}
+                    redirectTo="/gastos-fijos"
+                    label={g.nombre_gasto}
+                    description="El gasto fijo se eliminará permanentemente."
+                    variant="icon"
+                  />
                 </div>
               </div>
             )
