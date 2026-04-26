@@ -5,7 +5,6 @@ import { notFound, redirect } from 'next/navigation'
 import { Pencil, ArrowLeft } from 'lucide-react'
 import { CuentaSaldoReactivo } from '@/components/cuenta-saldo-reactivo'
 import { CuentaMovimientosTable } from '@/components/cuenta-movimientos-table'
-import { DeleteButton } from '@/components/delete-button'
 
 function formatPeriodo(p: string | null): string {
   if (!p) return 'Sin periodo'
@@ -69,28 +68,16 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
   }, {})
   const periodosOrdenados = Object.keys(futurosPorPeriodo).sort()
 
-  const backHref = isTarjeta ? '/tarjetas' : '/cuentas'
-  const deleteEndpoint = isTarjeta ? `/api/tarjetas/${id}` : `/api/cuentas/${id}`
-
   const navBar = (
     <div className="flex items-center justify-between px-5 py-4">
-      <Link href={backHref} className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg"
+      <Link href="/cuentas" className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg"
         style={{ background: 'rgba(255,255,255,0.18)', color: textColor }}>
-        <ArrowLeft size={14} />{isTarjeta ? 'Tarjetas' : 'Cuentas'}
+        <ArrowLeft size={14} />Cuentas
       </Link>
-      <div className="flex items-center gap-2">
-        <DeleteButton
-          endpoint={deleteEndpoint}
-          redirectTo={backHref}
-          label={cuenta.nombre_cuenta}
-          variant="icon"
-        />
-        <Link href={isTarjeta ? `/tarjetas/${id}/editar` : `/cuentas/${id}/editar`}
-          className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg"
-          style={{ background: 'rgba(255,255,255,0.18)', color: textColor }}>
-          <Pencil size={13} />Editar
-        </Link>
-      </div>
+      <Link href={`/cuentas/${id}/editar`} className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg"
+        style={{ background: 'rgba(255,255,255,0.18)', color: textColor }}>
+        <Pencil size={13} />Editar
+      </Link>
     </div>
   )
 
