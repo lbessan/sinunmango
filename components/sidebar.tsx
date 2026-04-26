@@ -1,4 +1,4 @@
-import { LayoutDashboard, ArrowLeftRight, PlusCircle, CreditCard, Receipt, ShieldCheck, BarChart2, Settings, Bot } from 'lucide-react'
+import { LayoutDashboard, ArrowLeftRight, PlusCircle, CreditCard, Receipt, ShieldCheck, BarChart2, Settings, Bot, Landmark } from 'lucide-react'
 import { NavItem } from './nav-item'
 import { LogoutButton } from './logout-button'
 import { DarkModeToggle } from './dark-mode-toggle'
@@ -40,20 +40,22 @@ export async function Sidebar() {
         <p className="text-xs uppercase tracking-widest px-5 py-2" style={{ color: '#4b6a8a' }}>
           Principal
         </p>
-        <NavItem href="/dashboard"         icon={<LayoutDashboard size={17} />} label="Dashboard" />
-        <NavItem href="/movimientos"       icon={<ArrowLeftRight size={17} />}  label="Movimientos" />
+        <NavItem href="/dashboard"         icon={<LayoutDashboard size={17} />} label="Dashboard"        tourId="tour-dashboard" />
+        <NavItem href="/movimientos"       icon={<ArrowLeftRight size={17} />}  label="Movimientos"      tourId="tour-movimientos" />
         <NavItem href="/movimientos/nuevo" icon={<PlusCircle size={17} />}      label="Nuevo movimiento" />
-<NavItem href="/categorias"        icon={<Tag size={17} />}             label="Categorías" />
+        <NavItem href="/categorias"        icon={<Tag size={17} />}             label="Categorías" />
         <NavItem href="/conciliaciones"    icon={<ShieldCheck size={17} />}     label="Conciliaciones" />
         <NavItem href="/analitica"         icon={<BarChart2 size={17} />}       label="Analítica" />
-        <NavItem href="/asistente"         icon={<Bot size={17} />}             label="Manguito" />
+        <NavItem href="/asistente"         icon={<Bot size={17} />}             label="Manguito"         tourId="tour-manguito" />
 
         <p className="text-xs uppercase tracking-widest px-5 py-2 mt-3" style={{ color: '#4b6a8a' }}>
           Configuración
         </p>
-        <NavItem href="/cuentas"       icon={<CreditCard size={17} />} label="Cuentas" />
-        <NavItem href="/gastos-fijos"  icon={<Receipt size={17} />}    label="Gastos fijos" />
-        <NavItem href="/configuracion" icon={<Settings size={17} />}   label="Configuración" />
+        <NavItem href="/cuentas"       icon={<CreditCard size={17} />} label="Cuentas"        tourId="tour-cuentas" />
+        <NavItem href="/tarjetas"      icon={<CreditCard size={17} />} label="Tarjetas"       tourId="tour-tarjetas" />
+        <NavItem href="/gastos-fijos"        icon={<Receipt   size={17} />} label="Gastos fijos" />
+        <NavItem href="/configuracion/bancos" icon={<Landmark  size={17} />} label="Mis bancos" />
+        <NavItem href="/configuracion"        icon={<Settings  size={17} />} label="Configuración" />
       </nav>
 
       {/* Footer — siempre visible al fondo */}

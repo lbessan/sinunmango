@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
 import { CategoriaSelect } from '@/components/categoria-select'
+import { DeleteButton } from '@/components/delete-button'
 
 type GastoFijoForm = {
   id?: string
   nombre_gasto: string
   id_categoria: string
+  id_subcategoria: string
   monto_estimado: string
   moneda: string
   dia_vencimiento: string
@@ -25,15 +27,17 @@ const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-s
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
 
 export function GastoFijoFormClient({
-  inicial, categorias: catInicial, cuentas,
+  inicial, categorias: catInicial, subcategorias: subInicial, cuentas,
 }: {
   inicial: GastoFijoForm
   categorias: Categoria[]
+  subcategorias: Subcategoria[]
   cuentas: Cuenta[]
 }) {
   const router = useRouter()
   const [form, setForm] = useState<GastoFijoForm>(inicial)
-  const [categorias, setCategorias] = useState(catInicial)
+  const [categorias,   setCategorias]   = useState(catInicial)
+  const [subcategorias] = useState(subInicial)
   const [saving, setSaving]         = useState(false)
   const [saved,  setSaved]          = useState(false)
   const [error,  setError]          = useState('')
@@ -43,6 +47,9 @@ export function GastoFijoFormClient({
     setForm(prev => ({ ...prev, [k]: v }))
 
   const isEditing = !!form.id
+
+  // Subcategorías filtradas según la categoría elegida
+  const subcatsFiltradas = subcategorias.filter(s => s.categoria_padre === form.id_categoria)
 
   const handleGuardar = async () => {
     if (!form.nombre_gasto || !form.monto_estimado) {
@@ -55,6 +62,7 @@ export function GastoFijoFormClient({
     const body = {
       nombre_gasto:        form.nombre_gasto,
       id_categoria:        form.id_categoria || null,
+      id_subcategoria:     form.id_subcategoria || null,
       monto_estimado:      parseFloat(form.monto_estimado) || 0,
       moneda:              form.moneda,
       dia_vencimiento:     form.dia_vencimiento ? parseInt(form.dia_vencimiento) : null,
@@ -113,9 +121,25 @@ export function GastoFijoFormClient({
             <CategoriaSelect
               categorias={categorias}
               value={form.id_categoria}
-              onChange={id => set('id_categoria', id)}
+              onChange={id => { set('id_categoria', id); set('id_subcategoria', '') }}
             />
           </div>
+
+          {subcatsFiltradas.length > 0 && (
+            <div>
+              <label className={labelClass}>Subcategoría</label>
+              <select
+                value={form.id_subcategoria}
+                onChange={e => set('id_subcategoria', e.target.value)}
+                className={inputClass}
+              >
+                <option value="">— ninguna —</option>
+                {subcatsFiltradas.map(s => (
+                  <option key={s.id} value={s.id}>{s.nombre_subcategoria}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className={labelClass}>Día de vencimiento</label>
@@ -147,6 +171,18 @@ export function GastoFijoFormClient({
               {saved ? '✓ Guardado' : saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear gasto fijo'}
             </button>
           </div>
+
+          {isEditing && form.id && (
+            <div className="pt-2 border-t border-slate-100">
+              <DeleteButton
+                endpoint={`/api/gastos-fijos/${form.id}`}
+                label={form.nombre_gasto}
+                description="El gasto fijo se eliminará permanentemente."
+                variant="button"
+                redirectTo="/gastos-fijos"
+              />
+            </div>
+          )}
         </div>
       </div>
 
