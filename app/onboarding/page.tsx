@@ -1,22 +1,41 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CheckCircle, ChevronRight,
-  Check, Plus, X, Sun, Moon,
+  Check, Plus, X, Sun, Moon, Upload, FileText, Loader2,
 } from 'lucide-react'
 import { CuentaFormClient } from '@/components/cuenta-form-client'
-import { CARD_NETWORKS, bankBannerUrl, type BankEntry } from '@/constants/banks'
+import { CARD_NETWORKS, BANKS, bankBannerUrl, type BankEntry } from '@/constants/banks'
 import { BankSelector } from '@/components/bank-selector'
 import {
   THEMES, type ThemeKey, STORAGE_THEME, STORAGE_DARKMODE,
   applyTheme, applyDarkMode,
 } from '@/components/theme-provider'
 
+// ─── Variantes de tarjeta ─────────────────────────────────────────────────────
+
+const CARD_VARIANTS = [
+  { id: 'standard',  label: 'Standard'  },
+  { id: 'gold',      label: 'Gold'      },
+  { id: 'platinum',  label: 'Platinum'  },
+  { id: 'signature', label: 'Signature' },
+  { id: 'black',     label: 'Black'     },
+  { id: 'infinite',  label: 'Infinite'  },
+]
+
+// ─── Emojis para categorías ───────────────────────────────────────────────────
+
+const EMOJI_OPTS = [
+  '🛒','🍔','🚗','🏠','⚡','💊','💉','🎬','👔','📱',
+  '🎓','✈️','🐾','🏋️','💄','🎁','🔧','📝','📺','💼',
+  '💻','📈','🏘️','💸','🍕','☕','🎮','🏥','🛍️','⛽',
+  '💡','🔑','📦','🎵','🍷','🚌','🏦','🎯','🌱','🐶',
+  '🍼','🧴','🎪','🏖️','🚀','🧠','🎸','🍎','🌍','💰',
+]
+
 // ─── Categorías por defecto ───────────────────────────────────────────────────
-// Estas se muestran como opciones en el paso 3. Las seleccionadas se crean
-// como categorías propias del usuario al finalizar.
 
 const DEFAULT_CATS = [
   // Gastos
@@ -48,6 +67,61 @@ const DEFAULT_CATS = [
 ] as const
 
 const TOTAL_STEPS = 4
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload  = () => resolve((reader.result as string).split(',')[1])
+    reader.onerror = reject
+  })
+}
+
+function calcularPeriodo(
+  fecha: string,
+  cuenta: { tipo_cuenta: string; fecha_cierre_tarjeta: string | null; fecha_vencimiento_tarjeta: string | null } | null
+): string {
+  if (!cuenta || cuenta.tipo_cuenta !== 'Tarjeta Credito') return fecha.slice(0, 7) + '-01'
+  if (!cuenta.fecha_cierre_tarjeta || !cuenta.fecha_vencimiento_tarjeta) return fecha.slice(0, 7) + '-01'
+  const cierreDay = new Date(cuenta.fecha_cierre_tarjeta + 'T12:00:00').getDate()
+  const venceDay  = new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate()
+  const d   = new Date(fecha + 'T12:00:00')
+  let mes   = d.getMonth()
+  let anio  = d.getFullYear()
+  const day = d.getDate()
+  if (day <= cierreDay) {
+    if (venceDay <= cierreDay) mes += 1
+  } else {
+    if (venceDay > cierreDay) mes += 1
+    else                       mes += 2
+  }
+  while (mes > 11) { mes -= 12; anio++ }
+  return `${anio}-${String(mes + 1).padStart(2, '0')}-01`
+}
+
+function buildDate(day: string): string | null {
+  const d = parseInt(day)
+  if (!day || isNaN(d)) return null
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type PdfCard = {
+  banco:      string
+  red:        string
+  variante:   string
+  terminacion:string
+  diaCierre:  string
+  diaVence:   string
+  nombre:     string
+  transacciones: any[]
+  importConsumos: boolean
+  error?: string
+}
 
 // ─── Step indicator ───────────────────────────────────────────────────────────
 
@@ -82,16 +156,101 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
   )
 }
 
+// ─── Mini variant selector ────────────────────────────────────────────────────
+
+function VariantSelector({
+  networkId, value, onChange,
+}: { networkId: string; value: string; onChange: (v: string) => void }) {
+  if (!networkId) return null
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Variante</label>
+      <div className="flex flex-wrap gap-2">
+        {CARD_VARIANTS.map(v => {
+          const active = value === v.id
+          return (
+            <button
+              key={v.id}
+              onClick={() => onChange(v.id)}
+              className="relative flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all"
+              style={active
+                ? { borderColor: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 6%, white)' }
+                : { borderColor: '#e2e8f0' }}
+            >
+              <img
+                src={`/cards/${networkId}-${v.id}.png`}
+                alt={v.label}
+                className="w-12 h-8 object-cover rounded"
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+              <span className="text-xs font-medium" style={active ? { color: 'var(--accent)' } : { color: '#64748b' }}>
+                {v.label}
+              </span>
+              {active && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
+                  style={{ background: 'var(--accent)' }}>
+                  <Check size={10} color="#fff" strokeWidth={3} />
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Compact network + variant selector (for PDF review) ─────────────────────
+
+function CompactNetworkSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {CARD_NETWORKS.map(net => (
+        <button
+          key={net.id}
+          onClick={() => onChange(net.id)}
+          className="px-2.5 py-1 rounded-lg border-2 text-xs font-medium transition-all"
+          style={value === net.id
+            ? { borderColor: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 8%, white)', color: 'var(--accent)' }
+            : { borderColor: '#e2e8f0', color: '#94a3b8' }}
+        >
+          {net.nombre}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function CompactVariantSelect({ networkId, value, onChange }: { networkId: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {CARD_VARIANTS.map(v => (
+        <button
+          key={v.id}
+          onClick={() => onChange(v.id)}
+          className="px-2.5 py-1 rounded-lg border-2 text-xs font-medium transition-all"
+          style={value === v.id
+            ? { borderColor: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 8%, white)', color: 'var(--accent)' }
+            : { borderColor: '#e2e8f0', color: '#94a3b8' }}
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ─── Onboarding page ──────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
 
-  // ── Step 2: Tarjeta ─────────────────────────────────────────────────────────
+  // ── Step 2: Tarjeta (manual) ────────────────────────────────────────────────
   const [skipTarjeta,   setSkipTarjeta]   = useState(false)
   const [tarjetaBank,   setTarjetaBank]   = useState<BankEntry | null>(null)
   const [networkId,     setNetworkId]     = useState('')
+  const [variantId,     setVariantId]     = useState('standard')
   const [tarjetaNombre, setTarjetaNombre] = useState('')
   const [terminacion,   setTerminacion]   = useState('')
   const [fechaCierre,   setFechaCierre]   = useState('')
@@ -99,8 +258,17 @@ export default function OnboardingPage() {
   const [savingTarjeta, setSavingTarjeta] = useState(false)
   const [errorTarjeta,  setErrorTarjeta]  = useState<string | null>(null)
 
+  // ── Step 2: PDF import mode ─────────────────────────────────────────────────
+  const [importMode,    setImportMode]    = useState(false)
+  const [pdfStep,       setPdfStep]       = useState<'upload' | 'review'>('upload')
+  const [parsedCards,   setParsedCards]   = useState<PdfCard[]>([])
+  const [parsingPdfs,   setParsingPdfs]   = useState(false)
+  const [parseProgress, setParseProgress] = useState({ done: 0, total: 0 })
+  const [savingImport,  setSavingImport]  = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+
   // ── Step 3: Categorías ──────────────────────────────────────────────────────
-  // Índices de DEFAULT_CATS que el usuario quiere (todos por defecto)
   const [selectedCats,    setSelectedCats]    = useState<Set<number>>(() => new Set(DEFAULT_CATS.map((_, i) => i)))
   const [newCatNombre,    setNewCatNombre]    = useState('')
   const [newCatTipo,      setNewCatTipo]      = useState<'Gasto' | 'Ingreso'>('Gasto')
@@ -113,19 +281,12 @@ export default function OnboardingPage() {
   const [themeKey, setThemeKey] = useState<ThemeKey>('verde')
   const [isDark,   setIsDark]   = useState(false)
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
+  // ── Handlers: Manual tarjeta ─────────────────────────────────────────────────
 
   const handleCrearTarjeta = async () => {
     if (!tarjetaNombre.trim()) { setErrorTarjeta('Ingresá un nombre para la tarjeta'); return }
     if (!networkId) { setErrorTarjeta('Seleccioná la red de la tarjeta'); return }
     setSavingTarjeta(true); setErrorTarjeta(null)
-
-    const buildDate = (day: string) => {
-      const d = parseInt(day)
-      if (!day || isNaN(d)) return null
-      const now = new Date()
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-    }
 
     const res = await fetch('/api/tarjetas', {
       method: 'POST',
@@ -137,7 +298,7 @@ export default function OnboardingPage() {
         saldo_inicial:             0,
         activa:                    true,
         color_primario:            tarjetaBank?.color ?? '#1e293b',
-        imagen_url:                networkId ? `/cards/${networkId}-standard.png` : null,
+        imagen_url:                networkId ? `/cards/${networkId}-${variantId}.png` : null,
         imagen_banner_url:         tarjetaBank?.id ? bankBannerUrl(tarjetaBank.id) : null,
         terminacion_tarjeta:       terminacion || null,
         fecha_cierre_tarjeta:      buildDate(fechaCierre),
@@ -148,6 +309,147 @@ export default function OnboardingPage() {
     if (!res.ok) { setErrorTarjeta('No se pudo crear la tarjeta. Intentá de nuevo.'); return }
     setStep(3)
   }
+
+  // ── Handlers: PDF import ─────────────────────────────────────────────────────
+
+  const handleAnalyzePdfs = async () => {
+    if (!selectedFiles.length) return
+    setParsingPdfs(true)
+    setParseProgress({ done: 0, total: selectedFiles.length })
+
+    const results: PdfCard[] = []
+    for (const file of selectedFiles) {
+      try {
+        const base64 = await fileToBase64(file)
+        const res    = await fetch('/api/parsear-tarjeta-pdf', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ pdf: base64 }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          results.push({
+            banco:          data.tarjeta?.banco       ?? '',
+            red:            data.tarjeta?.red         ?? '',
+            variante:       data.tarjeta?.variante    ?? 'standard',
+            terminacion:    data.tarjeta?.terminacion ?? '',
+            diaCierre:      String(data.tarjeta?.dia_cierre      ?? ''),
+            diaVence:       String(data.tarjeta?.dia_vencimiento ?? ''),
+            nombre:         data.tarjeta?.nombre_sugerido ?? file.name.replace('.pdf', ''),
+            transacciones:  data.transacciones ?? [],
+            importConsumos: true,
+          })
+        } else {
+          results.push({
+            banco: '', red: '', variante: 'standard', terminacion: '',
+            diaCierre: '', diaVence: '',
+            nombre: file.name.replace('.pdf', ''),
+            transacciones: [], importConsumos: false,
+            error: 'No se pudo procesar este PDF',
+          })
+        }
+      } catch {
+        results.push({
+          banco: '', red: '', variante: 'standard', terminacion: '',
+          diaCierre: '', diaVence: '',
+          nombre: file.name.replace('.pdf', ''),
+          transacciones: [], importConsumos: false,
+          error: 'Error al leer el archivo',
+        })
+      }
+      setParseProgress(p => ({ ...p, done: p.done + 1 }))
+    }
+
+    setParsedCards(results)
+    setParsingPdfs(false)
+    setPdfStep('review')
+  }
+
+  const updateCard = (i: number, field: keyof PdfCard, value: any) => {
+    setParsedCards(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c))
+  }
+
+  const handleCrearDesdePdfs = async () => {
+    setSavingImport(true)
+
+    for (let i = 0; i < parsedCards.length; i++) {
+      const card = parsedCards[i]
+      if (card.error) continue
+
+      // Find matching bank for color/banner
+      const matchedBank = BANKS.find(b =>
+        b.nombre.toLowerCase().includes(card.banco.toLowerCase()) ||
+        card.banco.toLowerCase().includes(b.id)
+      )
+
+      const tarjetaRes = await fetch('/api/tarjetas', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre_cuenta:             card.nombre || `Tarjeta ${i + 1}`,
+          institucion:               card.banco  || null,
+          moneda:                    'ARS',
+          saldo_inicial:             0,
+          activa:                    true,
+          color_primario:            matchedBank?.color ?? '#1e293b',
+          imagen_url:                card.red ? `/cards/${card.red}-${card.variante}.png` : null,
+          imagen_banner_url:         matchedBank?.id ? bankBannerUrl(matchedBank.id) : null,
+          terminacion_tarjeta:       card.terminacion || null,
+          fecha_cierre_tarjeta:      buildDate(card.diaCierre),
+          fecha_vencimiento_tarjeta: buildDate(card.diaVence),
+        }),
+      })
+
+      if (!tarjetaRes.ok) continue
+
+      // Import consumos if enabled
+      if (card.importConsumos && card.transacciones.length > 0) {
+        const tarjetaData = await tarjetaRes.json()
+        const cuentaId    = tarjetaData.id
+
+        const cuentaFake = {
+          tipo_cuenta:               'Tarjeta Credito',
+          fecha_cierre_tarjeta:      buildDate(card.diaCierre),
+          fecha_vencimiento_tarjeta: buildDate(card.diaVence),
+        }
+
+        const movimientos = card.transacciones
+          .filter((tx: any) => !tx.ya_existe)
+          .map((tx: any) => {
+            const moneda  = tx.monto_usd !== null ? 'USD' : 'ARS'
+            const monto   = moneda === 'USD' ? (tx.monto_usd ?? 0) : (tx.monto_ars ?? 0)
+            const tipoMov = tx.es_descuento ? 'Ingreso' : 'Gasto'
+            const periodo = calcularPeriodo(tx.fecha, cuentaFake)
+            return {
+              fecha:           tx.fecha,
+              detalle:         tx.detalle,
+              monto:           Math.abs(monto),
+              moneda,
+              cotizacion:      null,
+              conciliado:      false,
+              cuenta_origen:   cuentaId,
+              tipo_movimiento: tipoMov,
+              periodo_tarjeta: periodo,
+              cuota_actual:    tx.cuotas       ?? 1,
+              cuotas_total:    tx.cuotas_total ?? 1,
+            }
+          })
+
+        if (movimientos.length > 0) {
+          await fetch('/api/movimientos', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(movimientos),
+          })
+        }
+      }
+    }
+
+    setSavingImport(false)
+    setStep(3)
+  }
+
+  // ── Handlers: Categorías ──────────────────────────────────────────────────────
 
   const toggleCat = (i: number) => {
     setSelectedCats(prev => {
@@ -165,24 +467,22 @@ export default function OnboardingPage() {
 
   const handleSaveCategorias = async () => {
     setSavingCats(true)
-
-    // Categorías seleccionadas de la lista por defecto
     const selected = DEFAULT_CATS.filter((_, i) => selectedCats.has(i))
     const toCreate = [...selected, ...extraCats]
-
     await Promise.all(
       toCreate.map(cat =>
         fetch('/api/categorias', {
-          method: 'POST',
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre_categoria: cat.nombre, tipo_default: cat.tipo, icono: cat.icono }),
+          body:    JSON.stringify({ nombre_categoria: cat.nombre, tipo_default: cat.tipo, icono: cat.icono }),
         })
       )
     )
-
     setSavingCats(false)
     setStep(4)
   }
+
+  // ── Handlers: Tema ────────────────────────────────────────────────────────────
 
   const handleThemeChange = (key: ThemeKey) => {
     setThemeKey(key)
@@ -238,10 +538,253 @@ export default function OnboardingPage() {
             <h2 className="text-base font-semibold text-slate-800 mb-1">¿Tenés tarjeta de crédito?</h2>
             <p className="text-sm text-slate-500 mb-5">Agregá tu tarjeta principal o saltá este paso.</p>
 
-            {!skipTarjeta ? (
+            {skipTarjeta ? (
+              /* ── Skip state ─────────────────────────────────────────────── */
+              <div className="text-center py-6">
+                <p className="text-4xl mb-3">💳</p>
+                <p className="text-sm text-slate-500 mb-6">
+                  Podés agregar tarjetas en cualquier momento desde el menú{' '}
+                  <span className="font-medium text-slate-700">Tarjetas</span>.
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setSkipTarjeta(false)}
+                    className="flex-1 py-2.5 text-sm font-medium text-slate-400 hover:text-slate-600 border border-slate-200 rounded-xl">
+                    ← Agregar igual
+                  </button>
+                  <button onClick={() => setStep(3)}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white"
+                    style={{ background: 'var(--accent)' }}>
+                    Continuar →
+                  </button>
+                </div>
+              </div>
+
+            ) : importMode ? (
+              /* ── PDF import mode ─────────────────────────────────────────── */
+              <>
+                {pdfStep === 'upload' && (
+                  <div className="space-y-4">
+                    {/* File drop zone */}
+                    <div
+                      className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center cursor-pointer hover:border-slate-300 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload size={28} className="mx-auto text-slate-300 mb-3" />
+                      <p className="text-sm font-medium text-slate-600 mb-1">
+                        Seleccioná uno o varios resúmenes PDF
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        La IA va a detectar banco, red, variante, fechas y consumos
+                      </p>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf"
+                      multiple
+                      className="hidden"
+                      onChange={e => setSelectedFiles(Array.from(e.target.files ?? []))}
+                    />
+
+                    {selectedFiles.length > 0 && (
+                      <div className="space-y-1.5">
+                        {selectedFiles.map((f, i) => (
+                          <div key={i} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                            <FileText size={14} className="text-slate-400 shrink-0" />
+                            <span className="text-sm text-slate-700 flex-1 truncate">{f.name}</span>
+                            <button
+                              onClick={() => setSelectedFiles(prev => prev.filter((_, j) => j !== i))}
+                              className="text-slate-300 hover:text-slate-500"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {parsingPdfs && (
+                      <div className="bg-blue-50 rounded-xl p-4 text-center">
+                        <Loader2 size={20} className="animate-spin mx-auto text-blue-400 mb-2" />
+                        <p className="text-sm font-medium text-blue-600">
+                          Analizando {parseProgress.done + 1} de {parseProgress.total}…
+                        </p>
+                        <p className="text-xs text-blue-400 mt-0.5">Esto puede tardar unos segundos por resumen</p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => { setImportMode(false); setSelectedFiles([]) }}
+                        className="flex-1 py-2.5 text-sm font-medium text-slate-400 hover:text-slate-600 border border-slate-200 rounded-xl"
+                      >
+                        ← Cargar manualmente
+                      </button>
+                      <button
+                        onClick={handleAnalyzePdfs}
+                        disabled={parsingPdfs || !selectedFiles.length}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                        style={{ background: 'var(--accent)' }}
+                      >
+                        {parsingPdfs ? 'Analizando…' : `Analizar ${selectedFiles.length ? `(${selectedFiles.length})` : ''} →`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {pdfStep === 'review' && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-slate-500">
+                      Revisá la información detectada y editá lo que haga falta.
+                    </p>
+
+                    <div className="space-y-4 max-h-[440px] overflow-y-auto pr-1">
+                      {parsedCards.map((card, i) => (
+                        <div key={i} className={`border rounded-xl p-4 space-y-3 ${card.error ? 'border-red-200 bg-red-50' : 'border-slate-200'}`}>
+                          {/* Card image preview */}
+                          {!card.error && card.red && (
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={`/cards/${card.red}-${card.variante}.png`}
+                                alt=""
+                                className="w-16 h-10 object-cover rounded-lg"
+                                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                              />
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-slate-700">{card.nombre || '(sin nombre)'}</p>
+                                <p className="text-xs text-slate-400">
+                                  {card.transacciones.length} consumo{card.transacciones.length !== 1 ? 's' : ''} detectado{card.transacciones.length !== 1 ? 's' : ''}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {card.error ? (
+                            <p className="text-sm text-red-500">{card.error}</p>
+                          ) : (
+                            <>
+                              {/* Nombre */}
+                              <div>
+                                <label className="block text-xs font-medium text-slate-400 mb-1">Nombre</label>
+                                <input
+                                  type="text"
+                                  value={card.nombre}
+                                  onChange={e => updateCard(i, 'nombre', e.target.value)}
+                                  className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+                                />
+                              </div>
+
+                              {/* Banco */}
+                              <div>
+                                <label className="block text-xs font-medium text-slate-400 mb-1">Banco</label>
+                                <input
+                                  type="text"
+                                  value={card.banco}
+                                  onChange={e => updateCard(i, 'banco', e.target.value)}
+                                  className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+                                />
+                              </div>
+
+                              {/* Red */}
+                              <div>
+                                <label className="block text-xs font-medium text-slate-400 mb-1">Red</label>
+                                <CompactNetworkSelect value={card.red} onChange={v => updateCard(i, 'red', v)} />
+                              </div>
+
+                              {/* Variante */}
+                              <div>
+                                <label className="block text-xs font-medium text-slate-400 mb-1">Variante</label>
+                                <CompactVariantSelect networkId={card.red} value={card.variante} onChange={v => updateCard(i, 'variante', v)} />
+                              </div>
+
+                              {/* Terminacion + dias */}
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <label className="block text-xs font-medium text-slate-400 mb-1">Terminación</label>
+                                  <input
+                                    type="text" maxLength={4}
+                                    value={card.terminacion}
+                                    onChange={e => updateCard(i, 'terminacion', e.target.value.replace(/\D/g, ''))}
+                                    placeholder="1234"
+                                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-center tracking-widest focus:outline-none"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-slate-400 mb-1">Día cierre</label>
+                                  <input
+                                    type="number" min={1} max={31}
+                                    value={card.diaCierre}
+                                    onChange={e => updateCard(i, 'diaCierre', e.target.value)}
+                                    placeholder="25"
+                                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-slate-400 mb-1">Día vence</label>
+                                  <input
+                                    type="number" min={1} max={31}
+                                    value={card.diaVence}
+                                    onChange={e => updateCard(i, 'diaVence', e.target.value)}
+                                    placeholder="5"
+                                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Import consumos toggle */}
+                              {card.transacciones.length > 0 && (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={card.importConsumos}
+                                    onChange={e => updateCard(i, 'importConsumos', e.target.checked)}
+                                    className="w-4 h-4 accent-[var(--accent)]"
+                                  />
+                                  <span className="text-xs text-slate-600">
+                                    Importar {card.transacciones.length} consumo{card.transacciones.length !== 1 ? 's' : ''} del resumen
+                                  </span>
+                                </label>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setPdfStep('upload')}
+                        className="flex-1 py-2.5 text-sm font-medium text-slate-400 hover:text-slate-600 border border-slate-200 rounded-xl"
+                      >
+                        ← Volver
+                      </button>
+                      <button
+                        onClick={handleCrearDesdePdfs}
+                        disabled={savingImport}
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                        style={{ background: 'var(--accent)' }}
+                      >
+                        {savingImport
+                          ? 'Creando…'
+                          : `Crear ${parsedCards.filter(c => !c.error).length} tarjeta${parsedCards.filter(c => !c.error).length !== 1 ? 's' : ''} →`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+
+            ) : (
+              /* ── Manual mode ─────────────────────────────────────────────── */
               <>
                 <div className="space-y-4">
-                  <BankSelector value={tarjetaBank?.id ?? ''} onChange={b => { setTarjetaBank(b.id ? b : null); if (b.id && !tarjetaNombre) setTarjetaNombre(b.nombre) }} label="Banco emisor (opcional)" />
+                  <BankSelector
+                    value={tarjetaBank?.id ?? ''}
+                    onChange={b => {
+                      setTarjetaBank(b.id ? b : null)
+                      if (b.id && !tarjetaNombre) setTarjetaNombre(b.nombre)
+                    }}
+                    label="Banco emisor (opcional)"
+                  />
 
                   {/* Red */}
                   <div>
@@ -267,6 +810,15 @@ export default function OnboardingPage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Variante — solo si hay red seleccionada */}
+                  {networkId && (
+                    <VariantSelector
+                      networkId={networkId}
+                      value={variantId}
+                      onChange={setVariantId}
+                    />
+                  )}
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Nombre</label>
@@ -315,26 +867,16 @@ export default function OnboardingPage() {
                     {savingTarjeta ? 'Guardando…' : 'Agregar tarjeta →'}
                   </button>
                 </div>
+
+                {/* PDF import link */}
+                <button
+                  onClick={() => { setImportMode(true); setPdfStep('upload'); setSelectedFiles([]) }}
+                  className="mt-4 w-full flex items-center justify-center gap-2 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <FileText size={13} />
+                  Importar tarjetas desde resúmenes PDF
+                </button>
               </>
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-4xl mb-3">💳</p>
-                <p className="text-sm text-slate-500 mb-6">
-                  Podés agregar tarjetas en cualquier momento desde el menú{' '}
-                  <span className="font-medium text-slate-700">Tarjetas</span>.
-                </p>
-                <div className="flex gap-3">
-                  <button onClick={() => setSkipTarjeta(false)}
-                    className="flex-1 py-2.5 text-sm font-medium text-slate-400 hover:text-slate-600 border border-slate-200 rounded-xl">
-                    ← Agregar igual
-                  </button>
-                  <button onClick={() => setStep(3)}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white"
-                    style={{ background: 'var(--accent)' }}>
-                    Continuar →
-                  </button>
-                </div>
-              </div>
             )}
           </div>
         )}
@@ -405,15 +947,55 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {/* Agregar nueva */}
+            {/* Agregar nueva categoría */}
             {showNewCatForm ? (
-              <div className="border border-slate-200 rounded-xl p-3 mb-4 space-y-2">
-                <div className="flex gap-2">
-                  <input type="text" value={newCatIcono} onChange={e => setNewCatIcono(e.target.value)}
-                    placeholder="📦" className="w-12 border border-slate-200 rounded-lg px-2 py-1.5 text-center text-base focus:outline-none" />
-                  <input type="text" value={newCatNombre} onChange={e => setNewCatNombre(e.target.value)}
-                    placeholder="Nombre de la categoría" className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none" />
+              <div className="border border-slate-200 rounded-xl p-4 mb-4 space-y-3">
+                {/* Emoji picker grid */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-2">Ícono</label>
+                  <div className="grid grid-cols-10 gap-1 mb-2">
+                    {EMOJI_OPTS.map(emoji => (
+                      <button
+                        key={emoji}
+                        onClick={() => setNewCatIcono(emoji)}
+                        title={emoji}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-lg transition-all hover:scale-110"
+                        style={newCatIcono === emoji
+                          ? { background: 'color-mix(in srgb, var(--accent) 12%, white)', outline: '2px solid var(--accent)', outlineOffset: '1px' }
+                          : { background: '#f8fafc' }}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Fallback: custom emoji input */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">O escribí uno:</span>
+                    <input
+                      type="text"
+                      value={newCatIcono}
+                      onChange={e => setNewCatIcono(e.target.value)}
+                      className="w-12 border border-slate-200 rounded-lg px-2 py-1 text-center text-base focus:outline-none"
+                      maxLength={2}
+                    />
+                    <span className="text-xl">{newCatIcono}</span>
+                  </div>
                 </div>
+
+                {/* Nombre */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Nombre</label>
+                  <input
+                    type="text"
+                    value={newCatNombre}
+                    onChange={e => setNewCatNombre(e.target.value)}
+                    placeholder="Nombre de la categoría"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                    onKeyDown={e => e.key === 'Enter' && handleAgregarExtraCat()}
+                  />
+                </div>
+
+                {/* Tipo + acciones */}
                 <div className="flex items-center gap-2">
                   <div className="flex gap-1.5">
                     {(['Gasto', 'Ingreso'] as const).map(t => (
@@ -427,7 +1009,12 @@ export default function OnboardingPage() {
                     ))}
                   </div>
                   <div className="flex gap-1.5 ml-auto">
-                    <button onClick={() => setShowNewCatForm(false)} className="px-3 py-1 text-xs text-slate-400 hover:text-slate-600">Cancelar</button>
+                    <button
+                      onClick={() => { setShowNewCatForm(false); setNewCatNombre(''); setNewCatIcono('📦') }}
+                      className="px-3 py-1 text-xs text-slate-400 hover:text-slate-600"
+                    >
+                      Cancelar
+                    </button>
                     <button onClick={handleAgregarExtraCat} disabled={!newCatNombre.trim()}
                       className="px-3 py-1 rounded-lg text-xs font-semibold text-white disabled:opacity-40"
                       style={{ background: 'var(--accent)' }}>
