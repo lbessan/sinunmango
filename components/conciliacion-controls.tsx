@@ -182,18 +182,21 @@ function AddModal({ cuentaId, periodo: periodoBase, cierreDay, venceDay, categor
     setSaving(false)
     if (res.ok) {
       // Solo mostramos en la tabla actual los del período base
+      const cotizNum = isUSD && cotizacion ? parseFloat(cotizacion) : null
       const movsDelPeriodo = nuevosMovs
         .filter(m => m.periodo_tarjeta === periodoBase)
         .map(m => ({
           id: m.id, fecha: m.fecha, detalle: m.detalle, monto: montoCuota,
-          monto_estimado: isUSD && cotizacion ? montoCuota * parseFloat(cotizacion) : montoCuota,
+          monto_estimado: cotizNum ? montoCuota * cotizNum : montoCuota,
+          moneda, cotizacion: cotizNum,
           conciliado, categoria_icono: cat?.icono ?? null,
           categoria_nombre: cat?.nombre_categoria ?? null,
           cuotas_total: cuotas, cuota_actual: m.cuota_actual,
         }))
       onAdd(movsDelPeriodo.length > 0 ? movsDelPeriodo : [{
         id: nuevosMovs[0].id, fecha: nuevosMovs[0].fecha, detalle: nuevosMovs[0].detalle,
-        monto: montoCuota, monto_estimado: isUSD && cotizacion ? montoCuota * parseFloat(cotizacion) : montoCuota,
+        monto: montoCuota, monto_estimado: cotizNum ? montoCuota * cotizNum : montoCuota,
+        moneda, cotizacion: cotizNum,
         conciliado, categoria_icono: cat?.icono ?? null, categoria_nombre: cat?.nombre_categoria ?? null,
         cuotas_total: cuotas, cuota_actual: 1,
       }])
@@ -425,11 +428,14 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       .filter(tx => calcularPeriodo(tx.fecha, cierreDay ?? null, venceDay ?? null, isTarjeta) === periodo)
       .map(tx => {
         const cat = categorias.find(c => c.id === tx.catId)
+        const isUsdTx = !!tx.monto_usd
         return {
           id: crypto.randomUUID(), fecha: tx.fecha,
           detalle: tx.detalle,
           monto: tx.monto_usd ?? (tx.monto_ars ?? 0),
           monto_estimado: tx.monto_ars ?? (tx.monto_usd ?? 0),
+          moneda: isUsdTx ? 'USD' : 'ARS',
+          cotizacion: null,
           conciliado: true,
           categoria_icono: cat?.icono ?? null,
           categoria_nombre: cat?.nombre_categoria ?? null,
