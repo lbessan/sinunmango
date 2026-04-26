@@ -59,24 +59,25 @@ export async function POST(req: NextRequest) {
             },
             {
               type: 'text',
-              text: `Analizá este resumen de tarjeta de crédito y extraé dos tipos de items:
+              text: `Analizá este resumen de tarjeta de crédito y extraé los siguientes items:
 
 1. CONSUMOS del titular principal (sección "Consumos" o similar — NO los de tarjetas adicionales)
-2. UN ÚNICO item agrupado con el TOTAL de la sección "Impuestos, cargos e intereses" (si existe)
+2. DESCUENTOS Y CRÉDITOS A FAVOR que aparezcan EN CUALQUIER PARTE del resumen (incluso fuera de la sección de consumos, en el encabezado o en secciones propias). Ejemplos: "CR.RG ...", "BONIF. CONSUMO ...", "REINTEGRO ...", "DESCUENTO ...", ajustes con monto negativo.
+3. UN ÚNICO item agrupado con el TOTAL de la sección "Impuestos, cargos e intereses" (si existe)
 ${movsResumen}
 Para cada item extraé:
 - fecha (formato YYYY-MM-DD)
-- detalle (descripción limpia, sin códigos de cupón)
-- monto_ars (monto en pesos, número sin símbolo, NEGATIVO si es bonificación/crédito/devolución. Si es en dólares, poné null)
-- monto_usd (monto en dólares, número sin símbolo, NEGATIVO si es bonificación/crédito/devolución. Si es en pesos, poné null)
+- detalle (descripción limpia, sin códigos internos ni número de cupón)
+- monto_ars (monto en pesos como número positivo. Si es en dólares, poné null)
+- monto_usd (monto en dólares como número positivo. Si es en pesos, poné null)
 - cuotas (número de cuota actual si dice "C.XX/YY", sino 1)
 - cuotas_total (total de cuotas si dice "C.XX/YY", sino 1)
-- ya_existe (true si coincide con uno de los movimientos ya cargados por fecha y monto similar)
-- es_impuesto (true SOLO para el item agrupado de impuestos/cargos, false para todo lo demás)
-- es_descuento (true si es una bonificación, descuento, reintegro o crédito a favor — monto NEGATIVO)
+- ya_existe (true si coincide con alguno de los movimientos ya cargados por fecha y monto similar)
+- es_impuesto (true SOLO para el item agrupado de impuestos/cargos)
+- es_descuento (true para bonificaciones, reintegros, descuentos y créditos a favor — siempre monto POSITIVO)
 
 Para los impuestos: sumá todos los montos de esa sección en UN SOLO item con detalle "Impuestos y cargos" y la fecha del cierre del resumen.
-Para bonificaciones/descuentos: incluílos individualmente con monto NEGATIVO. Son ítems como "BONIF. CONSUMO ...", "REINTEGRO ...", "DESCUENTO ...", "CR.RG ...", ajustes con signo negativo en el estado.
+Para descuentos: incluílos individualmente con monto POSITIVO y es_descuento: true. Buscalos en TODO el documento, no solo en la sección de consumos.
 
 Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni texto adicional:
 {
@@ -93,9 +94,20 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
       "es_descuento": false
     },
     {
+      "fecha": "2026-04-01",
+      "detalle": "CR.RG 5617 30% M",
+      "monto_ars": 42434.75,
+      "monto_usd": null,
+      "cuotas": 1,
+      "cuotas_total": 1,
+      "ya_existe": false,
+      "es_impuesto": false,
+      "es_descuento": true
+    },
+    {
       "fecha": "2026-04-14",
       "detalle": "Bonif. Consumo Openpay Los Cinco Pinos",
-      "monto_ars": -12004.69,
+      "monto_ars": 12004.69,
       "monto_usd": null,
       "cuotas": 1,
       "cuotas_total": 1,
@@ -119,11 +131,12 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
 
 Notas importantes:
 - Ignorá SOLO los pagos realizados (sección "Pagos" del resumen)
-- SÍ incluí bonificaciones, reintegros, descuentos y créditos a favor (con monto NEGATIVO)
+- SÍ incluí descuentos y créditos a favor aunque estén fuera de la sección de consumos
 - NO incluyas consumos de tarjetas adicionales (titular adicional)
 - Para cuotas: si dice "C.04/12" significa cuota 4 de 12 — extraé SOLO esa cuota tal cual aparece
 - Limpiá el detalle: "CARREFOUR MAR DEL PLATA" → "Carrefour Mar del Plata"
-- Si no hay sección de impuestos/cargos, no incluyas ningún item con es_impuesto: true`,
+- Si no hay sección de impuestos/cargos, no incluyas ningún item con es_impuesto: true
+- Los montos siempre van como número POSITIVO — es_descuento: true indica que es un crédito a favor`,
             },
           ],
         },
