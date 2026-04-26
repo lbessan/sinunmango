@@ -29,7 +29,7 @@ export default async function ConciliacionDetallePage({
         .select('*')
         .eq('cuenta_origen', cuentaId)
         .eq('periodo_tarjeta', periodo)
-        .eq('tipo_movimiento', 'Gasto')
+        .in('tipo_movimiento', ['Gasto', 'Ingreso'])
         .eq('user_id', user.id)
         .order('fecha', { ascending: true }),
       adminClient

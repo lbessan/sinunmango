@@ -15,6 +15,7 @@ type Mov = {
   moneda: string; cotizacion: number | null
   categoria_icono: string | null; categoria_nombre: string | null
   cuotas_total: number; cuota_actual: number
+  tipo_movimiento?: string   // 'Gasto' | 'Ingreso' — Ingreso = descuento/bonificación
 }
 type Categoria   = { id: string; nombre_categoria: string; icono: string | null; tipo_default?: string }
 type Subcategoria = { id: string; categoria_padre: string; nombre_subcategoria: string }
@@ -189,7 +190,8 @@ function AddModal({ cuentaId, periodo: periodoBase, cierreDay, venceDay, categor
           id: m.id, fecha: m.fecha, detalle: m.detalle, monto: montoCuota,
           monto_estimado: cotizNum ? montoCuota * cotizNum : montoCuota,
           moneda, cotizacion: cotizNum,
-          conciliado, categoria_icono: cat?.icono ?? null,
+          conciliado, tipo_movimiento: 'Gasto',
+          categoria_icono: cat?.icono ?? null,
           categoria_nombre: cat?.nombre_categoria ?? null,
           cuotas_total: cuotas, cuota_actual: m.cuota_actual,
         }))
@@ -197,7 +199,8 @@ function AddModal({ cuentaId, periodo: periodoBase, cierreDay, venceDay, categor
         id: nuevosMovs[0].id, fecha: nuevosMovs[0].fecha, detalle: nuevosMovs[0].detalle,
         monto: montoCuota, monto_estimado: cotizNum ? montoCuota * cotizNum : montoCuota,
         moneda, cotizacion: cotizNum,
-        conciliado, categoria_icono: cat?.icono ?? null, categoria_nombre: cat?.nombre_categoria ?? null,
+        conciliado, tipo_movimiento: 'Gasto',
+        categoria_icono: cat?.icono ?? null, categoria_nombre: cat?.nombre_categoria ?? null,
         cuotas_total: cuotas, cuota_actual: 1,
       }])
       onClose()
@@ -432,16 +435,16 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
         const cat = categorias.find(c => c.id === tx.catId)
         const isUsdTx = !!tx.monto_usd
         const montoAbs = Math.abs(tx.monto_ars ?? tx.monto_usd ?? 0)
-        // descuentos se guardan como Ingreso con monto positivo
-        const montoFinal = tx.es_descuento ? montoAbs : (tx.monto_usd ?? montoAbs)
+        const montoFinal = isUsdTx ? (tx.monto_usd ?? montoAbs) : montoAbs
         return {
           id: crypto.randomUUID(), fecha: tx.fecha,
           detalle: tx.detalle,
           monto: montoFinal,
-          monto_estimado: tx.es_descuento ? montoAbs : (tx.monto_ars ?? montoAbs),
+          monto_estimado: isUsdTx ? montoAbs : montoAbs,
           moneda: isUsdTx ? 'USD' : 'ARS',
           cotizacion: null,
           conciliado: true,
+          tipo_movimiento: tx.es_descuento ? 'Ingreso' : 'Gasto',
           categoria_icono: cat?.icono ?? null,
           categoria_nombre: cat?.nombre_categoria ?? null,
           cuotas_total: tx.cuotas_total, cuota_actual: tx.cuotas,
@@ -734,10 +737,16 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
     ))
   }
 
-  // Totales ARS (solo pesos)
-  const totalPeriodoPesos    = movsARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
-  const totalConciliadoPesos = conciliadosARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
-  const totalPendientePesos  = noConciliadosARS.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
+  // Monto firmado: Gastos suman, Ingresos (descuentos) restan
+  const signedARS = (m: Mov) => {
+    const base = m.monto_estimado ?? m.monto
+    return m.tipo_movimiento === 'Ingreso' ? -base : base
+  }
+
+  // Totales ARS netos (gastos − descuentos)
+  const totalPeriodoPesos    = movsARS.reduce((a, m) => a + signedARS(m), 0)
+  const totalConciliadoPesos = conciliadosARS.reduce((a, m) => a + signedARS(m), 0)
+  const totalPendientePesos  = noConciliadosARS.reduce((a, m) => a + signedARS(m), 0)
   // Totales USD (en dólares)
   const totalUSDPeriodo    = movsUSD.reduce((a, m) => a + m.monto, 0)
   const totalUSDConciliado = conciliadosUSD.reduce((a, m) => a + m.monto, 0)
@@ -773,9 +782,10 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
   )
 
   const MovRow = ({ mov }: { mov: Mov }) => {
-    const isUSD = mov.moneda === 'USD'
+    const isUSD       = mov.moneda === 'USD'
+    const esDescuento = mov.tipo_movimiento === 'Ingreso'
     return (
-      <tr className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+      <tr className={`border-b border-slate-50 transition-colors ${esDescuento ? 'hover:bg-emerald-50 bg-emerald-50/30' : 'hover:bg-slate-50'}`}>
         <td className="px-4 py-3">
           <button onClick={() => toggle(mov.id, mov.conciliado)} disabled={loading === mov.id}>
             {loading === mov.id ? <span className="text-slate-300 text-xs">···</span>
@@ -785,7 +795,16 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
         </td>
         <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{mov.fecha}</td>
         <td className="px-4 py-3">
-          <p className={`text-sm font-medium max-w-xs truncate ${mov.conciliado ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{mov.detalle ?? '—'}</p>
+          <div className="flex items-center gap-1.5">
+            <p className={`text-sm font-medium max-w-xs truncate ${mov.conciliado ? 'text-slate-400 line-through' : esDescuento ? 'text-emerald-700' : 'text-slate-700'}`}>
+              {mov.detalle ?? '—'}
+            </p>
+            {esDescuento && (
+              <span className="shrink-0 text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-1.5 py-0.5 rounded-full">
+                DESCUENTO
+              </span>
+            )}
+          </div>
           {mov.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {mov.cuota_actual}/{mov.cuotas_total}</p>}
         </td>
         <td className="px-4 py-3 whitespace-nowrap">
@@ -797,13 +816,17 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
         <td className="px-4 py-3 text-right whitespace-nowrap">
           {isUSD ? (
             <div>
-              <p className="text-sm font-semibold text-blue-700">U$S {fmt(mov.monto)}</p>
+              <p className={`text-sm font-semibold ${esDescuento ? 'text-emerald-600' : 'text-blue-700'}`}>
+                {esDescuento ? '−' : ''}U$S {fmt(mov.monto)}
+              </p>
               {mov.cotizacion
                 ? <p className="text-xs text-slate-400">≈ ${fmt(mov.monto * mov.cotizacion)}</p>
                 : <p className="text-xs text-amber-500">sin cotización</p>}
             </div>
           ) : (
-            <p className="text-sm font-semibold text-slate-800">${fmt(mov.monto_estimado ?? mov.monto)}</p>
+            <p className={`text-sm font-semibold ${esDescuento ? 'text-emerald-600' : 'text-slate-800'}`}>
+              {esDescuento ? '−' : ''}${fmt(mov.monto_estimado ?? mov.monto)}
+            </p>
           )}
         </td>
         <td className="px-4 py-3"><button onClick={() => setEditando(mov)} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100"><Pencil size={13} /></button></td>
