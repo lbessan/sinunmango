@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Pencil, ChevronRight, CreditCard } from 'lucide-react'
+import { DeleteButton } from '@/components/delete-button'
 
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -104,6 +105,12 @@ export default async function TarjetasPage() {
                   >
                     <Pencil size={15} />
                   </Link>
+                  <DeleteButton
+                    endpoint={`/api/tarjetas/${t.id}`}
+                    redirectTo="/tarjetas"
+                    label={t.nombre_cuenta}
+                    variant="icon"
+                  />
                 </div>
               </div>
             )
