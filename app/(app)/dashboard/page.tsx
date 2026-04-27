@@ -6,6 +6,17 @@ import { TourTrigger } from '@/components/tour-trigger'
 
 const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
+function labelTipo(tipo: string): string {
+  switch (tipo) {
+    case 'Banco CA':        return 'Caja de Ahorro'
+    case 'Banco CC':        return 'Cuenta Corriente'
+    case 'Billetera':       return 'Billetera virtual'
+    case 'Billetera/Banco': return 'Banco / Billetera'
+    case 'Efectivo':        return 'Efectivo'
+    default:                return tipo
+  }
+}
+
 function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
   imagenUrl?: string | null; colorPrim: string; tipo: string; nombre: string; moneda?: string | null
 }) {
@@ -243,7 +254,7 @@ export default async function DashboardPage({
                     <Thumbnail imagenUrl={extra?.imagen_url} colorPrim={extra?.color_primario ?? '#0d3b6e'} tipo={c.tipo_cuenta} nombre={c.nombre_cuenta} moneda={c.moneda} />
                     <div>
                       <p className="text-sm font-medium text-slate-700">{c.nombre_cuenta}</p>
-                      <p className="text-xs text-slate-400">{c.tipo_cuenta}</p>
+                      <p className="text-xs text-slate-400">{labelTipo(c.tipo_cuenta)}</p>
                     </div>
                   </div>
                   <p className={`text-sm font-semibold ${(c.saldo_actual ?? 0) < 0 ? 'text-red-500' : 'text-slate-800'}`}>

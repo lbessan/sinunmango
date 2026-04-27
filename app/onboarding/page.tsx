@@ -432,6 +432,7 @@ export default function OnboardingPage() {
               periodo_tarjeta: periodo,
               cuota_actual:    tx.cuotas       ?? 1,
               cuotas_total:    tx.cuotas_total ?? 1,
+              ciclo_actual:    1,
             }
           })
 
@@ -868,14 +869,27 @@ export default function OnboardingPage() {
                   </button>
                 </div>
 
-                {/* PDF import link */}
-                <button
-                  onClick={() => { setImportMode(true); setPdfStep('upload'); setSelectedFiles([]) }}
-                  className="mt-4 w-full flex items-center justify-center gap-2 text-xs text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <FileText size={13} />
-                  Importar tarjetas desde resúmenes PDF
-                </button>
+                {/* PDF import — opción prominente */}
+                <div className="mt-4 border-t border-slate-100 pt-4">
+                  <p className="text-xs text-center text-slate-400 mb-3">— o también —</p>
+                  <button
+                    onClick={() => { setImportMode(true); setPdfStep('upload'); setSelectedFiles([]) }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed border-slate-200 hover:border-[var(--accent)] hover:bg-slate-50 transition-all group"
+                  >
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: 'color-mix(in srgb, var(--accent) 10%, white)' }}>
+                      <FileText size={18} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-slate-700 group-hover:text-[var(--accent)] transition-colors">
+                        Importar desde resúmenes PDF
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        Subí los PDFs y la IA detecta banco, red, variante y carga los consumos
+                      </p>
+                    </div>
+                  </button>
+                </div>
               </>
             )}
           </div>
