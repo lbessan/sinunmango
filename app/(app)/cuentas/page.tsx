@@ -40,7 +40,7 @@ function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
     return (
       <div
         className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
-        style={{ width: 96, height: 60, background: colorPrim }}
+        style={{ width: 128, height: 81, background: colorPrim }}
       >
         {imagenUrl
           ? <img src={imagenUrl} alt={nombre} className="w-full h-full object-contain" />

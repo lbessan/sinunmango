@@ -2,6 +2,15 @@ import { adminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/auth'
 import { TarjetaFormClient } from '@/components/tarjeta-form-client'
 import { notFound, redirect } from 'next/navigation'
+import { BANKS } from '@/constants/banks'
+
+// Parsea imagen_url = /cards/{networkId}-{variantId}.png → { network_id, variant_id }
+function parseCardUrl(url?: string | null): { network_id: string; variant_id: string } {
+  if (!url) return { network_id: '', variant_id: 'standard' }
+  const m = url.match(/\/cards\/([a-z]+)-([a-z]+)\.png/)
+  if (!m) return { network_id: '', variant_id: 'standard' }
+  return { network_id: m[1], variant_id: m[2] }
+}
 
 export default async function EditarTarjetaPage({
   params,
@@ -22,16 +31,28 @@ export default async function EditarTarjetaPage({
 
   if (!t) notFound()
 
+  // Intentar detectar red y variante desde imagen_url almacenada
+  const { network_id, variant_id } = parseCardUrl(t.imagen_url)
+
+  // Intentar encontrar el banco por nombre de institución
+  const banco = t.institucion
+    ? BANKS.find(b =>
+        b.nombre.toLowerCase() === t.institucion!.toLowerCase() ||
+        t.institucion!.toLowerCase().includes(b.nombre.toLowerCase()) ||
+        b.nombre.toLowerCase().includes(t.institucion!.toLowerCase())
+      )
+    : null
+
   return (
     <TarjetaFormClient
       inicial={{
         id:                t.id,
         nombre:            t.nombre_cuenta ?? '',
-        banco_id:          '',
+        banco_id:          banco?.id ?? '',
         banco_nombre:      t.institucion ?? '',
-        banco_color:       t.color_primario ?? '#1e293b',
-        network_id:        '',
-        variant_id:        'standard',
+        banco_color:       banco?.color ?? t.color_primario ?? '#1e293b',
+        network_id,
+        variant_id,
         imagen_url:        t.imagen_url ?? '',
         color_primario:    t.color_primario ?? '#1e293b',
         fecha_cierre:      t.fecha_cierre_tarjeta ?? '',
