@@ -276,11 +276,11 @@ export default async function ConciliacionesPage({
                 <div className="flex items-center gap-4">
                   <div
                     className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
-                    style={{ background: '#1e293b', width: 64, height: 40 }}
+                    style={{ background: colorPrim, width: 80, height: 50 }}
                   >
                     {imagenUrl
-                      ? <img src={imagenUrl} alt={tarjeta.nombre_cuenta} className="w-full h-full object-cover" />
-                      : <CreditCard size={20} className="text-slate-400" />
+                      ? <img src={imagenUrl} alt={tarjeta.nombre_cuenta} className="w-full h-full object-contain" />
+                      : <CreditCard size={18} className="text-white/60" />
                     }
                   </div>
                   <div>
