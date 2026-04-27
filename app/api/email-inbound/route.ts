@@ -62,7 +62,7 @@ async function fetchResendEmailBody(emailId: string): Promise<string> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return ''
 
-  const res = await fetch(`https://api.resend.com/emails/${emailId}`, {
+  const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   })
 
