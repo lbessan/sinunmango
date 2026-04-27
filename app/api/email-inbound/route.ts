@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminClient } from '@/lib/supabase/admin'
 import { parseAllEmails } from '@/lib/email-parsers'
 
-// ─── Period + date helpers (mirrors cuenta-movimientos-table logic) ───────────
+// ─── Period + date helpers ────────────────────────────────────────────────────
 function calcularPeriodo(
   fechaStr: string,
   cierreDay: number | null,
@@ -31,37 +31,167 @@ function addMeses(fechaStr: string, n: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-// ─── Route handler ────────────────────────────────────────────────────────────
-export async function POST(req: NextRequest) {
-  // Verify shared secret to prevent unauthorized calls
-  const secret = process.env.EMAIL_INBOUND_SECRET
-  if (secret) {
-    const auth = req.headers.get('authorization')
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+// ─── Gmail filter verification detector ──────────────────────────────────────
+// Gmail sends a verification email when you add a forwarding/filter address.
+// Subject: "Gmail Forwarding Confirmation - Receive Mail from ..."
+// Body contains a numeric code like: "Confirmation code: 123456789"
+function extractGmailVerificationCode(text: string): string | null {
+  const m = text.match(/Confirmation code:\s*(\d{6,12})/i)
+    ?? text.match(/C[oó]digo de confirmaci[oó]n[:\s]+(\d{6,12})/i)
+    ?? text.match(/confirm.*?(\d{9})/i)
+  return m ? m[1] : null
+}
+
+// ─── Strip HTML to plain text (very naive but sufficient for bank emails) ─────
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+// ─── Fetch email body from Resend API ────────────────────────────────────────
+async function fetchResendEmailBody(emailId: string): Promise<string> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return ''
+
+  const res = await fetch(`https://api.resend.com/emails/${emailId}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+
+  if (!res.ok) {
+    console.warn(`[email-inbound] Could not fetch email ${emailId}: ${res.status}`)
+    return ''
   }
 
-  const body = (await req.json()) as { texto: string; from?: string; subject?: string }
-  const texto = body.texto?.trim() ?? ''
+  const data = await res.json()
+  // Prefer plain text; fall back to stripped HTML
+  return data.text?.trim()
+    || (data.html ? stripHtml(data.html) : '')
+}
 
-  if (!texto) {
+// ─── Route handler ────────────────────────────────────────────────────────────
+export async function POST(req: NextRequest) {
+
+  const body = await req.json() as Record<string, unknown>
+
+  // ── Detect Resend Inbound webhook format ─────────────────────────────────
+  const isResend = body.type === 'email.received'
+    || (typeof body.data === 'object' && body.data !== null && 'email_id' in (body.data as object))
+
+  let emailText = ''
+  let userId: string | null = null
+
+  if (isResend) {
+    // Resend wraps everything under `data`
+    const data = (typeof body.data === 'object' && body.data !== null)
+      ? body.data as Record<string, unknown>
+      : body
+
+    const emailId    = data.email_id as string | undefined
+    const toField    = data.to  // string | string[]
+    const toList: string[] = Array.isArray(toField)
+      ? toField as string[]
+      : typeof toField === 'string'
+        ? [toField]
+        : []
+
+    // Extract token from the first `to` address matching our domain
+    const DOMAIN = process.env.EMAIL_INBOUND_DOMAIN ?? 'sinunmango.com.ar'
+    const toAddr = toList.find(a => a.toLowerCase().endsWith(`@${DOMAIN}`)) ?? toList[0] ?? ''
+    const token  = toAddr.split('@')[0].toLowerCase()
+
+    if (!token) {
+      return NextResponse.json({ ok: false, skipped: true, reason: 'no matching to address' })
+    }
+
+    // Look up user by token
+    const { data: pref } = await adminClient
+      .from('user_preferences')
+      .select('user_id')
+      .eq('email_inbound_token', token)
+      .maybeSingle()
+
+    if (!pref) {
+      console.warn(`[email-inbound] Unknown inbound token: ${token}`)
+      return NextResponse.json({ ok: false, skipped: true, reason: 'unknown token' })
+    }
+
+    userId = pref.user_id as string
+
+    // Get email text — from webhook if present, otherwise via API
+    const inlineText = (data.text as string | undefined)?.trim()
+    const inlineHtml = (data.html as string | undefined)?.trim()
+
+    if (inlineText) {
+      emailText = inlineText
+    } else if (inlineHtml) {
+      emailText = stripHtml(inlineHtml)
+    } else if (emailId) {
+      emailText = await fetchResendEmailBody(emailId)
+    }
+
+    // ── Check for Gmail filter verification email ─────────────────────────
+    const subject = (data.subject as string | undefined) ?? ''
+    if (
+      subject.toLowerCase().includes('forwarding confirmation') ||
+      subject.toLowerCase().includes('confirmaci') // "Confirmación de reenvío"
+    ) {
+      const code = extractGmailVerificationCode(emailText)
+      if (code && userId) {
+        await adminClient
+          .from('user_preferences')
+          .upsert(
+            { user_id: userId, gmail_verification_code: code, updated_at: new Date().toISOString() },
+            { onConflict: 'user_id' }
+          )
+        console.log(`[email-inbound] Stored Gmail verification code for user ${userId}: ${code}`)
+        return NextResponse.json({ ok: true, type: 'gmail_verification', code })
+      }
+    }
+
+  } else {
+    // ── Legacy format: { texto, from, subject } with Bearer auth ─────────
+    const secret = process.env.EMAIL_INBOUND_SECRET
+    if (secret) {
+      const auth = req.headers.get('authorization')
+      if (auth !== `Bearer ${secret}`) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    }
+    emailText = (body.texto as string | undefined)?.trim() ?? ''
+  }
+
+  if (!emailText) {
     return NextResponse.json({ ok: false, skipped: true, reason: 'empty body' })
   }
 
-  // ── Parse email (supports single and digest emails with multiple transactions) ─
-  const parsedList = parseAllEmails(texto)
+  // ── Parse email ───────────────────────────────────────────────────────────
+  const parsedList = parseAllEmails(emailText)
   if (parsedList.length === 0) {
     return NextResponse.json({ ok: false, skipped: true, reason: 'unrecognized format' })
   }
 
-  // ── Load all active cuentas once ─────────────────────────────────────────────
-  const { data: cuentas } = await adminClient
+  // ── Load cuentas for the resolved user (or all, for legacy) ──────────────
+  let cuentasQuery = adminClient
     .from('cuentas')
     .select('id, user_id, nombre_cuenta, tipo_cuenta, moneda, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta, terminacion_tarjeta')
     .eq('activa', true)
 
-  // ── Process each parsed transaction ──────────────────────────────────────────
+  if (userId) {
+    cuentasQuery = cuentasQuery.eq('user_id', userId)
+  }
+
+  const { data: cuentas } = await cuentasQuery
+
+  // ── Process each parsed transaction ──────────────────────────────────────
   const allRecords: object[] = []
   const importados: string[] = []
   const noMapeados: string[] = []
@@ -74,9 +204,8 @@ export async function POST(req: NextRequest) {
 
     if (!cuenta) {
       console.warn(
-        `[email-inbound] No cuenta found for terminacion=${parsed.terminacion} ` +
-        `(${parsed.detalle} $${parsed.monto} ${parsed.moneda}). ` +
-        `Configurá terminacion_tarjeta en la cuenta correspondiente.`
+        `[email-inbound] No cuenta for terminacion=${parsed.terminacion} ` +
+        `(${parsed.detalle} $${parsed.monto} ${parsed.moneda})`
       )
       noMapeados.push(`terminacion ${parsed.terminacion}`)
       continue
@@ -121,13 +250,13 @@ export async function POST(req: NextRequest) {
 
   if (allRecords.length === 0) {
     return NextResponse.json({
-      ok: false,
+      ok:     false,
       skipped: true,
       reason: `No cuenta configured for: ${noMapeados.join(', ')}`,
     })
   }
 
-  // ── Insert all records into Supabase ─────────────────────────────────────────
+  // ── Insert ────────────────────────────────────────────────────────────────
   const { error } = await adminClient.from('movimientos').insert(allRecords)
   if (error) {
     console.error('[email-inbound] Insert error:', error.message)
