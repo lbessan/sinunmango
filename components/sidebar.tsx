@@ -24,7 +24,7 @@ async function getDolarBNA(): Promise<number> {
 export async function Sidebar() {
   const dolarBna = await getDolarBNA()
   return (
-    <aside className="w-64 h-screen sticky top-0 flex flex-col shrink-0" style={{ background: 'var(--sidebar-bg, #0d2137)' }}>
+    <aside className="w-64 h-screen sticky top-0 flex flex-col shrink-0 overflow-x-hidden" style={{ background: 'var(--sidebar-bg, #0d2137)' }}>
 
       {/* Header */}
       <div className="px-5 py-5 flex items-center gap-3 border-b border-white/8">
