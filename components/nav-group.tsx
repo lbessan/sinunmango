@@ -20,29 +20,32 @@ export function NavGroup({ icon, label, paths, children, tourId }: NavGroupProps
 
   return (
     <div>
-      <button
-        onClick={() => setOpen(o => !o)}
-        data-tour={tourId}
-        className={clsx(
-          'w-full flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all mx-2 rounded-lg',
-          isAnyActive
-            ? 'text-white'
-            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-        )}
-        style={
-          isAnyActive
-            ? { background: 'linear-gradient(90deg, var(--accent2, #1B3A6B) 0%, var(--accent, #1a6b5a) 100%)' }
-            : {}
-        }
-      >
-        <span style={isAnyActive ? { color: 'white', opacity: 0.9 } : {}}>{icon}</span>
-        <span className="flex-1 text-left">{label}</span>
-        <ChevronDown
-          size={13}
-          className="transition-transform duration-200 shrink-0"
-          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
-        />
-      </button>
+      {/* px-2 en el wrapper para que w-full del botón no desborde el aside */}
+      <div className="px-2">
+        <button
+          onClick={() => setOpen(o => !o)}
+          data-tour={tourId}
+          className={clsx(
+            'w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all rounded-lg',
+            isAnyActive
+              ? 'text-white'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+          )}
+          style={
+            isAnyActive
+              ? { background: 'linear-gradient(90deg, var(--accent2, #1B3A6B) 0%, var(--accent, #1a6b5a) 100%)' }
+              : {}
+          }
+        >
+          <span style={isAnyActive ? { color: 'white', opacity: 0.9 } : {}}>{icon}</span>
+          <span className="flex-1 text-left">{label}</span>
+          <ChevronDown
+            size={13}
+            className="transition-transform duration-200 shrink-0"
+            style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+          />
+        </button>
+      </div>
 
       {open && (
         <div className="pl-3 mt-0.5 space-y-0.5">

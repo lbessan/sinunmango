@@ -83,21 +83,29 @@ export default async function ConciliacionesPage({
   // 4. Movimientos del período actual (batch único) — incluye Ingresos (descuentos)
   const { data: movsDelPeriodo } = await adminClient
     .from('movimientos')
-    .select('cuenta_origen, conciliado, monto, tipo_movimiento')
+    .select('cuenta_origen, conciliado, monto, tipo_movimiento, moneda, cotizacion')
     .in('cuenta_origen', tarjetaIds)
     .in('tipo_movimiento', ['Gasto', 'Ingreso'])
     .eq('periodo_tarjeta', periodoActual)
     .eq('user_id', user.id)
 
-  const movsByTarjeta: Record<string, { monto: number; conciliado: boolean; tipo: string }[]> = {}
+  type MovIdx = { monto: number; conciliado: boolean; tipo: string; moneda: string; cotizacion: number | null }
+  const movsByTarjeta: Record<string, MovIdx[]> = {}
   for (const m of movsDelPeriodo ?? []) {
     if (!movsByTarjeta[m.cuenta_origen]) movsByTarjeta[m.cuenta_origen] = []
-    movsByTarjeta[m.cuenta_origen].push({ monto: m.monto, conciliado: m.conciliado, tipo: m.tipo_movimiento })
+    movsByTarjeta[m.cuenta_origen].push({
+      monto: m.monto, conciliado: m.conciliado, tipo: m.tipo_movimiento,
+      moneda: m.moneda, cotizacion: m.cotizacion,
+    })
   }
 
+  // Convertir USD a ARS usando cotización; si no hay cotización, omitir del total ARS
+  const montoARS = (m: MovIdx) =>
+    m.moneda === 'USD' ? (m.cotizacion ? m.monto * m.cotizacion : 0) : m.monto
+
   // Monto firmado: Gastos suman, Ingresos/descuentos restan
-  const signedMonto = (m: { monto: number; tipo: string }) =>
-    m.tipo === 'Ingreso' ? -m.monto : m.monto
+  const signedMonto = (m: MovIdx) =>
+    m.tipo === 'Ingreso' ? -montoARS(m) : montoARS(m)
 
   // 5. Stats por tarjeta
   const tarjetasConDatos = (tarjetas ?? []).map(tarjeta => {
