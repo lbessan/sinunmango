@@ -50,11 +50,17 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
     set('banco_id',     bank.id)
     set('banco_nombre', bank.nombre)
     set('banco_color',  bank.color)
-    // Actualizar imagen si hay red y variante
-    if (selectedNetwork) {
-      const varId = selectedVariant?.id ?? 'standard'
-      set('imagen_url',    cardImageUrl(selectedNetwork.id, varId, bank.id))
-      set('color_primario', selectedVariant?.color ?? selectedNetwork.color)
+    // El color del banco se aplica al banner por defecto (como en CuentaFormClient)
+    // Si hay variante seleccionada, la variante tiene prioridad
+    if (selectedNetwork && selectedVariant) {
+      set('imagen_url',     cardImageUrl(selectedNetwork.id, selectedVariant.id, bank.id))
+      set('color_primario', selectedVariant.color)
+    } else if (selectedNetwork) {
+      set('imagen_url',     cardImageUrl(selectedNetwork.id, 'standard', bank.id))
+      set('color_primario', bank.color)
+    } else {
+      // Sin red seleccionada: usar color del banco directamente
+      set('color_primario', bank.color)
     }
   }
 
