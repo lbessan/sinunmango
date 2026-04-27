@@ -15,13 +15,13 @@ function CardThumbnailServer({ imagenUrl, color, nombre }: {
 }) {
   return (
     <div
-      className="shrink-0 rounded-lg overflow-hidden flex items-center justify-center"
-      style={{ width: 72, height: 46, background: color }}
+      className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
+      style={{ width: 96, height: 60, background: color }}
     >
       {imagenUrl ? (
-        <img src={imagenUrl} alt={nombre} className="w-full h-full object-cover" />
+        <img src={imagenUrl} alt={nombre} className="w-full h-full object-contain" />
       ) : (
-        <CreditCard size={20} className="text-white/60" />
+        <CreditCard size={22} className="text-white/60" />
       )}
     </div>
   )

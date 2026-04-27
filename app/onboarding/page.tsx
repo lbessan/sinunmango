@@ -416,11 +416,12 @@ export default function OnboardingPage() {
         const movimientos = card.transacciones
           .filter((tx: any) => !tx.ya_existe)
           .map((tx: any) => {
-            const moneda  = tx.monto_usd !== null ? 'USD' : 'ARS'
+            const moneda  = tx.monto_usd !== null && tx.monto_usd !== undefined ? 'USD' : 'ARS'
             const monto   = moneda === 'USD' ? (tx.monto_usd ?? 0) : (tx.monto_ars ?? 0)
             const tipoMov = tx.es_descuento ? 'Ingreso' : 'Gasto'
             const periodo = calcularPeriodo(tx.fecha, cuentaFake)
             return {
+              id:              crypto.randomUUID(),
               fecha:           tx.fecha,
               detalle:         tx.detalle,
               monto:           Math.abs(monto),
@@ -437,11 +438,15 @@ export default function OnboardingPage() {
           })
 
         if (movimientos.length > 0) {
-          await fetch('/api/movimientos', {
+          const movsRes = await fetch('/api/movimientos', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify(movimientos),
           })
+          if (!movsRes.ok) {
+            const err = await movsRes.json().catch(() => ({}))
+            console.error('[onboarding] Error al importar movimientos:', err)
+          }
         }
       }
     }
@@ -468,8 +473,20 @@ export default function OnboardingPage() {
 
   const handleSaveCategorias = async () => {
     setSavingCats(true)
-    const selected = DEFAULT_CATS.filter((_, i) => selectedCats.has(i))
-    const toCreate = [...selected, ...extraCats]
+
+    // Traer categorías existentes para no duplicar si el onboarding se corrió más de una vez
+    const existingRes = await fetch('/api/categorias').catch(() => null)
+    const existing: { nombre_categoria: string; tipo_default: string }[] =
+      existingRes?.ok ? await existingRes.json() : []
+    const existingKeys = new Set(
+      existing.map(c => `${c.tipo_default}::${c.nombre_categoria.trim().toLowerCase()}`)
+    )
+
+    const selected  = DEFAULT_CATS.filter((_, i) => selectedCats.has(i))
+    const toCreate  = [...selected, ...extraCats].filter(cat =>
+      !existingKeys.has(`${cat.tipo}::${cat.nombre.trim().toLowerCase()}`)
+    )
+
     await Promise.all(
       toCreate.map(cat =>
         fetch('/api/categorias', {
