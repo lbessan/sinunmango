@@ -42,18 +42,26 @@ function extractGmailVerificationCode(text: string): string | null {
   return m ? m[1] : null
 }
 
-// ─── Strip HTML to plain text (very naive but sufficient for bank emails) ─────
+// ─── Strip HTML to plain text ────────────────────────────────────────────────
 function stripHtml(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/tr>/gi, '\n')
+    .replace(/<\/td>/gi, ' ')
+    .replace(/<\/th>/gi, ' ')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
+    .replace(/&#160;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/&#34;/g, '"')
+    .replace(/[ \t]{2,}/g, ' ')   // colapsar espacios horizontales
+    .replace(/\n{3,}/g, '\n\n')   // máximo 2 saltos
     .trim()
 }
 
@@ -174,9 +182,15 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Parse email ───────────────────────────────────────────────────────────
+  console.log('[email-inbound] texto a parsear (primeros 800 chars):', emailText.slice(0, 800))
   const parsedList = parseAllEmails(emailText)
   if (parsedList.length === 0) {
-    return NextResponse.json({ ok: false, skipped: true, reason: 'unrecognized format' })
+    return NextResponse.json({
+      ok:      false,
+      skipped: true,
+      reason:  'unrecognized format',
+      preview: emailText.slice(0, 600),   // para debug — sacar en producción
+    })
   }
 
   // ── Load cuentas for the resolved user (or all, for legacy) ──────────────
