@@ -20,14 +20,14 @@ function labelTipo(tipo: string): string {
 function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
   imagenUrl?: string | null; colorPrim: string; tipo: string; nombre: string; moneda?: string | null
 }) {
-  // Tarjeta: landscape, object-cover para llenar limpio
+  // Tarjeta: landscape con color real + object-contain para no recortar
   if (tipo === 'Tarjeta Credito') {
     return (
-      <div className="shrink-0 rounded-md overflow-hidden flex items-center justify-center"
-        style={{ width: 56, height: 36, background: '#1e293b' }}>
+      <div className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
+        style={{ width: 96, height: 61, background: colorPrim }}>
         {imagenUrl
-          ? <img src={imagenUrl} alt={nombre} className="w-full h-full object-cover" />
-          : <span className="text-sm">💳</span>}
+          ? <img src={imagenUrl} alt={nombre} className="w-full h-full object-contain" />
+          : <span className="text-lg">💳</span>}
       </div>
     )
   }
