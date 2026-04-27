@@ -24,13 +24,17 @@ type CuentaForm = {
 // Tipos almacenados: 'Banco CA', 'Banco CC', 'Billetera', 'Billetera/Banco'(legacy),
 //                   'Efectivo', 'Tarjeta Credito'
 
-function parseTipoInicial(tipo: string): { principal: 'Banco' | 'Billetera' | 'Efectivo'; subtipo: 'CA' | 'CC' } {
-  if (tipo === 'Banco CC')        return { principal: 'Banco',    subtipo: 'CC' }
-  if (tipo === 'Banco CA')        return { principal: 'Banco',    subtipo: 'CA' }
-  if (tipo === 'Efectivo')        return { principal: 'Efectivo', subtipo: 'CA' }
-  if (tipo === 'Billetera')       return { principal: 'Billetera', subtipo: 'CA' }
-  // 'Billetera/Banco' legacy → default Banco (la mayoría son bancos)
-  return { principal: 'Banco', subtipo: 'CA' }
+// Tipo principal incluye 'legacy' para cuentas 'Billetera/Banco' existentes.
+// Mientras no se ejecute la migración SQL, esas cuentas se guardan como 'Billetera/Banco'.
+type TipoPrincipal = 'Banco' | 'Billetera' | 'Efectivo' | 'legacy'
+
+function parseTipoInicial(tipo: string): { principal: TipoPrincipal; subtipo: 'CA' | 'CC' } {
+  if (tipo === 'Banco CC')   return { principal: 'Banco',    subtipo: 'CC' }
+  if (tipo === 'Banco CA')   return { principal: 'Banco',    subtipo: 'CA' }
+  if (tipo === 'Efectivo')   return { principal: 'Efectivo', subtipo: 'CA' }
+  if (tipo === 'Billetera')  return { principal: 'Billetera', subtipo: 'CA' }
+  // 'Billetera/Banco' legacy — se preserva sin cambios hasta ejecutar la migración SQL
+  return { principal: 'legacy', subtipo: 'CA' }
 }
 
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-white'
@@ -56,11 +60,16 @@ export function CuentaFormClient({
 
   // ── Tipo de cuenta: dos niveles ─────────────────────────────────────────────
   const { principal: initPrincipal, subtipo: initSubtipo } = parseTipoInicial(inicial.tipo_cuenta)
-  const [tipoPrincipal, setTipoPrincipal] = useState<'Banco' | 'Billetera' | 'Efectivo'>(initPrincipal)
+  const [tipoPrincipal, setTipoPrincipal] = useState<TipoPrincipal>(initPrincipal)
   const [subtipoBanco,  setSubtipoBanco]  = useState<'CA' | 'CC'>(initSubtipo)
 
-  // El tipo que se guarda en la BD
-  const tipoFinal = tipoPrincipal === 'Banco' ? `Banco ${subtipoBanco}` : tipoPrincipal
+  // El tipo que se guarda en la BD:
+  // - 'legacy' preserva 'Billetera/Banco' (válido en constraint actual)
+  // - 'Banco CA'/'Banco CC' requieren migración SQL
+  const tipoFinal =
+    tipoPrincipal === 'Banco'   ? `Banco ${subtipoBanco}` :
+    tipoPrincipal === 'legacy'  ? 'Billetera/Banco' :
+    tipoPrincipal
 
   const set = (k: keyof CuentaForm, v: string | boolean) =>
     setForm(prev => ({ ...prev, [k]: v }))
@@ -126,7 +135,11 @@ export function CuentaFormClient({
           <BankSelector
             value={selectedBank?.id ?? ''}
             onChange={handleBankChange}
-            label={tipoPrincipal === 'Banco' ? 'Banco emisor' : 'Billetera virtual'}
+            label={
+              tipoPrincipal === 'Banco'    ? 'Banco emisor' :
+              tipoPrincipal === 'Billetera'? 'Billetera virtual' :
+              'Banco o billetera'
+            }
           />
         )}
 
@@ -207,13 +220,23 @@ export function CuentaFormClient({
             <label className={labelClass}>Tipo *</label>
             <select
               value={tipoPrincipal}
-              onChange={e => setTipoPrincipal(e.target.value as 'Banco' | 'Billetera' | 'Efectivo')}
+              onChange={e => setTipoPrincipal(e.target.value as TipoPrincipal)}
               className={inputClass}
             >
+              {/* Opción legacy visible solo para cuentas 'Billetera/Banco' existentes */}
+              {tipoPrincipal === 'legacy' && (
+                <option value="legacy">Banco / Billetera (existente)</option>
+              )}
               <option value="Banco">Banco</option>
               <option value="Billetera">Billetera virtual</option>
               <option value="Efectivo">Efectivo</option>
             </select>
+            {tipoPrincipal === 'legacy' && (
+              <p className="text-xs text-amber-600 mt-1.5">
+                ⚠ Para separar Bancos de Billeteras ejecutá la{' '}
+                <span className="font-semibold">migración SQL</span> en Supabase.
+              </p>
+            )}
           </div>
           {/* Subtipo: solo para bancos */}
           {tipoPrincipal === 'Banco' && (

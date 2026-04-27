@@ -99,28 +99,29 @@ export default async function ConciliacionesPage({
     })
   }
 
-  // Convertir USD a ARS usando cotización; si no hay cotización, omitir del total ARS
-  const montoARS = (m: MovIdx) =>
-    m.moneda === 'USD' ? (m.cotizacion ? m.monto * m.cotizacion : 0) : m.monto
+  // Monto firmado separado por moneda (Gastos suman, Ingresos restan)
+  const signedARS = (m: MovIdx) => m.moneda === 'USD' ? 0 : m.tipo === 'Ingreso' ? -m.monto : m.monto
+  const signedUSD = (m: MovIdx) => m.moneda !== 'USD' ? 0 : m.tipo === 'Ingreso' ? -m.monto : m.monto
 
-  // Monto firmado: Gastos suman, Ingresos/descuentos restan
-  const signedMonto = (m: MovIdx) =>
-    m.tipo === 'Ingreso' ? -montoARS(m) : montoARS(m)
-
-  // 5. Stats por tarjeta
+  // 5. Stats por tarjeta — ARS y USD por separado
   const tarjetasConDatos = (tarjetas ?? []).map(tarjeta => {
-    const movs          = movsByTarjeta[tarjeta.id] ?? []
-    const total         = movs.reduce((a, m) => a + signedMonto(m), 0)
-    const conciliados   = movs.filter(m => m.conciliado).length
-    const noConciliados = movs.filter(m => !m.conciliado).length
-    const totalPendiente = movs.filter(m => !m.conciliado).reduce((a, m) => a + signedMonto(m), 0)
+    const movs            = movsByTarjeta[tarjeta.id] ?? []
+    const totalARS        = movs.reduce((a, m) => a + signedARS(m), 0)
+    const totalUSD        = movs.reduce((a, m) => a + signedUSD(m), 0)
+    const conciliados     = movs.filter(m => m.conciliado).length
+    const noConciliados   = movs.filter(m => !m.conciliado).length
+    const totalPendiente  = movs.filter(m => !m.conciliado).reduce((a, m) => a + signedARS(m), 0)
+    const totalPendienteUSD = movs.filter(m => !m.conciliado).reduce((a, m) => a + signedUSD(m), 0)
+    // alias para el total ARS usado en el banner
+    const total = totalARS
     const cierreDay     = tarjeta.fecha_cierre_tarjeta
       ? new Date(tarjeta.fecha_cierre_tarjeta + 'T12:00:00').getDate() : null
     const venceDay      = tarjeta.fecha_vencimiento_tarjeta
       ? new Date(tarjeta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
 
     return {
-      tarjeta, total, conciliados, noConciliados, totalPendiente,
+      tarjeta, total, totalARS, totalUSD, conciliados, noConciliados,
+      totalPendiente, totalPendienteUSD,
       tieneMovimientos: movs.length > 0,
       todoConciliado:   noConciliados === 0 && movs.length > 0,
       cierreDay, venceDay,
@@ -129,8 +130,10 @@ export default async function ConciliacionesPage({
     }
   })
 
-  const totalMes          = tarjetasConDatos.reduce((a, t) => a + t.total, 0)
+  const totalMes          = tarjetasConDatos.reduce((a, t) => a + t.totalARS, 0)
+  const totalMesUSD       = tarjetasConDatos.reduce((a, t) => a + t.totalUSD, 0)
   const totalPendiente    = tarjetasConDatos.reduce((a, t) => a + t.totalPendiente, 0)
+  const totalPendienteUSD = tarjetasConDatos.reduce((a, t) => a + t.totalPendienteUSD, 0)
   const totalConciliados  = tarjetasConDatos.reduce((a, t) => a + t.conciliados, 0)
   const totalNoConciliados = tarjetasConDatos.reduce((a, t) => a + t.noConciliados, 0)
   const tarjetasActivas   = tarjetasConDatos.filter(t => t.tieneMovimientos).length
@@ -171,14 +174,22 @@ export default async function ConciliacionesPage({
             <p className="text-xs font-semibold text-white/55 uppercase tracking-widest mb-3">
               Total del período
             </p>
-            <p className="text-5xl font-bold text-white mb-2">
+            <p className="text-5xl font-bold text-white mb-1">
               ${fmt(totalMes)}
             </p>
-            {totalPendiente > 0 ? (
-              <p className="text-base text-amber-300 font-medium">
-                ${fmt(totalPendiente)} pendiente de conciliar
+            {totalMesUSD > 0 && (
+              <p className="text-base text-blue-300 font-semibold mb-2">
+                + U$S {fmt(totalMesUSD)} en dólares
               </p>
-            ) : totalMes > 0 ? (
+            )}
+            {totalPendiente > 0 || totalPendienteUSD > 0 ? (
+              <p className="text-base text-amber-300 font-medium">
+                {totalPendiente > 0 && `$${fmt(totalPendiente)}`}
+                {totalPendiente > 0 && totalPendienteUSD > 0 && ' + '}
+                {totalPendienteUSD > 0 && `U$S ${fmt(totalPendienteUSD)}`}
+                {' pendiente de conciliar'}
+              </p>
+            ) : totalMes > 0 || totalMesUSD > 0 ? (
               <p className="text-sm text-emerald-300 flex items-center justify-center gap-1.5 font-medium">
                 <CheckCircle size={14} /> Todo conciliado
               </p>
@@ -247,7 +258,7 @@ export default async function ConciliacionesPage({
           {/* Lista de tarjetas */}
           <div className="flex-1 space-y-3">
             {tarjetasConDatos.map(({
-              tarjeta, total, conciliados, noConciliados, totalPendiente,
+              tarjeta, totalARS, totalUSD, conciliados, noConciliados, totalPendiente,
               tieneMovimientos, todoConciliado, cierreDay, venceDay, imagenUrl, colorPrim,
             }) => (
               <Link
@@ -295,9 +306,20 @@ export default async function ConciliacionesPage({
                     <p className="text-xs text-slate-300 hidden sm:block">Sin movimientos</p>
                   )}
 
-                  <p className="text-base font-bold text-slate-800 min-w-[110px] text-right">
-                    {tieneMovimientos ? `$${fmt(total)}` : '—'}
-                  </p>
+                  <div className="text-right min-w-[130px]">
+                    {tieneMovimientos ? (
+                      <>
+                        <p className="text-base font-bold text-slate-800">${fmt(totalARS)}</p>
+                        {totalUSD !== 0 && (
+                          <p className="text-xs font-semibold text-blue-600">
+                            + U$S {fmt(Math.abs(totalUSD))}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-base font-bold text-slate-300">—</p>
+                    )}
+                  </div>
 
                   {tieneMovimientos && (
                     todoConciliado ? (
