@@ -12,13 +12,9 @@ export async function PATCH(
   const { id } = await params
   const body = await req.json()
 
-  // Normalizar tipo_cuenta igual que en POST
-  const tipoNorm = (t: string) => ['Banco CA','Banco CC','Billetera'].includes(t) ? 'Billetera/Banco' : t
-  const bodyNorm = body.tipo_cuenta ? { ...body, tipo_cuenta: tipoNorm(body.tipo_cuenta) } : body
-
   const { error } = await adminClient
     .from('cuentas')
-    .update(bodyNorm)
+    .update(body)
     .eq('id', id)
     .eq('user_id', user.id)
 
