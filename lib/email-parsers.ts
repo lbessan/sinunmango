@@ -30,7 +30,7 @@ export function fechaARtoISO(str: string): string {
 // Con cuotas:   "de $ 99.600,00 en 18 cuotas en el establecimiento..."
 // Nota: (?:(US\$)|\$)?\s* captura "US$" en grupo 1 (→ USD), o "$" sin captura (→ ARS)
 const INFOMIS_RE = () =>
-  /autorizaci[oó]n de consumo de\s+(?:(US\$)|\$)?\s*([\d.,]+)(?:\s+en\s+(\d+)\s+cuotas?)?\s+en el establecimiento\s+(.+?)\s*,\s+el d[ií]a\s+(\d{2}\/\d{2}\/\d{4})[\s\S]+?finalizada en\s+(\d+)/gi
+  /autorizaci[oó]n de consumo de\s+(?:(US\$)|\$)?\s*([\d.,]+)(?:\s+en\s+(\d+)\s+cuotas?)?\s+en el establecimiento\s+(.+?)\s*,\s+el\s+d[ií]a\s+(\d{2}\/\d{2}\/\d{4})[\s\S]+?finalizada en\s+(\d+)/gi
 
 function infomisMatch(m: RegExpExecArray): ParsedMov {
   return {

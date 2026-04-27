@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
 import { adminClient } from '@/lib/supabase/admin'
-import { parseAllEmails } from '@/lib/email-parsers'
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // ─── Period + date helpers ────────────────────────────────────────────────────
 function calcularPeriodo(
@@ -32,9 +34,6 @@ function addMeses(fechaStr: string, n: number): string {
 }
 
 // ─── Gmail filter verification detector ──────────────────────────────────────
-// Gmail sends a verification email when you add a forwarding/filter address.
-// Subject: "Gmail Forwarding Confirmation - Receive Mail from ..."
-// Body contains a numeric code like: "Confirmation code: 123456789"
 function extractGmailVerificationCode(text: string): string | null {
   const m = text.match(/Confirmation code:\s*(\d{6,12})/i)
     ?? text.match(/C[oó]digo de confirmaci[oó]n[:\s]+(\d{6,12})/i)
@@ -60,8 +59,8 @@ function stripHtml(html: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#34;/g, '"')
-    .replace(/[ \t]{2,}/g, ' ')   // colapsar espacios horizontales
-    .replace(/\n{3,}/g, '\n\n')   // máximo 2 saltos
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
 
@@ -80,9 +79,67 @@ async function fetchResendEmailBody(emailId: string): Promise<string> {
   }
 
   const data = await res.json()
-  // Prefer plain text; fall back to stripped HTML
-  return data.text?.trim()
-    || (data.html ? stripHtml(data.html) : '')
+  return data.text?.trim() || (data.html ? stripHtml(data.html) : '')
+}
+
+// ─── Claude email parser ──────────────────────────────────────────────────────
+type ParsedMov = {
+  fecha:       string        // ISO "2026-04-14"
+  detalle:     string        // Nombre del comercio
+  monto:       number        // Monto total (antes de dividir por cuotas)
+  moneda:      'ARS' | 'USD'
+  cuotas:      number        // 1 si no es en cuotas
+  terminacion: string | null // Últimos 4 dígitos de la tarjeta
+}
+
+async function parseEmailWithClaude(emailText: string): Promise<ParsedMov[]> {
+  const today = new Date().toISOString().slice(0, 10)
+
+  const msg = await anthropic.messages.create({
+    model:      'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    messages: [{
+      role:    'user',
+      content: `Sos un extractor de datos de emails de notificación bancaria argentina.
+Analizá el siguiente email y extraé TODOS los consumos/transacciones que encuentres.
+
+Hoy es ${today}. Si el email no contiene ninguna transacción de consumo (ej: es un email de bienvenida, resumen de cuenta, etc.), devolvé un array vacío.
+
+Respondé ÚNICAMENTE con un JSON array, sin texto adicional, sin markdown, sin explicaciones.
+Formato de cada elemento:
+{
+  "fecha": "YYYY-MM-DD",
+  "detalle": "nombre del comercio o descripción",
+  "monto": 12345.67,
+  "moneda": "ARS" o "USD",
+  "cuotas": 1,
+  "terminacion": "1234" o null
+}
+
+Reglas:
+- "monto" es el monto TOTAL de la compra (no la cuota), como número sin símbolos
+- "cuotas" es 1 si no se menciona cuotas
+- "terminacion" son los últimos 4 dígitos de la tarjeta si se mencionan, si no null
+- Si hay múltiples transacciones en el email, incluí todas
+- La fecha debe ser la fecha del consumo, no la del email
+
+Email:
+${emailText.slice(0, 3000)}`,
+    }],
+  })
+
+  const raw = (msg.content[0] as { type: string; text: string }).text.trim()
+
+  try {
+    // Extraer JSON aunque Claude agregue algo de texto
+    const jsonMatch = raw.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) return []
+    const parsed = JSON.parse(jsonMatch[0]) as ParsedMov[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    console.error('[email-inbound] Claude response parse error:', raw.slice(0, 200))
+    return []
+  }
 }
 
 // ─── Route handler ────────────────────────────────────────────────────────────
@@ -98,20 +155,17 @@ export async function POST(req: NextRequest) {
   let userId: string | null = null
 
   if (isResend) {
-    // Resend wraps everything under `data`
     const data = (typeof body.data === 'object' && body.data !== null)
       ? body.data as Record<string, unknown>
       : body
 
-    const emailId    = data.email_id as string | undefined
-    const toField    = data.to  // string | string[]
+    const emailId = data.email_id as string | undefined
+    const toField = data.to
     const toList: string[] = Array.isArray(toField)
       ? toField as string[]
-      : typeof toField === 'string'
-        ? [toField]
-        : []
+      : typeof toField === 'string' ? [toField] : []
 
-    // Extract token from the first `to` address matching our domain
+    // Extraer token del address destino
     const DOMAIN = process.env.EMAIL_INBOUND_DOMAIN ?? 'sinunmango.com.ar'
     const toAddr = toList.find(a => a.toLowerCase().endsWith(`@${DOMAIN}`)) ?? toList[0] ?? ''
     const token  = toAddr.split('@')[0].toLowerCase()
@@ -120,7 +174,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, skipped: true, reason: 'no matching to address' })
     }
 
-    // Look up user by token
+    // Buscar usuario por token
     const { data: pref } = await adminClient
       .from('user_preferences')
       .select('user_id')
@@ -134,7 +188,7 @@ export async function POST(req: NextRequest) {
 
     userId = pref.user_id as string
 
-    // Get email text — from webhook if present, otherwise via API
+    // Obtener texto del email
     const inlineText = (data.text as string | undefined)?.trim()
     const inlineHtml = (data.html as string | undefined)?.trim()
 
@@ -146,11 +200,11 @@ export async function POST(req: NextRequest) {
       emailText = await fetchResendEmailBody(emailId)
     }
 
-    // ── Check for Gmail filter verification email ─────────────────────────
+    // ── Verificación de filtro Gmail ──────────────────────────────────────
     const subject = (data.subject as string | undefined) ?? ''
     if (
       subject.toLowerCase().includes('forwarding confirmation') ||
-      subject.toLowerCase().includes('confirmaci') // "Confirmación de reenvío"
+      subject.toLowerCase().includes('confirmaci')
     ) {
       const code = extractGmailVerificationCode(emailText)
       if (code && userId) {
@@ -160,13 +214,13 @@ export async function POST(req: NextRequest) {
             { user_id: userId, gmail_verification_code: code, updated_at: new Date().toISOString() },
             { onConflict: 'user_id' }
           )
-        console.log(`[email-inbound] Stored Gmail verification code for user ${userId}: ${code}`)
+        console.log(`[email-inbound] Gmail verification code stored: ${code}`)
         return NextResponse.json({ ok: true, type: 'gmail_verification', code })
       }
     }
 
   } else {
-    // ── Legacy format: { texto, from, subject } with Bearer auth ─────────
+    // Legacy: { texto, from, subject } con Bearer auth
     const secret = process.env.EMAIL_INBOUND_SECRET
     if (secret) {
       const auth = req.headers.get('authorization')
@@ -181,34 +235,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, skipped: true, reason: 'empty body' })
   }
 
-  // ── Parse email ───────────────────────────────────────────────────────────
-  console.log('[email-inbound] texto a parsear (primeros 800 chars):', emailText.slice(0, 800))
-  const parsedList = parseAllEmails(emailText)
+  // ── Parsear con Claude ────────────────────────────────────────────────────
+  const parsedList = await parseEmailWithClaude(emailText)
   if (parsedList.length === 0) {
-    return NextResponse.json({
-      ok:      false,
-      skipped: true,
-      reason:  'unrecognized format',
-      preview: emailText.slice(0, 600),   // para debug — sacar en producción
-    })
+    return NextResponse.json({ ok: false, skipped: true, reason: 'no transactions found' })
   }
 
-  // ── Load cuentas for the resolved user (or all, for legacy) ──────────────
+  // ── Cargar cuentas del usuario ────────────────────────────────────────────
   let cuentasQuery = adminClient
     .from('cuentas')
     .select('id, user_id, nombre_cuenta, tipo_cuenta, moneda, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta, terminacion_tarjeta')
     .eq('activa', true)
 
-  if (userId) {
-    cuentasQuery = cuentasQuery.eq('user_id', userId)
-  }
+  if (userId) cuentasQuery = cuentasQuery.eq('user_id', userId)
 
   const { data: cuentas } = await cuentasQuery
 
-  // ── Process each parsed transaction ──────────────────────────────────────
+  // ── Procesar cada transacción ─────────────────────────────────────────────
   const allRecords: object[] = []
-  const importados: string[] = []
-  const noMapeados: string[] = []
+  const importados:  string[] = []
+  const noMapeados:  string[] = []
 
   for (const parsed of parsedList) {
     const cuenta = cuentas?.find(c => {
@@ -217,18 +263,15 @@ export async function POST(req: NextRequest) {
     })
 
     if (!cuenta) {
-      console.warn(
-        `[email-inbound] No cuenta for terminacion=${parsed.terminacion} ` +
-        `(${parsed.detalle} $${parsed.monto} ${parsed.moneda})`
-      )
+      console.warn(`[email-inbound] No cuenta for terminacion=${parsed.terminacion} (${parsed.detalle})`)
       noMapeados.push(`terminacion ${parsed.terminacion}`)
       continue
     }
 
-    const isTarjeta = cuenta.tipo_cuenta === 'Tarjeta Credito'
-    const cierreDay = cuenta.fecha_cierre_tarjeta
+    const isTarjeta  = cuenta.tipo_cuenta === 'Tarjeta Credito'
+    const cierreDay  = cuenta.fecha_cierre_tarjeta
       ? new Date(cuenta.fecha_cierre_tarjeta + 'T12:00:00').getDate() : null
-    const venceDay  = cuenta.fecha_vencimiento_tarjeta
+    const venceDay   = cuenta.fecha_vencimiento_tarjeta
       ? new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
     const montoCuota = parsed.monto / parsed.cuotas
 
@@ -264,13 +307,13 @@ export async function POST(req: NextRequest) {
 
   if (allRecords.length === 0) {
     return NextResponse.json({
-      ok:     false,
+      ok:      false,
       skipped: true,
-      reason: `No cuenta configured for: ${noMapeados.join(', ')}`,
+      reason:  `No cuenta configured for: ${noMapeados.join(', ')}`,
     })
   }
 
-  // ── Insert ────────────────────────────────────────────────────────────────
+  // ── Insertar ──────────────────────────────────────────────────────────────
   const { error } = await adminClient.from('movimientos').insert(allRecords)
   if (error) {
     console.error('[email-inbound] Insert error:', error.message)
