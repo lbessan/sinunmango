@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import { adminClient } from '@/lib/supabase/admin'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // ─── Period + date helpers ────────────────────────────────────────────────────
 function calcularPeriodo(
@@ -95,15 +92,10 @@ type ParsedMov = {
 async function parseEmailWithClaude(emailText: string): Promise<ParsedMov[]> {
   const today = new Date().toISOString().slice(0, 10)
 
-  const msg = await anthropic.messages.create({
-    model:      'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    messages: [{
-      role:    'user',
-      content: `Sos un extractor de datos de emails de notificación bancaria argentina.
+  const prompt = `Sos un extractor de datos de emails de notificación bancaria argentina.
 Analizá el siguiente email y extraé TODOS los consumos/transacciones que encuentres.
 
-Hoy es ${today}. Si el email no contiene ninguna transacción de consumo (ej: es un email de bienvenida, resumen de cuenta, etc.), devolvé un array vacío.
+Hoy es ${today}. Si el email no contiene ninguna transacción de consumo (ej: email de bienvenida, resumen de cuenta, etc.), devolvé un array vacío.
 
 Respondé ÚNICAMENTE con un JSON array, sin texto adicional, sin markdown, sin explicaciones.
 Formato de cada elemento:
@@ -111,9 +103,9 @@ Formato de cada elemento:
   "fecha": "YYYY-MM-DD",
   "detalle": "nombre del comercio o descripción",
   "monto": 12345.67,
-  "moneda": "ARS" o "USD",
+  "moneda": "ARS",
   "cuotas": 1,
-  "terminacion": "1234" o null
+  "terminacion": "1234"
 }
 
 Reglas:
@@ -124,14 +116,31 @@ Reglas:
 - La fecha debe ser la fecha del consumo, no la del email
 
 Email:
-${emailText.slice(0, 3000)}`,
-    }],
+${emailText.slice(0, 3000)}`
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:  'POST',
+    headers: {
+      'Content-Type':      'application/json',
+      'x-api-key':         process.env.ANTHROPIC_API_KEY ?? '',
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model:      'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      messages:   [{ role: 'user', content: prompt }],
+    }),
   })
 
-  const raw = (msg.content[0] as { type: string; text: string }).text.trim()
+  if (!res.ok) {
+    console.error('[email-inbound] Claude API error:', res.status)
+    return []
+  }
+
+  const data = await res.json()
+  const raw  = (data.content?.[0]?.text ?? '').trim()
 
   try {
-    // Extraer JSON aunque Claude agregue algo de texto
     const jsonMatch = raw.match(/\[[\s\S]*\]/)
     if (!jsonMatch) return []
     const parsed = JSON.parse(jsonMatch[0]) as ParsedMov[]
