@@ -20,6 +20,17 @@ type CuentaForm = {
   color_primario: string
 }
 
+// ─── Helpers tipo de cuenta ───────────────────────────────────────────────────
+// Tipos almacenados: 'Banco CA', 'Banco CC', 'Billetera', 'Billetera/Banco'(legacy),
+//                   'Efectivo', 'Tarjeta Credito'
+
+function parseTipoInicial(tipo: string): { principal: 'Banco' | 'Billetera' | 'Efectivo'; subtipo: 'CA' | 'CC' } {
+  if (tipo === 'Banco CC') return { principal: 'Banco', subtipo: 'CC' }
+  if (tipo === 'Banco CA') return { principal: 'Banco', subtipo: 'CA' }
+  if (tipo === 'Efectivo') return { principal: 'Efectivo', subtipo: 'CA' }
+  return { principal: 'Billetera', subtipo: 'CA' }
+}
+
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-white'
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
 
@@ -40,6 +51,14 @@ export function CuentaFormClient({
   const [saved, setSaved]   = useState(false)
   const [error, setError]   = useState('')
   const [selectedBank, setSelectedBank] = useState<BankEntry | null>(null)
+
+  // ── Tipo de cuenta: dos niveles ─────────────────────────────────────────────
+  const { principal: initPrincipal, subtipo: initSubtipo } = parseTipoInicial(inicial.tipo_cuenta)
+  const [tipoPrincipal, setTipoPrincipal] = useState<'Banco' | 'Billetera' | 'Efectivo'>(initPrincipal)
+  const [subtipoBanco,  setSubtipoBanco]  = useState<'CA' | 'CC'>(initSubtipo)
+
+  // El tipo que se guarda en la BD
+  const tipoFinal = tipoPrincipal === 'Banco' ? `Banco ${subtipoBanco}` : tipoPrincipal
 
   const set = (k: keyof CuentaForm, v: string | boolean) =>
     setForm(prev => ({ ...prev, [k]: v }))
@@ -69,7 +88,7 @@ export function CuentaFormClient({
       nombre_cuenta:     form.nombre_cuenta,
       institucion:       form.institucion || null,
       moneda:            form.moneda,
-      tipo_cuenta:       form.tipo_cuenta,
+      tipo_cuenta:       tipoFinal,
       saldo_inicial:     parseFloat(form.saldo_inicial) || 0,
       activa:            form.activa,
       imagen_url:        form.imagen_url || null,
@@ -101,11 +120,11 @@ export function CuentaFormClient({
       <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
 
         {/* ── Selector de banco / billetera ── */}
-        {form.tipo_cuenta === 'Billetera/Banco' && (
+        {tipoPrincipal !== 'Efectivo' && (
           <BankSelector
             value={selectedBank?.id ?? ''}
             onChange={handleBankChange}
-            label="Banco o billetera"
+            label={tipoPrincipal === 'Banco' ? 'Banco emisor' : 'Billetera virtual'}
           />
         )}
 
@@ -184,11 +203,30 @@ export function CuentaFormClient({
           </div>
           <div>
             <label className={labelClass}>Tipo *</label>
-            <select value={form.tipo_cuenta} onChange={e => set('tipo_cuenta', e.target.value)} className={inputClass}>
-              <option value="Billetera/Banco">Billetera / Banco</option>
+            <select
+              value={tipoPrincipal}
+              onChange={e => setTipoPrincipal(e.target.value as 'Banco' | 'Billetera' | 'Efectivo')}
+              className={inputClass}
+            >
+              <option value="Banco">Banco</option>
+              <option value="Billetera">Billetera virtual</option>
               <option value="Efectivo">Efectivo</option>
             </select>
           </div>
+          {/* Subtipo: solo para bancos */}
+          {tipoPrincipal === 'Banco' && (
+            <div>
+              <label className={labelClass}>Subtipo</label>
+              <select
+                value={subtipoBanco}
+                onChange={e => setSubtipoBanco(e.target.value as 'CA' | 'CC')}
+                className={inputClass}
+              >
+                <option value="CA">Caja de Ahorro</option>
+                <option value="CC">Cuenta Corriente</option>
+              </select>
+            </div>
+          )}
           <div className="col-span-2">
             <label className={labelClass}>Saldo inicial</label>
             <input type="number" step="0.01" value={form.saldo_inicial}
@@ -221,13 +259,13 @@ export function CuentaFormClient({
         {isEditing && form.id && (
           <div className="pt-2 border-t border-slate-100">
             <DeleteButton
-              endpoint={form.tipo_cuenta === 'Tarjeta Credito' ? `/api/tarjetas/${form.id}` : `/api/cuentas/${form.id}`}
+              endpoint={inicial.tipo_cuenta === 'Tarjeta Credito' ? `/api/tarjetas/${form.id}` : `/api/cuentas/${form.id}`}
               label={form.nombre_cuenta}
-              description={form.tipo_cuenta === 'Tarjeta Credito'
+              description={inicial.tipo_cuenta === 'Tarjeta Credito'
                 ? 'La tarjeta se desactivará. Los movimientos existentes se conservan.'
                 : 'La cuenta se desactivará. El historial de movimientos se conserva.'}
               variant="button"
-              redirectTo={form.tipo_cuenta === 'Tarjeta Credito' ? '/tarjetas' : '/cuentas'}
+              redirectTo={inicial.tipo_cuenta === 'Tarjeta Credito' ? '/tarjetas' : '/cuentas'}
             />
           </div>
         )}

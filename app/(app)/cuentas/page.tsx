@@ -8,6 +8,23 @@ import { DeleteButton } from '@/components/delete-button'
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+function labelTipo(tipo: string): string {
+  switch (tipo) {
+    case 'Banco CA':        return 'Caja de Ahorro'
+    case 'Banco CC':        return 'Cuenta Corriente'
+    case 'Billetera':       return 'Billetera virtual'
+    case 'Billetera/Banco': return 'Banco / Billetera'
+    case 'Efectivo':        return 'Efectivo'
+    default:                return tipo
+  }
+}
+
+function grupoDe(tipo: string): string {
+  if (tipo === 'Banco CA' || tipo === 'Banco CC') return 'Bancos'
+  if (tipo === 'Billetera' || tipo === 'Billetera/Banco') return 'Billeteras'
+  return tipo  // 'Efectivo'
+}
+
 // Tarjetas → landscape 72×46 con fondo blanco; Efectivo y Bancos → cuadrado 40×40
 function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
   imagenUrl?: string | null
@@ -68,16 +85,20 @@ export default async function CuentasPage() {
   const extraMap = Object.fromEntries((cuentasExtra ?? []).map(c => [c.id, c]))
 
   const grupos: Record<string, typeof cuentas> = {
-    'Billetera/Banco': [],
-    'Efectivo': [],
+    'Bancos':     [],
+    'Billeteras': [],
+    'Efectivo':   [],
   }
   for (const c of cuentas ?? []) {
-    if (c.tipo_cuenta !== 'Tarjeta Credito') grupos[c.tipo_cuenta]?.push(c)
+    if (c.tipo_cuenta === 'Tarjeta Credito') continue
+    const g = grupoDe(c.tipo_cuenta)
+    if (grupos[g]) grupos[g]!.push(c)
   }
 
   const labelGrupo: Record<string, string> = {
-    'Billetera/Banco': 'Billeteras y bancos',
-    'Efectivo': 'Efectivo',
+    'Bancos':     'Bancos',
+    'Billeteras': 'Billeteras virtuales',
+    'Efectivo':   'Efectivo',
   }
 
   return (
@@ -122,7 +143,7 @@ export default async function CuentasPage() {
                       <Thumbnail imagenUrl={imgUrl} colorPrim={colorPrim} tipo={tipo} nombre={c.nombre_cuenta} moneda={c.moneda} />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-700 truncate">{c.nombre_cuenta}</p>
-                        <p className="text-xs text-slate-400">{c.tipo_cuenta} · {c.moneda}</p>
+                        <p className="text-xs text-slate-400">{labelTipo(c.tipo_cuenta)} · {c.moneda}</p>
                       </div>
                     </Link>
                     <div className="flex items-center gap-3 shrink-0 px-4 py-3">
