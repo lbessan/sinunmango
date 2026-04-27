@@ -21,7 +21,9 @@ function labelTipo(tipo: string): string {
 
 function grupoDe(tipo: string): string {
   if (tipo === 'Banco CA' || tipo === 'Banco CC') return 'Bancos'
-  if (tipo === 'Billetera' || tipo === 'Billetera/Banco') return 'Billeteras'
+  // 'Billetera/Banco' legacy → Bancos (mayoritariamente son bancos; se separan tras migración SQL)
+  if (tipo === 'Billetera/Banco') return 'Bancos'
+  if (tipo === 'Billetera') return 'Billeteras'
   return tipo  // 'Efectivo'
 }
 
@@ -92,7 +94,8 @@ export default async function CuentasPage() {
   for (const c of cuentas ?? []) {
     if (c.tipo_cuenta === 'Tarjeta Credito') continue
     const g = grupoDe(c.tipo_cuenta)
-    if (grupos[g]) grupos[g]!.push(c)
+    if (!grupos[g]) grupos[g] = []
+    grupos[g]!.push(c)
   }
 
   const labelGrupo: Record<string, string> = {
