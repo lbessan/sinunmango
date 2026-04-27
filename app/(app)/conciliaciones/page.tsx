@@ -51,7 +51,7 @@ export default async function ConciliacionesPage({
     .from('movimientos')
     .select('periodo_tarjeta')
     .in('cuenta_origen', tarjetaIds)
-    .eq('tipo_movimiento', 'Gasto')
+    .in('tipo_movimiento', ['Gasto', 'Ingreso'])
     .eq('user_id', user.id)
     .not('periodo_tarjeta', 'is', null)
 
@@ -71,7 +71,7 @@ export default async function ConciliacionesPage({
     .from('movimientos')
     .select('periodo_tarjeta')
     .in('cuenta_origen', tarjetaIds)
-    .eq('tipo_movimiento', 'Gasto')
+    .in('tipo_movimiento', ['Gasto', 'Ingreso'])
     .eq('conciliado', false)
     .eq('user_id', user.id)
     .lt('periodo_tarjeta', periodoActual)
@@ -80,28 +80,32 @@ export default async function ConciliacionesPage({
 
   const hayMesesVencidos = (movsVencidos ?? []).length > 0
 
-  // 4. Movimientos del período actual (batch único)
+  // 4. Movimientos del período actual (batch único) — incluye Ingresos (descuentos)
   const { data: movsDelPeriodo } = await adminClient
     .from('movimientos')
-    .select('cuenta_origen, conciliado, monto')
+    .select('cuenta_origen, conciliado, monto, tipo_movimiento')
     .in('cuenta_origen', tarjetaIds)
-    .eq('tipo_movimiento', 'Gasto')
+    .in('tipo_movimiento', ['Gasto', 'Ingreso'])
     .eq('periodo_tarjeta', periodoActual)
     .eq('user_id', user.id)
 
-  const movsByTarjeta: Record<string, { monto: number; conciliado: boolean }[]> = {}
+  const movsByTarjeta: Record<string, { monto: number; conciliado: boolean; tipo: string }[]> = {}
   for (const m of movsDelPeriodo ?? []) {
     if (!movsByTarjeta[m.cuenta_origen]) movsByTarjeta[m.cuenta_origen] = []
-    movsByTarjeta[m.cuenta_origen].push({ monto: m.monto, conciliado: m.conciliado })
+    movsByTarjeta[m.cuenta_origen].push({ monto: m.monto, conciliado: m.conciliado, tipo: m.tipo_movimiento })
   }
+
+  // Monto firmado: Gastos suman, Ingresos/descuentos restan
+  const signedMonto = (m: { monto: number; tipo: string }) =>
+    m.tipo === 'Ingreso' ? -m.monto : m.monto
 
   // 5. Stats por tarjeta
   const tarjetasConDatos = (tarjetas ?? []).map(tarjeta => {
     const movs          = movsByTarjeta[tarjeta.id] ?? []
-    const total         = movs.reduce((a, m) => a + m.monto, 0)
+    const total         = movs.reduce((a, m) => a + signedMonto(m), 0)
     const conciliados   = movs.filter(m => m.conciliado).length
     const noConciliados = movs.filter(m => !m.conciliado).length
-    const totalPendiente = movs.filter(m => !m.conciliado).reduce((a, m) => a + m.monto, 0)
+    const totalPendiente = movs.filter(m => !m.conciliado).reduce((a, m) => a + signedMonto(m), 0)
     const cierreDay     = tarjeta.fecha_cierre_tarjeta
       ? new Date(tarjeta.fecha_cierre_tarjeta + 'T12:00:00').getDate() : null
     const venceDay      = tarjeta.fecha_vencimiento_tarjeta
