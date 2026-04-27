@@ -187,6 +187,30 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
           />
         </div>
 
+        {/* ── Color de fondo del banner ── */}
+        <div>
+          <label className={labelClass}>Color de fondo del banner</label>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={form.color_primario}
+              onChange={e => set('color_primario', e.target.value)}
+              className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5"
+            />
+            <input
+              type="text"
+              value={form.color_primario}
+              onChange={e => set('color_primario', e.target.value)}
+              placeholder="#1e293b"
+              className={`flex-1 ${inputClass} font-mono text-sm`}
+            />
+            <div className="w-10 h-10 rounded-lg shrink-0 border border-slate-200" style={{ background: form.color_primario }} />
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Se aplica al fondo del encabezado de la tarjeta. Se actualiza automáticamente al elegir la variante.
+          </p>
+        </div>
+
         {/* ── Datos de la tarjeta ── */}
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-4">
           <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Datos de la tarjeta</p>
