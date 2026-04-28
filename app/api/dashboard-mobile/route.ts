@@ -90,7 +90,8 @@ export async function GET(req: NextRequest) {
 
   // Mapear movimientos recientes
   const movMapped = (movRecientes ?? []).map(m => {
-    const cat = m.categorias as { nombre_categoria: string; icono: string } | null
+    const catRaw = m.categorias as unknown
+    const cat = (Array.isArray(catRaw) ? catRaw[0] : catRaw) as { nombre_categoria: string; icono: string } | null
     return {
       id:     m.id,
       fecha:  m.fecha,
