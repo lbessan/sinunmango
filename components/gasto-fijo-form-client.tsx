@@ -36,12 +36,12 @@ export function GastoFijoFormClient({
 }) {
   const router = useRouter()
   const [form, setForm] = useState<GastoFijoForm>(inicial)
-  const [categorias,   setCategorias]   = useState(catInicial)
-  const [subcategorias] = useState(subInicial)
-  const [saving, setSaving]         = useState(false)
-  const [saved,  setSaved]          = useState(false)
-  const [error,  setError]          = useState('')
-  const [modal,  setModal]          = useState<'categoria' | null>(null)
+  const [categorias,    setCategorias]    = useState(catInicial)
+  const [subcategorias, setSubcategorias] = useState(subInicial)
+  const [saving, setSaving] = useState(false)
+  const [saved,  setSaved]  = useState(false)
+  const [error,  setError]  = useState('')
+  const [modal,  setModal]  = useState<'categoria' | 'subcategoria' | null>(null)
 
   const set = (k: keyof GastoFijoForm, v: string | boolean) =>
     setForm(prev => ({ ...prev, [k]: v }))
@@ -125,21 +125,29 @@ export function GastoFijoFormClient({
             />
           </div>
 
-          {subcatsFiltradas.length > 0 && (
-            <div>
-              <label className={labelClass}>Subcategoría</label>
-              <select
-                value={form.id_subcategoria}
-                onChange={e => set('id_subcategoria', e.target.value)}
-                className={inputClass}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-medium text-slate-500">Subcategoría</label>
+              <button
+                type="button"
+                onClick={() => setModal('subcategoria')}
+                className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition-colors"
               >
-                <option value="">— ninguna —</option>
-                {subcatsFiltradas.map(s => (
-                  <option key={s.id} value={s.id}>{s.nombre_subcategoria}</option>
-                ))}
-              </select>
+                <Plus size={11} /> Nueva
+              </button>
             </div>
-          )}
+            <select
+              value={form.id_subcategoria}
+              onChange={e => set('id_subcategoria', e.target.value)}
+              className={inputClass}
+              disabled={subcatsFiltradas.length === 0 && !form.id_categoria}
+            >
+              <option value="">{subcatsFiltradas.length === 0 ? '— (elegí una categoría primero) —' : '— ninguna —'}</option>
+              {subcatsFiltradas.map(s => (
+                <option key={s.id} value={s.id}>{s.nombre_subcategoria}</option>
+              ))}
+            </select>
+          </div>
 
           <div>
             <label className={labelClass}>Día de vencimiento</label>
@@ -193,6 +201,19 @@ export function GastoFijoFormClient({
           onCreado={(id, nombre, icono) => {
             setCategorias(prev => [...prev, { id, nombre_categoria: nombre, icono: icono ?? null }])
             set('id_categoria', id)
+            set('id_subcategoria', '')
+          }}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal === 'subcategoria' && (
+        <NuevoItemModal
+          tipo="subcategoria"
+          categorias={categorias}
+          categoriaActual={form.id_categoria}
+          onCreado={(id, nombre) => {
+            setSubcategorias(prev => [...prev, { id, nombre_subcategoria: nombre, categoria_padre: form.id_categoria }])
+            set('id_subcategoria', id)
           }}
           onClose={() => setModal(null)}
         />
