@@ -3,57 +3,59 @@ import { adminClient } from '@/lib/supabase/admin'
 import { getUserFromRequest } from '@/lib/auth'
 
 // ─── GET /api/dashboard-mobile ───────────────────────────────────────────────
-// Returns a minimal dashboard summary for the mobile app.
+// Returns dashboard summary + cuentas + últimos movimientos for the mobile app.
 // Auth: Bearer token (JWT from mobile) OR session cookie (web).
 
 export async function GET(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // 1. Dashboard summary view
-  const { data: resumen, error } = await adminClient
-    .from('dashboard_resumen')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
+  // Run all queries in parallel
+  const [
+    { data: resumen, error: resumenError },
+    { data: params },
+    { data: cuentas },
+    { data: movRecientes },
+  ] = await Promise.all([
+    adminClient
+      .from('dashboard_resumen')
+      .select('*')
+      .eq('user_id', user.id)
+      .single(),
 
-  if (error || !resumen) {
+    adminClient
+      .from('parametros')
+      .select('valor')
+      .eq('id', 'Dolar_Tarjeta_BNA')
+      .eq('user_id', user.id)
+      .single(),
+
+    // Cuentas con saldo calculado (view)
+    adminClient
+      .from('saldo_actual_cuentas')
+      .select('id, nombre_cuenta, tipo_cuenta, moneda, saldo_actual, activa')
+      .eq('activa', true)
+      .eq('user_id', user.id)
+      .order('tipo_cuenta'),
+
+    // Últimos 10 movimientos con categoría
+    adminClient
+      .from('movimientos')
+      .select('id, fecha, detalle, monto, moneda, tipo_movimiento, cuenta_origen, categorias(nombre_categoria, icono)')
+      .eq('user_id', user.id)
+      .order('fecha', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(10),
+  ])
+
+  if (resumenError || !resumen) {
     return NextResponse.json({ error: 'No se encontró resumen' }, { status: 404 })
   }
 
-  // 2. Dollar rate for USD conversion
-  const { data: params } = await adminClient
-    .from('parametros')
-    .select('valor')
-    .eq('id', 'Dolar_Tarjeta_BNA')
-    .eq('user_id', user.id)
-    .single()
-
   const dolar = params?.valor ?? 1410
 
-  // 3. Tarjetas de crédito activas (para filtrar gastos)
-  const { data: tarjetas } = await adminClient
-    .from('cuentas')
-    .select('id')
-    .eq('tipo_cuenta', 'Tarjeta Credito')
-    .eq('activa', true)
-    .eq('user_id', user.id)
-
-  const tarjetaIds = new Set((tarjetas ?? []).map(t => t.id))
-
-  // 4. Gastos fijos (solo efectivo/banco, para proyección a fin de mes)
-  const { data: gastosFijos } = await adminClient
-    .from('gastos_fijos')
-    .select('*, cuentas(tipo_cuenta)')
-    .eq('activo', true)
-    .eq('user_id', user.id)
-
-  const gastosFijosEfectivo = (gastosFijos ?? [])
-    .filter(g => (g.cuentas as { tipo_cuenta: string } | null)?.tipo_cuenta !== 'Tarjeta Credito')
-    .reduce((acc, g) => acc + (g.moneda === 'USD' ? g.monto_estimado * dolar : g.monto_estimado), 0)
-
-  // 5. Calcular proyectado a fin de mes
-  const deudaRestante  = Math.max(0, resumen.deuda_tarjetas_periodo - resumen.pagos_tarjeta_mes)
+  // Calcular proyectado a fin de mes
+  const deudaRestante = Math.max(0, resumen.deuda_tarjetas_periodo - resumen.pagos_tarjeta_mes)
   const proyectadoActual = Math.round(
     resumen.disponible_real +
     resumen.ingresos_futuros_mes -
@@ -61,24 +63,65 @@ export async function GET(req: NextRequest) {
     deudaRestante
   )
 
-  // 6. Mes actual formateado
+  // Mes actual formateado
   const today = new Date()
   const mesLabel = today
     .toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
     .toUpperCase()
     .replace(' DE ', ' ')
 
-  // 7. Gastos e ingresos del período actual (desde el view, igual que la web)
+  // Gastos e ingresos del período actual (desde el view, igual que la web)
   const gastosMes   = Math.abs(resumen.gastos_actuales ?? 0)
   const ingresosMes = resumen.ingresos_actuales ?? 0
 
+  // Saldo total en USD (cuentas en USD, sin convertir)
+  const saldoUsd = (cuentas ?? [])
+    .filter(c => c.moneda === 'USD')
+    .reduce((acc, c) => acc + (c.saldo_actual ?? 0), 0)
+
+  // Mapear cuentas para el mobile
+  const cuentasMapped = (cuentas ?? []).map(c => ({
+    id:         c.id,
+    nombre:     c.nombre_cuenta,
+    tipo:       c.tipo_cuenta,
+    moneda:     c.moneda,
+    saldo:      Math.round(c.saldo_actual ?? 0),
+  }))
+
+  // Mapear movimientos recientes
+  const movMapped = (movRecientes ?? []).map(m => {
+    const cat = m.categorias as { nombre_categoria: string; icono: string } | null
+    return {
+      id:     m.id,
+      fecha:  m.fecha,
+      detalle: m.detalle ?? '',
+      monto:  Math.round(Number(m.monto)),
+      moneda: m.moneda,
+      tipo:   m.tipo_movimiento,
+      cuenta_id: m.cuenta_origen,
+      categoria_nombre: cat?.nombre_categoria ?? null,
+      categoria_icono:  cat?.icono ?? null,
+    }
+  })
+
+  // Build cuenta name lookup for movimientos
+  const cuentaMap = Object.fromEntries((cuentas ?? []).map(c => [c.id, c.nombre_cuenta]))
+  const movConCuenta = movMapped.map(m => ({
+    ...m,
+    cuenta_nombre: cuentaMap[m.cuenta_id] ?? null,
+  }))
+
   return NextResponse.json({
-    mes_label:        mesLabel,
-    saldo_disponible: Math.round(resumen.disponible_real),
-    proyectado:       proyectadoActual,
-    gastos_mes:       Math.round(gastosMes),
-    ingresos_mes:     Math.round(ingresosMes),
+    mes_label:               mesLabel,
+    saldo_disponible:        Math.round(resumen.disponible_real),
+    saldo_usd:               Math.round(saldoUsd * 100) / 100,
+    proyectado:              proyectadoActual,
+    gastos_mes:              Math.round(gastosMes),
+    ingresos_mes:            Math.round(ingresosMes),
     gastos_fijos_pendientes: Math.round(resumen.gastos_fijos_pendientes ?? 0),
-    deuda_tarjetas:   Math.round(deudaRestante),
+    deuda_tarjetas:          Math.round(deudaRestante),
+    dolar,
+    cuentas:                 cuentasMapped,
+    ultimos_movimientos:     movConCuenta,
   })
 }

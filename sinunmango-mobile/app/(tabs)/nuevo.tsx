@@ -1,18 +1,27 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, ActivityIndicator, Platform,
+  ScrollView, Alert, ActivityIndicator, Modal, FlatList,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as Crypto from 'expo-crypto'
 import { supabase } from '@/lib/supabase'
 import { apiPost } from '@/lib/api'
-import { Colors } from '@/constants/theme'
+import { useTheme, STATIC_COLORS } from '@/context/ThemeContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Cuenta    = { id: string; nombre_cuenta: string; tipo_cuenta: string; moneda: string; fecha_cierre_tarjeta: string | null; fecha_vencimiento_tarjeta: string | null }
-type Categoria = { id: string; nombre_categoria: string; tipo_default: string }
+type TipoMov = 'Gasto' | 'Ingreso' | 'Transferencia'
+
+type Cuenta    = {
+  id: string
+  nombre_cuenta: string
+  tipo_cuenta: string
+  moneda: string
+  fecha_cierre_tarjeta: string | null
+  fecha_vencimiento_tarjeta: string | null
+}
+type Categoria = { id: string; nombre_categoria: string; icono: string; tipo_default: string }
 
 type Form = {
   detalle:      string
@@ -20,20 +29,26 @@ type Form = {
   moneda:       'ARS' | 'USD'
   cuotas:       string
   cuenta_id:    string
+  cuenta_destino_id: string
   categoria_id: string
   fecha:        string
 }
 
 const today = () => new Date().toISOString().slice(0, 10)
+const todayDisplay = () => {
+  const d = new Date()
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
+}
 
 const EMPTY_FORM: Form = {
-  detalle:      '',
-  monto:        '',
-  moneda:       'ARS',
-  cuotas:       '1',
-  cuenta_id:    '',
-  categoria_id: '',
-  fecha:        today(),
+  detalle:           '',
+  monto:             '',
+  moneda:            'ARS',
+  cuotas:            '1',
+  cuenta_id:         '',
+  cuenta_destino_id: '',
+  categoria_id:      '',
+  fecha:             today(),
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -60,63 +75,178 @@ function addMonths(d: string, n: number) {
   return dt.toISOString().slice(0, 10)
 }
 
-// ─── Selector component ───────────────────────────────────────────────────────
-function Selector<T extends { id: string; label: string }>({
-  label, items, selectedId, onSelect, placeholder,
+// ─── Selector Modal ───────────────────────────────────────────────────────────
+function SelectorModal<T extends { id: string; label: string; sub?: string; icon?: string }>({
+  visible, title, items, onSelect, onClose,
 }: {
-  label:       string
-  items:       T[]
-  selectedId:  string
-  onSelect:    (id: string) => void
-  placeholder: string
+  visible:  boolean
+  title:    string
+  items:    T[]
+  onSelect: (id: string) => void
+  onClose:  () => void
 }) {
-  const selected = items.find(i => i.id === selectedId)
   return (
-    <View style={fieldStyles.field}>
-      <Text style={fieldStyles.label}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={fieldStyles.chipScroll}>
-        {items.map(item => (
-          <TouchableOpacity
-            key={item.id}
-            onPress={() => onSelect(item.id)}
-            style={[
-              fieldStyles.chip,
-              item.id === selectedId && fieldStyles.chipActive,
-            ]}
-          >
-            <Text style={[
-              fieldStyles.chipText,
-              item.id === selectedId && fieldStyles.chipTextActive,
-            ]}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={mod.backdrop} onPress={onClose} activeOpacity={1} />
+      <View style={mod.sheet}>
+        <View style={mod.handle} />
+        <Text style={mod.title}>{title}</Text>
+        <FlatList
+          data={items}
+          keyExtractor={i => i.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={mod.item}
+              onPress={() => { onSelect(item.id); onClose() }}
+              activeOpacity={0.7}
+            >
+              {item.icon ? <Text style={mod.itemIcon}>{item.icon}</Text> : null}
+              <View style={mod.itemText}>
+                <Text style={mod.itemLabel}>{item.label}</Text>
+                {item.sub ? <Text style={mod.itemSub}>{item.sub}</Text> : null}
+              </View>
+            </TouchableOpacity>
+          )}
+          ItemSeparatorComponent={() => <View style={mod.separator} />}
+        />
+      </View>
+    </Modal>
+  )
+}
+
+const mod = StyleSheet.create({
+  backdrop: {
+    flex:            1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sheet: {
+    backgroundColor: STATIC_COLORS.bgCard,
+    borderTopLeftRadius:  24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop:        12,
+    paddingBottom:     40,
+    maxHeight:         '70%',
+  },
+  handle: {
+    width:           40,
+    height:          4,
+    backgroundColor: STATIC_COLORS.border,
+    borderRadius:    2,
+    alignSelf:       'center',
+    marginBottom:    16,
+  },
+  title: {
+    fontSize:     17,
+    fontWeight:   '700',
+    color:        STATIC_COLORS.textPrimary,
+    marginBottom: 12,
+  },
+  item: {
+    flexDirection:  'row',
+    alignItems:     'center',
+    paddingVertical: 14,
+    gap:            12,
+  },
+  itemIcon:  { fontSize: 22, width: 32, textAlign: 'center' },
+  itemText:  { flex: 1 },
+  itemLabel: { fontSize: 15, color: STATIC_COLORS.textPrimary, fontWeight: '500' },
+  itemSub:   { fontSize: 12, color: STATIC_COLORS.textMuted, marginTop: 2 },
+  separator: { height: 1, backgroundColor: STATIC_COLORS.border },
+})
+
+// ─── Field components ─────────────────────────────────────────────────────────
+function FieldLabel({ children }: { children: string }) {
+  return <Text style={fl.label}>{children}</Text>
+}
+
+function DropdownField({ label, value, placeholder, onPress, extra }: {
+  label:       string
+  value:       string
+  placeholder: string
+  onPress:     () => void
+  extra?:      React.ReactNode
+}) {
+  const { colors } = useTheme()
+  return (
+    <View style={fl.field}>
+      {extra ? (
+        <View style={fl.labelRow}>
+          <FieldLabel>{label}</FieldLabel>
+          {extra}
+        </View>
+      ) : (
+        <FieldLabel>{label}</FieldLabel>
+      )}
+      <TouchableOpacity style={fl.dropdown} onPress={onPress} activeOpacity={0.8}>
+        <Text style={[fl.dropdownText, !value && fl.placeholder]}>
+          {value || placeholder}
+        </Text>
+        <Text style={fl.chevron}>›</Text>
+      </TouchableOpacity>
     </View>
   )
 }
 
+const fl = StyleSheet.create({
+  field:    { marginBottom: 14 },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  label:    {
+    fontSize:      11,
+    fontWeight:    '700',
+    color:         STATIC_COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom:  6,
+  },
+  dropdown: {
+    flexDirection:    'row',
+    alignItems:       'center',
+    backgroundColor:  STATIC_COLORS.bgMain,
+    borderRadius:     12,
+    paddingHorizontal: 14,
+    paddingVertical:   13,
+    borderWidth:      1,
+    borderColor:      STATIC_COLORS.border,
+  },
+  dropdownText: {
+    flex:       1,
+    fontSize:   15,
+    color:      STATIC_COLORS.textPrimary,
+    fontWeight: '500',
+  },
+  placeholder: { color: STATIC_COLORS.textMuted },
+  chevron:    { fontSize: 18, color: STATIC_COLORS.textMuted, fontWeight: '300' },
+})
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function NuevoMovimientoScreen() {
-  const [form, setForm]           = useState<Form>(EMPTY_FORM)
-  const [cuentas, setCuentas]     = useState<Cuenta[]>([])
+  const { colors } = useTheme()
+  const [tipo, setTipo]             = useState<TipoMov>('Gasto')
+  const [form, setForm]             = useState<Form>(EMPTY_FORM)
+  const [cuentas, setCuentas]       = useState<Cuenta[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
-  const [scanning, setScanning]   = useState(false)
-  const [saving, setSaving]       = useState(false)
+  const [scanning, setScanning]     = useState(false)
+  const [saving, setSaving]         = useState(false)
+  const [showCuenta, setShowCuenta] = useState(false)
+  const [showCuentaDest, setShowCuentaDest] = useState(false)
+  const [showCategoria, setShowCategoria]   = useState(false)
 
-  // Load cuentas + categorias on mount
   useEffect(() => {
     const load = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) return
-
       const [{ data: c }, { data: cat }] = await Promise.all([
         supabase.from('cuentas').select('id, nombre_cuenta, tipo_cuenta, moneda, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta').eq('activa', true).eq('user_id', session.user.id).order('nombre_cuenta'),
-        supabase.from('categorias').select('id, nombre_categoria, tipo_default').eq('user_id', session.user.id).order('nombre_categoria'),
+        supabase.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', session.user.id).order('nombre_categoria'),
       ])
       setCuentas(c ?? [])
       setCategorias(cat ?? [])
+
+      // Auto-select primera cuenta
+      if (c && c.length > 0) {
+        setForm(prev => ({ ...prev, cuenta_id: prev.cuenta_id || c[0].id }))
+      }
     }
     load()
   }, [])
@@ -125,20 +255,23 @@ export default function NuevoMovimientoScreen() {
     setForm(prev => ({ ...prev, [key]: val }))
   }, [])
 
-  // ── OCR ───────────────────────────────────────────────────────────────────
+  // Filtrar categorías según el tipo de movimiento
+  const categoriasFiltradas = categorias.filter(c =>
+    tipo === 'Gasto'    ? c.tipo_default !== 'Ingreso' :
+    tipo === 'Ingreso'  ? c.tipo_default !== 'Gasto' :
+    true
+  )
+
+  // ── OCR ─────────────────────────────────────────────────────────────────────
   const handleScanTicket = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync()
     if (status !== 'granted') {
       Alert.alert('Permiso requerido', 'Necesitamos acceso a la cámara para escanear tickets.')
       return
     }
-
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality:    0.7,
-      base64:     true,
+      mediaTypes: ['images'], quality: 0.7, base64: true,
     })
-
     if (result.canceled || !result.assets[0]?.base64) return
 
     setScanning(true)
@@ -148,7 +281,6 @@ export default function NuevoMovimientoScreen() {
         ok: boolean; detalle: string | null; monto: number | null
         moneda: string; fecha: string; cuotas: number
       }>('/api/leer-ticket', { image: base64, mimeType: mimeType ?? 'image/jpeg' })
-
       if (data.ok) {
         setForm(prev => ({
           ...prev,
@@ -167,12 +299,13 @@ export default function NuevoMovimientoScreen() {
     }
   }
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  // ── Save ─────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!form.detalle.trim())   return Alert.alert('Falta el detalle')
-    if (!form.monto.trim())     return Alert.alert('Falta el monto')
-    if (!form.cuenta_id)        return Alert.alert('Elegí una cuenta')
-    if (!form.categoria_id)     return Alert.alert('Elegí una categoría')
+    if (!form.detalle.trim()) return Alert.alert('Falta el detalle')
+    if (!form.monto.trim())   return Alert.alert('Falta el monto')
+    if (!form.cuenta_id)      return Alert.alert('Elegí una cuenta')
+    if (tipo !== 'Transferencia' && !form.categoria_id) return Alert.alert('Elegí una categoría')
+    if (tipo === 'Transferencia' && !form.cuenta_destino_id) return Alert.alert('Elegí la cuenta destino')
 
     setSaving(true)
     try {
@@ -182,47 +315,67 @@ export default function NuevoMovimientoScreen() {
       const cuenta = cuentas.find(c => c.id === form.cuenta_id)
       if (!cuenta) throw new Error('Cuenta no encontrada')
 
-      const isTarjeta = cuenta.tipo_cuenta === 'Tarjeta Credito'
-      // Extraer día de cierre y vencimiento para calcular período correcto
-      const cierre = cuenta.fecha_cierre_tarjeta
-        ? new Date(cuenta.fecha_cierre_tarjeta + 'T12:00:00').getDate()
-        : null
-      const vence = cuenta.fecha_vencimiento_tarjeta
-        ? new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate()
-        : null
-
+      const isTarjeta  = cuenta.tipo_cuenta === 'Tarjeta Credito'
+      const cierre     = cuenta.fecha_cierre_tarjeta   ? new Date(cuenta.fecha_cierre_tarjeta   + 'T12:00:00').getDate() : null
+      const vence      = cuenta.fecha_vencimiento_tarjeta ? new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
       const monto      = parseFloat(form.monto.replace(',', '.'))
-      const cuotas     = parseInt(form.cuotas) || 1
+      const cuotas     = tipo === 'Transferencia' ? 1 : (parseInt(form.cuotas) || 1)
       const montoCuota = monto / cuotas
 
-      const records = Array.from({ length: cuotas }, (_, i) => {
-        const fechaCuota = addMonths(form.fecha, i)
-        return {
-          id:              Crypto.randomUUID(),
-          fecha:           fechaCuota,
-          detalle:         cuotas > 1 ? `${form.detalle.trim()} (Cuota ${i + 1}/${cuotas})` : form.detalle.trim(),
-          monto:           montoCuota,
-          moneda:          form.moneda,
-          tipo_movimiento: 'Gasto',
-          cuenta_origen:   form.cuenta_id,
-          cuenta_destino:  null,
-          categoria:       form.categoria_id,
-          subcategoria:    null,
-          cotizacion:      null,
-          conciliado:      false,
-          periodo_tarjeta: calcularPeriodo(fechaCuota, cierre, vence, isTarjeta),
-          cuotas_total:    cuotas,
-          cuota_actual:    i + 1,
-          ciclo_actual:    1,
-          user_id:         session.user.id,
-        }
-      })
-
-      const { error } = await supabase.from('movimientos').insert(records)
-      if (error) throw error
+      if (tipo === 'Transferencia') {
+        // Dos movimientos: Egreso + Ingreso
+        const records = [
+          {
+            id:              Crypto.randomUUID(),
+            fecha:           form.fecha,
+            detalle:         form.detalle.trim(),
+            monto:           monto,
+            moneda:          form.moneda,
+            tipo_movimiento: 'Transferencia',
+            cuenta_origen:   form.cuenta_id,
+            cuenta_destino:  form.cuenta_destino_id,
+            categoria:       null,
+            subcategoria:    null,
+            cotizacion:      null,
+            conciliado:      false,
+            periodo_tarjeta: calcularPeriodo(form.fecha, cierre, vence, isTarjeta),
+            cuotas_total:    1,
+            cuota_actual:    1,
+            ciclo_actual:    1,
+            user_id:         session.user.id,
+          },
+        ]
+        const { error } = await supabase.from('movimientos').insert(records)
+        if (error) throw error
+      } else {
+        const records = Array.from({ length: cuotas }, (_, i) => {
+          const fechaCuota = addMonths(form.fecha, i)
+          return {
+            id:              Crypto.randomUUID(),
+            fecha:           fechaCuota,
+            detalle:         cuotas > 1 ? `${form.detalle.trim()} (Cuota ${i + 1}/${cuotas})` : form.detalle.trim(),
+            monto:           montoCuota,
+            moneda:          form.moneda,
+            tipo_movimiento: tipo,
+            cuenta_origen:   form.cuenta_id,
+            cuenta_destino:  null,
+            categoria:       form.categoria_id,
+            subcategoria:    null,
+            cotizacion:      null,
+            conciliado:      false,
+            periodo_tarjeta: calcularPeriodo(fechaCuota, cierre, vence, isTarjeta),
+            cuotas_total:    cuotas,
+            cuota_actual:    i + 1,
+            ciclo_actual:    1,
+            user_id:         session.user.id,
+          }
+        })
+        const { error } = await supabase.from('movimientos').insert(records)
+        if (error) throw error
+      }
 
       Alert.alert('✓ Guardado', `${form.detalle} por $${monto.toLocaleString('es-AR')} registrado.`)
-      setForm({ ...EMPTY_FORM, fecha: today() })
+      setForm({ ...EMPTY_FORM, fecha: today(), cuenta_id: form.cuenta_id })
     } catch (e: unknown) {
       Alert.alert('Error', e instanceof Error ? e.message : 'No se pudo guardar.')
     } finally {
@@ -230,311 +383,337 @@ export default function NuevoMovimientoScreen() {
     }
   }
 
-  const cuentaItems    = cuentas.map(c => ({ id: c.id, label: `${c.nombre_cuenta} (${c.moneda})` }))
-  const categoriaItems = categorias.map(c => ({ id: c.id, label: c.nombre_categoria }))
+  // ── Derived values ────────────────────────────────────────────────────────
+  const cuentaSeleccionada    = cuentas.find(c => c.id === form.cuenta_id)
+  const cuentaDestSeleccionada = cuentas.find(c => c.id === form.cuenta_destino_id)
+  const categoriaSeleccionada = categorias.find(c => c.id === form.categoria_id)
+
+  const cuentaItems = cuentas.map(c => ({
+    id:    c.id,
+    label: c.nombre_cuenta,
+    sub:   `${c.tipo_cuenta} · ${c.moneda}`,
+  }))
+
+  const categoriaItems = categoriasFiltradas.map(c => ({
+    id:    c.id,
+    label: c.nombre_categoria,
+    icon:  c.icono,
+  }))
+
+  const TIPOS: TipoMov[] = ['Gasto', 'Ingreso', 'Transferencia']
 
   return (
-    <SafeAreaView style={s.safe}>
-      {/* Header */}
+    <SafeAreaView style={[s.safe, { backgroundColor: STATIC_COLORS.bgMain }]} edges={['top']}>
+
+      {/* ── HEADER ── */}
       <View style={s.header}>
         <Text style={s.headerTitle}>Nuevo movimiento</Text>
         <TouchableOpacity
-          style={[s.scanBtn, scanning && s.btnDisabled]}
+          style={[s.ticketBtn, scanning && s.btnDisabled]}
           onPress={handleScanTicket}
           disabled={scanning}
         >
           {scanning
-            ? <ActivityIndicator color={Colors.white} size="small" />
-            : <Text style={s.scanBtnText}>📷  Escanear ticket</Text>
+            ? <ActivityIndicator color={colors.accent} size="small" />
+            : <Text style={[s.ticketBtnText, { color: colors.accent }]}>📷  Ticket</Text>
           }
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={s.scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={s.card}>
 
-        {/* Detalle */}
-        <View style={fieldStyles.field}>
-          <Text style={fieldStyles.label}>Detalle</Text>
-          <TextInput
-            style={fieldStyles.input}
-            value={form.detalle}
-            onChangeText={v => set('detalle', v)}
-            placeholder="Ej: Supermercado, nafta, cena..."
-            placeholderTextColor={Colors.textMuted}
+          {/* ── TIPO SEGMENTED CONTROL ── */}
+          <View style={s.segmented}>
+            {TIPOS.map(t => (
+              <TouchableOpacity
+                key={t}
+                style={[s.segment, tipo === t && { backgroundColor: colors.accent }]}
+                onPress={() => { setTipo(t); set('categoria_id', '') }}
+                activeOpacity={0.85}
+              >
+                <Text style={[s.segmentText, tipo === t && s.segmentTextActive]}>
+                  {t}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* ── FECHA y DETALLE ── */}
+          <View style={s.row2}>
+            <View style={[fl.field, { flex: 1 }]}>
+              <FieldLabel>Fecha</FieldLabel>
+              <TextInput
+                style={s.input}
+                value={form.fecha}
+                onChangeText={v => set('fecha', v)}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={STATIC_COLORS.textMuted}
+              />
+            </View>
+            <View style={[fl.field, { flex: 1.4 }]}>
+              <FieldLabel>Detalle</FieldLabel>
+              <TextInput
+                style={s.input}
+                value={form.detalle}
+                onChangeText={v => set('detalle', v)}
+                placeholder="Ej: COTO"
+                placeholderTextColor={STATIC_COLORS.textMuted}
+              />
+            </View>
+          </View>
+
+          {/* ── MONEDA y MONTO ── */}
+          <View style={s.row2}>
+            <View style={[fl.field, { flex: 0.8 }]}>
+              <FieldLabel>Moneda</FieldLabel>
+              <View style={s.monedaToggle}>
+                {(['ARS', 'USD'] as const).map(m => (
+                  <TouchableOpacity
+                    key={m}
+                    style={[s.monedaBtn, form.moneda === m && { backgroundColor: colors.accent }]}
+                    onPress={() => set('moneda', m)}
+                  >
+                    <Text style={[s.monedaBtnText, form.moneda === m && s.monedaBtnTextActive]}>{m}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <View style={[fl.field, { flex: 1.2 }]}>
+              <FieldLabel>Monto</FieldLabel>
+              <TextInput
+                style={s.input}
+                value={form.monto}
+                onChangeText={v => set('monto', v)}
+                placeholder="0.00"
+                keyboardType="decimal-pad"
+                placeholderTextColor={STATIC_COLORS.textMuted}
+              />
+            </View>
+          </View>
+
+          {/* ── CUENTA (origen) ── */}
+          <DropdownField
+            label="Cuenta"
+            value={cuentaSeleccionada?.nombre_cuenta ?? ''}
+            placeholder="Seleccioná una cuenta"
+            onPress={() => setShowCuenta(true)}
           />
-        </View>
 
-        {/* Monto + Moneda */}
-        <View style={s.row}>
-          <View style={[fieldStyles.field, { flex: 2, marginRight: 8 }]}>
-            <Text style={fieldStyles.label}>Monto</Text>
-            <TextInput
-              style={fieldStyles.input}
-              value={form.monto}
-              onChangeText={v => set('monto', v)}
-              placeholder="0"
-              keyboardType="decimal-pad"
-              placeholderTextColor={Colors.textMuted}
+          {/* ── CUENTA DESTINO (solo Transferencia) ── */}
+          {tipo === 'Transferencia' && (
+            <DropdownField
+              label="Cuenta destino"
+              value={cuentaDestSeleccionada?.nombre_cuenta ?? ''}
+              placeholder="Seleccioná destino"
+              onPress={() => setShowCuentaDest(true)}
             />
-          </View>
-          <View style={[fieldStyles.field, { flex: 1 }]}>
-            <Text style={fieldStyles.label}>Moneda</Text>
-            <View style={s.toggleRow}>
-              {(['ARS', 'USD'] as const).map(m => (
-                <TouchableOpacity
-                  key={m}
-                  style={[s.toggleBtn, form.moneda === m && s.toggleBtnActive]}
-                  onPress={() => set('moneda', m)}
-                >
-                  <Text style={[s.toggleBtnText, form.moneda === m && s.toggleBtnTextActive]}>{m}</Text>
+          )}
+
+          {/* ── CATEGORÍA (no Transferencia) ── */}
+          {tipo !== 'Transferencia' && (
+            <DropdownField
+              label="Categoría"
+              value={categoriaSeleccionada
+                ? `${categoriaSeleccionada.icono}  ${categoriaSeleccionada.nombre_categoria}`
+                : ''}
+              placeholder="Seleccioná categoría"
+              onPress={() => setShowCategoria(true)}
+              extra={
+                <TouchableOpacity>
+                  <Text style={[s.newCatBtn, { color: colors.accent }]}>+ Nueva</Text>
                 </TouchableOpacity>
-              ))}
+              }
+            />
+          )}
+
+          {/* ── CUOTAS (solo Gasto con tarjeta de crédito) ── */}
+          {tipo === 'Gasto' && cuentaSeleccionada?.tipo_cuenta === 'Tarjeta Credito' && (
+            <View style={fl.field}>
+              <FieldLabel>Cuotas</FieldLabel>
+              <TextInput
+                style={[s.input, { width: 100 }]}
+                value={form.cuotas}
+                onChangeText={v => set('cuotas', v)}
+                keyboardType="number-pad"
+                placeholderTextColor={STATIC_COLORS.textMuted}
+              />
             </View>
-          </View>
+          )}
+
+          {/* ── GUARDAR ── */}
+          <TouchableOpacity
+            style={[s.saveBtn, { backgroundColor: colors.accent }, saving && s.btnDisabled]}
+            onPress={handleSave}
+            disabled={saving}
+            activeOpacity={0.85}
+          >
+            {saving
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={s.saveBtnText}>Guardar movimiento</Text>
+            }
+          </TouchableOpacity>
         </View>
-
-        {/* Cuotas */}
-        <View style={fieldStyles.field}>
-          <Text style={fieldStyles.label}>Cuotas</Text>
-          <TextInput
-            style={fieldStyles.input}
-            value={form.cuotas}
-            onChangeText={v => set('cuotas', v)}
-            keyboardType="number-pad"
-            placeholderTextColor={Colors.textMuted}
-          />
-        </View>
-
-        {/* Preview de cuotas */}
-        {parseInt(form.cuotas) > 1 && parseFloat(form.monto.replace(',', '.')) > 0 && (() => {
-          const cuotas = parseInt(form.cuotas)
-          const total  = parseFloat(form.monto.replace(',', '.'))
-          const cuota  = total / cuotas
-          return (
-            <View style={cuotaPreviewStyles.box}>
-              <Text style={cuotaPreviewStyles.title}>
-                {cuotas} cuotas de ${cuota.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} {form.moneda}
-              </Text>
-              {Array.from({ length: cuotas }, (_, i) => (
-                <View key={i} style={cuotaPreviewStyles.row}>
-                  <Text style={cuotaPreviewStyles.label}>
-                    Cuota {i + 1}/{cuotas} · {addMonths(form.fecha || today(), i)}
-                  </Text>
-                  <Text style={cuotaPreviewStyles.amount}>
-                    ${cuota.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )
-        })()}
-
-        {/* Fecha */}
-        <View style={fieldStyles.field}>
-          <Text style={fieldStyles.label}>Fecha (YYYY-MM-DD)</Text>
-          <TextInput
-            style={fieldStyles.input}
-            value={form.fecha}
-            onChangeText={v => set('fecha', v)}
-            placeholder="2026-04-18"
-            placeholderTextColor={Colors.textMuted}
-          />
-        </View>
-
-        {/* Cuenta */}
-        <Selector
-          label="Cuenta"
-          items={cuentaItems}
-          selectedId={form.cuenta_id}
-          onSelect={id => set('cuenta_id', id)}
-          placeholder="Elegí una cuenta"
-        />
-
-        {/* Categoría */}
-        <Selector
-          label="Categoría"
-          items={categoriaItems}
-          selectedId={form.categoria_id}
-          onSelect={id => set('categoria_id', id)}
-          placeholder="Elegí una categoría"
-        />
-
-        {/* Guardar */}
-        <TouchableOpacity
-          style={[s.saveBtn, saving && s.btnDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-          activeOpacity={0.85}
-        >
-          {saving
-            ? <ActivityIndicator color={Colors.white} size="small" />
-            : <Text style={s.saveBtnText}>Guardar movimiento</Text>
-          }
-        </TouchableOpacity>
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* ── MODALS ── */}
+      <SelectorModal
+        visible={showCuenta}
+        title="Cuenta"
+        items={cuentaItems}
+        onSelect={id => set('cuenta_id', id)}
+        onClose={() => setShowCuenta(false)}
+      />
+      <SelectorModal
+        visible={showCuentaDest}
+        title="Cuenta destino"
+        items={cuentaItems.filter(c => c.id !== form.cuenta_id)}
+        onSelect={id => set('cuenta_destino_id', id)}
+        onClose={() => setShowCuentaDest(false)}
+      />
+      <SelectorModal
+        visible={showCategoria}
+        title="Categoría"
+        items={categoriaItems}
+        onSelect={id => set('categoria_id', id)}
+        onClose={() => setShowCategoria(false)}
+      />
     </SafeAreaView>
   )
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const cuotaPreviewStyles = StyleSheet.create({
-  box: {
-    backgroundColor: '#eff6ff',
-    borderWidth:     1,
-    borderColor:     '#bfdbfe',
-    borderRadius:    12,
-    padding:         12,
-    marginBottom:    16,
-  },
-  title: {
-    fontSize:     13,
-    fontWeight:   '700',
-    color:        '#1d4ed8',
-    marginBottom: 8,
-  },
-  row: {
-    flexDirection:  'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#dbeafe',
-  },
-  label:  { fontSize: 12, color: '#3b82f6' },
-  amount: { fontSize: 12, fontWeight: '600', color: '#1d4ed8' },
-})
-
-const fieldStyles = StyleSheet.create({
-  field: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize:     12,
-    fontWeight:   '600',
-    color:        Colors.textSecondary,
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  input: {
-    backgroundColor: Colors.bgCard,
-    borderWidth:     1,
-    borderColor:     Colors.border,
-    borderRadius:    12,
-    paddingHorizontal: 14,
-    paddingVertical:   12,
-    fontSize:        15,
-    color:           Colors.textPrimary,
-  },
-  chipScroll: {
-    flexDirection: 'row',
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical:   8,
-    borderRadius:      20,
-    borderWidth:       1,
-    borderColor:       Colors.border,
-    backgroundColor:   Colors.bgCard,
-    marginRight:       8,
-  },
-  chipActive: {
-    backgroundColor: Colors.accent,
-    borderColor:     Colors.accent,
-  },
-  chipText: {
-    fontSize:   13,
-    color:      Colors.textSecondary,
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color:      Colors.white,
-    fontWeight: '700',
-  },
-})
-
 const s = StyleSheet.create({
-  safe: {
-    flex:            1,
-    backgroundColor: Colors.bgMain,
-  },
+  safe:  { flex: 1 },
+  scroll: { flex: 1 },
+  content: { padding: 16 },
+
   header: {
-    backgroundColor:  Colors.sidebar,
+    flexDirection:    'row',
+    alignItems:       'center',
+    justifyContent:   'space-between',
     paddingHorizontal: 20,
-    paddingTop:        16,
-    paddingBottom:     16,
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
+    paddingVertical:   12,
+    backgroundColor:  STATIC_COLORS.bgMain,
   },
   headerTitle: {
-    fontSize:   20,
+    fontSize:   22,
     fontWeight: '800',
-    color:      Colors.white,
+    color:      STATIC_COLORS.textPrimary,
+    letterSpacing: -0.3,
   },
-  scanBtn: {
+  ticketBtn: {
     flexDirection:   'row',
     alignItems:      'center',
-    backgroundColor: Colors.accent,
-    paddingHorizontal: 14,
-    paddingVertical:   8,
+    paddingHorizontal: 12,
+    paddingVertical:   7,
     borderRadius:    20,
-    gap:             6,
+    borderWidth:     1.5,
+    borderColor:     STATIC_COLORS.border,
+    backgroundColor: STATIC_COLORS.bgCard,
+    gap:             4,
   },
-  scanBtnText: {
-    color:      Colors.white,
+  ticketBtnText: {
     fontSize:   13,
     fontWeight: '600',
   },
-  btnDisabled: {
-    opacity: 0.5,
+
+  card: {
+    backgroundColor: STATIC_COLORS.bgCard,
+    borderRadius:    20,
+    padding:         18,
+    borderWidth:     1,
+    borderColor:     STATIC_COLORS.border,
+    shadowColor:     '#000',
+    shadowOpacity:   0.04,
+    shadowRadius:    8,
+    shadowOffset:    { width: 0, height: 2 },
+    elevation:       2,
   },
-  scroll: {
-    flex: 1,
+
+  segmented: {
+    flexDirection:   'row',
+    backgroundColor: STATIC_COLORS.bgMain,
+    borderRadius:    12,
+    padding:         3,
+    marginBottom:    18,
+    borderWidth:     1,
+    borderColor:     STATIC_COLORS.border,
   },
-  content: {
-    padding: 20,
+  segment: {
+    flex:           1,
+    paddingVertical: 9,
+    borderRadius:   10,
+    alignItems:     'center',
   },
-  row: {
+  segmentText: {
+    fontSize:   13,
+    fontWeight: '600',
+    color:      STATIC_COLORS.textSecondary,
+  },
+  segmentTextActive: {
+    color: '#ffffff',
+  },
+
+  row2: {
     flexDirection: 'row',
-    alignItems:    'flex-start',
+    gap:           10,
   },
-  toggleRow: {
+
+  input: {
+    backgroundColor:  STATIC_COLORS.bgMain,
+    borderWidth:      1,
+    borderColor:      STATIC_COLORS.border,
+    borderRadius:     12,
+    paddingHorizontal: 13,
+    paddingVertical:   12,
+    fontSize:         15,
+    color:            STATIC_COLORS.textPrimary,
+  },
+
+  monedaToggle: {
     flexDirection:  'row',
     borderRadius:   12,
     overflow:       'hidden',
     borderWidth:    1,
-    borderColor:    Colors.border,
+    borderColor:    STATIC_COLORS.border,
     height:         46,
   },
-  toggleBtn: {
+  monedaBtn: {
     flex:           1,
     justifyContent: 'center',
     alignItems:     'center',
-    backgroundColor: Colors.bgCard,
+    backgroundColor: STATIC_COLORS.bgMain,
   },
-  toggleBtnActive: {
-    backgroundColor: Colors.accent,
+  monedaBtnText: {
+    fontSize:   12,
+    fontWeight: '700',
+    color:      STATIC_COLORS.textSecondary,
   },
-  toggleBtnText: {
-    fontSize:   13,
-    fontWeight: '600',
-    color:      Colors.textSecondary,
+  monedaBtnTextActive: { color: '#ffffff' },
+
+  newCatBtn: {
+    fontSize:   12,
+    fontWeight: '700',
   },
-  toggleBtnTextActive: {
-    color: Colors.white,
-  },
+
   saveBtn: {
-    backgroundColor: Colors.accent,
     borderRadius:    14,
     paddingVertical: 16,
     alignItems:      'center',
-    marginTop:       8,
+    marginTop:       6,
   },
   saveBtnText: {
-    color:      Colors.white,
+    color:      '#ffffff',
     fontSize:   16,
     fontWeight: '700',
   },
+  btnDisabled: { opacity: 0.55 },
 })
