@@ -3,11 +3,36 @@ import { getUserFromRequest } from '@/lib/auth'
 import { adminClient } from '@/lib/supabase/admin'
 
 // ─── Token generation ─────────────────────────────────────────────────────────
-function generateToken(): string {
-  // 12 random bytes → 24 hex chars; URL-safe, enough entropy
-  const bytes = new Uint8Array(12)
+
+function randomSuffix(n = 4): string {
+  const bytes = new Uint8Array(n)
   crypto.getRandomValues(bytes)
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** Genera un token legible basado en el email del usuario.
+ *  ej: "luchobessan" → "luchobessan@sinunmango.com.ar"
+ *  Si hay colisión, agrega un sufijo corto. */
+async function generateTokenForUser(email: string): Promise<string> {
+  const base = email
+    .split('@')[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')   // quita puntos, +, guiones
+    .slice(0, 24)
+
+  const candidate = base || randomSuffix(8)
+
+  // Verificar unicidad
+  const { data: existing } = await adminClient
+    .from('user_preferences')
+    .select('user_id')
+    .eq('email_inbound_token', candidate)
+    .maybeSingle()
+
+  if (!existing) return candidate
+
+  // Colisión: agregar sufijo corto
+  return `${candidate.slice(0, 18)}-${randomSuffix(2)}`
 }
 
 // ─── GET /api/email-inbound-token ─────────────────────────────────────────────
@@ -29,8 +54,8 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // First time: generate and persist token
-  const token = generateToken()
+  // First time: generate and persist token based on email
+  const token = await generateTokenForUser(user.email ?? '')
   await adminClient
     .from('user_preferences')
     .upsert(
@@ -47,15 +72,15 @@ export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const token = generateToken()
+  const token = await generateTokenForUser(user.email ?? '')
   await adminClient
     .from('user_preferences')
     .upsert(
       {
-        user_id:               user.id,
-        email_inbound_token:   token,
+        user_id:                 user.id,
+        email_inbound_token:     token,
         gmail_verification_code: null,    // reset any pending code
-        updated_at:            new Date().toISOString(),
+        updated_at:              new Date().toISOString(),
       },
       { onConflict: 'user_id' }
     )
