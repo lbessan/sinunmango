@@ -10,6 +10,16 @@ import { supabase } from '@/lib/supabase'
 import { apiPost } from '@/lib/api'
 import { Colors } from '@/constants/theme'
 
+// ─── Markdown → plain text ───────────────────────────────────────────────────
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')   // **bold**
+    .replace(/\*(.+?)\*/g, '$1')        // *italic*
+    .replace(/`(.+?)`/g, '$1')          // `code`
+    .replace(/#{1,6}\s+/g, '')          // ## headings
+    .trim()
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Message = {
   id:            string
@@ -93,7 +103,7 @@ function MessageBubble({ msg, onConfirmar, onCancelar }: {
       <View style={[bubbleStyles.msgContainer, isUser && bubbleStyles.msgContainerRight]}>
         <View style={[bubbleStyles.bubble, isUser ? bubbleStyles.bubbleUser : bubbleStyles.bubbleBot]}>
           {msg.content ? (
-            <Text style={[bubbleStyles.text, isUser && bubbleStyles.textUser]}>{msg.content}</Text>
+            <Text style={[bubbleStyles.text, isUser && bubbleStyles.textUser]}>{isUser ? msg.content : stripMarkdown(msg.content)}</Text>
           ) : (
             <ActivityIndicator size="small" color={Colors.textMuted} />
           )}
