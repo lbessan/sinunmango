@@ -81,39 +81,46 @@ async function fetchResendEmailBody(emailId: string): Promise<string> {
 
 // ─── Claude email parser ──────────────────────────────────────────────────────
 type ParsedMov = {
-  fecha:       string        // ISO "2026-04-14"
-  detalle:     string        // Nombre del comercio
-  monto:       number        // Monto total (antes de dividir por cuotas)
-  moneda:      'ARS' | 'USD'
-  cuotas:      number        // 1 si no es en cuotas
-  terminacion: string | null // Últimos 4 dígitos de la tarjeta
+  fecha:            string                 // ISO "2026-04-14"
+  detalle:          string                 // Nombre del comercio o descripción
+  monto:            number                 // Monto total (antes de dividir por cuotas)
+  moneda:           'ARS' | 'USD'
+  cuotas:           number                 // 1 si no es en cuotas
+  terminacion:      string | null          // Últimos 4 dígitos de la cuenta/tarjeta
+  tipo_movimiento:  'Gasto' | 'Ingreso'   // Gasto = débito/compra; Ingreso = reintegro/acreditación/cobro
 }
 
 async function parseEmailWithClaude(emailText: string): Promise<ParsedMov[]> {
   const today = new Date().toISOString().slice(0, 10)
 
   const prompt = `Sos un extractor de datos de emails de notificación bancaria argentina.
-Analizá el siguiente email y extraé TODOS los consumos/transacciones que encuentres.
+Analizá el siguiente email y extraé TODAS las transacciones financieras que encuentres.
+Esto incluye tanto gastos/consumos COMO ingresos (reintegros, acreditaciones, cashback, bonificaciones, sueldos, cobros, devoluciones).
 
-Hoy es ${today}. Si el email no contiene ninguna transacción de consumo (ej: email de bienvenida, resumen de cuenta, etc.), devolvé un array vacío.
+Hoy es ${today}. Si el email no contiene ninguna transacción (ej: email de bienvenida, marketing genérico, etc.), devolvé un array vacío.
 
 Respondé ÚNICAMENTE con un JSON array, sin texto adicional, sin markdown, sin explicaciones.
 Formato de cada elemento:
 {
   "fecha": "YYYY-MM-DD",
-  "detalle": "nombre del comercio o descripción",
+  "detalle": "descripción clara de la transacción",
   "monto": 12345.67,
   "moneda": "ARS",
   "cuotas": 1,
-  "terminacion": "1234"
+  "terminacion": "1234",
+  "tipo_movimiento": "Gasto"
 }
 
-Reglas:
-- "monto" es el monto TOTAL de la compra (no la cuota), como número sin símbolos
-- "cuotas" es 1 si no se menciona cuotas
-- "terminacion" son los últimos 4 dígitos de la tarjeta si se mencionan, si no null
+Reglas para tipo_movimiento:
+- "Gasto": compras, consumos, débitos, pagos realizados, extracciones
+- "Ingreso": reintegros, cashback, acreditaciones, bonificaciones, devoluciones, sueldos cobrados
+
+Otras reglas:
+- "monto" es siempre POSITIVO, como número sin símbolos
+- "cuotas" es 1 si no se menciona cuotas (los ingresos siempre tienen cuotas=1)
+- "terminacion" son los últimos 4 dígitos de la tarjeta o cuenta bancaria si se mencionan, si no null
 - Si hay múltiples transacciones en el email, incluí todas
-- La fecha debe ser la fecha del consumo, no la del email
+- La fecha debe ser la fecha de la transacción, no la del email
 
 Email:
 ${emailText.slice(0, 3000)}`
@@ -266,8 +273,9 @@ export async function POST(req: NextRequest) {
   const noMapeados:  string[] = []
 
   for (const parsed of parsedList) {
+    // Buscar cuenta por terminación (tarjeta o cuenta bancaria)
     const cuenta = cuentas?.find(c => {
-      if (!c.terminacion_tarjeta || !parsed.terminacion) return false
+      if (!parsed.terminacion) return false
       return String(c.terminacion_tarjeta) === String(parsed.terminacion)
     })
 
@@ -277,25 +285,33 @@ export async function POST(req: NextRequest) {
       continue
     }
 
-    const isTarjeta  = cuenta.tipo_cuenta === 'Tarjeta Credito'
-    const cierreDay  = cuenta.fecha_cierre_tarjeta
+    const isTarjeta   = cuenta.tipo_cuenta === 'Tarjeta Credito'
+    const isIngreso   = parsed.tipo_movimiento === 'Ingreso'
+    const cierreDay   = cuenta.fecha_cierre_tarjeta
       ? new Date(cuenta.fecha_cierre_tarjeta + 'T12:00:00').getDate() : null
-    const venceDay   = cuenta.fecha_vencimiento_tarjeta
+    const venceDay    = cuenta.fecha_vencimiento_tarjeta
       ? new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
-    const montoCuota = parsed.monto / parsed.cuotas
 
-    const records = Array.from({ length: parsed.cuotas }, (_, i) => {
+    // Los ingresos no se dividen en cuotas
+    const cuotasEfectivas = isIngreso ? 1 : parsed.cuotas
+    const montoCuota      = parsed.monto / cuotasEfectivas
+
+    const records = Array.from({ length: cuotasEfectivas }, (_, i) => {
       const fechaCuota   = addMeses(parsed.fecha, i)
-      const periodoCuota = calcularPeriodo(fechaCuota, cierreDay, venceDay, isTarjeta && parsed.moneda !== 'USD')
+      // El periodo de tarjeta aplica solo a gastos con tarjeta
+      const periodoCuota = calcularPeriodo(
+        fechaCuota, cierreDay, venceDay,
+        isTarjeta && !isIngreso && parsed.moneda !== 'USD'
+      )
       return {
         id:              crypto.randomUUID(),
         fecha:           fechaCuota,
-        detalle:         parsed.cuotas > 1
-          ? `${parsed.detalle} (Cuota ${i + 1}/${parsed.cuotas})`
+        detalle:         cuotasEfectivas > 1
+          ? `${parsed.detalle} (Cuota ${i + 1}/${cuotasEfectivas})`
           : parsed.detalle,
         monto:           montoCuota,
         moneda:          parsed.moneda,
-        tipo_movimiento: 'Gasto',
+        tipo_movimiento: parsed.tipo_movimiento,
         cuenta_origen:   cuenta.id,
         cuenta_destino:  null,
         categoria:       null,
@@ -303,7 +319,7 @@ export async function POST(req: NextRequest) {
         cotizacion:      null,
         conciliado:      false,
         periodo_tarjeta: periodoCuota,
-        cuotas_total:    parsed.cuotas,
+        cuotas_total:    cuotasEfectivas,
         cuota_actual:    i + 1,
         ciclo_actual:    1,
         user_id:         cuenta.user_id,
