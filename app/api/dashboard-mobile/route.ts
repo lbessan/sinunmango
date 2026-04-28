@@ -68,24 +68,9 @@ export async function GET(req: NextRequest) {
     .toUpperCase()
     .replace(' DE ', ' ')
 
-  // 7. Gastos e ingresos del mes desde movimientos
-  const firstOfMonth = new Date()
-  firstOfMonth.setDate(1)
-  const firstOfMonthStr = firstOfMonth.toISOString().slice(0, 10)
-
-  const { data: movMes } = await adminClient
-    .from('movimientos')
-    .select('monto, moneda, tipo_movimiento')
-    .eq('user_id', user.id)
-    .gte('fecha', firstOfMonthStr)
-
-  const gastosMes = (movMes ?? [])
-    .filter(m => m.tipo_movimiento === 'Gasto')
-    .reduce((s, m) => s + (m.moneda === 'USD' ? Number(m.monto) * dolar : Number(m.monto)), 0)
-
-  const ingresosMes = (movMes ?? [])
-    .filter(m => m.tipo_movimiento === 'Ingreso')
-    .reduce((s, m) => s + (m.moneda === 'USD' ? Number(m.monto) * dolar : Number(m.monto)), 0)
+  // 7. Gastos e ingresos del período actual (desde el view, igual que la web)
+  const gastosMes   = Math.abs(resumen.gastos_actuales ?? 0)
+  const ingresosMes = resumen.ingresos_actuales ?? 0
 
   return NextResponse.json({
     mes_label:        mesLabel,
