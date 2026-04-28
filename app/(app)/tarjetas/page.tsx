@@ -83,7 +83,7 @@ export default async function TarjetasPage() {
                 key={t.id}
                 className="bg-white rounded-xl border border-slate-100 flex items-center justify-between hover:border-slate-200 transition-colors overflow-hidden"
               >
-                <Link href={`/cuentas/${t.id}`} className="flex items-center gap-4 flex-1 min-w-0 px-4 py-3">
+                <Link href={`/tarjetas/${t.id}`} className="flex items-center gap-4 flex-1 min-w-0 px-4 py-3">
                   <CardThumbnailServer imagenUrl={imgUrl} color={color} nombre={t.nombre_cuenta} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-700 truncate">{t.nombre_cuenta}</p>
@@ -101,7 +101,7 @@ export default async function TarjetasPage() {
                     </p>
                     <p className="text-xs text-slate-400">acumulado</p>
                   </div>
-                  <Link href={`/cuentas/${t.id}`} className="text-slate-300 hover:text-slate-500">
+                  <Link href={`/tarjetas/${t.id}`} className="text-slate-300 hover:text-slate-500">
                     <ChevronRight size={16} />
                   </Link>
                   <Link

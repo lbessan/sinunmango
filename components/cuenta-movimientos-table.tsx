@@ -132,8 +132,8 @@ function AddMovModal({ cuentaId, isTarjeta, cierreDay, venceDay, categorias: cat
         tipo_movimiento: tipo,
         cuenta_origen:   cuentaId,
         cuenta_destino:  isTransf ? (cuentaDestino || null) : null,
-        categoria:       isTransf ? null : (catId || null),
-        subcategoria:    isTransf ? null : (subcatId || null),
+        categoria:       catId || null,
+        subcategoria:    subcatId || null,
         cotizacion:      isUSD && cotizacion ? parseFloat(cotizacion) : null,
         conciliado,
         periodo_tarjeta: periodoCuota,
@@ -162,7 +162,7 @@ function AddMovModal({ cuentaId, isTarjeta, cierreDay, venceDay, categorias: cat
         cuenta_origen:    cuentaId,
         cuenta_destino:   isTransf ? (cuentaDestino || null) : null,
         categoria_icono:  cat?.icono ?? null,
-        categoria_nombre: isTransf ? (destNombre ? `→ ${destNombre}` : null) : cat?.nombre_categoria ?? null,
+        categoria_nombre: cat?.nombre_categoria ?? (isTransf && destNombre ? `→ ${destNombre}` : null),
         periodo_tarjeta:  nuevosMovs[0].periodo_tarjeta,
         cuotas_total:     isTransf ? 1 : cuotas,
         cuota_actual:     1,
@@ -299,33 +299,29 @@ function AddMovModal({ cuentaId, isTarjeta, cierreDay, venceDay, categorias: cat
               </div>
             )}
 
-            {/* Categoría y subcategoría — no para Transferencia */}
-            {tipo !== 'Transferencia' && (
-              <>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs text-slate-500">Categoría</label>
-                    <button onClick={() => setMiniModal('categoria')} className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"><Plus size={11} /> Nueva</button>
-                  </div>
-                  <CategoriaSelect
-                    categorias={categorias as any[]}
-                    value={catId}
-                    onChange={id => { setCatId(id); setSubcatId('') }}
-                    filtroTipo={tipo}
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs text-slate-500">Subcategoría</label>
-                    <button onClick={() => setMiniModal('subcategoria')} className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"><Plus size={11} /> Nueva</button>
-                  </div>
-                  <select value={subcatId} onChange={e => setSubcatId(e.target.value)} className={inputClass} disabled={subcatsFiltradas.length === 0}>
-                    <option value="">{subcatsFiltradas.length === 0 ? '(sin subcats)' : '— elegir —'}</option>
-                    {subcatsFiltradas.map(s => <option key={s.id} value={s.id}>{s.nombre_subcategoria}</option>)}
-                  </select>
-                </div>
-              </>
-            )}
+            {/* Categoría y subcategoría — siempre disponibles */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-slate-500">Categoría</label>
+                <button onClick={() => setMiniModal('categoria')} className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"><Plus size={11} /> Nueva</button>
+              </div>
+              <CategoriaSelect
+                categorias={categorias as any[]}
+                value={catId}
+                onChange={id => { setCatId(id); setSubcatId('') }}
+                filtroTipo={tipo === 'Transferencia' ? undefined : tipo}
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-slate-500">Subcategoría</label>
+                <button onClick={() => setMiniModal('subcategoria')} className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"><Plus size={11} /> Nueva</button>
+              </div>
+              <select value={subcatId} onChange={e => setSubcatId(e.target.value)} className={inputClass} disabled={subcatsFiltradas.length === 0}>
+                <option value="">{subcatsFiltradas.length === 0 ? '(sin subcats)' : '— elegir —'}</option>
+                {subcatsFiltradas.map(s => <option key={s.id} value={s.id}>{s.nombre_subcategoria}</option>)}
+              </select>
+            </div>
 
             {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
           </div>

@@ -18,6 +18,7 @@ type CuentaForm = {
   imagen_url: string
   imagen_banner_url: string
   color_primario: string
+  terminacion_tarjeta: string
 }
 
 // ─── Helpers tipo de cuenta ───────────────────────────────────────────────────
@@ -96,15 +97,16 @@ export function CuentaFormClient({
     setError('')
 
     const body = {
-      nombre_cuenta:     form.nombre_cuenta,
-      institucion:       form.institucion || null,
-      moneda:            form.moneda,
-      tipo_cuenta:       tipoFinal,
-      saldo_inicial:     parseFloat(form.saldo_inicial) || 0,
-      activa:            form.activa,
-      imagen_url:        form.imagen_url || null,
-      imagen_banner_url: form.imagen_banner_url || null,
-      color_primario:    form.color_primario || '#0d3b6e',
+      nombre_cuenta:       form.nombre_cuenta,
+      institucion:         form.institucion || null,
+      moneda:              form.moneda,
+      tipo_cuenta:         tipoFinal,
+      saldo_inicial:       parseFloat(form.saldo_inicial) || 0,
+      activa:              form.activa,
+      imagen_url:          form.imagen_url || null,
+      imagen_banner_url:   form.imagen_banner_url || null,
+      color_primario:      form.color_primario || '#0d3b6e',
+      terminacion_tarjeta: form.terminacion_tarjeta?.trim() || null,
     }
 
     const res = await fetch(
@@ -252,11 +254,23 @@ export function CuentaFormClient({
               </select>
             </div>
           )}
-          <div className="col-span-2">
+          <div>
             <label className={labelClass}>Saldo inicial</label>
             <input type="number" step="0.01" value={form.saldo_inicial}
               onChange={e => set('saldo_inicial', e.target.value)}
               placeholder="0.00" className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Terminación (últimos 4 dígitos)</label>
+            <input
+              type="text"
+              maxLength={4}
+              value={form.terminacion_tarjeta}
+              onChange={e => set('terminacion_tarjeta', e.target.value.replace(/\D/g, '').slice(0, 4))}
+              placeholder="Ej: 6837"
+              className={inputClass}
+            />
+            <p className="text-xs text-slate-400 mt-1">Necesario para importar movimientos automáticamente por email.</p>
           </div>
         </div>
 
