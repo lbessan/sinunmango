@@ -48,8 +48,11 @@ function isGmailVerificationEmail(subject: string, from: string): boolean {
 
 /** Extrae la URL de confirmación de reenvío de Gmail del cuerpo del email */
 function extractGmailConfirmUrl(text: string): string | null {
-  const m = text.match(/https:\/\/mail-settings\.google\.com\/mail\/vf-[^\s<>"'\]]+/)
-  return m ? m[0] : null
+  // Gmail usa mail.google.com o mail-settings.google.com según el idioma/región
+  const m = text.match(/https:\/\/mail(?:-settings)?\.google\.com\/mail\/vf-[^\s<>"]+/)
+  if (!m) return null
+  // Limpiar posible puntuación trailing
+  return m[0].replace(/[.,;)>\]'"]+$/, '')
 }
 
 // ─── Strip HTML to plain text ────────────────────────────────────────────────
@@ -178,8 +181,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json() as Record<string, unknown>
 
   // ── Detect Resend Inbound webhook format ─────────────────────────────────
-  const isResend = body.type === 'email.received'
-    || (typeof body.data === 'object' && body.data !== null && 'email_id' in (body.data as object))
+  // Resend envía el email directo como { object: 'email', id, from, to, text, ... }
+  const isResend = body.object === 'email'
+    || body.type === 'email.received'
+    || (typeof body.data === 'object' && body.data !== null && ('email_id' in (body.data as object) || 'id' in (body.data as object)))
 
   let emailText = ''
   let userId: string | null = null
@@ -189,7 +194,8 @@ export async function POST(req: NextRequest) {
       ? body.data as Record<string, unknown>
       : body
 
-    const emailId = data.email_id as string | undefined
+    // Resend puede usar 'email_id' o 'id' según la versión del webhook
+    const emailId = (data.email_id ?? data.id) as string | undefined
     const toField = data.to
     const toList: string[] = Array.isArray(toField)
       ? toField as string[]
@@ -230,11 +236,19 @@ export async function POST(req: NextRequest) {
       emailText = await fetchResendEmailBody(emailId)
     }
 
+    console.log(`[email-inbound] emailId=${emailId} textLen=${emailText.length} hasInlineText=${!!inlineText} hasInlineHtml=${!!inlineHtml}`)
+
     // ── Confirmación automática de filtro Gmail ───────────────────────────
     const subject  = (data.subject as string | undefined) ?? ''
     const fromAddr = (data.from as string | undefined) ?? ''
-    if (isGmailVerificationEmail(subject, fromAddr)) {
+    // Detectar por subject/from O por presencia directa de la URL en el body
+    const looksLikeGmailVerification = isGmailVerificationEmail(subject, fromAddr)
+      || emailText.includes('mail-settings.google.com/mail/vf-')
+      || emailText.includes('mail.google.com/mail/vf-')
+    console.log(`[email-inbound] subject="${subject}" from="${fromAddr}" gmailCheck=${looksLikeGmailVerification}`)
+    if (looksLikeGmailVerification) {
       const confirmUrl = extractGmailConfirmUrl(emailText)
+      console.log(`[email-inbound] Gmail confirm URL: ${confirmUrl?.slice(0, 60) ?? 'NOT FOUND'}`)
       if (confirmUrl && userId) {
         // Guardar la URL — el usuario tiene que abrirla en su browser (requiere sesión Google)
         await adminClient
