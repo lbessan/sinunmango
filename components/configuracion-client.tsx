@@ -498,7 +498,8 @@ function EmailInboundSection() {
   const [copied, setCopied]         = useState(false)
   const [verCode, setVerCode]       = useState<string | null>(null)
   const [showSteps, setShowSteps]   = useState(false)
-  const [waitingCode, setWaitingCode] = useState(false)
+  const [waitingCode, setWaitingCode]       = useState(false)
+  const [markingVerified, setMarkingVerified] = useState(false)
 
   const fetchToken = async (silent = false) => {
     try {
@@ -544,6 +545,14 @@ function EmailInboundSection() {
   const handleWaitForCode = () => {
     setWaitingCode(true)
     setShowSteps(true)
+  }
+
+  const handleMarkVerified = async () => {
+    setMarkingVerified(true)
+    await fetch('/api/email-inbound-token', { method: 'PATCH' })
+    setVerCode('VERIFIED')
+    setWaitingCode(false)
+    setMarkingVerified(false)
   }
 
   const address = token ? `${token}@${INBOUND_DOMAIN}` : null
@@ -667,15 +676,27 @@ function EmailInboundSection() {
           {/* Botón / estado — siempre al pie de la sección de pasos */}
           <div className={`${showSteps ? 'border-t border-slate-100' : ''} p-3`}>
             {verCode?.startsWith('https://') ? (
-              <a
-                href={verCode}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white transition-all"
-                style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
-              >
-                Confirmar reenvío en Gmail →
-              </a>
+              <div className="space-y-2">
+                <a
+                  href={verCode}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white transition-all"
+                  style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
+                >
+                  Abrir link de confirmación de Gmail →
+                </a>
+                <button
+                  onClick={handleMarkVerified}
+                  disabled={markingVerified}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl border border-emerald-200 text-sm text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                >
+                  {markingVerified
+                    ? <><Loader2 size={13} className="animate-spin" /> Guardando…</>
+                    : <><Check size={13} /> Ya lo confirmé en Gmail</>
+                  }
+                </button>
+              </div>
             ) : waitingCode ? (
               <div className="flex items-center justify-center gap-2.5 py-2 text-sm text-blue-600">
                 <Loader2 size={14} className="animate-spin" />
