@@ -87,3 +87,19 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ token })
 }
+
+// ─── PATCH /api/email-inbound-token ───────────────────────────────────────────
+// Marca el reenvío de Gmail como confirmado manualmente por el usuario
+export async function PATCH(req: NextRequest) {
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  await adminClient
+    .from('user_preferences')
+    .upsert(
+      { user_id: user.id, gmail_verification_code: 'VERIFIED', updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    )
+
+  return NextResponse.json({ ok: true })
+}

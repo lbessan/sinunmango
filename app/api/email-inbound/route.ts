@@ -236,34 +236,20 @@ export async function POST(req: NextRequest) {
     if (isGmailVerificationEmail(subject, fromAddr)) {
       const confirmUrl = extractGmailConfirmUrl(emailText)
       if (confirmUrl && userId) {
-        let autoConfirmed = false
-        try {
-          // Seguir el link automáticamente para confirmar el reenvío
-          const gmailRes = await fetch(confirmUrl, {
-            method: 'GET',
-            redirect: 'follow',
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-          })
-          autoConfirmed = gmailRes.ok || gmailRes.redirected
-          console.log(`[email-inbound] Gmail confirm fetch status: ${gmailRes.status}`)
-        } catch (e) {
-          console.error('[email-inbound] Failed to auto-confirm Gmail forwarding:', e)
-        }
-
-        // Guardar estado: 'VERIFIED' si se confirmó, la URL como fallback si falló
+        // Guardar la URL — el usuario tiene que abrirla en su browser (requiere sesión Google)
         await adminClient
           .from('user_preferences')
           .upsert(
             {
               user_id:                 userId,
-              gmail_verification_code: autoConfirmed ? 'VERIFIED' : confirmUrl,
+              gmail_verification_code: confirmUrl,
               updated_at:              new Date().toISOString(),
             },
             { onConflict: 'user_id' }
           )
 
-        console.log(`[email-inbound] Gmail forwarding ${autoConfirmed ? 'auto-confirmed ✓' : 'URL saved (manual needed)'}`)
-        return NextResponse.json({ ok: true, type: 'gmail_verification', autoConfirmed })
+        console.log(`[email-inbound] Gmail confirm URL saved for user ${userId}`)
+        return NextResponse.json({ ok: true, type: 'gmail_verification', autoConfirmed: false })
       }
       // Email de verificación sin URL reconocible — ignorar silenciosamente
       return NextResponse.json({ ok: false, skipped: true, reason: 'gmail verification email, no confirm url found' })
