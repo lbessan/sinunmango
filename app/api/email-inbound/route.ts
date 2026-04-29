@@ -30,29 +30,26 @@ function addMeses(fechaStr: string, n: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-// ─── Gmail filter verification detector ──────────────────────────────────────
+// ─── Gmail forwarding verification detector ───────────────────────────────────
 function isGmailVerificationEmail(subject: string, from: string): boolean {
   const s = subject.toLowerCase()
   const f = from.toLowerCase()
   return (
     f.includes('forwarding-noreply@google.com') ||
+    f.includes('mail-settings.google.com') ||
     s.includes('forwarding confirmation') ||
     s.includes('confirmación de reenvío') ||
     s.includes('confirmacion de reenvio') ||
     s.includes('gmail forwarding') ||
+    (s.includes('reenviar') && s.includes('gmail')) ||
     (s.includes('confirmaci') && s.includes('gmail'))
   )
 }
 
-function extractGmailVerificationCode(text: string): string | null {
-  // Patrones específicos de Gmail primero
-  const m = text.match(/Confirmation code:\s*(\d{6,12})/i)
-    ?? text.match(/C[oó]digo de confirmaci[oó]n[:\s]+(\d{6,12})/i)
-    ?? text.match(/code[:\s]+(\d{9})/i)
-    ?? text.match(/código[:\s]+(\d{9})/i)
-    // Gmail manda un número de 9 dígitos — buscarlo como fallback
-    ?? text.match(/\b(\d{9})\b/)
-  return m ? m[1] : null
+/** Extrae la URL de confirmación de reenvío de Gmail del cuerpo del email */
+function extractGmailConfirmUrl(text: string): string | null {
+  const m = text.match(/https:\/\/mail-settings\.google\.com\/mail\/vf-[^\s<>"'\]]+/)
+  return m ? m[0] : null
 }
 
 // ─── Strip HTML to plain text ────────────────────────────────────────────────
@@ -233,21 +230,43 @@ export async function POST(req: NextRequest) {
       emailText = await fetchResendEmailBody(emailId)
     }
 
-    // ── Verificación de filtro Gmail ──────────────────────────────────────
+    // ── Confirmación automática de filtro Gmail ───────────────────────────
     const subject  = (data.subject as string | undefined) ?? ''
     const fromAddr = (data.from as string | undefined) ?? ''
     if (isGmailVerificationEmail(subject, fromAddr)) {
-      const code = extractGmailVerificationCode(emailText)
-      if (code && userId) {
+      const confirmUrl = extractGmailConfirmUrl(emailText)
+      if (confirmUrl && userId) {
+        let autoConfirmed = false
+        try {
+          // Seguir el link automáticamente para confirmar el reenvío
+          const gmailRes = await fetch(confirmUrl, {
+            method: 'GET',
+            redirect: 'follow',
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+          })
+          autoConfirmed = gmailRes.ok || gmailRes.redirected
+          console.log(`[email-inbound] Gmail confirm fetch status: ${gmailRes.status}`)
+        } catch (e) {
+          console.error('[email-inbound] Failed to auto-confirm Gmail forwarding:', e)
+        }
+
+        // Guardar estado: 'VERIFIED' si se confirmó, la URL como fallback si falló
         await adminClient
           .from('user_preferences')
           .upsert(
-            { user_id: userId, gmail_verification_code: code, updated_at: new Date().toISOString() },
+            {
+              user_id:                 userId,
+              gmail_verification_code: autoConfirmed ? 'VERIFIED' : confirmUrl,
+              updated_at:              new Date().toISOString(),
+            },
             { onConflict: 'user_id' }
           )
-        console.log(`[email-inbound] Gmail verification code stored: ${code}`)
-        return NextResponse.json({ ok: true, type: 'gmail_verification', code })
+
+        console.log(`[email-inbound] Gmail forwarding ${autoConfirmed ? 'auto-confirmed ✓' : 'URL saved (manual needed)'}`)
+        return NextResponse.json({ ok: true, type: 'gmail_verification', autoConfirmed })
       }
+      // Email de verificación sin URL reconocible — ignorar silenciosamente
+      return NextResponse.json({ ok: false, skipped: true, reason: 'gmail verification email, no confirm url found' })
     }
 
   } else {

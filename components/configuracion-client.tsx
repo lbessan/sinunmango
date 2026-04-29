@@ -497,7 +497,6 @@ function EmailInboundSection() {
   const [regenerating, setReg]      = useState(false)
   const [copied, setCopied]         = useState(false)
   const [verCode, setVerCode]       = useState<string | null>(null)
-  const [codeCopied, setCodeCopied] = useState(false)
   const [showSteps, setShowSteps]   = useState(false)
   const [waitingCode, setWaitingCode] = useState(false)
 
@@ -556,13 +555,6 @@ function EmailInboundSection() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleCopyCode = () => {
-    if (!verCode) return
-    navigator.clipboard.writeText(verCode)
-    setCodeCopied(true)
-    setTimeout(() => setCodeCopied(false), 2000)
-  }
-
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-slate-400 text-sm py-2">
@@ -608,38 +600,46 @@ function EmailInboundSection() {
         )}
       </div>
 
-      {/* Código de verificación de Gmail — o estado de espera */}
-      {verCode ? (
+      {/* Estado de verificación Gmail */}
+      {verCode === 'VERIFIED' ? (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-2.5">
+          <ShieldCheck size={15} className="text-emerald-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-emerald-800">Reenvío de Gmail confirmado ✓</p>
+            <p className="text-xs text-emerald-600 mt-0.5">
+              Los emails de tu banco se van a reenviar automáticamente y los movimientos se van a registrar solos.
+            </p>
+          </div>
+        </div>
+      ) : verCode?.startsWith('https://') ? (
+        // Fallback: auto-confirm falló, mostrar el link para click manual
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
           <div className="flex items-start gap-2.5">
             <Info size={15} className="text-amber-500 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-amber-800 mb-0.5">¡Tu código de Gmail llegó! 👋</p>
+              <p className="text-sm font-semibold text-amber-800 mb-0.5">Un paso más para activar Gmail 👋</p>
               <p className="text-xs text-amber-600">
-                Copiá este código y pegalo en la ventana de confirmación de Gmail para activar el reenvío.
+                Hacé clic en el botón para confirmar el reenvío automático.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 bg-white border border-amber-200 rounded-lg px-4 py-2.5 text-center font-mono text-lg font-bold tracking-widest text-amber-900">
-              {verCode}
-            </div>
-            <button
-              onClick={handleCopyCode}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-lg border border-amber-200 bg-white text-sm text-amber-700 hover:bg-amber-50 transition-colors"
-            >
-              {codeCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-              {codeCopied ? 'Copiado' : 'Copiar'}
-            </button>
-          </div>
+          <a
+            href={verCode}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white transition-all"
+            style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
+          >
+            Confirmar reenvío en Gmail →
+          </a>
         </div>
       ) : waitingCode ? (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
           <Loader2 size={15} className="text-blue-500 animate-spin shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-blue-800">Esperando el email de Gmail…</p>
+            <p className="text-sm font-semibold text-blue-800">Esperando confirmación de Gmail…</p>
             <p className="text-xs text-blue-500 mt-0.5">
-              Cuando Gmail mande el código de confirmación, va a aparecer acá automáticamente.
+              Cuando Gmail mande el email de verificación, lo vamos a confirmar automáticamente.
             </p>
           </div>
         </div>
@@ -649,7 +649,7 @@ function EmailInboundSection() {
           className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
         >
           <Mail size={14} />
-          Ya configuré el filtro — esperando código de Gmail
+          Ya configuré el filtro en Gmail
         </button>
       )}
 
@@ -692,8 +692,8 @@ function EmailInboundSection() {
               { n: 1, text: <>Abrí un email de notificación de tu banco en Gmail.</> },
               { n: 2, text: <>Hacé clic en los tres puntos <strong>(⋮)</strong> y elegí <strong>"Filtrar mensajes así"</strong>.</> },
               { n: 3, text: <>En el campo <strong>De</strong>, escribí el dominio de tu banco (ej: <code className="bg-white px-1 rounded text-xs">@infomistarjetas.com</code>). Hacé clic en <strong>"Crear filtro"</strong>.</> },
-              { n: 4, text: <>Tildá <strong>"Reenviar a"</strong>, agregá tu dirección de arriba y confirmá. Gmail te va a mandar un email de verificación — el código va a aparecer acá automáticamente.</> },
-              { n: 5, text: <>Copiá el código que aparece acá arriba y pegalo en la ventana de Gmail. ¡Listo! 🎉</> },
+              { n: 4, text: <>Tildá <strong>"Reenviar a"</strong>, agregá tu dirección de arriba y confirmá. Gmail te va a mandar un email de verificación.</> },
+              { n: 5, text: <>Hacé clic en <strong>"Ya configuré el filtro en Gmail"</strong> de arriba. Vamos a confirmar el reenvío automáticamente. ¡Listo! 🎉</> },
             ].map(({ n, text }) => (
               <div key={n} className="flex gap-3 text-xs text-slate-700 leading-relaxed">
                 <span className="shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold mt-0.5">{n}</span>
