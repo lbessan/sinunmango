@@ -499,17 +499,35 @@ function EmailInboundSection() {
   const [verCode, setVerCode]       = useState<string | null>(null)
   const [codeCopied, setCodeCopied] = useState(false)
   const [showSteps, setShowSteps]   = useState(false)
+  const [waitingCode, setWaitingCode] = useState(false)
 
-  const fetchToken = async () => {
+  const fetchToken = async (silent = false) => {
     try {
       const res  = await fetch('/api/email-inbound-token')
       const data = await res.json()
       setToken(data.token ?? null)
-      setVerCode(data.gmail_verification_code ?? null)
-    } catch { /* ignore */ } finally {
-      setLoading(false)
+      const code = data.gmail_verification_code ?? null
+      setVerCode(code)
+      return code
+    } catch { /* ignore */
+      return null
+    } finally {
+      if (!silent) setLoading(false)
     }
   }
+
+  // Poll each 4 s while waitingCode is true, stop when code arrives
+  useEffect(() => {
+    if (!waitingCode) return
+    const id = setInterval(async () => {
+      const code = await fetchToken(true)
+      if (code) {
+        setWaitingCode(false)
+        clearInterval(id)
+      }
+    }, 4000)
+    return () => clearInterval(id)
+  }, [waitingCode])
 
   useEffect(() => { fetchToken() }, [])
 
@@ -520,7 +538,13 @@ function EmailInboundSection() {
     const data = await res.json()
     setToken(data.token ?? null)
     setVerCode(null)
+    setWaitingCode(false)
     setReg(false)
+  }
+
+  const handleWaitForCode = () => {
+    setWaitingCode(true)
+    setShowSteps(true)
   }
 
   const address = token ? `${token}@${INBOUND_DOMAIN}` : null
@@ -584,13 +608,13 @@ function EmailInboundSection() {
         )}
       </div>
 
-      {/* Código de verificación de Gmail */}
-      {verCode && (
+      {/* Código de verificación de Gmail — o estado de espera */}
+      {verCode ? (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
           <div className="flex items-start gap-2.5">
             <Info size={15} className="text-amber-500 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-amber-800 mb-0.5">Gmail te está esperando 👋</p>
+              <p className="text-sm font-semibold text-amber-800 mb-0.5">¡Tu código de Gmail llegó! 👋</p>
               <p className="text-xs text-amber-600">
                 Copiá este código y pegalo en la ventana de confirmación de Gmail para activar el reenvío.
               </p>
@@ -609,6 +633,24 @@ function EmailInboundSection() {
             </button>
           </div>
         </div>
+      ) : waitingCode ? (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+          <Loader2 size={15} className="text-blue-500 animate-spin shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-blue-800">Esperando el email de Gmail…</p>
+            <p className="text-xs text-blue-500 mt-0.5">
+              Cuando Gmail mande el código de confirmación, va a aparecer acá automáticamente.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={handleWaitForCode}
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+        >
+          <Mail size={14} />
+          Ya configuré el filtro — esperando código de Gmail
+        </button>
       )}
 
       {/* Video tutorial o placeholder */}

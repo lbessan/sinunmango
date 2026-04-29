@@ -31,10 +31,27 @@ function addMeses(fechaStr: string, n: number): string {
 }
 
 // ─── Gmail filter verification detector ──────────────────────────────────────
+function isGmailVerificationEmail(subject: string, from: string): boolean {
+  const s = subject.toLowerCase()
+  const f = from.toLowerCase()
+  return (
+    f.includes('forwarding-noreply@google.com') ||
+    s.includes('forwarding confirmation') ||
+    s.includes('confirmación de reenvío') ||
+    s.includes('confirmacion de reenvio') ||
+    s.includes('gmail forwarding') ||
+    (s.includes('confirmaci') && s.includes('gmail'))
+  )
+}
+
 function extractGmailVerificationCode(text: string): string | null {
+  // Patrones específicos de Gmail primero
   const m = text.match(/Confirmation code:\s*(\d{6,12})/i)
     ?? text.match(/C[oó]digo de confirmaci[oó]n[:\s]+(\d{6,12})/i)
-    ?? text.match(/confirm.*?(\d{9})/i)
+    ?? text.match(/code[:\s]+(\d{9})/i)
+    ?? text.match(/código[:\s]+(\d{9})/i)
+    // Gmail manda un número de 9 dígitos — buscarlo como fallback
+    ?? text.match(/\b(\d{9})\b/)
   return m ? m[1] : null
 }
 
@@ -217,11 +234,9 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Verificación de filtro Gmail ──────────────────────────────────────
-    const subject = (data.subject as string | undefined) ?? ''
-    if (
-      subject.toLowerCase().includes('forwarding confirmation') ||
-      subject.toLowerCase().includes('confirmaci')
-    ) {
+    const subject  = (data.subject as string | undefined) ?? ''
+    const fromAddr = (data.from as string | undefined) ?? ''
+    if (isGmailVerificationEmail(subject, fromAddr)) {
       const code = extractGmailVerificationCode(emailText)
       if (code && userId) {
         await adminClient
