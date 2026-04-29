@@ -498,8 +498,10 @@ function EmailInboundSection() {
   const [copied, setCopied]         = useState(false)
   const [verCode, setVerCode]       = useState<string | null>(null)
   const [showSteps, setShowSteps]   = useState(false)
-  const [waitingCode, setWaitingCode]       = useState(false)
+  const [waitingCode, setWaitingCode]         = useState(false)
   const [markingVerified, setMarkingVerified] = useState(false)
+  const [manualUrl, setManualUrl]             = useState('')
+  const [showManual, setShowManual]           = useState(false)
 
   const fetchToken = async (silent = false) => {
     try {
@@ -698,9 +700,50 @@ function EmailInboundSection() {
                 </button>
               </div>
             ) : waitingCode ? (
-              <div className="flex items-center justify-center gap-2.5 py-2 text-sm text-blue-600">
-                <Loader2 size={14} className="animate-spin" />
-                Esperando confirmación de Gmail…
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2.5 py-2 text-sm text-blue-600">
+                  <Loader2 size={14} className="animate-spin" />
+                  Esperando confirmación de Gmail…
+                </div>
+                {/* Escape hatch: pegar la URL manualmente */}
+                {!showManual ? (
+                  <button
+                    onClick={() => setShowManual(true)}
+                    className="w-full text-xs text-slate-400 hover:text-slate-600 py-1 underline underline-offset-2"
+                  >
+                    ¿No llegó automáticamente? Pegá el link manualmente
+                  </button>
+                ) : (
+                  <div className="space-y-1.5 pt-1">
+                    <input
+                      type="url"
+                      value={manualUrl}
+                      onChange={e => setManualUrl(e.target.value)}
+                      placeholder="https://mail-settings.google.com/mail/vf-..."
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-blue-200 font-mono"
+                    />
+                    <div className="flex gap-2">
+                      <a
+                        href={manualUrl || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-white transition-all"
+                        style={{ background: 'linear-gradient(90deg, var(--accent2,#1B3A6B), var(--accent,#1a6b5a))' }}
+                        onClick={e => { if (!manualUrl.startsWith('https://')) e.preventDefault() }}
+                      >
+                        Abrir link →
+                      </a>
+                      <button
+                        onClick={handleMarkVerified}
+                        disabled={markingVerified}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-emerald-200 text-xs text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                      >
+                        {markingVerified ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                        Ya lo confirmé
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <button
