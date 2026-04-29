@@ -600,8 +600,8 @@ function EmailInboundSection() {
         )}
       </div>
 
-      {/* Estado de verificación Gmail */}
-      {verCode === 'VERIFIED' ? (
+      {/* Estado: ya verificado — mostrar arriba de todo */}
+      {verCode === 'VERIFIED' && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-2.5">
           <ShieldCheck size={15} className="text-emerald-500 mt-0.5 shrink-0" />
           <div>
@@ -611,46 +611,6 @@ function EmailInboundSection() {
             </p>
           </div>
         </div>
-      ) : verCode?.startsWith('https://') ? (
-        // Fallback: auto-confirm falló, mostrar el link para click manual
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
-          <div className="flex items-start gap-2.5">
-            <Info size={15} className="text-amber-500 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-amber-800 mb-0.5">Un paso más para activar Gmail 👋</p>
-              <p className="text-xs text-amber-600">
-                Hacé clic en el botón para confirmar el reenvío automático.
-              </p>
-            </div>
-          </div>
-          <a
-            href={verCode}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white transition-all"
-            style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
-          >
-            Confirmar reenvío en Gmail →
-          </a>
-        </div>
-      ) : waitingCode ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
-          <Loader2 size={15} className="text-blue-500 animate-spin shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-blue-800">Esperando confirmación de Gmail…</p>
-            <p className="text-xs text-blue-500 mt-0.5">
-              Cuando Gmail mande el email de verificación, lo vamos a confirmar automáticamente.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={handleWaitForCode}
-          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
-        >
-          <Mail size={14} />
-          Ya configuré el filtro en Gmail
-        </button>
       )}
 
       {/* Video tutorial o placeholder */}
@@ -674,39 +634,65 @@ function EmailInboundSection() {
       )}
 
       {/* Pasos — colapsables */}
-      <div className="border border-slate-200 rounded-xl overflow-hidden">
-        <button
-          onClick={() => setShowSteps(s => !s)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <Filter size={13} className="text-slate-400" />
-            Cómo configurar el reenvío automático en Gmail
-          </span>
-          <ChevronRight size={14} className={`text-slate-400 transition-transform ${showSteps ? 'rotate-90' : ''}`} />
-        </button>
+      {verCode !== 'VERIFIED' && (
+        <div className="border border-slate-200 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setShowSteps(s => !s)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Filter size={13} className="text-slate-400" />
+              Cómo configurar el reenvío automático en Gmail
+            </span>
+            <ChevronRight size={14} className={`text-slate-400 transition-transform ${showSteps ? 'rotate-90' : ''}`} />
+          </button>
 
-        {showSteps && (
-          <div className="border-t border-slate-100 px-4 py-4 space-y-3 bg-slate-50">
-            {[
-              { n: 1, text: <>Abrí un email de notificación de tu banco en Gmail.</> },
-              { n: 2, text: <>Hacé clic en los tres puntos <strong>(⋮)</strong> y elegí <strong>"Filtrar mensajes así"</strong>.</> },
-              { n: 3, text: <>En el campo <strong>De</strong>, escribí el dominio de tu banco (ej: <code className="bg-white px-1 rounded text-xs">@infomistarjetas.com</code>). Hacé clic en <strong>"Crear filtro"</strong>.</> },
-              { n: 4, text: <>Tildá <strong>"Reenviar a"</strong>, agregá tu dirección de arriba y confirmá. Gmail te va a mandar un email de verificación.</> },
-              { n: 5, text: <>Hacé clic en <strong>"Ya configuré el filtro en Gmail"</strong> de arriba. Vamos a confirmar el reenvío automáticamente. ¡Listo! 🎉</> },
-            ].map(({ n, text }) => (
-              <div key={n} className="flex gap-3 text-xs text-slate-700 leading-relaxed">
-                <span className="shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold mt-0.5">{n}</span>
-                <p>{text}</p>
+          {showSteps && (
+            <div className="border-t border-slate-100 px-4 py-4 space-y-3 bg-slate-50">
+              {[
+                { n: 1, text: <>Abrí un email de notificación de tu banco en Gmail.</> },
+                { n: 2, text: <>Hacé clic en los tres puntos <strong>(⋮)</strong> y elegí <strong>"Filtrar mensajes así"</strong>.</> },
+                { n: 3, text: <>En el campo <strong>De</strong>, escribí el dominio de tu banco (ej: <code className="bg-white px-1 rounded text-xs">@infomistarjetas.com</code>). Hacé clic en <strong>"Crear filtro"</strong>.</> },
+                { n: 4, text: <>Tildá <strong>"Reenviar a"</strong>, agregá tu dirección de arriba y confirmá. Gmail te va a mandar un email de verificación.</> },
+                { n: 5, text: <>Volvé acá y hacé clic en el botón de abajo. Vamos a confirmar el reenvío automáticamente. ¡Listo! 🎉</> },
+              ].map(({ n, text }) => (
+                <div key={n} className="flex gap-3 text-xs text-slate-700 leading-relaxed">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold mt-0.5">{n}</span>
+                  <p>{text}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Botón / estado — siempre al pie de la sección de pasos */}
+          <div className={`${showSteps ? 'border-t border-slate-100' : ''} p-3`}>
+            {verCode?.startsWith('https://') ? (
+              <a
+                href={verCode}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white transition-all"
+                style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
+              >
+                Confirmar reenvío en Gmail →
+              </a>
+            ) : waitingCode ? (
+              <div className="flex items-center justify-center gap-2.5 py-2 text-sm text-blue-600">
+                <Loader2 size={14} className="animate-spin" />
+                Esperando confirmación de Gmail…
               </div>
-            ))}
+            ) : (
+              <button
+                onClick={handleWaitForCode}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <Mail size={14} />
+                Ya configuré el filtro en Gmail
+              </button>
+            )}
           </div>
-        )}
-      </div>
-
-      <p className="text-xs text-slate-400">
-        Solo llegan movimientos de bancos y servicios que reconocemos (BBVA, Mercado Pago, etc.). Otros emails se ignoran automáticamente.
-      </p>
+        </div>
+      )}
 
     </div>
   )
