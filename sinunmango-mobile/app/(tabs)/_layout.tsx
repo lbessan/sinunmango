@@ -1,71 +1,133 @@
 import { Tabs } from 'expo-router'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '@/context/ThemeContext'
-import { STATIC_COLORS } from '@/context/ThemeContext'
 
-// ─── Tab icons ────────────────────────────────────────────────────────────────
-function HomeIcon({ color }: { color: string }) {
-  return <Text style={[styles.icon, { color }]}>⌂</Text>
-}
-
-function ListIcon({ color }: { color: string }) {
-  return <Text style={[styles.icon, { color }]}>☰</Text>
-}
-
-function ManguitoIcon({ focused, accentColor }: {
-  focused:     boolean
-  accentColor: string
+// ─── Tab icon wrapper (activo: bg surfaceAlt + color primary) ─────────────────
+function TabIcon({
+  name, focused, theme,
+}: {
+  name: React.ComponentProps<typeof Ionicons>['name']
+  focused: boolean
+  theme: ReturnType<typeof useTheme>['theme']
 }) {
   return (
-    <View style={[styles.manguitoWrap, focused && { backgroundColor: accentColor }]}>
+    <View style={[
+      ti.wrap,
+      focused && { backgroundColor: theme.surfaceAlt },
+    ]}>
+      <Ionicons
+        name={name}
+        size={20}
+        color={focused ? theme.primary : theme.textMuted}
+      />
+    </View>
+  )
+}
+
+const ti = StyleSheet.create({
+  wrap: {
+    width:          34,
+    height:         28,
+    borderRadius:   10,
+    alignItems:     'center',
+    justifyContent: 'center',
+  },
+})
+
+// ─── Manguito tab icon ────────────────────────────────────────────────────────
+function ManguitoIcon({ focused, theme }: {
+  focused: boolean
+  theme:   ReturnType<typeof useTheme>['theme']
+}) {
+  return (
+    <View style={[
+      mi.wrap,
+      focused && { borderColor: theme.primary, borderWidth: 2 },
+    ]}>
       <Image
         source={require('@/assets/manguito.png')}
-        style={styles.manguitoImg}
+        style={[mi.img, { opacity: focused ? 1 : 0.4 }]}
         resizeMode="contain"
       />
     </View>
   )
 }
 
-function GearIcon({ color }: { color: string }) {
-  return <Text style={[styles.icon, { color }]}>⚙️</Text>
-}
+const mi = StyleSheet.create({
+  wrap: {
+    width:           34,
+    height:          34,
+    borderRadius:    17,
+    alignItems:      'center',
+    justifyContent:  'center',
+    borderColor:     'transparent',
+    borderWidth:     2,
+    overflow:        'hidden',
+  },
+  img: {
+    width:  28,
+    height: 28,
+  },
+})
 
-// ─── FAB tab button ───────────────────────────────────────────────────────────
-function FabButton({ onPress, accentColor }: { onPress?: () => void; accentColor: string }) {
+// ─── FAB central ─────────────────────────────────────────────────────────────
+function FabButton({ onPress, theme }: {
+  onPress?: () => void
+  theme:    ReturnType<typeof useTheme>['theme']
+}) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={[styles.fab, { backgroundColor: accentColor }]}
+      style={[fab.btn, { backgroundColor: theme.primary }]}
       activeOpacity={0.85}
     >
-      <Text style={styles.fabText}>+</Text>
+      <Ionicons name="add" size={30} color="#ffffff" strokeWidth={2.5} />
     </TouchableOpacity>
   )
 }
 
-// ─── Layout ───────────────────────────────────────────────────────────────────
+const fab = StyleSheet.create({
+  btn: {
+    width:          64,
+    height:         64,
+    borderRadius:   32,
+    alignItems:     'center',
+    justifyContent: 'center',
+    marginBottom:   18,
+    shadowColor:    '#000',
+    shadowOpacity:  0.25,
+    shadowRadius:   10,
+    shadowOffset:   { width: 0, height: 4 },
+    elevation:      8,
+  },
+})
+
+// ─── Layout principal ─────────────────────────────────────────────────────────
 export default function TabsLayout() {
-  const { colors } = useTheme()
+  const { theme } = useTheme()
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor:  STATIC_COLORS.bgCard,
-          borderTopColor:   STATIC_COLORS.border,
+          backgroundColor:  theme.tabBar,
+          borderTopColor:   theme.tabBarBorder,
           borderTopWidth:   1,
-          height:           60,
-          paddingBottom:    8,
-          paddingTop:       4,
+          height:           70,
+          paddingBottom:    22,
+          paddingTop:       6,
         },
-        tabBarActiveTintColor:   colors.accent,
-        tabBarInactiveTintColor: STATIC_COLORS.textMuted,
+        tabBarActiveTintColor:   theme.primary,
+        tabBarInactiveTintColor: theme.textMuted,
         tabBarLabelStyle: {
           fontSize:   10,
-          fontWeight: '600',
           marginTop:  2,
+        },
+        tabBarActiveLabelStyle: {
+          fontWeight: '600',
+          color:      theme.primary,
         },
       }}
     >
@@ -73,82 +135,51 @@ export default function TabsLayout() {
         name="dashboard"
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ color }) => <HomeIcon color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? 'home' : 'home-outline'} focused={focused} theme={theme} />
+          ),
         }}
       />
+
       <Tabs.Screen
         name="movimientos"
         options={{
           title: 'Movim.',
-          tabBarIcon: ({ color }) => <ListIcon color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? 'list' : 'list-outline'} focused={focused} theme={theme} />
+          ),
         }}
       />
+
       <Tabs.Screen
         name="nuevo"
         options={{
           title: '',
           tabBarButton: ({ onPress }) => (
-            <FabButton onPress={onPress as () => void} accentColor={colors.accent} />
+            <FabButton onPress={onPress as () => void} theme={theme} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="manguito"
         options={{
           title: 'Manguito',
           tabBarIcon: ({ focused }) => (
-            <ManguitoIcon focused={focused} accentColor={colors.accent} />
+            <ManguitoIcon focused={focused} theme={theme} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="configuracion"
         options={{
           title: 'Config',
-          tabBarIcon: ({ color }) => <GearIcon color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? 'settings' : 'settings-outline'} focused={focused} theme={theme} />
+          ),
         }}
       />
     </Tabs>
   )
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  icon: {
-    fontSize: 20,
-  },
-
-  manguitoWrap: {
-    width:           32,
-    height:          32,
-    borderRadius:    16,
-    alignItems:      'center',
-    justifyContent:  'center',
-    backgroundColor: 'transparent',
-  },
-  manguitoImg: {
-    width:  26,
-    height: 26,
-  },
-
-  fab: {
-    width:          58,
-    height:         58,
-    borderRadius:   29,
-    alignItems:     'center',
-    justifyContent: 'center',
-    marginBottom:   18,
-    shadowColor:    '#000',
-    shadowOpacity:  0.2,
-    shadowRadius:   8,
-    shadowOffset:   { width: 0, height: 3 },
-    elevation:      6,
-  },
-  fabText: {
-    color:      '#ffffff',
-    fontSize:   32,
-    fontWeight: '300',
-    lineHeight: 38,
-    marginTop:  -2,
-  },
-})
