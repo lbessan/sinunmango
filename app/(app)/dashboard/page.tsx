@@ -97,37 +97,32 @@ function KpiCard({ href, label, value, sub, accent }: {
   return href ? <Link href={href}>{inner}</Link> : <div>{inner}</div>
 }
 
-// ─── Month navigation header ──────────────────────────────────────────────────
-function MonthNav({ mes, label, tipo }: { mes: string; label: string; tipo: 'pasado' | 'actual' | 'futuro' }) {
-  const prev = offsetMes(mes, -1)
-  const next = offsetMes(mes, +1)
-  const badge = tipo === 'actual'
-    ? <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">Mes actual</span>
-    : tipo === 'pasado'
-    ? <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">Período cerrado</span>
-    : <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">Proyección</span>
+// ─── Month navigation — solo las flechas, sin el título ──────────────────────
+function MonthNav({ mes, tipo }: { mes: string; tipo: 'pasado' | 'actual' | 'futuro' }) {
+  const prev  = offsetMes(mes, -1)
+  const next  = offsetMes(mes, +1)
+  const badge = tipo === 'actual' ? 'Mes actual' : tipo === 'pasado' ? 'Período cerrado' : 'Proyección'
 
   return (
-    <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center justify-between mb-3">
       <Link
         href={`/dashboard?mes=${prev}`}
-        className="flex items-center gap-1 text-white/60 hover:text-white/90 transition-colors text-sm px-2 py-1 rounded-lg hover:bg-white/10"
+        className="flex items-center gap-1.5 text-white/60 hover:text-white/90 transition-colors text-sm px-2 py-1 rounded-lg hover:bg-white/10"
       >
-        <ChevronLeft size={16} />
-        <span className="hidden sm:inline">{mesLabel(prev).split(' ')[0]}</span>
+        <ChevronLeft size={15} />
+        <span className="hidden sm:inline text-xs">{mesLabel(prev).split(' ')[0]}</span>
       </Link>
 
-      <div className="text-center">
-        <p className="text-3xl font-black tracking-tight text-white/90 leading-none">{label}</p>
-        <div className="flex justify-center mt-1.5">{badge}</div>
-      </div>
+      <span className="text-xs bg-white/20 text-white/80 px-3 py-1 rounded-full tracking-wide">
+        {badge}
+      </span>
 
       <Link
         href={`/dashboard?mes=${next}`}
-        className="flex items-center gap-1 text-white/60 hover:text-white/90 transition-colors text-sm px-2 py-1 rounded-lg hover:bg-white/10"
+        className="flex items-center gap-1.5 text-white/60 hover:text-white/90 transition-colors text-sm px-2 py-1 rounded-lg hover:bg-white/10"
       >
-        <span className="hidden sm:inline">{mesLabel(next).split(' ')[0]}</span>
-        <ChevronRight size={16} />
+        <span className="hidden sm:inline text-xs">{mesLabel(next).split(' ')[0]}</span>
+        <ChevronRight size={15} />
       </Link>
     </div>
   )
@@ -384,7 +379,9 @@ export default async function DashboardPage({
         <div className="rounded-2xl overflow-hidden text-white relative"
           style={{ background: 'linear-gradient(135deg, var(--sidebar-bg,#0d2137) 0%, var(--accent2,#0d3b6e) 45%, var(--accent,#1a6b5a) 100%)' }}>
           <div className="px-8 py-8">
-            <MonthNav mes={mes} label={label} tipo="actual" />
+            <MonthNav mes={mes} tipo="actual" />
+            <p className="text-5xl font-black tracking-tight text-white/90 leading-none mb-1">{label}</p>
+            <p className="text-sm text-white/40 uppercase tracking-widest mb-10">Resumen del período</p>
             <div className="grid grid-cols-2 gap-8">
               <div>
                 <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Saldo disponible</p>
@@ -528,7 +525,9 @@ export default async function DashboardPage({
         <div className="rounded-2xl overflow-hidden text-white relative"
           style={{ background: 'linear-gradient(135deg, var(--sidebar-bg,#0d2137) 0%, var(--accent2,#0d3b6e) 45%, var(--accent,#1a6b5a) 100%)' }}>
           <div className="px-8 py-8">
-            <MonthNav mes={mes} label={label} tipo="pasado" />
+            <MonthNav mes={mes} tipo="pasado" />
+            <p className="text-5xl font-black tracking-tight text-white/90 leading-none mb-1">{label}</p>
+            <p className="text-sm text-white/40 uppercase tracking-widest mb-10">Resumen del período</p>
             <div className="grid grid-cols-2 gap-8">
               <div>
                 <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Resultado del mes</p>
@@ -647,7 +646,9 @@ export default async function DashboardPage({
       <div className="rounded-2xl overflow-hidden text-white relative"
         style={{ background: 'linear-gradient(135deg, var(--sidebar-bg,#0d2137) 0%, var(--accent2,#0d3b6e) 45%, var(--accent,#1a6b5a) 100%)' }}>
         <div className="px-8 py-8">
-          <MonthNav mes={mes} label={label} tipo="futuro" />
+          <MonthNav mes={mes} tipo="futuro" />
+          <p className="text-5xl font-black tracking-tight text-white/90 leading-none mb-1">{label}</p>
+          <p className="text-sm text-white/40 uppercase tracking-widest mb-10">Proyección del período</p>
           <div className="grid grid-cols-2 gap-8">
             <div>
               <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Liquidez proyectada</p>
