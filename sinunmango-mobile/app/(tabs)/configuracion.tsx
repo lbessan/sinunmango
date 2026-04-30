@@ -4,39 +4,15 @@ import {
   ScrollView, Alert, Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { LinearGradient } from 'expo-linear-gradient'
+import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '@/lib/supabase'
-import { useTheme, PALETAS, STATIC_COLORS, type PaletaId } from '@/context/ThemeContext'
+import { useTheme, ACCENTS, type AccentId, type ModeId } from '@/context/ThemeContext'
 import type { User } from '@supabase/supabase-js'
 
-// ─── Sección visual ───────────────────────────────────────────────────────────
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={s.section}>
-      <Text style={s.sectionTitle}>{title}</Text>
-      <View style={s.sectionCard}>{children}</View>
-    </View>
-  )
-}
-
-function Row({ label, value, onPress, danger }: {
-  label: string; value?: string; onPress?: () => void; danger?: boolean
-}) {
-  return (
-    <TouchableOpacity
-      style={s.row}
-      onPress={onPress}
-      disabled={!onPress}
-      activeOpacity={onPress ? 0.7 : 1}
-    >
-      <Text style={[s.rowLabel, danger && s.rowLabelDanger]}>{label}</Text>
-      {value && <Text style={s.rowValue}>{value}</Text>}
-    </TouchableOpacity>
-  )
-}
-
-// ─── Main screen ──────────────────────────────────────────────────────────────
+// ─── Screen ───────────────────────────────────────────────────────────────────
 export default function ConfiguracionScreen() {
-  const { colors, paletaId, setPaleta } = useTheme()
+  const { theme, accentId, mode, setAccent, setMode } = useTheme()
   const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
@@ -56,88 +32,150 @@ export default function ConfiguracionScreen() {
     )
   }
 
-  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined
-  const nombre    = (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? '—'
-  const email     = user?.email ?? '—'
+  const nombre   = (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? '—'
+  const email    = user?.email ?? '—'
+  const initial  = nombre[0]?.toUpperCase() ?? '?'
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: colors.bgMain }]}>
-      {/* Header */}
-      <View style={[s.header, { backgroundColor: colors.sidebar }]}>
-        <Text style={s.headerTitle}>Configuración</Text>
-      </View>
+    <SafeAreaView style={[s.safe, { backgroundColor: theme.bg }]} edges={['top']}>
+      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
-      <ScrollView style={s.scroll} contentContainerStyle={s.content}>
+        {/* ── PERFIL ── */}
+        <LinearGradient
+          colors={theme.balanceBg}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.profileCard}
+        >
+          <View style={s.profileInner}>
+            <View style={s.avatarCircle}>
+              <Text style={s.avatarInitial}>{initial}</Text>
+            </View>
+            <View style={s.profileText}>
+              <Text style={s.profileLabel}>Mi cuenta</Text>
+              <Text style={s.profileName} numberOfLines={1}>{nombre}</Text>
+              <Text style={s.profileEmail} numberOfLines={1}>{email}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
+          </View>
+        </LinearGradient>
 
-        {/* Perfil */}
-        <Section title="MI CUENTA">
-          <View style={s.profileRow}>
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={s.avatar} />
-            ) : (
-              <View style={[s.avatarFallback, { backgroundColor: colors.accent }]}>
-                <Text style={s.avatarInitial}>{nombre[0]?.toUpperCase() ?? '?'}</Text>
-              </View>
-            )}
-            <View style={s.profileInfo}>
-              <Text style={s.profileName}>{nombre}</Text>
-              <Text style={s.profileEmail}>{email}</Text>
+        {/* ── APARIENCIA ── */}
+        <View style={[s.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          {/* Header de sección */}
+          <View style={[s.cardHeader, { borderBottomColor: theme.border }]}>
+            <Ionicons name="color-palette-outline" size={18} color={theme.primary} />
+            <View style={s.cardHeaderText}>
+              <Text style={[s.cardTitle, { color: theme.text }]}>Apariencia</Text>
+              <Text style={[s.cardSub, { color: theme.textMuted }]}>Colores y modo de visualización</Text>
             </View>
           </View>
-        </Section>
 
-        {/* Paleta de colores */}
-        <Section title="APARIENCIA">
-          <Text style={s.paletaLabel}>Color de acento</Text>
-          <View style={s.paletaRow}>
-            {PALETAS.map(p => (
-              <TouchableOpacity
-                key={p.id}
-                onPress={() => setPaleta(p.id as PaletaId)}
-                style={[
-                  s.paletaBtn,
-                  { backgroundColor: p.accent },
-                  paletaId === p.id && s.paletaBtnActive,
-                ]}
-                activeOpacity={0.8}
-              >
-                {paletaId === p.id && <Text style={s.paletaCheck}>✓</Text>}
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={s.paletaNames}>
-            {PALETAS.map(p => (
-              <Text
-                key={p.id}
-                style={[
-                  s.paletaName,
-                  paletaId === p.id && { color: colors.accent, fontWeight: '700' },
-                ]}
-              >
-                {p.label}
-              </Text>
-            ))}
-          </View>
-          {/* Preview en vivo */}
-          <View style={[s.previewRow, { backgroundColor: colors.sidebar }]}>
-            <View style={[s.previewDot, { backgroundColor: colors.accent }]} />
-            <Text style={s.previewText}>Vista previa del tema</Text>
-            <View style={[s.previewBtn, { backgroundColor: colors.accent }]}>
-              <Text style={s.previewBtnText}>Activo</Text>
+          {/* Color de acento */}
+          <View style={s.section}>
+            <Text style={[s.sectionLabel, { color: theme.textMuted }]}>Color de acento</Text>
+            <View style={s.accentRow}>
+              {ACCENTS.map(a => {
+                const isActive = accentId === a.id
+                return (
+                  <TouchableOpacity
+                    key={a.id}
+                    onPress={() => setAccent(a.id as AccentId)}
+                    style={[
+                      s.accentBtn,
+                      { backgroundColor: a.hex },
+                      isActive && { borderWidth: 3, borderColor: '#ffffff' },
+                    ]}
+                    activeOpacity={0.8}
+                  >
+                    {isActive && (
+                      <Ionicons name="checkmark" size={18} color="#ffffff" />
+                    )}
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+            <View style={s.accentNames}>
+              {ACCENTS.map(a => (
+                <Text
+                  key={a.id}
+                  style={[
+                    s.accentName, { color: theme.textMuted },
+                    accentId === a.id && { color: theme.primary, fontWeight: '700' },
+                  ]}
+                >
+                  {a.label}
+                </Text>
+              ))}
             </View>
           </View>
-        </Section>
 
-        {/* Versión */}
-        <Section title="APP">
-          <Row label="Versión" value="1.0.0" />
-          <Row label="sinunmango.com.ar" value="↗" onPress={() => {}} />
-        </Section>
+          {/* Modo claro / oscuro */}
+          <View style={[s.section, { paddingTop: 0 }]}>
+            <Text style={[s.sectionLabel, { color: theme.textMuted }]}>Modo de visualización</Text>
+            <View style={s.modeRow}>
+              {(['claro', 'oscuro'] as ModeId[]).map(m => {
+                const isActive = mode === m
+                return (
+                  <TouchableOpacity
+                    key={m}
+                    onPress={() => setMode(m)}
+                    style={[
+                      s.modeBtn,
+                      { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
+                      isActive && { borderColor: theme.primary, borderWidth: 2 },
+                    ]}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name={m === 'claro' ? 'sunny-outline' : 'moon-outline'}
+                      size={18}
+                      color={isActive ? theme.primary : theme.textSec}
+                    />
+                    <Text style={[
+                      s.modeBtnText, { color: theme.textSec },
+                      isActive && { color: theme.primary, fontWeight: '700' },
+                    ]}>
+                      {m === 'claro' ? 'Claro' : 'Oscuro'}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
+        </View>
 
-        {/* Logout */}
-        <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
+        {/* ── APP ── */}
+        <View style={[s.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={[s.appRow, { borderBottomColor: theme.border }]}>
+            <Text style={[s.appRowLabel, { color: theme.text }]}>Versión</Text>
+            <Text style={[s.appRowValue, { color: theme.textMuted }]}>1.0.0</Text>
+          </View>
+          <View style={s.appRow}>
+            <Text style={[s.appRowLabel, { color: theme.text }]}>sinunmango.com.ar</Text>
+            <Ionicons name="open-outline" size={14} color={theme.textMuted} />
+          </View>
+        </View>
+
+        {/* ── LOGOUT ── */}
+        <TouchableOpacity
+          style={[s.logoutBtn, { backgroundColor: theme.mode === 'oscuro' ? '#2d1515' : '#fee2e2', borderColor: '#fecaca' }]}
+          onPress={handleLogout}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="log-out-outline" size={18} color="#dc2626" />
           <Text style={s.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
+
+        {/* ── FOOTER ── */}
+        <View style={s.footer}>
+          <Image
+            source={require('@/assets/logo_completo.png')}
+            style={[s.footerLogo, { tintColor: theme.textMuted }]}
+            resizeMode="contain"
+          />
+          <Text style={[s.footerVersion, { color: theme.textMuted }]}>v1.0.0</Text>
+        </View>
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -147,145 +185,85 @@ export default function ConfiguracionScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe:   { flex: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical:   16,
-  },
-  headerTitle: {
-    fontSize:   20,
-    fontWeight: '800',
-    color:      STATIC_COLORS.white,
-  },
+  safe:    { flex: 1 },
   scroll:  { flex: 1 },
-  content: { padding: 20 },
+  content: { padding: 20, gap: 16 },
 
-  section:      { marginBottom: 24 },
-  sectionTitle: {
-    fontSize:     11,
-    fontWeight:   '700',
-    color:        STATIC_COLORS.textMuted,
-    letterSpacing: 0.8,
-    marginBottom:  8,
-    marginLeft:    4,
+  // Perfil
+  profileCard: {
+    borderRadius: 18,
+    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 }, elevation: 5,
   },
-  sectionCard: {
-    backgroundColor: STATIC_COLORS.bgCard,
-    borderRadius:    16,
-    borderWidth:     1,
-    borderColor:     STATIC_COLORS.border,
-    overflow:        'hidden',
+  profileInner: {
+    flexDirection: 'row', alignItems: 'center', padding: 20, gap: 14,
   },
+  avatarCircle: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  avatarInitial: { fontSize: 22, fontWeight: '700', color: '#ffffff' },
+  profileText:   { flex: 1 },
+  profileLabel:  { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.8, marginBottom: 2 },
+  profileName:   { fontSize: 16, fontWeight: '700', color: '#ffffff', marginBottom: 2 },
+  profileEmail:  { fontSize: 12, color: 'rgba(255,255,255,0.65)' },
 
-  profileRow: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    padding:       16,
-    gap:           14,
+  // Card base
+  card: {
+    borderRadius: 16, borderWidth: 1, overflow: 'hidden',
   },
-  avatar: {
-    width: 56, height: 56, borderRadius: 28,
+  cardHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1,
   },
-  avatarFallback: {
-    width: 56, height: 56, borderRadius: 28,
-    justifyContent:  'center',
-    alignItems:      'center',
-  },
-  avatarInitial: { fontSize: 22, fontWeight: '700', color: STATIC_COLORS.white },
-  profileInfo:   { flex: 1 },
-  profileName:   { fontSize: 16, fontWeight: '700', color: STATIC_COLORS.textPrimary, marginBottom: 2 },
-  profileEmail:  { fontSize: 13, color: STATIC_COLORS.textSecondary },
+  cardHeaderText: { flex: 1 },
+  cardTitle:      { fontSize: 15, fontWeight: '700' },
+  cardSub:        { fontSize: 11, marginTop: 1 },
 
-  row: {
-    flexDirection:    'row',
-    justifyContent:   'space-between',
-    alignItems:       'center',
-    paddingHorizontal: 16,
-    paddingVertical:   14,
-    borderBottomWidth: 1,
-    borderBottomColor: STATIC_COLORS.border,
-  },
-  rowLabel:       { fontSize: 15, color: STATIC_COLORS.textPrimary },
-  rowLabelDanger: { color: '#ef4444' },
-  rowValue:       { fontSize: 14, color: STATIC_COLORS.textMuted },
-
-  paletaLabel: {
-    fontSize:     13,
-    color:        STATIC_COLORS.textSecondary,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    paddingTop:   16,
-  },
-  paletaRow: {
-    flexDirection:    'row',
-    gap:              12,
-    paddingHorizontal: 16,
-    marginBottom:     6,
-  },
-  paletaBtn: {
-    width:        40,
-    height:       40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems:   'center',
-  },
-  paletaBtnActive: {
-    borderWidth: 3,
-    borderColor: STATIC_COLORS.white,
-  },
-  paletaCheck: { color: STATIC_COLORS.white, fontSize: 16, fontWeight: '700' },
-  paletaNames: {
-    flexDirection: 'row',
-    gap:           12,
-    paddingHorizontal: 16,
-    marginBottom:  12,
-  },
-  paletaName: {
-    width:      40,
-    fontSize:   10,
-    color:      STATIC_COLORS.textMuted,
-    textAlign:  'center',
+  // Section dentro del card
+  section: { padding: 16 },
+  sectionLabel: {
+    fontSize: 12, fontWeight: '600', letterSpacing: 0.3, marginBottom: 12,
   },
 
-  previewRow: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    gap:              10,
-    marginHorizontal: 16,
-    marginBottom:     16,
-    padding:          12,
-    borderRadius:     12,
+  // Acentos
+  accentRow: { flexDirection: 'row', gap: 14, marginBottom: 8 },
+  accentBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 }, elevation: 3,
   },
-  previewDot: {
-    width: 12, height: 12, borderRadius: 6,
-  },
-  previewText: {
-    flex:     1,
-    fontSize: 12,
-    color:    'rgba(255,255,255,0.7)',
-  },
-  previewBtn: {
-    paddingHorizontal: 12,
-    paddingVertical:   5,
-    borderRadius:      8,
-  },
-  previewBtnText: {
-    fontSize:   11,
-    fontWeight: '700',
-    color:      STATIC_COLORS.white,
-  },
+  accentNames: { flexDirection: 'row', gap: 14 },
+  accentName:  { width: 44, fontSize: 10, textAlign: 'center' },
 
+  // Modo
+  modeRow: { flexDirection: 'row', gap: 10 },
+  modeBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1,
+  },
+  modeBtnText: { fontSize: 14 },
+
+  // App rows
+  appRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1,
+  },
+  appRowLabel: { fontSize: 15 },
+  appRowValue: { fontSize: 14 },
+
+  // Logout
   logoutBtn: {
-    backgroundColor: '#fee2e2',
-    borderRadius:    14,
-    paddingVertical: 16,
-    alignItems:      'center',
-    borderWidth:     1,
-    borderColor:     '#fecaca',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, borderRadius: 14, paddingVertical: 15,
+    borderWidth: 1,
   },
-  logoutText: {
-    color:      '#dc2626',
-    fontSize:   15,
-    fontWeight: '700',
-  },
+  logoutText: { color: '#dc2626', fontSize: 15, fontWeight: '700' },
+
+  // Footer
+  footer: { alignItems: 'center', gap: 6, marginTop: 8 },
+  footerLogo:    { width: 120, height: 30, opacity: 0.35 },
+  footerVersion: { fontSize: 11 },
 })

@@ -1,80 +1,160 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-// ─── Paletas disponibles ──────────────────────────────────────────────────────
-export const PALETAS = [
-  { id: 'magenta', label: 'Magenta', accent: '#94184A', accent2: '#5c0f2e', sidebar: '#1a0028' },
-  { id: 'verde',   label: 'Verde',   accent: '#1a6b5a', accent2: '#0d3b2e', sidebar: '#07192b' },
-  { id: 'azul',    label: 'Azul',    accent: '#1B3A6B', accent2: '#0f2548', sidebar: '#0a1628' },
-  { id: 'violeta', label: 'Violeta', accent: '#6d28d9', accent2: '#4c1d95', sidebar: '#1a0a3b' },
-  { id: 'naranja', label: 'Naranja', accent: '#c2410c', accent2: '#9a3412', sidebar: '#1a0f07' },
-  { id: 'rosa',    label: 'Rosa',    accent: '#be185d', accent2: '#9d174d', sidebar: '#1a0716' },
+// ─── Acentos (del design handoff) ────────────────────────────────────────────
+export const ACCENTS = [
+  { id: 'verde',   label: 'Verde',   hex: '#0F7173', light: '#E6F4F4', dark: '#0A5355' },
+  { id: 'azul',    label: 'Azul',    hex: '#2563EB', light: '#EFF6FF', dark: '#1D4ED8' },
+  { id: 'violeta', label: 'Violeta', hex: '#7C3AED', light: '#F5F3FF', dark: '#6D28D9' },
+  { id: 'naranja', label: 'Naranja', hex: '#E8601A', light: '#FFF6EE', dark: '#C94D10' },
+  { id: 'rosado',  label: 'Rosado',  hex: '#BE185D', light: '#FDF2F8', dark: '#9D174D' },
 ] as const
 
-export type PaletaId = typeof PALETAS[number]['id']
+export type AccentId = typeof ACCENTS[number]['id']
+export type ModeId   = 'claro' | 'oscuro'
 
-// ─── Colores estáticos (no cambian con el tema) ───────────────────────────────
-export const STATIC_COLORS = {
-  bgMain:        '#f1f5f9',
-  bgCard:        '#ffffff',
-  textPrimary:   '#1e293b',
-  textSecondary: '#475569',
-  textMuted:     '#94a3b8',
-  border:        '#e2e8f0',
-  borderSubtle:  '#f1f5f9',
-  green:         '#16a34a',
-  red:           '#ef4444',
-  orange:        '#f97316',
-  white:         '#ffffff',
+// ─── Tipo de tema completo ────────────────────────────────────────────────────
+export type Theme = {
+  mode:         ModeId
+  accentId:     AccentId
+  // Surfaces
+  bg:           string
+  surface:      string
+  surfaceAlt:   string
+  // Text
+  text:         string
+  textSec:      string
+  textMuted:    string
+  // Borders / tab bar
+  border:       string
+  tabBar:       string
+  tabBarBorder: string
+  // Semánticos
+  income:       string
+  expense:      string
+  // Acento
+  primary:      string
+  primaryLight: string
+  primaryDark:  string
+  // Tokens especiales
+  balanceBg:    readonly [string, string]
+  fabShadow:    string
 }
 
-// ─── Tipo del contexto ────────────────────────────────────────────────────────
-export type ThemeColors = typeof STATIC_COLORS & {
-  accent:  string
-  accent2: string
-  sidebar: string
+// ─── buildTheme — fuente de verdad ────────────────────────────────────────────
+export function buildTheme(mode: ModeId, accentId: AccentId): Theme {
+  const accent = ACCENTS.find(a => a.id === accentId) ?? ACCENTS[0]
+
+  const light = {
+    bg:           '#EEF2F8',
+    surface:      '#FFFFFF',
+    surfaceAlt:   accent.light,
+    text:         '#1A2332',
+    textSec:      '#6B7A8D',
+    textMuted:    '#A0AFBE',
+    border:       '#E2E8F0',
+    tabBar:       '#FFFFFF',
+    tabBarBorder: 'rgba(0,0,0,0.07)',
+    income:       '#16A34A',
+    expense:      '#DC2626',
+  }
+
+  const dark = {
+    bg:           '#0D1B2A',
+    surface:      '#162335',
+    surfaceAlt:   '#1E2F42',
+    text:         '#E8EEF5',
+    textSec:      '#8BA3BA',
+    textMuted:    '#546A7E',
+    border:       '#243547',
+    tabBar:       '#111E2D',
+    tabBarBorder: 'rgba(255,255,255,0.06)',
+    income:       '#22C55E',
+    expense:      '#F87171',
+  }
+
+  const base = mode === 'claro' ? light : dark
+
+  return {
+    mode,
+    accentId,
+    ...base,
+    primary:      accent.hex,
+    primaryLight: accent.light,
+    primaryDark:  accent.dark,
+    balanceBg:    [accent.hex, accent.dark] as const,
+    fabShadow:    `${accent.hex}55`,
+  }
 }
 
+// ─── Contexto ─────────────────────────────────────────────────────────────────
 type ThemeContextValue = {
-  colors:    ThemeColors
-  paletaId:  PaletaId
-  setPaleta: (id: PaletaId) => void
+  theme:     Theme
+  accentId:  AccentId
+  mode:      ModeId
+  setAccent: (id: AccentId) => void
+  setMode:   (mode: ModeId) => void
 }
 
-const STORAGE_KEY = '@sinunmango:paleta'
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function buildColors(paletaId: PaletaId): ThemeColors {
-  const p = PALETAS.find(p => p.id === paletaId) ?? PALETAS[0]
-  return { ...STATIC_COLORS, accent: p.accent, accent2: p.accent2, sidebar: p.sidebar }
-}
-
-// ─── Context ──────────────────────────────────────────────────────────────────
 const ThemeContext = createContext<ThemeContextValue>({
-  colors:    buildColors('magenta'),
-  paletaId:  'magenta',
-  setPaleta: () => {},
+  theme:     buildTheme('claro', 'rosado'),
+  accentId:  'rosado',
+  mode:      'claro',
+  setAccent: () => {},
+  setMode:   () => {},
 })
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [paletaId, setPaletaState] = useState<PaletaId>('magenta')
+const STORAGE_ACCENT = '@sinunmango:accent'
+const STORAGE_MODE   = '@sinunmango:mode'
 
-  // Cargar paleta guardada al iniciar
+// Mapeo de IDs legacy (paletas viejas → nuevas)
+const LEGACY_MAP: Record<string, AccentId> = {
+  magenta: 'rosado',
+  rosa:    'rosado',
+  verde:   'verde',
+  azul:    'azul',
+  violeta: 'violeta',
+  naranja: 'naranja',
+  rosado:  'rosado',
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [accentId, setAccentState] = useState<AccentId>('rosado')
+  const [mode, setModeState]       = useState<ModeId>('claro')
+
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then(stored => {
-      if (stored && PALETAS.some(p => p.id === stored)) {
-        setPaletaState(stored as PaletaId)
+    Promise.all([
+      AsyncStorage.getItem(STORAGE_ACCENT),
+      AsyncStorage.getItem(STORAGE_MODE),
+    ]).then(([storedAccent, storedMode]) => {
+      if (storedAccent) {
+        const mapped = LEGACY_MAP[storedAccent] ?? storedAccent
+        if (ACCENTS.some(a => a.id === mapped)) setAccentState(mapped as AccentId)
+      }
+      if (storedMode === 'claro' || storedMode === 'oscuro') {
+        setModeState(storedMode as ModeId)
       }
     })
   }, [])
 
-  const setPaleta = useCallback((id: PaletaId) => {
-    setPaletaState(id)
-    AsyncStorage.setItem(STORAGE_KEY, id)
+  const setAccent = useCallback((id: AccentId) => {
+    setAccentState(id)
+    AsyncStorage.setItem(STORAGE_ACCENT, id)
+  }, [])
+
+  const setMode = useCallback((m: ModeId) => {
+    setModeState(m)
+    AsyncStorage.setItem(STORAGE_MODE, m)
   }, [])
 
   return (
-    <ThemeContext.Provider value={{ colors: buildColors(paletaId), paletaId, setPaleta }}>
+    <ThemeContext.Provider value={{
+      theme:    buildTheme(mode, accentId),
+      accentId,
+      mode,
+      setAccent,
+      setMode,
+    }}>
       {children}
     </ThemeContext.Provider>
   )
@@ -82,4 +162,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export function useTheme() {
   return useContext(ThemeContext)
+}
+
+// ─── Backward-compat exports (evitar romper imports existentes) ───────────────
+export const PALETAS = ACCENTS.map(a => ({ id: a.id, label: a.label, accent: a.hex }))
+export type PaletaId = AccentId
+export const STATIC_COLORS = {
+  bgMain:        '#EEF2F8',
+  bgCard:        '#FFFFFF',
+  textPrimary:   '#1A2332',
+  textSecondary: '#6B7A8D',
+  textMuted:     '#A0AFBE',
+  border:        '#E2E8F0',
+  borderSubtle:  '#F1F5F9',
+  green:         '#16A34A',
+  red:           '#DC2626',
+  orange:        '#E8601A',
+  white:         '#ffffff',
 }
