@@ -2,6 +2,7 @@ import { adminClient } from '@/lib/supabase/admin'
 import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import type React from 'react'
 import { TourTrigger } from '@/components/tour-trigger'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -98,31 +99,71 @@ function KpiCard({ href, label, value, sub, accent }: {
 }
 
 // ─── Month navigation — solo las flechas, sin el título ──────────────────────
-function MonthNav({ mes, tipo }: { mes: string; tipo: 'pasado' | 'actual' | 'futuro' }) {
-  const prev  = offsetMes(mes, -1)
-  const next  = offsetMes(mes, +1)
-  const badge = tipo === 'actual' ? 'Mes actual' : tipo === 'pasado' ? 'Período cerrado' : 'Proyección'
+// ─── Banner full-bleed (igual al de conciliaciones) ──────────────────────────
+function DashboardBanner({
+  mes, tipo, metricaIzq, metricaDer,
+}: {
+  mes:  string
+  tipo: 'pasado' | 'actual' | 'futuro'
+  metricaIzq: { label: string; value: React.ReactNode; sub: string }
+  metricaDer:  { label: string; value: React.ReactNode; sub: string }
+}) {
+  const badge      = tipo === 'actual' ? 'Mes actual' : tipo === 'pasado' ? 'Período cerrado' : 'Proyección'
+  const bigLabel   = mesLabel(mes).toUpperCase().replace(' ', ' ')   // non-breaking space
 
   return (
-    <div className="flex items-center justify-between mb-3">
-      <Link
-        href={`/dashboard?mes=${prev}`}
-        className="flex items-center gap-1.5 text-white/60 hover:text-white/90 transition-colors text-sm px-2 py-1 rounded-lg hover:bg-white/10"
-      >
-        <ChevronLeft size={15} />
-        <span className="hidden sm:inline text-xs">{mesLabel(prev).split(' ')[0]}</span>
-      </Link>
+    <div
+      className="-mx-8 -mt-8 mb-8 text-white"
+      style={{ background: 'linear-gradient(135deg, var(--sidebar-bg,#07192b) 0%, var(--accent2,#0b2d55) 50%, var(--accent,#0f4d3a) 100%)' }}
+    >
+      <div className="px-10 pt-10 pb-9">
+        {/* Top row: label izquierda + mes derecha */}
+        <div className="flex items-start justify-between mb-10">
+          <div>
+            <p className="text-xs font-semibold text-white/70 uppercase tracking-widest mb-1.5">Resumen financiero</p>
+            <p className="text-sm text-white/45">
+              {badge}
+            </p>
+          </div>
+          <h1 className="text-5xl lg:text-6xl font-black tracking-tight text-white leading-none text-right">
+            {bigLabel}
+          </h1>
+        </div>
 
-      <span className="text-xs bg-white/20 text-white/80 px-3 py-1 rounded-full tracking-wide">
-        {badge}
-      </span>
+        {/* Dos métricas centradas */}
+        <div className="grid grid-cols-2 gap-16 max-w-2xl mx-auto text-center mb-10">
+          <div>
+            <p className="text-xs font-semibold text-white/55 uppercase tracking-widest mb-3">{metricaIzq.label}</p>
+            <div className="text-4xl font-bold text-white mb-1">{metricaIzq.value}</div>
+            <p className="text-xs text-white/40">{metricaIzq.sub}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-white/55 uppercase tracking-widest mb-3">{metricaDer.label}</p>
+            <div className="text-4xl font-bold text-white mb-1">{metricaDer.value}</div>
+            <p className="text-xs text-white/40">{metricaDer.sub}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-      <Link
-        href={`/dashboard?mes=${next}`}
-        className="flex items-center gap-1.5 text-white/60 hover:text-white/90 transition-colors text-sm px-2 py-1 rounded-lg hover:bg-white/10"
-      >
-        <span className="hidden sm:inline text-xs">{mesLabel(next).split(' ')[0]}</span>
-        <ChevronRight size={15} />
+// ─── Flechas de navegación (botones circulares, fuera del banner) ─────────────
+function NavArrow({ mes, dir }: { mes: string; dir: 'prev' | 'next' }) {
+  const target = offsetMes(mes, dir === 'prev' ? -1 : 1)
+  const label  = mesLabel(target).split(' ')[0]
+  return (
+    <div className="shrink-0 w-14 flex justify-center">
+      <Link href={`/dashboard?mes=${target}`} className="flex flex-col items-center gap-2 group">
+        <div className="w-11 h-11 rounded-full flex items-center justify-center shadow-sm border border-slate-200 bg-white group-hover:shadow-md group-hover:border-slate-300 transition-all">
+          {dir === 'prev'
+            ? <ChevronLeft  size={20} className="text-slate-500 group-hover:text-slate-700 transition-colors" />
+            : <ChevronRight size={20} className="text-slate-500 group-hover:text-slate-700 transition-colors" />
+          }
+        </div>
+        <span className="text-[11px] text-slate-400 font-medium group-hover:text-slate-600 transition-colors leading-tight">
+          {label}
+        </span>
       </Link>
     </div>
   )
@@ -375,29 +416,19 @@ export default async function DashboardPage({
 
     return (
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Hero */}
-        <div className="rounded-2xl overflow-hidden text-white relative"
-          style={{ background: 'linear-gradient(135deg, var(--sidebar-bg,#0d2137) 0%, var(--accent2,#0d3b6e) 45%, var(--accent,#1a6b5a) 100%)' }}>
-          <div className="px-8 py-8">
-            <MonthNav mes={mes} tipo="actual" />
-            <p className="text-5xl font-black tracking-tight text-white/90 leading-none mb-1">{label}</p>
-            <p className="text-sm text-white/40 uppercase tracking-widest mb-10">Resumen del período</p>
-            <div className="grid grid-cols-2 gap-8">
-              <div>
-                <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Saldo disponible</p>
-                <p className="text-4xl font-bold text-white">${fmt(resumen.disponible_real)}</p>
-                <p className="text-xs text-white/40 mt-1">Suma de billeteras y efectivo ARS</p>
-              </div>
-              <div>
-                <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Proyectado fin de mes</p>
-                <p className={`text-4xl font-bold ${proyectadoActual >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                  {proyectadoActual < 0 ? '-' : ''}${fmt(Math.abs(proyectadoActual))}
-                </p>
-                <p className="text-xs text-white/40 mt-1">Liquidez estimada</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DashboardBanner
+          mes={mes}
+          tipo="actual"
+          metricaIzq={{ label: 'Saldo disponible', value: `$${fmt(resumen.disponible_real)}`, sub: 'Suma de billeteras y efectivo ARS' }}
+          metricaDer={{
+            label: 'Proyectado fin de mes',
+            value: <span className={proyectadoActual >= 0 ? 'text-emerald-300' : 'text-red-300'}>{proyectadoActual < 0 ? '-' : ''}${fmt(Math.abs(proyectadoActual))}</span>,
+            sub:   'Liquidez estimada',
+          }}
+        />
+        <div className="flex items-start gap-3">
+          <NavArrow mes={mes} dir="prev" />
+          <div className="flex-1 min-w-0 space-y-6">
 
         {/* KPIs */}
         <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
@@ -508,6 +539,9 @@ export default async function DashboardPage({
             )}
           </div>
         </div>
+          </div>{/* flex-1 */}
+          <NavArrow mes={mes} dir="next" />
+        </div>{/* flex nav */}
         {params.tour === '1' && <TourTrigger />}
       </div>
     )
@@ -521,29 +555,23 @@ export default async function DashboardPage({
 
     return (
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Hero */}
-        <div className="rounded-2xl overflow-hidden text-white relative"
-          style={{ background: 'linear-gradient(135deg, var(--sidebar-bg,#0d2137) 0%, var(--accent2,#0d3b6e) 45%, var(--accent,#1a6b5a) 100%)' }}>
-          <div className="px-8 py-8">
-            <MonthNav mes={mes} tipo="pasado" />
-            <p className="text-5xl font-black tracking-tight text-white/90 leading-none mb-1">{label}</p>
-            <p className="text-sm text-white/40 uppercase tracking-widest mb-10">Resumen del período</p>
-            <div className="grid grid-cols-2 gap-8">
-              <div>
-                <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Resultado del mes</p>
-                <p className={`text-4xl font-bold ${past.resultado >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                  {past.resultado >= 0 ? '+' : '-'}${fmt(Math.abs(past.resultado))}
-                </p>
-                <p className="text-xs text-white/40 mt-1">Ingresos menos gastos reales</p>
-              </div>
-              <div>
-                <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Deuda tarjetas período</p>
-                <p className="text-4xl font-bold text-amber-300">${fmt(past.deudaTC)}</p>
-                <p className="text-xs text-white/40 mt-1">Consumos del período de tarjeta</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DashboardBanner
+          mes={mes}
+          tipo="pasado"
+          metricaIzq={{
+            label: 'Resultado del mes',
+            value: <span className={past.resultado >= 0 ? 'text-emerald-300' : 'text-red-300'}>{past.resultado >= 0 ? '+' : '-'}${fmt(Math.abs(past.resultado))}</span>,
+            sub:   'Ingresos menos gastos reales',
+          }}
+          metricaDer={{
+            label: 'Deuda tarjetas período',
+            value: <span className="text-amber-300">${fmt(past.deudaTC)}</span>,
+            sub:   'Consumos del período de tarjeta',
+          }}
+        />
+        <div className="flex items-start gap-3">
+          <NavArrow mes={mes} dir="prev" />
+          <div className="flex-1 min-w-0 space-y-6">
 
         {/* KPIs */}
         <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
@@ -625,6 +653,9 @@ export default async function DashboardPage({
             )}
           </div>
         </div>
+          </div>{/* flex-1 */}
+          <NavArrow mes={mes} dir="next" />
+        </div>{/* flex nav */}
       </div>
     )
   }
@@ -642,29 +673,23 @@ export default async function DashboardPage({
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Hero */}
-      <div className="rounded-2xl overflow-hidden text-white relative"
-        style={{ background: 'linear-gradient(135deg, var(--sidebar-bg,#0d2137) 0%, var(--accent2,#0d3b6e) 45%, var(--accent,#1a6b5a) 100%)' }}>
-        <div className="px-8 py-8">
-          <MonthNav mes={mes} tipo="futuro" />
-          <p className="text-5xl font-black tracking-tight text-white/90 leading-none mb-1">{label}</p>
-          <p className="text-sm text-white/40 uppercase tracking-widest mb-10">Proyección del período</p>
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Liquidez proyectada</p>
-              <p className={`text-4xl font-bold ${saldoMes >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                {saldoMes < 0 ? '-' : ''}${fmt(Math.abs(saldoMes))}
-              </p>
-              <p className="text-xs text-white/40 mt-1">Saldo estimado al cierre del mes</p>
-            </div>
-            <div>
-              <p className="text-xs text-white/50 uppercase tracking-widest mb-2">Gastos proyectados</p>
-              <p className="text-4xl font-bold text-red-300">${fmt(gastosProyectados)}</p>
-              <p className="text-xs text-white/40 mt-1">Fijos + cuotas de tarjeta</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <DashboardBanner
+        mes={mes}
+        tipo="futuro"
+        metricaIzq={{
+          label: 'Liquidez proyectada',
+          value: <span className={saldoMes >= 0 ? 'text-emerald-300' : 'text-red-300'}>{saldoMes < 0 ? '-' : ''}${fmt(Math.abs(saldoMes))}</span>,
+          sub:   'Saldo estimado al cierre del mes',
+        }}
+        metricaDer={{
+          label: 'Gastos proyectados',
+          value: <span className="text-red-300">${fmt(gastosProyectados)}</span>,
+          sub:   'Fijos + cuotas de tarjeta',
+        }}
+      />
+      <div className="flex items-start gap-3">
+        <NavArrow mes={mes} dir="prev" />
+        <div className="flex-1 min-w-0 space-y-6">
 
       {/* KPIs */}
       <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
@@ -741,6 +766,9 @@ export default async function DashboardPage({
           )}
         </div>
       </div>
+        </div>{/* flex-1 */}
+        <NavArrow mes={mes} dir="next" />
+      </div>{/* flex nav */}
     </div>
   )
 }
