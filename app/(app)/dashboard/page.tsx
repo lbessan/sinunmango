@@ -225,7 +225,7 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
       adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true).eq('user_id', userId),
       adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', userId).single(),
     ])
-  if (!resumen) return { saldoBase: 0, startSaldo: 0, proyecciones: [] as ProyeccionMes[] }
+  if (!resumen) return { saldoBase: 0, startSaldo: 0, saldoInicioMes: 0, proyecciones: [] as ProyeccionMes[] }
   const dolar       = params?.valor ?? 1410
   const tarjetaIds  = new Set((tarjetasRaw ?? []).map(t => t.id))
   const deudaRest   = Math.max(0, resumen.deuda_tarjetas_periodo - resumen.pagos_tarjeta_mes)
