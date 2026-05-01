@@ -241,9 +241,16 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
   const skipCount = (dy - cy) * 12 + (dm - cm)
   const totalLoop = skipCount + meses
   let saldo = Math.round(startSaldo)
-  let saldoBase = saldo
+  let saldoBase    = saldo
+  // saldoInicioMes = saldo justo ANTES de procesar el mes que se está mostrando
+  // Para skipCount=1 (Junio): captura startSaldo (antes de i=1)
+  // Para skipCount=2 (Julio): captura saldo después de Junio (antes de i=2)
+  let saldoInicioMes = Math.round(startSaldo)
   const proyecciones: ProyeccionMes[] = []
   for (let i = 1; i <= totalLoop; i++) {
+    // Capturar el saldo ANTES de procesar este mes (= inicio del mes i)
+    if (i === skipCount) saldoInicioMes = saldo
+
     const fecha   = new Date(cy, cm - 1 + i, 1)
     const periodo = fecha.toISOString().slice(0, 10)
     const [{ data: ingresos }, { data: gastosTC }] = await Promise.all([
@@ -270,7 +277,7 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
       })
     }
   }
-  return { saldoBase, startSaldo: Math.round(startSaldo), proyecciones }
+  return { saldoBase, startSaldo: Math.round(startSaldo), saldoInicioMes, proyecciones }
 }
 
 // ─── Past month data ──────────────────────────────────────────────────────────
@@ -339,7 +346,7 @@ async function fetchPastMonth(userId: string, mes: string) {
 // ─── Future month data ────────────────────────────────────────────────────────
 async function fetchFutureMonth(userId: string, mes: string) {
   const mesStart = `${mes}-01`
-  const [{ data: cuotasRaw }, { data: gastosFijos }, { data: tcuentas }, { data: ingresosRaw }] = await Promise.all([
+  const [{ data: cuotasRaw }, { data: gastosFijos }, { data: tcuentas }, { data: ingresosRaw }, { data: params }] = await Promise.all([
     adminClient.from('movimientos')
       .select('id, detalle, monto, moneda, cuenta_origen, cuentas(nombre_cuenta, imagen_url, color_primario)')
       .eq('user_id', userId).eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', mesStart),
@@ -350,29 +357,33 @@ async function fetchFutureMonth(userId: string, mes: string) {
     adminClient.from('movimientos')
       .select('monto, moneda')
       .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', mesStart).eq('user_id', userId),
+    adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', userId).single(),
   ])
+  // Misma conversión USD que calcularProyecciones para que la fórmula cierre
+  const dolar         = params?.valor ?? 1410
   const tarjetaIds    = new Set((tcuentas ?? []).map(t => t.id))
   const cuotasTC      = (cuotasRaw ?? []).filter(m => tarjetaIds.has(m.cuenta_origen ?? ''))
-  const totalCuotasTC = cuotasTC.reduce((s, m) => s + m.monto, 0)
+  const totalCuotasTC = cuotasTC.reduce((s, m) => s + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
 
-  // Separar gastos fijos: efectivo/banco vs tarjeta de crédito
+  // Separar gastos fijos: efectivo/banco vs tarjeta de crédito (con conversión USD)
   const gfEfectivo        = (gastosFijos ?? []).filter(g => (g.cuentas as any)?.tipo_cuenta !== 'Tarjeta Credito')
   const gfTarjeta         = (gastosFijos ?? []).filter(g => (g.cuentas as any)?.tipo_cuenta === 'Tarjeta Credito')
-  const totalGF_efectivo  = gfEfectivo.reduce((s, g) => s + (g.monto_estimado ?? 0), 0)
-  const totalGF_tarjeta   = gfTarjeta.reduce((s, g) => s + (g.monto_estimado ?? 0), 0)
+  const totalGF_efectivo  = gfEfectivo.reduce((s, g) => s + (g.moneda === 'USD' ? (g.monto_estimado ?? 0) * dolar : (g.monto_estimado ?? 0)), 0)
+  const totalGF_tarjeta   = gfTarjeta.reduce((s, g) => s + (g.moneda === 'USD' ? (g.monto_estimado ?? 0) * dolar : (g.monto_estimado ?? 0)), 0)
   // Total pago tarjetas = cuotas ya registradas + gastos fijos recurrentes de tarjeta
   const totalPagoTarjetas = totalCuotasTC + totalGF_tarjeta
 
-  const totalIngresos = (ingresosRaw ?? []).reduce((s, m) => s + m.monto, 0)
+  const totalIngresos = (ingresosRaw ?? []).reduce((s, m) => s + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
   return {
     cuotasTC,
-    totalCuotasTC:    Math.round(totalCuotasTC),
+    totalCuotasTC:     Math.round(totalCuotasTC),
     gfEfectivo,
     gfTarjeta,
-    totalGF_efectivo: Math.round(totalGF_efectivo),
-    totalGF_tarjeta:  Math.round(totalGF_tarjeta),
+    totalGF_efectivo:  Math.round(totalGF_efectivo),
+    totalGF_tarjeta:   Math.round(totalGF_tarjeta),
     totalPagoTarjetas: Math.round(totalPagoTarjetas),
-    totalIngresos:    Math.round(totalIngresos),
+    totalIngresos:     Math.round(totalIngresos),
+    dolar,
   }
 }
 
@@ -642,7 +653,7 @@ export default async function DashboardPage({
   }
 
   // ── FUTURE MONTH ───────────────────────────────────────────────────────────
-  const [future, { saldoBase: saldoMes, startSaldo: saldoInicio, proyecciones }] = await Promise.all([
+  const [future, { saldoBase: saldoMes, saldoInicioMes: saldoInicio, proyecciones }] = await Promise.all([
     fetchFutureMonth(user.id, mes),
     calcularProyecciones(user.id, mes, 4),
   ])
