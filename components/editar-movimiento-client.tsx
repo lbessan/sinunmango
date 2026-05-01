@@ -112,8 +112,13 @@ export function EditarMovimientoClient({
     })
 
     setSaving(false)
-    if (res.ok) { setSaved(true); setTimeout(() => router.back(), 1000) }
-    else { const d = await res.json(); setError(d.error ?? 'Error al guardar') }
+    if (res.ok) {
+      setSaved(true)
+      setTimeout(() => {
+        router.push('/movimientos')
+        router.refresh()
+      }, 900)
+    } else { const d = await res.json(); setError(d.error ?? 'Error al guardar') }
   }
 
   const handleEliminar = async () => {

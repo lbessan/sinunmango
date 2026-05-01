@@ -7,6 +7,8 @@ import { Suspense } from 'react'
 import { MovimientosControls } from '@/components/movimientos-controls'
 import { IconoCategoria } from '@/components/icono-categoria'
 
+export const dynamic = 'force-dynamic'
+
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 

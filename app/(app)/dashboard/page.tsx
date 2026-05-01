@@ -233,6 +233,9 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
   const gastosFijosEfectivo = (gastosFijosRaw ?? [])
     .filter(g => (g.cuentas as any)?.tipo_cuenta !== 'Tarjeta Credito')
     .reduce((a, g) => a + (g.moneda === 'USD' ? g.monto_estimado * dolar : g.monto_estimado), 0)
+  const gastosFijosTarjeta = (gastosFijosRaw ?? [])
+    .filter(g => (g.cuentas as any)?.tipo_cuenta === 'Tarjeta Credito')
+    .reduce((a, g) => a + (g.moneda === 'USD' ? g.monto_estimado * dolar : g.monto_estimado), 0)
   const [cy, cm]  = curMes.split('-').map(Number)
   const [dy, dm]  = desde.split('-').map(Number)
   const skipCount = (dy - cy) * 12 + (dm - cm)
@@ -251,7 +254,7 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
     ])
     const totalIng = (ingresos ?? []).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
     const totalTC  = (gastosTC ?? []).filter(m => tarjetaIds.has(m.cuenta_origen)).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
-    saldo = Math.round(saldo + totalIng - gastosFijosEfectivo - totalTC)
+    saldo = Math.round(saldo + totalIng - gastosFijosEfectivo - gastosFijosTarjeta - totalTC)
     if (i === skipCount) saldoBase = saldo
     if (i > skipCount) {
       const label = fecha.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })

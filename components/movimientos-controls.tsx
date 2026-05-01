@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { useCallback } from 'react'
+import { useCallback, useState, useRef, useEffect } from 'react'
 import { Search, X } from 'lucide-react'
 
 type Categoria = { id: string; nombre_categoria: string; icono?: string | null }
@@ -23,6 +23,13 @@ export function MovimientosControls({ periodos, categorias, cuentas }: Props) {
   const categoria = searchParams.get('categoria') ?? ''
   const cuenta    = searchParams.get('cuenta')   ?? ''
   const q         = searchParams.get('q')        ?? ''
+
+  // Estado local para el input de búsqueda (se debouncea antes de navegar)
+  const [inputQ, setInputQ] = useState(q)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Sincronizar si el valor de q cambia externamente (ej: limpiar filtros)
+  useEffect(() => { setInputQ(q) }, [q])
 
   const hayFiltros = tipo || periodo || categoria || cuenta || q
 
@@ -57,18 +64,23 @@ export function MovimientosControls({ periodos, categorias, cuentas }: Props) {
     <div className="bg-white rounded-2xl border border-slate-100 p-4 mb-4">
       <div className="flex flex-wrap gap-2 items-center">
 
-        {/* Búsqueda por detalle */}
+        {/* Búsqueda por detalle — con debounce de 400ms */}
         <div className="relative">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            value={q}
-            onChange={e => update('q', e.target.value)}
+            value={inputQ}
+            onChange={e => {
+              const v = e.target.value
+              setInputQ(v)
+              if (debounceRef.current) clearTimeout(debounceRef.current)
+              debounceRef.current = setTimeout(() => update('q', v), 400)
+            }}
             placeholder="Buscar detalle..."
-            className={`pl-8 pr-3 py-2 text-xs border rounded-lg outline-none focus:ring-2 focus:ring-blue-100 bg-white w-48 transition-colors ${q ? activeClass : inactiveClass}`}
+            className={`pl-8 pr-3 py-2 text-xs border rounded-lg outline-none focus:ring-2 focus:ring-blue-100 bg-white w-48 transition-colors ${inputQ ? activeClass : inactiveClass}`}
           />
-          {q && (
-            <button onClick={() => update('q', '')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+          {inputQ && (
+            <button onClick={() => { setInputQ(''); update('q', '') }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
               <X size={11} />
             </button>
           )}

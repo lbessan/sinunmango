@@ -201,20 +201,27 @@ function AddMovModal({ cuentaId, isTarjeta, cierreDay, venceDay, categorias: cat
 
             {/* Cuenta destino — solo para Transferencia */}
             {tipo === 'Transferencia' && (
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Cuenta destino</label>
-                {(cuentas ?? []).length === 0 ? (
-                  <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
-                    No hay otras cuentas disponibles
-                  </p>
-                ) : (
-                  <select value={cuentaDestino} onChange={e => setCuentaDestino(e.target.value)} className={inputClass}>
-                    <option value="">— elegir cuenta —</option>
-                    {(cuentas ?? []).map(c => (
-                      <option key={c.id} value={c.id}>{c.nombre_cuenta}</option>
-                    ))}
-                  </select>
-                )}
+              <div className="space-y-3 bg-slate-50 rounded-xl p-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500">Desde</span>
+                  <span className="font-medium text-slate-700">Esta cuenta (origen)</span>
+                </div>
+                <div className="flex items-center justify-center text-slate-300 text-base">↓</div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Hacia (cuenta destino)</label>
+                  {(cuentas ?? []).length === 0 ? (
+                    <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                      No hay otras cuentas disponibles. Creá otra cuenta primero.
+                    </p>
+                  ) : (
+                    <select value={cuentaDestino} onChange={e => setCuentaDestino(e.target.value)} className={inputClass}>
+                      <option value="">— elegir cuenta —</option>
+                      {(cuentas ?? []).map(c => (
+                        <option key={c.id} value={c.id}>{c.nombre_cuenta}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </div>
             )}
 
