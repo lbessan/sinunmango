@@ -8,12 +8,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
-const fmt  = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-const fmtK = (n: number) => {
-  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (Math.abs(n) >= 1_000)     return `$${(n / 1_000).toFixed(0)}K`
-  return `$${fmt(n)}`
-}
+const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
 // ─── Month helpers ────────────────────────────────────────────────────────────
 function currentMes(today: Date) {
@@ -70,25 +65,51 @@ function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
   )
 }
 
-// ─── Banner ───────────────────────────────────────────────────────────────────
-function DashboardBanner({ mes, tipo }: { mes: string; tipo: 'pasado' | 'actual' | 'futuro' }) {
+// ─── Banner (full-bleed — va FUERA de cualquier max-w container) ──────────────
+// Igual que conciliaciones: -mx-8 -mt-8 cancela el p-8 del <main>
+function DashboardBanner({
+  mes, tipo, metricaIzq, metricaDer,
+}: {
+  mes:  string
+  tipo: 'pasado' | 'actual' | 'futuro'
+  metricaIzq?: { label: string; value: React.ReactNode; sub: string }
+  metricaDer?:  { label: string; value: React.ReactNode; sub: string }
+}) {
   const badge    = tipo === 'actual' ? 'Mes actual' : tipo === 'pasado' ? 'Período cerrado' : 'Proyección'
   const bigLabel = mesLabel(mes).toUpperCase()
+
   return (
     <div
-      className="-mx-4 lg:-mx-8 -mt-4 lg:-mt-8 mb-6 text-white"
+      className="-mx-8 -mt-8 mb-8 text-white"
       style={{ background: 'linear-gradient(135deg, var(--sidebar-bg,#07192b) 0%, var(--accent2,#0b2d55) 50%, var(--accent,#0f4d3a) 100%)' }}
     >
-      <div className="px-6 lg:px-10 py-8 lg:py-10">
-        <div className="flex items-start justify-between gap-6">
+      <div className="px-10 pt-10 pb-9">
+        {/* Top row: label + mes */}
+        <div className="flex items-start justify-between mb-10">
           <div>
             <p className="text-xs font-semibold text-white/70 uppercase tracking-widest mb-1.5">Resumen financiero</p>
             <p className="text-sm text-white/45">{badge}</p>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight text-white leading-none text-right">
+          <h1 className="text-5xl lg:text-6xl font-black tracking-tight text-white leading-none text-right">
             {bigLabel}
           </h1>
         </div>
+
+        {/* Métricas — solo si se pasan */}
+        {metricaIzq && metricaDer && (
+          <div className="grid grid-cols-2 gap-16 max-w-2xl mx-auto text-center mb-2">
+            <div>
+              <p className="text-xs font-semibold text-white/55 uppercase tracking-widest mb-3">{metricaIzq.label}</p>
+              <div className="text-4xl font-bold text-white mb-1">{metricaIzq.value}</div>
+              <p className="text-xs text-white/40">{metricaIzq.sub}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-white/55 uppercase tracking-widest mb-3">{metricaDer.label}</p>
+              <div className="text-4xl font-bold text-white mb-1">{metricaDer.value}</div>
+              <p className="text-xs text-white/40">{metricaDer.sub}</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -107,7 +128,7 @@ function NavArrow({ mes, dir }: { mes: string; dir: 'prev' | 'next' }) {
             : <ChevronRight size={26} className="text-slate-500 group-hover:text-slate-700 transition-colors" />
           }
         </div>
-        <span className="text-xs text-slate-400 font-medium group-hover:text-slate-600 transition-colors leading-tight">
+        <span className="text-xs text-slate-400 font-medium group-hover:text-slate-600 transition-colors">
           {label}
         </span>
       </Link>
@@ -157,14 +178,14 @@ function ProyeccionesStrip({ proyecciones, saldoBase, label }: {
       <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {proyecciones.map((p) => {
-            const esPositivo = p.proyeccion >= 0
+            const esPos = p.proyeccion >= 0
             return (
               <Link key={p.periodo} href={`/dashboard?mes=${p.periodo.slice(0, 7)}`}
                 className="bg-white rounded-xl border border-slate-100 p-4 hover:border-slate-200 hover:shadow-sm transition-all group block relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-14 h-14 rounded-bl-full opacity-20"
-                  style={{ background: esPositivo ? '#dcfce7' : '#fee2e2' }} />
+                  style={{ background: esPos ? '#dcfce7' : '#fee2e2' }} />
                 <p className="text-xs font-medium text-slate-500 mb-2 relative z-10">{p.label}</p>
-                <p className="text-xl font-bold relative z-10" style={{ color: esPositivo ? '#1a6b5a' : '#dc2626' }}>
+                <p className="text-xl font-bold relative z-10" style={{ color: esPos ? '#1a6b5a' : '#dc2626' }}>
                   {p.proyeccion < 0 ? '-' : ''}${fmt(Math.abs(p.proyeccion))}
                 </p>
                 <div className="flex items-center gap-1 mt-1 relative z-10">
@@ -187,7 +208,7 @@ function ProyeccionesStrip({ proyecciones, saldoBase, label }: {
   )
 }
 
-// ─── Proyecciones calculator ──────────────────────────────────────────────────
+// ─── Tipos / calcularProyecciones ─────────────────────────────────────────────
 type ProyeccionMes = {
   periodo: string; label: string
   ingresos: number; gastos_fijos: number; gastos_tarjeta: number
@@ -216,7 +237,7 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
   const [dy, dm]  = desde.split('-').map(Number)
   const skipCount = (dy - cy) * 12 + (dm - cm)
   const totalLoop = skipCount + meses
-  let saldo     = Math.round(startSaldo)
+  let saldo = Math.round(startSaldo)
   let saldoBase = saldo
   const proyecciones: ProyeccionMes[] = []
   for (let i = 1; i <= totalLoop; i++) {
@@ -251,32 +272,47 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
 
 // ─── Past month data ──────────────────────────────────────────────────────────
 async function fetchPastMonth(userId: string, mes: string) {
-  const start     = `${mes}-01`
-  const end       = `${offsetMes(mes, 1)}-01`
-  const prevMes   = offsetMes(mes, -1)
-  const prevStart = `${prevMes}-01`
-  const [{ data: movs }, { data: prevMovs }, { data: tcuentas }] = await Promise.all([
+  const start = `${mes}-01`
+  const end   = `${offsetMes(mes, 1)}-01`
+
+  const [{ data: movs }, { data: tcuentas }, { data: resumen }, { data: postMovs }] = await Promise.all([
+    // Movimientos del mes
     adminClient.from('movimientos')
-      .select('id, fecha, detalle, monto, moneda, tipo_movimiento, cuenta_origen, periodo_tarjeta, categorias(nombre_categoria, icono)')
-      .eq('user_id', userId)
-      .gte('fecha', start).lt('fecha', end)
-      .order('fecha', { ascending: false }),
+      .select('id, monto, moneda, tipo_movimiento, cuenta_origen, periodo_tarjeta, categorias(nombre_categoria, icono)')
+      .eq('user_id', userId).gte('fecha', start).lt('fecha', end),
+    // IDs de tarjetas (para filtrar gastos de tarjeta)
+    adminClient.from('cuentas').select('id')
+      .eq('tipo_cuenta', 'Tarjeta Credito').eq('user_id', userId),
+    // Balance actual (para reverse-calcular el saldo al fin del mes)
+    adminClient.from('dashboard_resumen').select('disponible_real').eq('user_id', userId).single(),
+    // Movimientos ARS posteriores al mes (para restar del saldo actual y llegar al saldo de fin del mes)
     adminClient.from('movimientos')
-      .select('monto, tipo_movimiento')
-      .eq('user_id', userId)
-      .gte('fecha', prevStart).lt('fecha', start),
-    adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('user_id', userId),
+      .select('monto, tipo_movimiento, cuenta_origen, moneda')
+      .eq('user_id', userId).eq('moneda', 'ARS').gte('fecha', end),
   ])
+
   const tarjetaIds = new Set((tcuentas ?? []).map(t => t.id))
   const all = movs ?? []
-  const ingresos  = all.filter(m => m.tipo_movimiento === 'Ingreso').reduce((s, m) => s + m.monto, 0)
-  const gastos    = all.filter(m => m.tipo_movimiento === 'Gasto').reduce((s, m) => s + m.monto, 0)
-  const deudaTC   = all
-    .filter(m => m.tipo_movimiento === 'Gasto' && tarjetaIds.has(m.cuenta_origen ?? '') && m.periodo_tarjeta === start)
-    .reduce((s, m) => s + m.monto, 0)
-  const prevIng   = (prevMovs ?? []).filter(m => m.tipo_movimiento === 'Ingreso').reduce((s, m) => s + m.monto, 0)
-  const prevGas   = (prevMovs ?? []).filter(m => m.tipo_movimiento === 'Gasto').reduce((s, m) => s + m.monto, 0)
-  const catMap: Record<string, { nombre: string; icono: string; total: number }> = {}
+
+  // Totales del mes
+  const ingresos = all.filter(m => m.tipo_movimiento === 'Ingreso').reduce((s, m) => s + m.monto, 0)
+  const gastos   = all.filter(m => m.tipo_movimiento === 'Gasto').reduce((s, m) => s + m.monto, 0)
+  const resultado = Math.round(ingresos - gastos)
+
+  // Saldo fin del mes = saldo actual − movimientos netos ARS no-tarjeta posteriores al mes
+  const disponibleHoy = resumen?.disponible_real ?? 0
+  const postNet = (postMovs ?? [])
+    .filter(m => !tarjetaIds.has(m.cuenta_origen ?? ''))
+    .reduce((s, m) => {
+      if (m.tipo_movimiento === 'Ingreso') return s + m.monto
+      if (m.tipo_movimiento === 'Gasto')   return s - m.monto
+      return s  // Transferencias: neutral
+    }, 0)
+  const saldoFinMes    = Math.round(disponibleHoy - postNet)
+  const saldoInicioMes = saldoFinMes - resultado
+
+  // Top categorías
+  const catMap: Record<string, { nombre: string; icono: string | null; total: number }> = {}
   for (const m of all.filter(m => m.tipo_movimiento === 'Gasto')) {
     const cat = m.categorias as any
     const key = cat?.nombre_categoria ?? 'Sin categoría'
@@ -284,12 +320,13 @@ async function fetchPastMonth(userId: string, mes: string) {
     catMap[key].total += m.monto
   }
   const topCats = Object.values(catMap).sort((a, b) => b.total - a.total).slice(0, 5)
+
   return {
-    ingresos:          Math.round(ingresos),
-    gastos:            Math.round(gastos),
-    resultado:         Math.round(ingresos - gastos),
-    deudaTC:           Math.round(deudaTC),
-    ahorroMesAnterior: Math.round(prevIng - prevGas),
+    ingresos:     Math.round(ingresos),
+    gastos:       Math.round(gastos),
+    resultado,
+    saldoFinMes,
+    saldoInicioMes,
     topCats,
   }
 }
@@ -309,11 +346,11 @@ async function fetchFutureMonth(userId: string, mes: string) {
       .select('monto, moneda')
       .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', mesStart).eq('user_id', userId),
   ])
-  const tarjetaIds     = new Set((tcuentas ?? []).map(t => t.id))
-  const cuotasTC       = (cuotasRaw ?? []).filter(m => tarjetaIds.has(m.cuenta_origen ?? ''))
-  const totalCuotasTC  = cuotasTC.reduce((s, m) => s + m.monto, 0)
-  const totalGF        = (gastosFijos ?? []).reduce((s, g) => s + (g.monto_estimado ?? 0), 0)
-  const totalIngresos  = (ingresosRaw ?? []).reduce((s, m) => s + m.monto, 0)
+  const tarjetaIds    = new Set((tcuentas ?? []).map(t => t.id))
+  const cuotasTC      = (cuotasRaw ?? []).filter(m => tarjetaIds.has(m.cuenta_origen ?? ''))
+  const totalCuotasTC = cuotasTC.reduce((s, m) => s + m.monto, 0)
+  const totalGF       = (gastosFijos ?? []).reduce((s, g) => s + (g.monto_estimado ?? 0), 0)
+  const totalIngresos = (ingresosRaw ?? []).reduce((s, m) => s + m.monto, 0)
   return {
     cuotasTC,
     totalCuotasTC:  Math.round(totalCuotasTC),
@@ -357,225 +394,234 @@ export default async function DashboardPage({
     const tarjetas        = (cuentas ?? []).filter(c => c.tipo_cuenta === 'Tarjeta Credito')
 
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
-        <DashboardBanner mes={mes} tipo="actual" />
-        <div className="flex items-start gap-3">
-          <NavArrow mes={mes} dir="prev" />
-          <div className="flex-1 min-w-0 space-y-6">
+      <>
+        {/* Banner full-bleed: fuera del max-w, -mx-8 -mt-8 cancela el p-8 del <main> */}
+        <DashboardBanner
+          mes={mes} tipo="actual"
+          metricaIzq={{ label: 'Saldo disponible', value: `$${fmt(resumen.disponible_real)}`, sub: 'Suma de billeteras y efectivo ARS' }}
+          metricaDer={{
+            label: 'Proyectado fin de mes',
+            value: <span className={proyectadoActual >= 0 ? 'text-emerald-300' : 'text-red-300'}>
+              {proyectadoActual < 0 ? '-' : ''}${fmt(Math.abs(proyectadoActual))}
+            </span>,
+            sub: 'Liquidez estimada',
+          }}
+        />
 
-            {/* ── Saldo + Proyectado (grandes, debajo del banner) ── */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Saldo disponible</p>
-                <p className="text-3xl lg:text-4xl font-black text-slate-800 leading-none">${fmt(resumen.disponible_real)}</p>
-                <p className="text-xs text-slate-400 mt-2">Suma de billeteras y efectivo ARS</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Proyectado fin de mes</p>
-                <p className={`text-3xl lg:text-4xl font-black leading-none ${proyectadoActual >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {proyectadoActual < 0 ? '-' : ''}${fmt(Math.abs(proyectadoActual))}
-                </p>
-                <p className="text-xs text-slate-400 mt-2">Liquidez estimada</p>
-              </div>
-            </div>
+        {/* Contenido con max-w */}
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex items-start gap-3">
+            <NavArrow mes={mes} dir="prev" />
+            <div className="flex-1 min-w-0 space-y-6">
 
-            {/* ── KPIs ── */}
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3 px-1">Indicadores del mes</p>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <KpiCard href="/resumen?tipo=ingresos"   label="Ingresos actuales" value={`$${fmt(resumen.ingresos_actuales)}`}      sub="Cobrados este mes"   accent="emerald" />
-                <KpiCard href="/resumen?tipo=gastos"     label="Gastos actuales"   value={`$${fmt(resumen.gastos_actuales)}`}        sub="Gastado en el mes"   accent="red"     />
-                <KpiCard href="/resumen?tipo=tarjetas"   label="Deuda tarjetas"    value={`$${fmt(resumen.deuda_tarjetas_periodo)}`} sub="Período actual"      accent="amber"   />
-                <KpiCard href="/resumen?tipo=proyectado" label="Proyectado EOM"
-                  value={`${proyectadoActual < 0 ? '-' : ''}$${fmt(Math.abs(proyectadoActual))}`}
-                  sub="Liquidez estimada" accent={proyectadoActual >= 0 ? 'emerald' : 'red'} />
-              </div>
-            </div>
-
-            {/* ── Proyecciones ── */}
-            <ProyeccionesStrip proyecciones={proyecciones} saldoBase={proyectadoActual} label="Proyecciones Mensuales" />
-
-            {/* ── Cuentas + Gastos fijos ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-50">
-                  <h2 className="text-sm font-semibold text-slate-700">Estado de cuentas</h2>
-                </div>
-                <div className="divide-y divide-slate-50">
-                  {cuentasEfectivo.map(c => {
-                    const extra = extraMap[c.id]
-                    return (
-                      <Link key={c.id} href={`/cuentas/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <Thumbnail imagenUrl={extra?.imagen_url} colorPrim={extra?.color_primario ?? '#0d3b6e'} tipo={c.tipo_cuenta} nombre={c.nombre_cuenta} moneda={c.moneda} />
-                          <div>
-                            <p className="text-sm font-medium text-slate-700">{c.nombre_cuenta}</p>
-                            <p className="text-xs text-slate-400">{labelTipo(c.tipo_cuenta)}</p>
-                          </div>
-                        </div>
-                        <p className={`text-sm font-semibold ${(c.saldo_actual ?? 0) < 0 ? 'text-red-500' : 'text-slate-800'}`}>
-                          {c.moneda === 'USD' ? 'US$' : '$'}{fmt(c.saldo_actual ?? 0)}
-                        </p>
-                      </Link>
-                    )
-                  })}
-                </div>
-                <div className="px-5 py-2 border-t border-slate-50 bg-slate-50/60">
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Tarjetas de crédito</p>
-                </div>
-                <div className="divide-y divide-slate-50">
-                  {tarjetas.map(c => {
-                    const extra  = extraMap[c.id]
-                    const cierre = c.fecha_cierre_tarjeta ? new Date(c.fecha_cierre_tarjeta + 'T12:00:00').getDate() : '—'
-                    const vence  = c.fecha_vencimiento_tarjeta ? new Date(c.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : '—'
-                    return (
-                      <Link key={c.id} href={`/tarjetas/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <Thumbnail imagenUrl={extra?.imagen_url} colorPrim={extra?.color_primario ?? '#0d3b6e'} tipo={c.tipo_cuenta} nombre={c.nombre_cuenta} moneda={c.moneda} />
-                          <div>
-                            <p className="text-sm font-medium text-slate-700">{c.nombre_cuenta}</p>
-                            <p className="text-xs text-slate-400">Cierre {cierre} · Vence {vence}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className={`text-sm font-semibold ${(c.saldo_actual ?? 0) < 0 ? 'text-red-500' : 'text-slate-800'}`}>
-                            ${fmt(c.saldo_actual ?? 0)}
-                          </p>
-                          <p className="text-xs text-slate-400">acumulado</p>
-                        </div>
-                      </Link>
-                    )
-                  })}
+              {/* KPIs */}
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3 px-1">Indicadores del mes</p>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <KpiCard href="/resumen?tipo=ingresos"   label="Ingresos actuales" value={`$${fmt(resumen.ingresos_actuales)}`}      sub="Cobrados este mes"   accent="emerald" />
+                  <KpiCard href="/resumen?tipo=gastos"     label="Gastos actuales"   value={`$${fmt(resumen.gastos_actuales)}`}        sub="Gastado en el mes"   accent="red"     />
+                  <KpiCard href="/resumen?tipo=tarjetas"   label="Deuda tarjetas"    value={`$${fmt(resumen.deuda_tarjetas_periodo)}`} sub="Período actual"      accent="amber"   />
+                  <KpiCard href="/resumen?tipo=proyectado" label="Proyectado EOM"
+                    value={`${proyectadoActual < 0 ? '-' : ''}$${fmt(Math.abs(proyectadoActual))}`}
+                    sub="Liquidez estimada" accent={proyectadoActual >= 0 ? 'emerald' : 'red'} />
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                <div className="px-5 py-4 flex items-center justify-between border-b border-slate-50">
-                  <div>
-                    <h2 className="text-sm font-semibold text-slate-700">Gastos fijos por vencer</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Pendientes este mes · día {todayDay} en adelante</p>
+              {/* Proyecciones */}
+              <ProyeccionesStrip proyecciones={proyecciones} saldoBase={proyectadoActual} label="Proyecciones Mensuales" />
+
+              {/* Cuentas + Gastos fijos */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-50">
+                    <h2 className="text-sm font-semibold text-slate-700">Estado de cuentas</h2>
                   </div>
-                  <Link href="/gastos-fijos" className="text-xs text-blue-500 hover:text-blue-700 underline whitespace-nowrap">Ver todos</Link>
-                </div>
-                {gastosFijosProximos.length === 0 ? (
-                  <div className="px-5 py-10 text-center">
-                    <p className="text-sm text-emerald-600 font-medium">✓ Todo al día</p>
-                    <p className="text-xs text-slate-400 mt-1">No quedan gastos fijos pendientes este mes</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-50 max-h-96 overflow-y-auto">
-                    {gastosFijosProximos.map(g => {
-                      const esTarjeta = (g.cuentas as any)?.tipo_cuenta === 'Tarjeta Credito'
-                      const hoy       = g.dia_vencimiento === todayDay
-                      const diasResta = (g.dia_vencimiento ?? 0) - todayDay
+                  <div className="divide-y divide-slate-50">
+                    {cuentasEfectivo.map(c => {
+                      const extra = extraMap[c.id]
                       return (
-                        <div key={g.id} className="flex items-center justify-between px-5 py-3">
+                        <Link key={c.id} href={`/cuentas/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
                           <div className="flex items-center gap-3">
-                            <div className={`w-2 h-2 rounded-full shrink-0 ${hoy ? 'bg-red-400 animate-pulse' : diasResta <= 3 ? 'bg-amber-400' : esTarjeta ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                            <Thumbnail imagenUrl={extra?.imagen_url} colorPrim={extra?.color_primario ?? '#0d3b6e'} tipo={c.tipo_cuenta} nombre={c.nombre_cuenta} moneda={c.moneda} />
                             <div>
-                              <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
-                              <p className="text-xs text-slate-400">Día {g.dia_vencimiento} · {(g.cuentas as any)?.nombre_cuenta ?? '—'}</p>
+                              <p className="text-sm font-medium text-slate-700">{c.nombre_cuenta}</p>
+                              <p className="text-xs text-slate-400">{labelTipo(c.tipo_cuenta)}</p>
                             </div>
                           </div>
-                          <div className="text-right shrink-0 ml-4">
-                            <p className="text-sm font-medium text-slate-800">${fmt(g.monto_estimado ?? 0)}</p>
-                            <p className={`text-xs ${hoy ? 'text-red-500 font-medium' : diasResta <= 3 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                              {hoy ? 'vence hoy' : diasResta === 1 ? 'mañana' : `en ${diasResta} días`}
-                            </p>
-                          </div>
-                        </div>
+                          <p className={`text-sm font-semibold ${(c.saldo_actual ?? 0) < 0 ? 'text-red-500' : 'text-slate-800'}`}>
+                            {c.moneda === 'USD' ? 'US$' : '$'}{fmt(c.saldo_actual ?? 0)}
+                          </p>
+                        </Link>
                       )
                     })}
                   </div>
-                )}
-              </div>
-            </div>
+                  <div className="px-5 py-2 border-t border-slate-50 bg-slate-50/60">
+                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Tarjetas de crédito</p>
+                  </div>
+                  <div className="divide-y divide-slate-50">
+                    {tarjetas.map(c => {
+                      const extra  = extraMap[c.id]
+                      const cierre = c.fecha_cierre_tarjeta ? new Date(c.fecha_cierre_tarjeta + 'T12:00:00').getDate() : '—'
+                      const vence  = c.fecha_vencimiento_tarjeta ? new Date(c.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : '—'
+                      return (
+                        <Link key={c.id} href={`/tarjetas/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <Thumbnail imagenUrl={extra?.imagen_url} colorPrim={extra?.color_primario ?? '#0d3b6e'} tipo={c.tipo_cuenta} nombre={c.nombre_cuenta} moneda={c.moneda} />
+                            <div>
+                              <p className="text-sm font-medium text-slate-700">{c.nombre_cuenta}</p>
+                              <p className="text-xs text-slate-400">Cierre {cierre} · Vence {vence}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-sm font-semibold ${(c.saldo_actual ?? 0) < 0 ? 'text-red-500' : 'text-slate-800'}`}>
+                              ${fmt(c.saldo_actual ?? 0)}
+                            </p>
+                            <p className="text-xs text-slate-400">acumulado</p>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
 
+                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                  <div className="px-5 py-4 flex items-center justify-between border-b border-slate-50">
+                    <div>
+                      <h2 className="text-sm font-semibold text-slate-700">Gastos fijos por vencer</h2>
+                      <p className="text-xs text-slate-400 mt-0.5">Pendientes este mes · día {todayDay} en adelante</p>
+                    </div>
+                    <Link href="/gastos-fijos" className="text-xs text-blue-500 hover:text-blue-700 underline whitespace-nowrap">Ver todos</Link>
+                  </div>
+                  {gastosFijosProximos.length === 0 ? (
+                    <div className="px-5 py-10 text-center">
+                      <p className="text-sm text-emerald-600 font-medium">✓ Todo al día</p>
+                      <p className="text-xs text-slate-400 mt-1">No quedan gastos fijos pendientes este mes</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-50 max-h-96 overflow-y-auto">
+                      {gastosFijosProximos.map(g => {
+                        const esTarjeta = (g.cuentas as any)?.tipo_cuenta === 'Tarjeta Credito'
+                        const hoy       = g.dia_vencimiento === todayDay
+                        const diasResta = (g.dia_vencimiento ?? 0) - todayDay
+                        return (
+                          <div key={g.id} className="flex items-center justify-between px-5 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full shrink-0 ${hoy ? 'bg-red-400 animate-pulse' : diasResta <= 3 ? 'bg-amber-400' : esTarjeta ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                              <div>
+                                <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
+                                <p className="text-xs text-slate-400">Día {g.dia_vencimiento} · {(g.cuentas as any)?.nombre_cuenta ?? '—'}</p>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0 ml-4">
+                              <p className="text-sm font-medium text-slate-800">${fmt(g.monto_estimado ?? 0)}</p>
+                              <p className={`text-xs ${hoy ? 'text-red-500 font-medium' : diasResta <= 3 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                {hoy ? 'vence hoy' : diasResta === 1 ? 'mañana' : `en ${diasResta} días`}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+            <NavArrow mes={mes} dir="next" />
           </div>
-          <NavArrow mes={mes} dir="next" />
         </div>
         {params.tour === '1' && <TourTrigger />}
-      </div>
+      </>
     )
   }
 
   // ── PAST MONTH ─────────────────────────────────────────────────────────────
   if (tipo === 'pasado') {
-    const past    = await fetchPastMonth(user.id, mes)
-    const maxCat  = past.topCats[0]?.total ?? 1
+    const past   = await fetchPastMonth(user.id, mes)
+    const maxCat = past.topCats[0]?.total ?? 1
 
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
+      <>
         <DashboardBanner mes={mes} tipo="pasado" />
-        <div className="flex items-start gap-3">
-          <NavArrow mes={mes} dir="prev" />
-          <div className="flex-1 min-w-0 space-y-6">
 
-            {/* ── 3 tarjetas: ahorro anterior, ingresos, gastos ── */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className={`rounded-2xl border p-5 ${past.ahorroMesAnterior >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Ahorro mes anterior</p>
-                <p className={`text-2xl font-bold leading-none ${past.ahorroMesAnterior >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
-                  {past.ahorroMesAnterior >= 0 ? '+' : '-'}${fmt(Math.abs(past.ahorroMesAnterior))}
-                </p>
-                <p className="text-xs text-slate-400 mt-1.5">Lo que quedó del mes anterior</p>
-              </div>
-              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Ingresos del mes</p>
-                <p className="text-2xl font-bold leading-none text-emerald-700">${fmt(past.ingresos)}</p>
-                <p className="text-xs text-slate-400 mt-1.5">Acreditado en el mes</p>
-              </div>
-              <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Gastos del mes</p>
-                <p className="text-2xl font-bold leading-none text-red-700">${fmt(past.gastos)}</p>
-                <p className="text-xs text-slate-400 mt-1.5">Gastado en el mes</p>
-              </div>
-            </div>
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex items-start gap-3">
+            <NavArrow mes={mes} dir="prev" />
+            <div className="flex-1 min-w-0 space-y-6">
 
-            {/* ── Resultado grande ── */}
-            <div className={`rounded-2xl border p-7 ${past.resultado >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">
-                Dinero que quedó este mes y pasa al siguiente
-              </p>
-              <p className={`text-5xl font-black leading-none ${past.resultado >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                {past.resultado >= 0 ? '+' : '-'}${fmt(Math.abs(past.resultado))}
-              </p>
-              <p className="text-xs text-slate-400 mt-3">Ingresos − Gastos del mes</p>
-            </div>
-
-            {/* ── Top gastos por categoría ── */}
-            {past.topCats.length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-50">
-                  <h2 className="text-sm font-semibold text-slate-700">Top gastos por categoría</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Basado en movimientos reales del mes</p>
+              {/* ── Fila 1: Ingresos · Gastos · Ahorro del mes ── */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Ingresos del mes</p>
+                  <p className="text-2xl font-bold leading-none text-emerald-700">${fmt(past.ingresos)}</p>
+                  <p className="text-xs text-slate-400 mt-1.5">Acreditado en el mes</p>
                 </div>
-                <div className="px-5 py-4 space-y-3">
-                  {past.topCats.map(cat => {
-                    const pct = Math.round((cat.total / maxCat) * 100)
-                    return (
-                      <div key={cat.nombre}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-slate-700 flex items-center gap-2">
-                            <IconoCategoria icono={cat.icono} size={18} />
-                            {cat.nombre}
-                          </span>
-                          <span className="text-sm font-semibold text-slate-800">${fmt(cat.total)}</span>
-                        </div>
-                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--accent, #1a6b5a)' }} />
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Gastos del mes</p>
+                  <p className="text-2xl font-bold leading-none text-red-700">${fmt(past.gastos)}</p>
+                  <p className="text-xs text-slate-400 mt-1.5">Gastado en el mes</p>
+                </div>
+                <div className={`rounded-2xl border p-5 ${past.resultado >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Ahorro del mes</p>
+                  <p className={`text-2xl font-bold leading-none ${past.resultado >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+                    {past.resultado >= 0 ? '+' : '-'}${fmt(Math.abs(past.resultado))}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1.5">Ingresos − Gastos</p>
                 </div>
               </div>
-            )}
 
+              {/* ── Fila 2: Empezó con · Terminó con (grandes) ── */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Empezó el mes con</p>
+                  <p className={`text-3xl lg:text-4xl font-black leading-none ${past.saldoInicioMes >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
+                    {past.saldoInicioMes < 0 ? '-' : ''}${fmt(Math.abs(past.saldoInicioMes))}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-2">Saldo disponible al 1º del mes</p>
+                </div>
+                <div className={`rounded-2xl border p-6 shadow-sm ${past.saldoFinMes >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Terminó el mes con</p>
+                  <p className={`text-3xl lg:text-4xl font-black leading-none ${past.saldoFinMes >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                    {past.saldoFinMes < 0 ? '-' : ''}${fmt(Math.abs(past.saldoFinMes))}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-2">Pasa al mes siguiente</p>
+                </div>
+              </div>
+
+              {/* ── Top gastos por categoría ── */}
+              {past.topCats.length > 0 && (
+                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-50">
+                    <h2 className="text-sm font-semibold text-slate-700">Top gastos por categoría</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Basado en movimientos reales del mes</p>
+                  </div>
+                  <div className="px-5 py-4 space-y-3">
+                    {past.topCats.map(cat => {
+                      const pct = Math.round((cat.total / maxCat) * 100)
+                      return (
+                        <div key={cat.nombre}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm text-slate-700 flex items-center gap-2">
+                              <IconoCategoria icono={cat.icono} size={18} />
+                              {cat.nombre}
+                            </span>
+                            <span className="text-sm font-semibold text-slate-800">${fmt(cat.total)}</span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--accent, #1a6b5a)' }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+            </div>
+            <NavArrow mes={mes} dir="next" />
           </div>
-          <NavArrow mes={mes} dir="next" />
         </div>
-      </div>
+      </>
     )
   }
 
@@ -585,115 +631,117 @@ export default async function DashboardPage({
     calcularProyecciones(user.id, mes, 4),
   ])
   const gastosProyectados = future.totalGF + future.totalCuotasTC
-  // Saldo al inicio del mes = lo que proyecta al final, deshaciendo los movimientos del mes
-  const saldoInicio = saldoMes - future.totalIngresos + gastosProyectados
+  const saldoInicio       = saldoMes - future.totalIngresos + gastosProyectados
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <>
       <DashboardBanner mes={mes} tipo="futuro" />
-      <div className="flex items-start gap-3">
-        <NavArrow mes={mes} dir="prev" />
-        <div className="flex-1 min-w-0 space-y-6">
 
-          {/* ── Liquidez estimada (grande) ── */}
-          <div className={`rounded-2xl border p-7 ${saldoMes >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">
-              Liquidez estimada al cierre de {mesLabel(mes)}
-            </p>
-            <p className={`text-5xl font-black leading-none ${saldoMes >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-              {saldoMes < 0 ? '-' : ''}${fmt(Math.abs(saldoMes))}
-            </p>
-          </div>
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-start gap-3">
+          <NavArrow mes={mes} dir="prev" />
+          <div className="flex-1 min-w-0 space-y-6">
 
-          {/* ── Cómo se calcula (fórmula estilo página de proyección) ── */}
-          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Proyección del período</p>
-            </div>
-            {[
-              { label: 'Saldo proyectado inicio del mes',       value: saldoInicio,           color: 'var(--accent, #1a6b5a)', signo: ''  },
-              { label: `Ingresos cargados`,                     value: future.totalIngresos,  color: 'var(--accent, #1a6b5a)', signo: '+' },
-              { label: 'Gastos fijos en efectivo / banco',      value: future.totalGF,        color: '#dc2626',                signo: '-' },
-              { label: 'Gastos tarjeta del período',            value: future.totalCuotasTC,  color: '#d97706',                signo: '-' },
-            ].map(row => (
-              <div key={row.label} className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50 last:border-0">
-                <p className="text-sm text-slate-600">{row.label}</p>
-                <p className="text-sm font-semibold" style={{ color: row.color }}>
-                  {row.signo ? `${row.signo} ` : ''}${fmt(Math.abs(row.value))}
-                </p>
-              </div>
-            ))}
-            <div className="flex items-center justify-between px-5 py-4 bg-slate-50 border-t border-slate-100">
-              <p className="text-sm font-semibold text-slate-700">Liquidez estimada</p>
-              <p className="text-lg font-bold" style={{ color: saldoMes >= 0 ? '#1a6b5a' : '#dc2626' }}>
-                = {saldoMes < 0 ? '-' : ''}${fmt(Math.abs(saldoMes))}
+            {/* Liquidez estimada */}
+            <div className={`rounded-2xl border p-7 ${saldoMes >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">
+                Liquidez estimada al cierre de {mesLabel(mes)}
+              </p>
+              <p className={`text-5xl font-black leading-none ${saldoMes >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                {saldoMes < 0 ? '-' : ''}${fmt(Math.abs(saldoMes))}
               </p>
             </div>
-          </div>
 
-          {/* ── Proyecciones siguientes ── */}
-          <ProyeccionesStrip proyecciones={proyecciones} saldoBase={saldoMes}
-            label={`Proyecciones desde ${mesLabel(mes).split(' ')[0]}`} />
-
-          {/* ── Gastos fijos + Cuotas TC ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Fórmula */}
             <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-              <div className="px-5 py-4 flex items-center justify-between border-b border-slate-50">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-700">Gastos fijos del mes</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Servicios y suscripciones activos</p>
+              <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Proyección del período</p>
+              </div>
+              {[
+                { label: 'Saldo proyectado inicio del mes',  value: saldoInicio,          color: 'var(--accent, #1a6b5a)', signo: ''  },
+                { label: 'Ingresos cargados',                value: future.totalIngresos,  color: 'var(--accent, #1a6b5a)', signo: '+' },
+                { label: 'Gastos fijos en efectivo / banco', value: future.totalGF,        color: '#dc2626',                signo: '-' },
+                { label: 'Gastos tarjeta del período',       value: future.totalCuotasTC,  color: '#d97706',                signo: '-' },
+              ].map(row => (
+                <div key={row.label} className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50 last:border-0">
+                  <p className="text-sm text-slate-600">{row.label}</p>
+                  <p className="text-sm font-semibold" style={{ color: row.color }}>
+                    {row.signo ? `${row.signo} ` : ''}${fmt(Math.abs(row.value))}
+                  </p>
                 </div>
-                <Link href="/gastos-fijos" className="text-xs text-blue-500 hover:text-blue-700 underline">Ver todos</Link>
-              </div>
-              <div className="divide-y divide-slate-50 max-h-80 overflow-y-auto">
-                {future.gastosFijos.map((g: any) => (
-                  <div key={g.id} className="flex items-center justify-between px-5 py-3">
-                    <div>
-                      <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
-                      <p className="text-xs text-slate-400">Día {g.dia_vencimiento} · {(g.cuentas as any)?.nombre_cuenta ?? '—'}</p>
-                    </div>
-                    <p className="text-sm font-medium text-slate-800">${fmt(g.monto_estimado ?? 0)}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="px-5 py-3 border-t border-slate-50 bg-slate-50/60 flex justify-between">
-                <p className="text-xs text-slate-500 font-medium">Total</p>
-                <p className="text-sm font-bold text-slate-800">${fmt(future.totalGF)}</p>
+              ))}
+              <div className="flex items-center justify-between px-5 py-4 bg-slate-50 border-t border-slate-100">
+                <p className="text-sm font-semibold text-slate-700">Liquidez estimada</p>
+                <p className="text-lg font-bold" style={{ color: saldoMes >= 0 ? '#1a6b5a' : '#dc2626' }}>
+                  = {saldoMes < 0 ? '-' : ''}${fmt(Math.abs(saldoMes))}
+                </p>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-50">
-                <h2 className="text-sm font-semibold text-slate-700">Cuotas de tarjeta del período</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Consumos ya registrados en este ciclo</p>
-              </div>
-              {future.cuotasTC.length === 0 ? (
-                <div className="px-5 py-10 text-center">
-                  <p className="text-sm text-slate-400">Sin cuotas registradas para este período</p>
+            {/* Proyecciones siguientes */}
+            <ProyeccionesStrip proyecciones={proyecciones} saldoBase={saldoMes}
+              label={`Proyecciones desde ${mesLabel(mes).split(' ')[0]}`} />
+
+            {/* Gastos fijos + Cuotas TC */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                <div className="px-5 py-4 flex items-center justify-between border-b border-slate-50">
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-700">Gastos fijos del mes</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Servicios y suscripciones activos</p>
+                  </div>
+                  <Link href="/gastos-fijos" className="text-xs text-blue-500 hover:text-blue-700 underline">Ver todos</Link>
                 </div>
-              ) : (
-                <>
-                  <div className="divide-y divide-slate-50 max-h-64 overflow-y-auto">
-                    {future.cuotasTC.map((m: any) => (
-                      <div key={m.id} className="flex items-center justify-between px-5 py-2.5">
-                        <p className="text-sm text-slate-700 truncate">{m.detalle}</p>
-                        <p className="text-sm font-medium text-slate-800 shrink-0 ml-3">${fmt(m.monto)}</p>
+                <div className="divide-y divide-slate-50 max-h-80 overflow-y-auto">
+                  {future.gastosFijos.map((g: any) => (
+                    <div key={g.id} className="flex items-center justify-between px-5 py-3">
+                      <div>
+                        <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
+                        <p className="text-xs text-slate-400">Día {g.dia_vencimiento} · {(g.cuentas as any)?.nombre_cuenta ?? '—'}</p>
                       </div>
-                    ))}
-                  </div>
-                  <div className="px-5 py-3 border-t border-slate-50 bg-slate-50/60 flex justify-between">
-                    <p className="text-xs text-slate-500 font-medium">Total</p>
-                    <p className="text-sm font-bold text-slate-800">${fmt(future.totalCuotasTC)}</p>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+                      <p className="text-sm font-medium text-slate-800">${fmt(g.monto_estimado ?? 0)}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="px-5 py-3 border-t border-slate-50 bg-slate-50/60 flex justify-between">
+                  <p className="text-xs text-slate-500 font-medium">Total</p>
+                  <p className="text-sm font-bold text-slate-800">${fmt(future.totalGF)}</p>
+                </div>
+              </div>
 
+              <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-50">
+                  <h2 className="text-sm font-semibold text-slate-700">Cuotas de tarjeta del período</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Consumos ya registrados en este ciclo</p>
+                </div>
+                {future.cuotasTC.length === 0 ? (
+                  <div className="px-5 py-10 text-center">
+                    <p className="text-sm text-slate-400">Sin cuotas registradas para este período</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="divide-y divide-slate-50 max-h-64 overflow-y-auto">
+                      {future.cuotasTC.map((m: any) => (
+                        <div key={m.id} className="flex items-center justify-between px-5 py-2.5">
+                          <p className="text-sm text-slate-700 truncate">{m.detalle}</p>
+                          <p className="text-sm font-medium text-slate-800 shrink-0 ml-3">${fmt(m.monto)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="px-5 py-3 border-t border-slate-50 bg-slate-50/60 flex justify-between">
+                      <p className="text-xs text-slate-500 font-medium">Total</p>
+                      <p className="text-sm font-bold text-slate-800">${fmt(future.totalCuotasTC)}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+          </div>
+          <NavArrow mes={mes} dir="next" />
         </div>
-        <NavArrow mes={mes} dir="next" />
       </div>
-    </div>
+    </>
   )
 }
 
