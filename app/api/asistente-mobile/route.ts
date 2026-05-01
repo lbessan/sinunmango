@@ -4,13 +4,12 @@ import { adminClient } from '@/lib/supabase/admin'
 
 // ─── POST /api/asistente-mobile ───────────────────────────────────────────────
 // Non-streaming version of /api/asistente for the mobile app.
-// Returns a JSON response instead of an SSE stream.
-//
-// Body: { messages: [{role, content}] }
+// Returns JSON: { text: string, accion: object | null }
 // Auth: Authorization: Bearer <supabase-access-token>
-// Response: { text: string, accion: object | null }
 
 export const runtime = 'nodejs'
+
+const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
 export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
@@ -28,51 +27,154 @@ export async function POST(req: NextRequest) {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>
   }
 
-  // ── Load user context ────────────────────────────────────────────────────
-  const firstOfMonth = new Date(); firstOfMonth.setDate(1)
-  const firstOfMonthStr = firstOfMonth.toISOString().slice(0, 10)
+  // ── Rangos de fechas ─────────────────────────────────────────────────────
+  const today      = new Date()
+  const todayStr   = today.toISOString().slice(0, 10)
+  const hace6Meses = new Date(today.getFullYear(), today.getMonth() - 5, 1)
+  const hace6Str   = hace6Meses.toISOString().slice(0, 10)
 
-  const [{ data: cuentas }, { data: categorias }, { data: movRecientes }, { data: movMes }] =
-    await Promise.all([
-      adminClient.from('cuentas').select('id, nombre_cuenta, tipo_cuenta, moneda').eq('activa', true).eq('user_id', user.id),
-      adminClient.from('categorias').select('id, nombre_categoria, tipo_default').eq('user_id', user.id).order('nombre_categoria'),
-      adminClient.from('movimientos').select('fecha, detalle, monto, moneda, tipo_movimiento').eq('user_id', user.id).order('fecha', { ascending: false }).limit(50),
-      adminClient.from('movimientos').select('monto, moneda, tipo_movimiento').eq('user_id', user.id).gte('fecha', firstOfMonthStr),
-    ])
+  // ── Carga paralela de contexto ───────────────────────────────────────────
+  const [
+    { data: cuentasSaldos },
+    { data: resumen },
+    { data: categorias },
+    { data: gastosFijos },
+    { data: params },
+    { data: movHistorico },
+    { data: movRecientes },
+  ] = await Promise.all([
+    adminClient
+      .from('saldo_actual_cuentas')
+      .select('id, nombre_cuenta, tipo_cuenta, moneda, saldo_actual')
+      .eq('activa', true)
+      .eq('user_id', user.id),
+    adminClient
+      .from('dashboard_resumen')
+      .select('*')
+      .eq('user_id', user.id)
+      .single(),
+    adminClient
+      .from('categorias')
+      .select('id, nombre_categoria, tipo_default')
+      .eq('user_id', user.id)
+      .order('nombre_categoria'),
+    adminClient
+      .from('gastos_fijos')
+      .select('nombre_gasto, monto_estimado, moneda, dia_vencimiento, cuentas(nombre_cuenta, tipo_cuenta)')
+      .eq('activo', true)
+      .eq('user_id', user.id)
+      .order('dia_vencimiento'),
+    adminClient
+      .from('parametros')
+      .select('valor')
+      .eq('id', 'Dolar_Tarjeta_BNA')
+      .eq('user_id', user.id)
+      .single(),
+    adminClient
+      .from('movimientos')
+      .select('fecha, monto, moneda, tipo_movimiento, categorias(nombre_categoria)')
+      .eq('user_id', user.id)
+      .gte('fecha', hace6Str)
+      .order('fecha', { ascending: false }),
+    adminClient
+      .from('movimientos')
+      .select('fecha, detalle, monto, moneda, tipo_movimiento, categorias(nombre_categoria), cuentas(nombre_cuenta)')
+      .eq('user_id', user.id)
+      .order('fecha', { ascending: false })
+      .limit(80),
+  ])
 
-  const cuentasStr    = (cuentas ?? []).map(c => `- ${c.nombre_cuenta} (${c.tipo_cuenta}, ${c.moneda}) [id: ${c.id}]`).join('\n')
-  const categoriasStr = (categorias ?? []).map(c => `- ${c.nombre_categoria} (${c.tipo_default}) [id: ${c.id}]`).join('\n')
-  const movStr        = (movRecientes ?? []).map(m =>
-    `- ${m.fecha}: ${m.detalle ?? '—'} $${m.monto} ${m.moneda} (${m.tipo_movimiento})`
+  // ── Resúmenes mensuales ───────────────────────────────────────────────────
+  type MesResumen = { gastos: number; ingresos: number; topCats: Record<string, number> }
+  const porMes: Record<string, MesResumen> = {}
+  for (const m of (movHistorico ?? [])) {
+    const mes = m.fecha.slice(0, 7)
+    if (!porMes[mes]) porMes[mes] = { gastos: 0, ingresos: 0, topCats: {} }
+    const monto = Number(m.monto)
+    if (m.tipo_movimiento === 'Gasto') {
+      porMes[mes].gastos += monto
+      const cat = (m.categorias as any)?.nombre_categoria ?? 'Sin categoría'
+      porMes[mes].topCats[cat] = (porMes[mes].topCats[cat] ?? 0) + monto
+    } else if (m.tipo_movimiento === 'Ingreso') {
+      porMes[mes].ingresos += monto
+    }
+  }
+  const resumenMensualStr = Object.keys(porMes).sort().reverse().map(mes => {
+    const r = porMes[mes]
+    const ahorro = r.ingresos - r.gastos
+    const topCats = Object.entries(r.topCats).sort((a, b) => b[1] - a[1]).slice(0, 4)
+      .map(([cat, total]) => `    · ${cat}: $${fmt(Math.round(total))}`).join('\n')
+    return `  ${mes}:\n    Ingresos: $${fmt(Math.round(r.ingresos))} | Gastos: $${fmt(Math.round(r.gastos))} | Ahorro: ${ahorro >= 0 ? '+' : ''}$${fmt(Math.round(ahorro))}\n${topCats}`
+  }).join('\n')
+
+  // ── Strings de contexto ───────────────────────────────────────────────────
+  const dolar = params?.valor ?? 1410
+  const cuentasStr = (cuentasSaldos ?? []).map(c =>
+    `  - ${c.nombre_cuenta} (${c.tipo_cuenta}): ${c.moneda === 'USD' ? 'US$' : '$'}${fmt(c.saldo_actual ?? 0)} [id: ${c.id}]`
   ).join('\n')
-  const gastosMes   = (movMes ?? []).filter(m => m.tipo_movimiento === 'Gasto').reduce((s, m) => s + Number(m.monto), 0)
-  const ingresosMes = (movMes ?? []).filter(m => m.tipo_movimiento === 'Ingreso').reduce((s, m) => s + Number(m.monto), 0)
-  const resumenMes  = `Gastos del mes: $${gastosMes.toLocaleString('es-AR')} ARS | Ingresos del mes: $${ingresosMes.toLocaleString('es-AR')} ARS`
+  const gastosFijosStr = (gastosFijos ?? []).map(g => {
+    const monto = g.moneda === 'USD' ? `US$${g.monto_estimado} (~$${fmt(Math.round((g.monto_estimado ?? 0) * dolar))})` : `$${fmt(g.monto_estimado ?? 0)}`
+    return `  - ${g.nombre_gasto}: ${monto} · día ${g.dia_vencimiento ?? '—'} · ${(g.cuentas as any)?.nombre_cuenta ?? '—'}`
+  }).join('\n')
+  const totalGF_ef = (gastosFijos ?? []).filter(g => (g.cuentas as any)?.tipo_cuenta !== 'Tarjeta Credito')
+    .reduce((s, g) => s + (g.moneda === 'USD' ? (g.monto_estimado ?? 0) * dolar : (g.monto_estimado ?? 0)), 0)
+  const totalGF_tc = (gastosFijos ?? []).filter(g => (g.cuentas as any)?.tipo_cuenta === 'Tarjeta Credito')
+    .reduce((s, g) => s + (g.moneda === 'USD' ? (g.monto_estimado ?? 0) * dolar : (g.monto_estimado ?? 0)), 0)
+  const movStr = (movRecientes ?? []).map(m => {
+    const cat = (m.categorias as any)?.nombre_categoria ?? ''
+    const cta = (m.cuentas as any)?.nombre_cuenta ?? ''
+    return `  ${m.fecha} | ${m.tipo_movimiento.padEnd(8)} | $${String(m.monto).padStart(10)} ${m.moneda} | ${m.detalle ?? '—'}${cat ? ' [' + cat + ']' : ''}${cta ? ' (' + cta + ')' : ''}`
+  }).join('\n')
+  const categoriasStr = (categorias ?? []).map(c => `  - ${c.nombre_categoria} (${c.tipo_default}) [id: ${c.id}]`).join('\n')
 
-  const today = new Date().toISOString().slice(0, 10)
-
+  // ── System prompt ─────────────────────────────────────────────────────────
   const systemPrompt = `Sos Manguito, el asistente financiero personal de sinunmango — la app de finanzas de ${user.email}.
-Tu personalidad: sos amigable, directo y un poco informal (tuteo siempre). Usás emojis con moderación. Sos muy bueno con los números y no te perdés en detalles innecesarios.
-Hoy es ${today}.
+Personalidad: amigable, directo, informal (tuteo siempre). Emojis con moderación. Preciso con los números. No inventás datos.
+Hoy es ${todayStr} (${new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}).
+Cotización dólar BNA tarjeta: $${fmt(dolar)} ARS.
 
-RESUMEN DEL MES ACTUAL:
-${resumenMes}
+═══════════════════════════════════════
+ESTADO FINANCIERO ACTUAL
+═══════════════════════════════════════
 
-CUENTAS DISPONIBLES:
-${cuentasStr || '(sin cuentas configuradas)'}
+SALDO DISPONIBLE TOTAL: $${fmt(resumen?.disponible_real ?? 0)} ARS
 
-CATEGORÍAS DISPONIBLES:
-${categoriasStr || '(sin categorías)'}
+SALDOS POR CUENTA:
+${cuentasStr || '  (sin cuentas)'}
 
-ÚLTIMOS 50 MOVIMIENTOS:
-${movStr || '(sin movimientos recientes)'}
+DEUDA TARJETAS PERÍODO ACTUAL: $${fmt(resumen?.deuda_tarjetas_periodo ?? 0)} ARS
+INGRESOS FUTUROS CARGADOS (este mes): $${fmt(resumen?.ingresos_futuros_mes ?? 0)} ARS
 
-TUS CAPACIDADES:
-1. Respondés preguntas sobre finanzas personales
-2. Analizás los movimientos y hacés observaciones útiles
-3. PODÉS REGISTRAR MOVIMIENTOS directamente cuando el usuario te lo pide
+═══════════════════════════════════════
+RESÚMENES MENSUALES (últimos 6 meses)
+═══════════════════════════════════════
+${resumenMensualStr || '  (sin datos)'}
 
-PARA REGISTRAR UN MOVIMIENTO, respondé con un bloque JSON especial al FINAL de tu mensaje:
+═══════════════════════════════════════
+GASTOS FIJOS ACTIVOS
+═══════════════════════════════════════
+${gastosFijosStr || '  (sin gastos fijos)'}
+  → Total efectivo/banco: $${fmt(Math.round(totalGF_ef))} ARS/mes
+  → Total tarjetas (recurrente): $${fmt(Math.round(totalGF_tc))} ARS/mes
+
+═══════════════════════════════════════
+ÚLTIMOS 80 MOVIMIENTOS
+═══════════════════════════════════════
+${movStr || '  (sin movimientos)'}
+
+═══════════════════════════════════════
+CATEGORÍAS DISPONIBLES (para registrar)
+═══════════════════════════════════════
+${categoriasStr || '  (sin categorías)'}
+
+═══════════════════════════════════════
+CAPACIDADES
+═══════════════════════════════════════
+1. Respondés preguntas sobre los datos de arriba
+2. Analizás patrones y tendencias
+3. PODÉS REGISTRAR MOVIMIENTOS cuando el usuario te lo pide
+
+PARA REGISTRAR UN MOVIMIENTO, incluí este bloque al FINAL de tu respuesta:
 <accion>
 {
   "tipo": "nuevo_movimiento",
@@ -83,17 +185,15 @@ PARA REGISTRAR UN MOVIMIENTO, respondé con un bloque JSON especial al FINAL de 
   "cuotas": 1,
   "cuenta_id": "uuid-de-la-cuenta",
   "categoria_id": "uuid-de-la-categoria",
-  "fecha": "${today}"
+  "fecha": "${todayStr}"
 }
 </accion>
 
 REGLAS CRÍTICAS:
-- El campo "monto" SIEMPRE es POSITIVO (ej: 5000, nunca -5000)
-- Para gastos: "tipo_movimiento": "Gasto" — Para ingresos/sueldos/cobros: "tipo_movimiento": "Ingreso"
-- El signo lo determina tipo_movimiento, NUNCA el monto
-- Siempre identificá cuenta y categoría de la lista; si no podés, pedí aclaración
-- Contestá en español, de forma concisa y amigable
-- No inventes datos que no están en el contexto`
+- "monto" SIEMPRE POSITIVO — el signo lo determina tipo_movimiento
+- Nunca inventes datos. Si no está en el contexto, decilo
+- Si preguntan por "el mes pasado", buscá en los resúmenes mensuales
+- Contestá en español, conciso y amigable`
 
   // ── Call Claude (no streaming) ────────────────────────────────────────────
   const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -104,7 +204,7 @@ REGLAS CRÍTICAS:
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model:      'claude-opus-4-6',
+      model:      'claude-sonnet-4-6',
       max_tokens: 1024,
       system:     systemPrompt,
       stream:     false,
@@ -121,7 +221,7 @@ REGLAS CRÍTICAS:
   const claudeData = await claudeRes.json()
   const fullText   = claudeData.content?.[0]?.text ?? ''
 
-  // ── Extract <accion> block if present ────────────────────────────────────
+  // ── Extraer bloque <accion> ───────────────────────────────────────────────
   const accionMatch = fullText.match(/<accion>([\s\S]*?)<\/accion>/)
   let accion: Record<string, unknown> | null = null
   let text = fullText
