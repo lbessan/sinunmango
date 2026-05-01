@@ -5,7 +5,6 @@ import {
   Platform, Image, Animated,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import * as Crypto from 'expo-crypto'
 import { supabase } from '@/lib/supabase'
@@ -303,12 +302,7 @@ export default function ManguitoScreen() {
     <SafeAreaView style={[s.safe, { backgroundColor: theme.bg }]} edges={['top']}>
 
       {/* ── BANNER ── */}
-      <LinearGradient
-        colors={theme.balanceBg}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={s.banner}
-      >
+      <View style={[s.banner, { backgroundColor: theme.primary }]}>
         <View style={s.bannerCenter}>
           <View style={s.avatarLarge}>
             <Image source={require('@/assets/manguito.png')} style={s.avatarLargeImg} resizeMode="contain" />
@@ -319,7 +313,7 @@ export default function ManguitoScreen() {
         <TouchableOpacity onPress={handleLogout} style={s.logoutBtn}>
           <Text style={s.logoutText}>Salir</Text>
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
 
       <KeyboardAvoidingView
         style={s.flex}
