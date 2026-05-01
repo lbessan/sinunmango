@@ -89,7 +89,19 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen
+          name="nuevo-modal"
+          options={{
+            presentation:   'transparentModal',
+            animation:      'slide_from_bottom',
+            headerShown:    false,
+            contentStyle:   { backgroundColor: 'transparent' },
+          }}
+        />
+      </Stack>
     </ThemeProvider>
   )
 }

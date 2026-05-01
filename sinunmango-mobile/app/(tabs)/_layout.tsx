@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router'
+import { Tabs, router } from 'expo-router'
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '@/context/ThemeContext'
@@ -155,8 +155,9 @@ export default function TabsLayout() {
         name="nuevo"
         options={{
           title: '',
-          tabBarButton: ({ onPress }) => (
-            <FabButton onPress={onPress as () => void} theme={theme} />
+          href: null,          // no aparece en tabs
+          tabBarButton: () => (
+            <FabButton onPress={() => router.push('/nuevo-modal')} theme={theme} />
           ),
         }}
       />

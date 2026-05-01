@@ -105,7 +105,7 @@ const cc = StyleSheet.create({
 function MovRow({ mov, theme }: { mov: Movimiento; theme: ReturnType<typeof useTheme>['theme'] }) {
   const isGasto   = mov.tipo === 'Gasto'
   const isIngreso = mov.tipo === 'Ingreso'
-  const icon      = mov.categoria_icono ?? (isIngreso ? '💰' : '💸')
+  const icon      = resolveIcon(mov.categoria_icono, mov.tipo)
   const sign      = isGasto ? '-' : isIngreso ? '+' : ''
   const montoColor = isGasto ? theme.expense : isIngreso ? theme.income : theme.text
   const symbol    = mov.moneda === 'USD' ? 'USD ' : '$'
@@ -142,13 +142,21 @@ const mr = StyleSheet.create({
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 function mesActual() {
-  return new Date().toISOString().slice(0, 7) // 'YYYY-MM'
+  // Usar hora local, no UTC
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
 function addMonthStr(ym: string, n: number) {
   const [y, m] = ym.split('-').map(Number)
   const d = new Date(y, m - 1 + n, 1)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+// Si el icono del campo "icono" tiene caracteres no-ASCII → es emoji; si no → fallback
+function resolveIcon(icon: string | null, tipo: string) {
+  if (icon && /[^ -]/.test(icon)) return icon
+  return tipo === 'Ingreso' ? '💰' : tipo === 'Gasto' ? '💸' : '↔️'
 }
 
 export default function DashboardScreen() {
@@ -281,17 +289,12 @@ export default function DashboardScreen() {
             {/* ── MIS CUENTAS ── */}
             {(data?.cuentas?.length ?? 0) > 0 && (
               <View style={s.section}>
-                <View style={s.sectionHeader}>
-                  <Text style={[s.sectionTitle, { color: theme.text }]}>Mis cuentas</Text>
-                  <TouchableOpacity>
-                    <Text style={[s.sectionLink, { color: theme.primary }]}>Ver todas</Text>
-                  </TouchableOpacity>
-                </View>
+                <Text style={[s.sectionTitle, { color: theme.text }]}>Mis cuentas</Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={s.cuentasContent}
                   style={s.cuentasScroll}
-                  contentContainerStyle={{ paddingHorizontal: 16 }}
                 >
                   {(data?.cuentas ?? []).map(c => (
                     <CuentaCard key={c.id} cuenta={c} theme={theme} />
@@ -392,13 +395,13 @@ const s = StyleSheet.create({
   igValue:  { fontSize: 18, fontWeight: '800' },
 
   // Sections
-  section: { marginBottom: 16 },
-  sectionHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10,
-  },
-  sectionTitle: { fontSize: 16, fontWeight: '700' },
+  section:      { marginBottom: 16 },
+  sectionHeader:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
   sectionLink:  { fontSize: 13, fontWeight: '600' },
-  cuentasScroll:{ marginHorizontal: -16 },
+  // Cuentas scroll — con overflow visible para que se vean las sombras
+  cuentasScroll:   { marginHorizontal: -16, overflow: 'visible' },
+  cuentasContent:  { paddingHorizontal: 16, paddingVertical: 6 },
 
   movCard: {
     borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, overflow: 'hidden',
