@@ -15,14 +15,14 @@ type Movimiento = {
   cuenta_nombre: string | null; categoria_nombre: string | null; categoria_icono: string | null
 }
 
-type Filtro    = 'todos' | 'gastos' | 'ingresos'
-type FechaKey  = 'todos' | 'este_mes' | 'mes_anterior' | 'esta_semana'
+type Filtro   = 'todos' | 'gastos' | 'ingresos'
+type FechaKey = 'todos' | 'este_mes' | 'mes_anterior' | 'esta_semana'
 
 const FECHA_LABELS: Record<FechaKey, string> = {
-  todos:         'Todos',
-  este_mes:      'Este mes',
-  mes_anterior:  'Mes anterior',
-  esta_semana:   'Esta semana',
+  todos:        'Todos',
+  este_mes:     'Este mes',
+  mes_anterior: 'Mes anterior',
+  esta_semana:  'Esta semana',
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ function buildDateFilter(key: FechaKey): { gte?: string; lt?: string } {
     return { gte: start.toISOString().slice(0, 10), lt: end.toISOString().slice(0, 10) }
   }
   if (key === 'esta_semana') {
-    const day   = now.getDay()  // 0=Dom
+    const day   = now.getDay()
     const start = new Date(now); start.setDate(now.getDate() - day)
     const end   = new Date(now); end.setDate(start.getDate() + 7)
     return { gte: start.toISOString().slice(0, 10), lt: end.toISOString().slice(0, 10) }
@@ -59,10 +59,10 @@ function buildDateFilter(key: FechaKey): { gte?: string; lt?: string } {
   return {}
 }
 
-// Si el campo icono tiene chars no-ASCII → es un emoji válido; si no → fallback
+// Detecta emoji real: caracteres fuera del rango ASCII 0x00-0x7F
 function resolveIcon(icon: string | null, tipo: string) {
-  if (icon && /[^ -]/.test(icon)) return icon
-  return tipo === 'Ingreso' ? '💰' : tipo === 'Gasto' ? '💸' : '↔️'
+  if (icon && /[^\x00-\x7F]/.test(icon)) return icon
+  return tipo === 'Ingreso' ? '\u{1F4B0}' : tipo === 'Gasto' ? '\u{1F4B8}' : '\u{21C6}'
 }
 
 // ─── Movimiento row ───────────────────────────────────────────────────────────
@@ -200,7 +200,6 @@ export default function MovimientosScreen() {
           ))}
         </View>
 
-        {/* Botón calendario */}
         <TouchableOpacity
           style={[s.calBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
           onPress={() => setShowFechaMenu(true)}
@@ -288,24 +287,15 @@ export default function MovimientosScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe:    { flex: 1 },
-  header:  { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
-  title:   { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
+  safe:   { flex: 1 },
+  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
+  title:  { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
 
-  filterBar: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 10, gap: 8,
-  },
+  filterBar:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   filterPills: { flexDirection: 'row', gap: 8, flex: 1 },
-  pill: {
-    paddingHorizontal: 16, paddingVertical: 7,
-    borderRadius: 20, borderWidth: 1,
-  },
-  pillText: { fontSize: 13, fontWeight: '600' },
-  calBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1,
-  },
+  pill:        { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
+  pillText:    { fontSize: 13, fontWeight: '600' },
+  calBtn:      { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
 
   countRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -332,9 +322,6 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 }, elevation: 8,
   },
-  fechaItem: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14,
-  },
+  fechaItem:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
   fechaItemText: { fontSize: 14 },
 })

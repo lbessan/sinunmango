@@ -4,7 +4,6 @@ import {
   ScrollView, Alert, Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '@/lib/supabase'
 import { useTheme, ACCENTS, type AccentId, type ModeId } from '@/context/ThemeContext'
@@ -41,12 +40,7 @@ export default function ConfiguracionScreen() {
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
         {/* ── PERFIL ── */}
-        <LinearGradient
-          colors={theme.balanceBg}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.profileCard}
-        >
+        <View style={[s.profileCard, { backgroundColor: theme.primary }]}>
           <View style={s.profileInner}>
             <View style={s.avatarCircle}>
               <Text style={s.avatarInitial}>{initial}</Text>
@@ -58,7 +52,7 @@ export default function ConfiguracionScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
           </View>
-        </LinearGradient>
+        </View>
 
         {/* ── APARIENCIA ── */}
         <View style={[s.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>

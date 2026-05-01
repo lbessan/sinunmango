@@ -89,17 +89,17 @@ function FabButton({ onPress, theme }: {
 
 const fab = StyleSheet.create({
   btn: {
-    width:          72,
-    height:         72,
-    borderRadius:   36,
+    width:          68,
+    height:         68,
+    borderRadius:   34,
     alignItems:     'center',
     justifyContent: 'center',
-    marginBottom:   28,
+    marginBottom:   40,   // sube el botón bien por encima del tab bar
     shadowColor:    '#000',
     shadowOpacity:  0.3,
     shadowRadius:   14,
     shadowOffset:   { width: 0, height: 6 },
-    elevation:      10,
+    elevation:      12,
   },
 })
 
