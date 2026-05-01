@@ -34,12 +34,6 @@ function mesActual() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-function addMonthStr(ym: string, n: number) {
-  const [y, m] = ym.split('-').map(Number)
-  const d = new Date(y, m - 1 + n, 1)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
 function labelTipo(tipo: string) {
   switch (tipo) {
     case 'Banco CA':  return 'Caja de ahorro'
@@ -81,8 +75,8 @@ function CuentaCard({ cuenta, theme }: { cuenta: Cuenta; theme: ReturnType<typeo
 
 const cc = StyleSheet.create({
   card: {
-    borderRadius: 16, padding: 14, marginRight: 10,
-    minWidth: 140, maxWidth: 180, borderWidth: 1,
+    borderRadius: 16, padding: 14,
+    flex: 1, borderWidth: 1,
     shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
@@ -95,42 +89,40 @@ const cc = StyleSheet.create({
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function DashboardScreen() {
-  const { theme } = useTheme()
-  const [mes, setMes]               = useState(mesActual)
-  const [data, setData]             = useState<DashboardData | null>(null)
-  const [loading, setLoading]       = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [error, setError]           = useState<string | null>(null)
-  const [hidden, setHidden]         = useState(false)
+  const { theme }                       = useTheme()
+  const [data, setData]                 = useState<DashboardData | null>(null)
+  const [loading, setLoading]           = useState(true)
+  const [refreshing, setRefreshing]     = useState(false)
+  const [error, setError]               = useState<string | null>(null)
+  const [hidden, setHidden]             = useState(false)
 
-  const load = useCallback(async (isRefresh = false, mesParam?: string) => {
+  const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
     setError(null)
     try {
-      const m = mesParam ?? mes
-      const d = await apiGet<DashboardData>(`/api/dashboard-mobile?mes=${m}`)
+      const d = await apiGet<DashboardData>(`/api/dashboard-mobile?mes=${mesActual()}`)
       setData(d)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error al cargar')
     } finally {
       setLoading(false); setRefreshing(false)
     }
-  }, [mes])
+  }, [])
 
   useEffect(() => { load() }, [load])
-
-  const navMes = (delta: number) => {
-    const nuevo = addMonthStr(mes, delta)
-    setMes(nuevo)
-    load(false, nuevo)
-  }
 
   const mask = '• • • •'
   const show = (v: number, prefix = '$') => hidden ? mask : `${prefix}${fmt(v)}`
 
   // Solo cuentas que no son tarjeta de crédito
   const cuentasFiltradas = (data?.cuentas ?? []).filter(c => c.tipo !== 'Tarjeta Credito')
+
+  // Armar filas de 2 para la grilla
+  const cuentaRows: Cuenta[][] = []
+  for (let i = 0; i < cuentasFiltradas.length; i += 2) {
+    cuentaRows.push(cuentasFiltradas.slice(i, i + 2))
+  }
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: theme.bg }]} edges={['top']}>
@@ -149,23 +141,6 @@ export default function DashboardScreen() {
             <Image source={require('@/assets/logo.png')} style={s.avatarImg} resizeMode="contain" />
           </View>
         </View>
-      </View>
-
-      {/* ── MES NAV ── */}
-      <View style={[s.mesNav, { backgroundColor: theme.bg }]}>
-        <TouchableOpacity
-          style={[s.mesArrow, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          onPress={() => navMes(-1)}
-        >
-          <Ionicons name="chevron-back" size={18} color={theme.textSec} />
-        </TouchableOpacity>
-        <Text style={[s.mesLabel, { color: theme.text }]}>{data?.mes_label ?? mes}</Text>
-        <TouchableOpacity
-          style={[s.mesArrow, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          onPress={() => navMes(1)}
-        >
-          <Ionicons name="chevron-forward" size={18} color={theme.textSec} />
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -221,20 +196,17 @@ export default function DashboardScreen() {
               </View>
             </View>
 
-            {/* ── MIS CUENTAS (sin tarjetas de crédito) ── */}
+            {/* ── MIS CUENTAS — grilla 2 columnas ── */}
             {cuentasFiltradas.length > 0 && (
               <View style={s.section}>
                 <Text style={[s.sectionTitle, { color: theme.text }]}>Mis cuentas</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={s.cuentasContent}
-                  style={s.cuentasScroll}
-                >
-                  {cuentasFiltradas.map(c => (
-                    <CuentaCard key={c.id} cuenta={c} theme={theme} />
-                  ))}
-                </ScrollView>
+                {cuentaRows.map((fila, i) => (
+                  <View key={i} style={s.cuentaFila}>
+                    {fila.map(c => <CuentaCard key={c.id} cuenta={c} theme={theme} />)}
+                    {/* Si la fila tiene solo 1 item, relleno con un espacio */}
+                    {fila.length === 1 && <View style={{ flex: 1 }} />}
+                  </View>
+                ))}
               </View>
             )}
 
@@ -269,16 +241,6 @@ const s = StyleSheet.create({
   },
   avatarImg: { width: 32, height: 32 },
 
-  mesNav: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 6, paddingHorizontal: 20, gap: 12,
-  },
-  mesArrow: {
-    width: 34, height: 34, borderRadius: 17,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1,
-  },
-  mesLabel: { fontSize: 14, fontWeight: '700', letterSpacing: 0.5, minWidth: 120, textAlign: 'center' },
-
   balanceCard: {
     borderRadius: 20, padding: 20, marginBottom: 20,
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 14,
@@ -300,8 +262,7 @@ const s = StyleSheet.create({
 
   section:      { marginBottom: 16 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
-  cuentasScroll:   { marginHorizontal: -16 },
-  cuentasContent:  { paddingHorizontal: 16, paddingVertical: 8 },
+  cuentaFila:   { flexDirection: 'row', gap: 10, marginBottom: 10 },
 
   errorBox:  { alignItems: 'center', paddingTop: 60 },
   errorText: { fontSize: 14, textAlign: 'center', marginBottom: 16 },

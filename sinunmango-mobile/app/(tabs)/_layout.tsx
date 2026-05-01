@@ -82,19 +82,19 @@ function FabButton({ onPress, theme }: {
       style={[fab.btn, { backgroundColor: theme.primary }]}
       activeOpacity={0.85}
     >
-      <Ionicons name="add" size={30} color="#ffffff" strokeWidth={2.5} />
+      <Ionicons name="add" size={36} color="#ffffff" strokeWidth={2.5} />
     </TouchableOpacity>
   )
 }
 
 const fab = StyleSheet.create({
   btn: {
-    width:          68,
-    height:         68,
-    borderRadius:   34,
+    width:          76,
+    height:         76,
+    borderRadius:   38,
     alignItems:     'center',
     justifyContent: 'center',
-    marginBottom:   40,   // sube el botón bien por encima del tab bar
+    marginBottom:   56,   // sube el botón bien por encima del tab bar
     shadowColor:    '#000',
     shadowOpacity:  0.3,
     shadowRadius:   14,
