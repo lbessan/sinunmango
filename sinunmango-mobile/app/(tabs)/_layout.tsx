@@ -155,7 +155,6 @@ export default function TabsLayout() {
         name="nuevo"
         options={{
           title: '',
-          href: null,          // no aparece en tabs
           tabBarButton: () => (
             <FabButton onPress={() => router.push('/nuevo-modal')} theme={theme} />
           ),
