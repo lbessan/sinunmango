@@ -8,7 +8,7 @@ import * as ImagePicker from 'expo-image-picker'
 import * as Crypto from 'expo-crypto'
 import { supabase } from '@/lib/supabase'
 import { apiPost } from '@/lib/api'
-import { useTheme, STATIC_COLORS } from '@/context/ThemeContext'
+import { useTheme, type Theme } from '@/context/ThemeContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type TipoMov = 'Gasto' | 'Ingreso' | 'Transferencia'
@@ -35,10 +35,6 @@ type Form = {
 }
 
 const today = () => new Date().toISOString().slice(0, 10)
-const todayDisplay = () => {
-  const d = new Date()
-  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
-}
 
 const EMPTY_FORM: Form = {
   detalle:           '',
@@ -77,20 +73,21 @@ function addMonths(d: string, n: number) {
 
 // ─── Selector Modal ───────────────────────────────────────────────────────────
 function SelectorModal<T extends { id: string; label: string; sub?: string; icon?: string }>({
-  visible, title, items, onSelect, onClose,
+  visible, title, items, onSelect, onClose, theme,
 }: {
   visible:  boolean
   title:    string
   items:    T[]
   onSelect: (id: string) => void
   onClose:  () => void
+  theme:    Theme
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={mod.backdrop} onPress={onClose} activeOpacity={1} />
-      <View style={mod.sheet}>
-        <View style={mod.handle} />
-        <Text style={mod.title}>{title}</Text>
+      <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' }} onPress={onClose} activeOpacity={1} />
+      <View style={[mod.sheet, { backgroundColor: theme.surface }]}>
+        <View style={[mod.handle, { backgroundColor: theme.border }]} />
+        <Text style={[mod.title, { color: theme.text }]}>{title}</Text>
         <FlatList
           data={items}
           keyExtractor={i => i.id}
@@ -102,12 +99,12 @@ function SelectorModal<T extends { id: string; label: string; sub?: string; icon
             >
               {item.icon ? <Text style={mod.itemIcon}>{item.icon}</Text> : null}
               <View style={mod.itemText}>
-                <Text style={mod.itemLabel}>{item.label}</Text>
-                {item.sub ? <Text style={mod.itemSub}>{item.sub}</Text> : null}
+                <Text style={[mod.itemLabel, { color: theme.text }]}>{item.label}</Text>
+                {item.sub ? <Text style={[mod.itemSub, { color: theme.textMuted }]}>{item.sub}</Text> : null}
               </View>
             </TouchableOpacity>
           )}
-          ItemSeparatorComponent={() => <View style={mod.separator} />}
+          ItemSeparatorComponent={() => <View style={[mod.separator, { backgroundColor: theme.border }]} />}
         />
       </View>
     </Modal>
@@ -115,74 +112,64 @@ function SelectorModal<T extends { id: string; label: string; sub?: string; icon
 }
 
 const mod = StyleSheet.create({
-  backdrop: {
-    flex:            1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
   sheet: {
-    backgroundColor: STATIC_COLORS.bgCard,
     borderTopLeftRadius:  24,
     borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop:        12,
-    paddingBottom:     40,
-    maxHeight:         '70%',
+    paddingHorizontal:    20,
+    paddingTop:           12,
+    paddingBottom:        40,
+    maxHeight:            '70%',
   },
   handle: {
-    width:           40,
-    height:          4,
-    backgroundColor: STATIC_COLORS.border,
-    borderRadius:    2,
-    alignSelf:       'center',
-    marginBottom:    16,
+    width: 40, height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
   },
-  title: {
-    fontSize:     17,
-    fontWeight:   '700',
-    color:        STATIC_COLORS.textPrimary,
-    marginBottom: 12,
-  },
-  item: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    paddingVertical: 14,
-    gap:            12,
-  },
+  title:     { fontSize: 17, fontWeight: '700', marginBottom: 12 },
+  item:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 12 },
   itemIcon:  { fontSize: 22, width: 32, textAlign: 'center' },
   itemText:  { flex: 1 },
-  itemLabel: { fontSize: 15, color: STATIC_COLORS.textPrimary, fontWeight: '500' },
-  itemSub:   { fontSize: 12, color: STATIC_COLORS.textMuted, marginTop: 2 },
-  separator: { height: 1, backgroundColor: STATIC_COLORS.border },
+  itemLabel: { fontSize: 15, fontWeight: '500' },
+  itemSub:   { fontSize: 12, marginTop: 2 },
+  separator: { height: 1 },
 })
 
-// ─── Field components ─────────────────────────────────────────────────────────
-function FieldLabel({ children }: { children: string }) {
-  return <Text style={fl.label}>{children}</Text>
+// ─── Field label ──────────────────────────────────────────────────────────────
+function FieldLabel({ children, theme }: { children: string; theme: Theme }) {
+  return (
+    <Text style={[fl.label, { color: theme.textMuted }]}>{children}</Text>
+  )
 }
 
-function DropdownField({ label, value, placeholder, onPress, extra }: {
+// ─── Dropdown field ───────────────────────────────────────────────────────────
+function DropdownField({ label, value, placeholder, onPress, extra, theme }: {
   label:       string
   value:       string
   placeholder: string
   onPress:     () => void
   extra?:      React.ReactNode
+  theme:       Theme
 }) {
-  const { colors } = useTheme()
   return (
     <View style={fl.field}>
       {extra ? (
         <View style={fl.labelRow}>
-          <FieldLabel>{label}</FieldLabel>
+          <FieldLabel theme={theme}>{label}</FieldLabel>
           {extra}
         </View>
       ) : (
-        <FieldLabel>{label}</FieldLabel>
+        <FieldLabel theme={theme}>{label}</FieldLabel>
       )}
-      <TouchableOpacity style={fl.dropdown} onPress={onPress} activeOpacity={0.8}>
-        <Text style={[fl.dropdownText, !value && fl.placeholder]}>
+      <TouchableOpacity
+        style={[fl.dropdown, { backgroundColor: theme.bg, borderColor: theme.border }]}
+        onPress={onPress}
+        activeOpacity={0.8}
+      >
+        <Text style={[fl.dropdownText, { color: value ? theme.text : theme.textMuted }]} numberOfLines={1}>
           {value || placeholder}
         </Text>
-        <Text style={fl.chevron}>›</Text>
+        <Text style={[fl.chevron, { color: theme.textMuted }]}>›</Text>
       </TouchableOpacity>
     </View>
   )
@@ -191,37 +178,19 @@ function DropdownField({ label, value, placeholder, onPress, extra }: {
 const fl = StyleSheet.create({
   field:    { marginBottom: 14 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  label:    {
-    fontSize:      11,
-    fontWeight:    '700',
-    color:         STATIC_COLORS.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom:  6,
-  },
+  label:    { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 },
   dropdown: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    backgroundColor:  STATIC_COLORS.bgMain,
-    borderRadius:     12,
-    paddingHorizontal: 14,
-    paddingVertical:   13,
-    borderWidth:      1,
-    borderColor:      STATIC_COLORS.border,
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13,
+    borderWidth: 1,
   },
-  dropdownText: {
-    flex:       1,
-    fontSize:   15,
-    color:      STATIC_COLORS.textPrimary,
-    fontWeight: '500',
-  },
-  placeholder: { color: STATIC_COLORS.textMuted },
-  chevron:    { fontSize: 18, color: STATIC_COLORS.textMuted, fontWeight: '300' },
+  dropdownText: { flex: 1, fontSize: 15, fontWeight: '500' },
+  chevron:      { fontSize: 20, fontWeight: '300' },
 })
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function NuevoMovimientoScreen() {
-  const { colors } = useTheme()
+  const { theme } = useTheme()
   const [tipo, setTipo]             = useState<TipoMov>('Gasto')
   const [form, setForm]             = useState<Form>(EMPTY_FORM)
   const [cuentas, setCuentas]       = useState<Cuenta[]>([])
@@ -237,13 +206,15 @@ export default function NuevoMovimientoScreen() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) return
       const [{ data: c }, { data: cat }] = await Promise.all([
-        supabase.from('cuentas').select('id, nombre_cuenta, tipo_cuenta, moneda, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta').eq('activa', true).eq('user_id', session.user.id).order('nombre_cuenta'),
-        supabase.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', session.user.id).order('nombre_categoria'),
+        supabase.from('cuentas')
+          .select('id, nombre_cuenta, tipo_cuenta, moneda, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta')
+          .eq('activa', true).eq('user_id', session.user.id).order('nombre_cuenta'),
+        supabase.from('categorias')
+          .select('id, nombre_categoria, icono, tipo_default')
+          .eq('user_id', session.user.id).order('nombre_categoria'),
       ])
       setCuentas(c ?? [])
       setCategorias(cat ?? [])
-
-      // Auto-select primera cuenta
       if (c && c.length > 0) {
         setForm(prev => ({ ...prev, cuenta_id: prev.cuenta_id || c[0].id }))
       }
@@ -255,10 +226,9 @@ export default function NuevoMovimientoScreen() {
     setForm(prev => ({ ...prev, [key]: val }))
   }, [])
 
-  // Filtrar categorías según el tipo de movimiento
   const categoriasFiltradas = categorias.filter(c =>
-    tipo === 'Gasto'    ? c.tipo_default !== 'Ingreso' :
-    tipo === 'Ingreso'  ? c.tipo_default !== 'Gasto' :
+    tipo === 'Gasto'   ? c.tipo_default !== 'Ingreso' :
+    tipo === 'Ingreso' ? c.tipo_default !== 'Gasto' :
     true
   )
 
@@ -273,7 +243,6 @@ export default function NuevoMovimientoScreen() {
       mediaTypes: ['images'], quality: 0.7, base64: true,
     })
     if (result.canceled || !result.assets[0]?.base64) return
-
     setScanning(true)
     try {
       const { base64, mimeType } = result.assets[0]
@@ -316,58 +285,34 @@ export default function NuevoMovimientoScreen() {
       if (!cuenta) throw new Error('Cuenta no encontrada')
 
       const isTarjeta  = cuenta.tipo_cuenta === 'Tarjeta Credito'
-      const cierre     = cuenta.fecha_cierre_tarjeta   ? new Date(cuenta.fecha_cierre_tarjeta   + 'T12:00:00').getDate() : null
-      const vence      = cuenta.fecha_vencimiento_tarjeta ? new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
+      const cierre     = cuenta.fecha_cierre_tarjeta        ? new Date(cuenta.fecha_cierre_tarjeta        + 'T12:00:00').getDate() : null
+      const vence      = cuenta.fecha_vencimiento_tarjeta   ? new Date(cuenta.fecha_vencimiento_tarjeta   + 'T12:00:00').getDate() : null
       const monto      = parseFloat(form.monto.replace(',', '.'))
       const cuotas     = tipo === 'Transferencia' ? 1 : (parseInt(form.cuotas) || 1)
       const montoCuota = monto / cuotas
 
       if (tipo === 'Transferencia') {
-        // Dos movimientos: Egreso + Ingreso
-        const records = [
-          {
-            id:              Crypto.randomUUID(),
-            fecha:           form.fecha,
-            detalle:         form.detalle.trim(),
-            monto:           monto,
-            moneda:          form.moneda,
-            tipo_movimiento: 'Transferencia',
-            cuenta_origen:   form.cuenta_id,
-            cuenta_destino:  form.cuenta_destino_id,
-            categoria:       null,
-            subcategoria:    null,
-            cotizacion:      null,
-            conciliado:      false,
-            periodo_tarjeta: calcularPeriodo(form.fecha, cierre, vence, isTarjeta),
-            cuotas_total:    1,
-            cuota_actual:    1,
-            ciclo_actual:    1,
-            user_id:         session.user.id,
-          },
-        ]
+        const records = [{
+          id: Crypto.randomUUID(), fecha: form.fecha, detalle: form.detalle.trim(),
+          monto, moneda: form.moneda, tipo_movimiento: 'Transferencia',
+          cuenta_origen: form.cuenta_id, cuenta_destino: form.cuenta_destino_id,
+          categoria: null, subcategoria: null, cotizacion: null, conciliado: false,
+          periodo_tarjeta: calcularPeriodo(form.fecha, cierre, vence, isTarjeta),
+          cuotas_total: 1, cuota_actual: 1, ciclo_actual: 1, user_id: session.user.id,
+        }]
         const { error } = await supabase.from('movimientos').insert(records)
         if (error) throw error
       } else {
         const records = Array.from({ length: cuotas }, (_, i) => {
           const fechaCuota = addMonths(form.fecha, i)
           return {
-            id:              Crypto.randomUUID(),
-            fecha:           fechaCuota,
-            detalle:         cuotas > 1 ? `${form.detalle.trim()} (Cuota ${i + 1}/${cuotas})` : form.detalle.trim(),
-            monto:           montoCuota,
-            moneda:          form.moneda,
-            tipo_movimiento: tipo,
-            cuenta_origen:   form.cuenta_id,
-            cuenta_destino:  null,
-            categoria:       form.categoria_id,
-            subcategoria:    null,
-            cotizacion:      null,
-            conciliado:      false,
+            id: Crypto.randomUUID(), fecha: fechaCuota,
+            detalle: cuotas > 1 ? `${form.detalle.trim()} (Cuota ${i + 1}/${cuotas})` : form.detalle.trim(),
+            monto: montoCuota, moneda: form.moneda, tipo_movimiento: tipo,
+            cuenta_origen: form.cuenta_id, cuenta_destino: null,
+            categoria: form.categoria_id, subcategoria: null, cotizacion: null, conciliado: false,
             periodo_tarjeta: calcularPeriodo(fechaCuota, cierre, vence, isTarjeta),
-            cuotas_total:    cuotas,
-            cuota_actual:    i + 1,
-            ciclo_actual:    1,
-            user_id:         session.user.id,
+            cuotas_total: cuotas, cuota_actual: i + 1, ciclo_actual: 1, user_id: session.user.id,
           }
         })
         const { error } = await supabase.from('movimientos').insert(records)
@@ -383,39 +328,40 @@ export default function NuevoMovimientoScreen() {
     }
   }
 
-  // ── Derived values ────────────────────────────────────────────────────────
-  const cuentaSeleccionada    = cuentas.find(c => c.id === form.cuenta_id)
-  const cuentaDestSeleccionada = cuentas.find(c => c.id === form.cuenta_destino_id)
-  const categoriaSeleccionada = categorias.find(c => c.id === form.categoria_id)
+  // ── Derived values ─────────────────────────────────────────────────────────
+  const cuentaSeleccionada      = cuentas.find(c => c.id === form.cuenta_id)
+  const cuentaDestSeleccionada  = cuentas.find(c => c.id === form.cuenta_destino_id)
+  const categoriaSeleccionada   = categorias.find(c => c.id === form.categoria_id)
 
   const cuentaItems = cuentas.map(c => ({
-    id:    c.id,
-    label: c.nombre_cuenta,
-    sub:   `${c.tipo_cuenta} · ${c.moneda}`,
+    id: c.id, label: c.nombre_cuenta, sub: `${c.tipo_cuenta} · ${c.moneda}`,
+  }))
+  const categoriaItems = categoriasFiltradas.map(c => ({
+    id: c.id, label: c.nombre_categoria, icon: c.icono,
   }))
 
-  const categoriaItems = categoriasFiltradas.map(c => ({
-    id:    c.id,
-    label: c.nombre_categoria,
-    icon:  c.icono,
-  }))
+  const TIPO_COLORS: Record<TipoMov, string> = {
+    Gasto:         theme.expense,
+    Ingreso:       theme.income,
+    Transferencia: theme.primary,
+  }
 
   const TIPOS: TipoMov[] = ['Gasto', 'Ingreso', 'Transferencia']
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: STATIC_COLORS.bgMain }]} edges={['top']}>
+    <SafeAreaView style={[s.safe, { backgroundColor: theme.bg }]} edges={['top']}>
 
       {/* ── HEADER ── */}
-      <View style={s.header}>
-        <Text style={s.headerTitle}>Nuevo movimiento</Text>
+      <View style={[s.header, { backgroundColor: theme.bg }]}>
+        <Text style={[s.headerTitle, { color: theme.text }]}>Nuevo movimiento</Text>
         <TouchableOpacity
-          style={[s.ticketBtn, scanning && s.btnDisabled]}
+          style={[s.ticketBtn, { borderColor: theme.border, backgroundColor: theme.surface }, scanning && s.btnDisabled]}
           onPress={handleScanTicket}
           disabled={scanning}
         >
           {scanning
-            ? <ActivityIndicator color={colors.accent} size="small" />
-            : <Text style={[s.ticketBtnText, { color: colors.accent }]}>📷  Ticket</Text>
+            ? <ActivityIndicator color={theme.primary} size="small" />
+            : <Text style={[s.ticketBtnText, { color: theme.primary }]}>📷  Ticket</Text>
           }
         </TouchableOpacity>
       </View>
@@ -426,44 +372,50 @@ export default function NuevoMovimientoScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={s.card}>
+        <View style={[s.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
 
           {/* ── TIPO SEGMENTED CONTROL ── */}
-          <View style={s.segmented}>
-            {TIPOS.map(t => (
-              <TouchableOpacity
-                key={t}
-                style={[s.segment, tipo === t && { backgroundColor: colors.accent }]}
-                onPress={() => { setTipo(t); set('categoria_id', '') }}
-                activeOpacity={0.85}
-              >
-                <Text style={[s.segmentText, tipo === t && s.segmentTextActive]}>
-                  {t}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={[s.segmented, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+            {TIPOS.map(t => {
+              const isActive = tipo === t
+              return (
+                <TouchableOpacity
+                  key={t}
+                  style={[
+                    s.segment,
+                    isActive && { backgroundColor: TIPO_COLORS[t] },
+                  ]}
+                  onPress={() => { setTipo(t); set('categoria_id', '') }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[s.segmentText, { color: isActive ? '#ffffff' : theme.textSec }]}>
+                    {t}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
           </View>
 
           {/* ── FECHA y DETALLE ── */}
           <View style={s.row2}>
             <View style={[fl.field, { flex: 1 }]}>
-              <FieldLabel>Fecha</FieldLabel>
+              <FieldLabel theme={theme}>Fecha</FieldLabel>
               <TextInput
-                style={s.input}
+                style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                 value={form.fecha}
                 onChangeText={v => set('fecha', v)}
                 placeholder="YYYY-MM-DD"
-                placeholderTextColor={STATIC_COLORS.textMuted}
+                placeholderTextColor={theme.textMuted}
               />
             </View>
             <View style={[fl.field, { flex: 1.4 }]}>
-              <FieldLabel>Detalle</FieldLabel>
+              <FieldLabel theme={theme}>Detalle</FieldLabel>
               <TextInput
-                style={s.input}
+                style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                 value={form.detalle}
                 onChangeText={v => set('detalle', v)}
                 placeholder="Ej: COTO"
-                placeholderTextColor={STATIC_COLORS.textMuted}
+                placeholderTextColor={theme.textMuted}
               />
             </View>
           </View>
@@ -471,28 +423,31 @@ export default function NuevoMovimientoScreen() {
           {/* ── MONEDA y MONTO ── */}
           <View style={s.row2}>
             <View style={[fl.field, { flex: 0.8 }]}>
-              <FieldLabel>Moneda</FieldLabel>
-              <View style={s.monedaToggle}>
+              <FieldLabel theme={theme}>Moneda</FieldLabel>
+              <View style={[s.monedaToggle, { borderColor: theme.border }]}>
                 {(['ARS', 'USD'] as const).map(m => (
                   <TouchableOpacity
                     key={m}
-                    style={[s.monedaBtn, form.moneda === m && { backgroundColor: colors.accent }]}
+                    style={[
+                      s.monedaBtn,
+                      { backgroundColor: form.moneda === m ? theme.primary : theme.bg },
+                    ]}
                     onPress={() => set('moneda', m)}
                   >
-                    <Text style={[s.monedaBtnText, form.moneda === m && s.monedaBtnTextActive]}>{m}</Text>
+                    <Text style={[s.monedaBtnText, { color: form.moneda === m ? '#ffffff' : theme.textSec }]}>{m}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
             <View style={[fl.field, { flex: 1.2 }]}>
-              <FieldLabel>Monto</FieldLabel>
+              <FieldLabel theme={theme}>Monto</FieldLabel>
               <TextInput
-                style={s.input}
+                style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                 value={form.monto}
                 onChangeText={v => set('monto', v)}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
-                placeholderTextColor={STATIC_COLORS.textMuted}
+                placeholderTextColor={theme.textMuted}
               />
             </View>
           </View>
@@ -503,6 +458,7 @@ export default function NuevoMovimientoScreen() {
             value={cuentaSeleccionada?.nombre_cuenta ?? ''}
             placeholder="Seleccioná una cuenta"
             onPress={() => setShowCuenta(true)}
+            theme={theme}
           />
 
           {/* ── CUENTA DESTINO (solo Transferencia) ── */}
@@ -512,6 +468,7 @@ export default function NuevoMovimientoScreen() {
               value={cuentaDestSeleccionada?.nombre_cuenta ?? ''}
               placeholder="Seleccioná destino"
               onPress={() => setShowCuentaDest(true)}
+              theme={theme}
             />
           )}
 
@@ -524,31 +481,32 @@ export default function NuevoMovimientoScreen() {
                 : ''}
               placeholder="Seleccioná categoría"
               onPress={() => setShowCategoria(true)}
+              theme={theme}
               extra={
                 <TouchableOpacity>
-                  <Text style={[s.newCatBtn, { color: colors.accent }]}>+ Nueva</Text>
+                  <Text style={[s.newCatBtn, { color: theme.primary }]}>+ Nueva</Text>
                 </TouchableOpacity>
               }
             />
           )}
 
-          {/* ── CUOTAS (solo Gasto con tarjeta de crédito) ── */}
+          {/* ── CUOTAS (solo Gasto con tarjeta) ── */}
           {tipo === 'Gasto' && cuentaSeleccionada?.tipo_cuenta === 'Tarjeta Credito' && (
             <View style={fl.field}>
-              <FieldLabel>Cuotas</FieldLabel>
+              <FieldLabel theme={theme}>Cuotas</FieldLabel>
               <TextInput
-                style={[s.input, { width: 100 }]}
+                style={[s.input, { width: 100, backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                 value={form.cuotas}
                 onChangeText={v => set('cuotas', v)}
                 keyboardType="number-pad"
-                placeholderTextColor={STATIC_COLORS.textMuted}
+                placeholderTextColor={theme.textMuted}
               />
             </View>
           )}
 
           {/* ── GUARDAR ── */}
           <TouchableOpacity
-            style={[s.saveBtn, { backgroundColor: colors.accent }, saving && s.btnDisabled]}
+            style={[s.saveBtn, { backgroundColor: TIPO_COLORS[tipo] }, saving && s.btnDisabled]}
             onPress={handleSave}
             disabled={saving}
             activeOpacity={0.85}
@@ -570,6 +528,7 @@ export default function NuevoMovimientoScreen() {
         items={cuentaItems}
         onSelect={id => set('cuenta_id', id)}
         onClose={() => setShowCuenta(false)}
+        theme={theme}
       />
       <SelectorModal
         visible={showCuentaDest}
@@ -577,6 +536,7 @@ export default function NuevoMovimientoScreen() {
         items={cuentaItems.filter(c => c.id !== form.cuenta_id)}
         onSelect={id => set('cuenta_destino_id', id)}
         onClose={() => setShowCuentaDest(false)}
+        theme={theme}
       />
       <SelectorModal
         visible={showCategoria}
@@ -584,6 +544,7 @@ export default function NuevoMovimientoScreen() {
         items={categoriaItems}
         onSelect={id => set('categoria_id', id)}
         onClose={() => setShowCategoria(false)}
+        theme={theme}
       />
     </SafeAreaView>
   )
@@ -591,129 +552,57 @@ export default function NuevoMovimientoScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe:  { flex: 1 },
-  scroll: { flex: 1 },
+  safe:    { flex: 1 },
+  scroll:  { flex: 1 },
   content: { padding: 16 },
 
   header: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    justifyContent:   'space-between',
-    paddingHorizontal: 20,
-    paddingVertical:   12,
-    backgroundColor:  STATIC_COLORS.bgMain,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 12,
   },
-  headerTitle: {
-    fontSize:   22,
-    fontWeight: '800',
-    color:      STATIC_COLORS.textPrimary,
-    letterSpacing: -0.3,
-  },
+  headerTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.3 },
   ticketBtn: {
-    flexDirection:   'row',
-    alignItems:      'center',
-    paddingHorizontal: 12,
-    paddingVertical:   7,
-    borderRadius:    20,
-    borderWidth:     1.5,
-    borderColor:     STATIC_COLORS.border,
-    backgroundColor: STATIC_COLORS.bgCard,
-    gap:             4,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 20, borderWidth: 1.5, gap: 4,
   },
-  ticketBtnText: {
-    fontSize:   13,
-    fontWeight: '600',
-  },
+  ticketBtnText: { fontSize: 13, fontWeight: '600' },
 
   card: {
-    backgroundColor: STATIC_COLORS.bgCard,
-    borderRadius:    20,
-    padding:         18,
-    borderWidth:     1,
-    borderColor:     STATIC_COLORS.border,
-    shadowColor:     '#000',
-    shadowOpacity:   0.04,
-    shadowRadius:    8,
-    shadowOffset:    { width: 0, height: 2 },
-    elevation:       2,
+    borderRadius: 20, padding: 18, borderWidth: 1,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
 
   segmented: {
-    flexDirection:   'row',
-    backgroundColor: STATIC_COLORS.bgMain,
-    borderRadius:    12,
-    padding:         3,
-    marginBottom:    18,
-    borderWidth:     1,
-    borderColor:     STATIC_COLORS.border,
+    flexDirection: 'row', borderRadius: 12, padding: 3, marginBottom: 18, borderWidth: 1,
   },
   segment: {
-    flex:           1,
-    paddingVertical: 9,
-    borderRadius:   10,
-    alignItems:     'center',
+    flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center',
   },
-  segmentText: {
-    fontSize:   13,
-    fontWeight: '600',
-    color:      STATIC_COLORS.textSecondary,
-  },
-  segmentTextActive: {
-    color: '#ffffff',
-  },
+  segmentText: { fontSize: 13, fontWeight: '600' },
 
-  row2: {
-    flexDirection: 'row',
-    gap:           10,
-  },
+  row2: { flexDirection: 'row', gap: 10 },
 
   input: {
-    backgroundColor:  STATIC_COLORS.bgMain,
-    borderWidth:      1,
-    borderColor:      STATIC_COLORS.border,
-    borderRadius:     12,
-    paddingHorizontal: 13,
-    paddingVertical:   12,
-    fontSize:         15,
-    color:            STATIC_COLORS.textPrimary,
+    borderWidth: 1, borderRadius: 12,
+    paddingHorizontal: 13, paddingVertical: 12,
+    fontSize: 15,
   },
 
   monedaToggle: {
-    flexDirection:  'row',
-    borderRadius:   12,
-    overflow:       'hidden',
-    borderWidth:    1,
-    borderColor:    STATIC_COLORS.border,
-    height:         46,
+    flexDirection: 'row', borderRadius: 12, overflow: 'hidden', borderWidth: 1, height: 46,
   },
   monedaBtn: {
-    flex:           1,
-    justifyContent: 'center',
-    alignItems:     'center',
-    backgroundColor: STATIC_COLORS.bgMain,
+    flex: 1, justifyContent: 'center', alignItems: 'center',
   },
-  monedaBtnText: {
-    fontSize:   12,
-    fontWeight: '700',
-    color:      STATIC_COLORS.textSecondary,
-  },
-  monedaBtnTextActive: { color: '#ffffff' },
+  monedaBtnText: { fontSize: 12, fontWeight: '700' },
 
-  newCatBtn: {
-    fontSize:   12,
-    fontWeight: '700',
-  },
+  newCatBtn: { fontSize: 12, fontWeight: '700' },
 
   saveBtn: {
-    borderRadius:    14,
-    paddingVertical: 16,
-    alignItems:      'center',
-    marginTop:       6,
+    borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 6,
   },
-  saveBtnText: {
-    color:      '#ffffff',
-    fontSize:   16,
-    fontWeight: '700',
-  },
+  saveBtnText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
   btnDisabled: { opacity: 0.55 },
 })
