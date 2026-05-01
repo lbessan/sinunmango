@@ -78,7 +78,7 @@ function AccionCard({ accion, estado, msg, onConfirmar, onCancelar }: {
 function Avatar({ size = 26 }: { size?: number }) {
   return (
     <div className="rounded-full shrink-0 overflow-hidden flex items-center justify-center"
-      style={{ width: size, height: size, background: 'linear-gradient(135deg, #07192b 0%, #1a6b5a 100%)' }}>
+      style={{ width: size, height: size, background: 'linear-gradient(135deg, var(--sidebar-bg, #07192b) 0%, var(--accent, #1a6b5a) 100%)' }}>
       <img src="/manguito.png" alt="Manguito" style={{ width: size * 0.78, height: size * 0.78, objectFit: 'contain' }} />
     </div>
   )
@@ -216,9 +216,9 @@ export function ManguitoFlotante() {
             className="fixed z-50 flex flex-col overflow-hidden"
             style={{
               right:        24,
-              bottom:       96,
+              bottom:       112,
               width:        'min(520px, calc(100vw - 48px))',
-              height:       'min(680px, calc(100dvh - 130px))',
+              height:       'min(680px, calc(100dvh - 140px))',
               borderRadius: 20,
               background:   '#f8fafc',
               boxShadow:    '0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.12)',
@@ -228,7 +228,7 @@ export function ManguitoFlotante() {
             {/* Header */}
             <div
               className="shrink-0 flex items-center gap-3 px-4 py-3.5"
-              style={{ background: 'linear-gradient(135deg, #07192b 0%, #0f3d2a 100%)' }}
+              style={{ background: 'linear-gradient(135deg, var(--sidebar-bg, #07192b) 0%, var(--accent, #1a6b5a) 100%)' }}
             >
               {/* Avatar grande */}
               <div className="shrink-0 rounded-full overflow-hidden flex items-center justify-center"
@@ -364,40 +364,44 @@ export function ManguitoFlotante() {
       )}
 
       {/* ── Botón flotante ─────────────────────────────────────────────────── */}
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="fixed z-50 flex items-center justify-center transition-all duration-200 group"
-        style={{
-          right:        24,
-          bottom:       24,
-          width:        60,
-          height:       60,
-          borderRadius: '50%',
-          background:   open
-            ? 'linear-gradient(135deg, #374151 0%, #1f2937 100%)'
-            : 'linear-gradient(135deg, #07192b 0%, #1a6b5a 100%)',
-          boxShadow:    open
-            ? '0 4px 20px rgba(0,0,0,0.3)'
-            : '0 4px 20px rgba(26,107,90,0.45), 0 2px 8px rgba(0,0,0,0.2)',
-          transform:    'scale(1)',
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.08)' }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)' }}
-        title={open ? 'Cerrar Manguito' : 'Abrir Manguito'}
-      >
-        {open
-          ? <X size={22} className="text-white" />
-          : <img src="/manguito.png" alt="Manguito" style={{ width: 38, height: 38, objectFit: 'contain' }} />
-        }
-
-        {/* Tooltip */}
+      <div className="fixed z-50 flex items-center gap-3" style={{ right: 24, bottom: 24 }}>
+        {/* Label siempre visible cuando el panel está cerrado */}
         {!open && (
-          <span className="absolute right-16 bg-slate-800 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-            style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+          <span
+            className="text-white text-xs font-semibold px-3 py-2 rounded-xl whitespace-nowrap pointer-events-none"
+            style={{
+              background: 'var(--sidebar-bg, #07192b)',
+              boxShadow:  '0 2px 8px rgba(0,0,0,0.25)',
+            }}
+          >
             Hablar con Manguito
           </span>
         )}
-      </button>
+        <button
+          onClick={() => setOpen(v => !v)}
+          className="flex items-center justify-center transition-all duration-200"
+          style={{
+            width:        72,
+            height:       72,
+            borderRadius: '50%',
+            background:   open
+              ? 'linear-gradient(135deg, var(--sidebar-bg, #374151) 0%, #1f2937 100%)'
+              : 'linear-gradient(135deg, var(--sidebar-bg, #07192b) 0%, var(--accent, #1a6b5a) 100%)',
+            boxShadow:    open
+              ? '0 4px 20px rgba(0,0,0,0.3)'
+              : '0 4px 24px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.15)',
+            transform:    'scale(1)',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.08)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)' }}
+          title={open ? 'Cerrar Manguito' : 'Abrir Manguito'}
+        >
+          {open
+            ? <X size={24} className="text-white" />
+            : <img src="/manguito.png" alt="Manguito" style={{ width: 48, height: 48, objectFit: 'contain' }} />
+          }
+        </button>
+      </div>
     </>
   )
 }
