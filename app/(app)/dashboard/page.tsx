@@ -286,9 +286,11 @@ async function fetchPastMonth(userId: string, mes: string) {
     // Balance actual (para reverse-calcular el saldo al fin del mes)
     adminClient.from('dashboard_resumen').select('disponible_real').eq('user_id', userId).single(),
     // Movimientos ARS posteriores al mes (para restar del saldo actual y llegar al saldo de fin del mes)
+    // ⚠️ Limitamos a hoy para no incluir ingresos futuros ya cargados
     adminClient.from('movimientos')
       .select('monto, tipo_movimiento, cuenta_origen, moneda')
-      .eq('user_id', userId).eq('moneda', 'ARS').gte('fecha', end),
+      .eq('user_id', userId).eq('moneda', 'ARS').gte('fecha', end)
+      .lte('fecha', new Date().toISOString().slice(0, 10)),
   ])
 
   const tarjetaIds = new Set((tcuentas ?? []).map(t => t.id))
@@ -349,14 +351,25 @@ async function fetchFutureMonth(userId: string, mes: string) {
   const tarjetaIds    = new Set((tcuentas ?? []).map(t => t.id))
   const cuotasTC      = (cuotasRaw ?? []).filter(m => tarjetaIds.has(m.cuenta_origen ?? ''))
   const totalCuotasTC = cuotasTC.reduce((s, m) => s + m.monto, 0)
-  const totalGF       = (gastosFijos ?? []).reduce((s, g) => s + (g.monto_estimado ?? 0), 0)
+
+  // Separar gastos fijos: efectivo/banco vs tarjeta de crédito
+  const gfEfectivo        = (gastosFijos ?? []).filter(g => (g.cuentas as any)?.tipo_cuenta !== 'Tarjeta Credito')
+  const gfTarjeta         = (gastosFijos ?? []).filter(g => (g.cuentas as any)?.tipo_cuenta === 'Tarjeta Credito')
+  const totalGF_efectivo  = gfEfectivo.reduce((s, g) => s + (g.monto_estimado ?? 0), 0)
+  const totalGF_tarjeta   = gfTarjeta.reduce((s, g) => s + (g.monto_estimado ?? 0), 0)
+  // Total pago tarjetas = cuotas ya registradas + gastos fijos recurrentes de tarjeta
+  const totalPagoTarjetas = totalCuotasTC + totalGF_tarjeta
+
   const totalIngresos = (ingresosRaw ?? []).reduce((s, m) => s + m.monto, 0)
   return {
     cuotasTC,
-    totalCuotasTC:  Math.round(totalCuotasTC),
-    gastosFijos:    gastosFijos ?? [],
-    totalGF:        Math.round(totalGF),
-    totalIngresos:  Math.round(totalIngresos),
+    totalCuotasTC:    Math.round(totalCuotasTC),
+    gfEfectivo,
+    gfTarjeta,
+    totalGF_efectivo: Math.round(totalGF_efectivo),
+    totalGF_tarjeta:  Math.round(totalGF_tarjeta),
+    totalPagoTarjetas: Math.round(totalPagoTarjetas),
+    totalIngresos:    Math.round(totalIngresos),
   }
 }
 
@@ -630,7 +643,7 @@ export default async function DashboardPage({
     fetchFutureMonth(user.id, mes),
     calcularProyecciones(user.id, mes, 4),
   ])
-  const gastosProyectados = future.totalGF + future.totalCuotasTC
+  const gastosProyectados = future.totalGF_efectivo + future.totalPagoTarjetas
   const saldoInicio       = saldoMes - future.totalIngresos + gastosProyectados
 
   return (
@@ -658,10 +671,10 @@ export default async function DashboardPage({
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Proyección del período</p>
               </div>
               {[
-                { label: 'Saldo proyectado inicio del mes',  value: saldoInicio,          color: 'var(--accent, #1a6b5a)', signo: ''  },
-                { label: 'Ingresos cargados',                value: future.totalIngresos,  color: 'var(--accent, #1a6b5a)', signo: '+' },
-                { label: 'Gastos fijos en efectivo / banco', value: future.totalGF,        color: '#dc2626',                signo: '-' },
-                { label: 'Gastos tarjeta del período',       value: future.totalCuotasTC,  color: '#d97706',                signo: '-' },
+                { label: 'Saldo proyectado inicio del mes',  value: saldoInicio,                color: 'var(--accent, #1a6b5a)', signo: ''  },
+                { label: 'Ingresos cargados',                value: future.totalIngresos,        color: 'var(--accent, #1a6b5a)', signo: '+' },
+                { label: 'Gastos fijos en efectivo / banco', value: future.totalGF_efectivo,     color: '#dc2626',                signo: '-' },
+                { label: 'Pago tarjetas estimado',           value: future.totalPagoTarjetas,    color: '#d97706',                signo: '-' },
               ].map(row => (
                 <div key={row.label} className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50 last:border-0">
                   <p className="text-sm text-slate-600">{row.label}</p>
@@ -682,59 +695,96 @@ export default async function DashboardPage({
             <ProyeccionesStrip proyecciones={proyecciones} saldoBase={saldoMes}
               label={`Proyecciones desde ${mesLabel(mes).split(' ')[0]}`} />
 
-            {/* Gastos fijos + Cuotas TC */}
+            {/* Gastos fijos efectivo + Pago tarjetas */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+              {/* Gastos fijos en efectivo/banco */}
               <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                 <div className="px-5 py-4 flex items-center justify-between border-b border-slate-50">
                   <div>
-                    <h2 className="text-sm font-semibold text-slate-700">Gastos fijos del mes</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Servicios y suscripciones activos</p>
+                    <h2 className="text-sm font-semibold text-slate-700">Gastos fijos efectivo / banco</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Pagados directamente (no tarjeta)</p>
                   </div>
                   <Link href="/gastos-fijos" className="text-xs text-blue-500 hover:text-blue-700 underline">Ver todos</Link>
                 </div>
-                <div className="divide-y divide-slate-50 max-h-80 overflow-y-auto">
-                  {future.gastosFijos.map((g: any) => (
-                    <div key={g.id} className="flex items-center justify-between px-5 py-3">
-                      <div>
-                        <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
-                        <p className="text-xs text-slate-400">Día {g.dia_vencimiento} · {(g.cuentas as any)?.nombre_cuenta ?? '—'}</p>
+                {future.gfEfectivo.length === 0 ? (
+                  <div className="px-5 py-8 text-center">
+                    <p className="text-sm text-slate-400">Sin gastos fijos en efectivo</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-50 max-h-80 overflow-y-auto">
+                    {future.gfEfectivo.map((g: any) => (
+                      <div key={g.id} className="flex items-center justify-between px-5 py-3">
+                        <div>
+                          <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
+                          <p className="text-xs text-slate-400">Día {g.dia_vencimiento} · {(g.cuentas as any)?.nombre_cuenta ?? '—'}</p>
+                        </div>
+                        <p className="text-sm font-medium text-slate-800">${fmt(g.monto_estimado ?? 0)}</p>
                       </div>
-                      <p className="text-sm font-medium text-slate-800">${fmt(g.monto_estimado ?? 0)}</p>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
                 <div className="px-5 py-3 border-t border-slate-50 bg-slate-50/60 flex justify-between">
-                  <p className="text-xs text-slate-500 font-medium">Total</p>
-                  <p className="text-sm font-bold text-slate-800">${fmt(future.totalGF)}</p>
+                  <p className="text-xs text-slate-500 font-medium">Total efectivo</p>
+                  <p className="text-sm font-bold text-red-700">${fmt(future.totalGF_efectivo)}</p>
                 </div>
               </div>
 
+              {/* Pago tarjetas: gastos fijos tarjeta + cuotas registradas */}
               <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-50">
-                  <h2 className="text-sm font-semibold text-slate-700">Cuotas de tarjeta del período</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Consumos ya registrados en este ciclo</p>
+                  <h2 className="text-sm font-semibold text-slate-700">Pago tarjetas estimado</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Gastos fijos de tarjeta + cuotas registradas</p>
                 </div>
-                {future.cuotasTC.length === 0 ? (
-                  <div className="px-5 py-10 text-center">
-                    <p className="text-sm text-slate-400">Sin cuotas registradas para este período</p>
-                  </div>
-                ) : (
+
+                {/* Gastos fijos de tarjeta */}
+                {future.gfTarjeta.length > 0 && (
                   <>
-                    <div className="divide-y divide-slate-50 max-h-64 overflow-y-auto">
-                      {future.cuotasTC.map((m: any) => (
-                        <div key={m.id} className="flex items-center justify-between px-5 py-2.5">
-                          <p className="text-sm text-slate-700 truncate">{m.detalle}</p>
-                          <p className="text-sm font-medium text-slate-800 shrink-0 ml-3">${fmt(m.monto)}</p>
+                    <div className="px-5 py-2 bg-slate-50/70 border-b border-slate-100">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Gastos fijos recurrentes</p>
+                    </div>
+                    <div className="divide-y divide-slate-50">
+                      {future.gfTarjeta.map((g: any) => (
+                        <div key={g.id} className="flex items-center justify-between px-5 py-2.5">
+                          <div>
+                            <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
+                            <p className="text-xs text-slate-400">{(g.cuentas as any)?.nombre_cuenta ?? '—'}</p>
+                          </div>
+                          <p className="text-sm font-medium text-slate-800">${fmt(g.monto_estimado ?? 0)}</p>
                         </div>
                       ))}
                     </div>
-                    <div className="px-5 py-3 border-t border-slate-50 bg-slate-50/60 flex justify-between">
-                      <p className="text-xs text-slate-500 font-medium">Total</p>
-                      <p className="text-sm font-bold text-slate-800">${fmt(future.totalCuotasTC)}</p>
+                    <div className="px-5 py-2 border-b border-slate-100 flex justify-between bg-slate-50/40">
+                      <p className="text-xs text-slate-400">Subtotal fijos</p>
+                      <p className="text-xs font-semibold text-amber-700">${fmt(future.totalGF_tarjeta)}</p>
                     </div>
                   </>
                 )}
+
+                {/* Cuotas registradas */}
+                <div className="px-5 py-2 bg-slate-50/70 border-b border-slate-100">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Cuotas registradas</p>
+                </div>
+                {future.cuotasTC.length === 0 ? (
+                  <div className="px-5 py-6 text-center">
+                    <p className="text-sm text-slate-400">Sin cuotas registradas para este período</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-50 max-h-52 overflow-y-auto">
+                    {future.cuotasTC.map((m: any) => (
+                      <div key={m.id} className="flex items-center justify-between px-5 py-2.5">
+                        <p className="text-sm text-slate-700 truncate">{m.detalle}</p>
+                        <p className="text-sm font-medium text-slate-800 shrink-0 ml-3">${fmt(m.monto)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="px-5 py-3 border-t border-slate-50 bg-slate-50/60 flex justify-between">
+                  <p className="text-xs text-slate-500 font-medium">Total pago tarjetas</p>
+                  <p className="text-sm font-bold text-amber-700">${fmt(future.totalPagoTarjetas)}</p>
+                </div>
               </div>
+
             </div>
 
           </div>
