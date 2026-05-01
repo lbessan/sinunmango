@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, ArrowLeftRight, PlusCircle, CreditCard,
   Receipt, ShieldCheck, BarChart2, Settings, Bot,
-  Landmark, Tag, Wallet,
+  Landmark, Tag, Wallet, TrendingUp,
 } from 'lucide-react'
 import { NavItem }   from './nav-item'
 import { NavGroup }  from './nav-group'
@@ -49,9 +49,10 @@ export async function Sidebar() {
         <p className="text-xs uppercase tracking-widest px-5 py-2 mt-3" style={{ color: '#4b6a8a' }}>
           Mis cuentas
         </p>
-        <NavItem href="/cuentas"      icon={<Wallet size={17} />}     label="Cuentas"      tourId="tour-cuentas" />
-        <NavItem href="/tarjetas"     icon={<CreditCard size={17} />} label="Tarjetas"     tourId="tour-tarjetas" />
-        <NavItem href="/gastos-fijos" icon={<Receipt size={17} />}    label="Gastos fijos" />
+        <NavItem href="/cuentas"      icon={<Wallet size={17} />}      label="Cuentas"      tourId="tour-cuentas" />
+        <NavItem href="/tarjetas"     icon={<CreditCard size={17} />}  label="Tarjetas"     tourId="tour-tarjetas" />
+        <NavItem href="/gastos-fijos" icon={<Receipt size={17} />}     label="Gastos fijos" />
+        <NavItem href="/inversiones"  icon={<TrendingUp size={17} />}  label="Inversiones" />
 
         <p className="text-xs uppercase tracking-widest px-5 py-2 mt-3" style={{ color: '#4b6a8a' }}>
           Configuración
