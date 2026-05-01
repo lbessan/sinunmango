@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, ArrowLeftRight, PlusCircle, CreditCard,
-  Receipt, ShieldCheck, BarChart2, Settings, Bot,
+  Receipt, ShieldCheck, BarChart2, Settings,
   Landmark, Tag, Wallet, TrendingUp,
 } from 'lucide-react'
 import { NavItem }   from './nav-item'
@@ -44,7 +44,6 @@ export async function Sidebar() {
         <NavItem href="/movimientos/nuevo" icon={<PlusCircle size={17} />}      label="Nuevo movimiento" />
         <NavItem href="/conciliaciones"    icon={<ShieldCheck size={17} />}     label="Conciliaciones" />
         <NavItem href="/analitica"         icon={<BarChart2 size={17} />}       label="Analítica" />
-        <NavItem href="/asistente"         icon={<Bot size={17} />}             label="Manguito"         tourId="tour-manguito" />
 
         <p className="text-xs uppercase tracking-widest px-5 py-2 mt-3" style={{ color: '#4b6a8a' }}>
           Mis cuentas

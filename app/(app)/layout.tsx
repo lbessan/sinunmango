@@ -1,6 +1,7 @@
 import { Sidebar } from '@/components/sidebar'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AppShell } from '@/components/app-shell'
+import { ManguitoFlotante } from '@/components/manguito-flotante'
 import { getCurrentUser } from '@/lib/auth'
 import { adminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
@@ -27,6 +28,7 @@ export default async function AppLayout({
       <AppShell sidebar={<Sidebar />}>
         {children}
       </AppShell>
+      <ManguitoFlotante />
     </ThemeProvider>
   )
 }
