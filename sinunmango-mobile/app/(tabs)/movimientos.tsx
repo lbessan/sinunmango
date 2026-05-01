@@ -59,11 +59,17 @@ function buildDateFilter(key: FechaKey): { gte?: string; lt?: string } {
   return {}
 }
 
+// Si el campo icono tiene chars no-ASCII → es un emoji válido; si no → fallback
+function resolveIcon(icon: string | null, tipo: string) {
+  if (icon && /[^ -]/.test(icon)) return icon
+  return tipo === 'Ingreso' ? '💰' : tipo === 'Gasto' ? '💸' : '↔️'
+}
+
 // ─── Movimiento row ───────────────────────────────────────────────────────────
 function MovRow({ mov, theme }: { mov: Movimiento; theme: ReturnType<typeof useTheme>['theme'] }) {
   const isGasto   = mov.tipo_movimiento === 'Gasto'
   const isIngreso = mov.tipo_movimiento === 'Ingreso'
-  const icon      = mov.categoria_icono ?? (isIngreso ? '💰' : isGasto ? '💸' : '↔️')
+  const icon      = resolveIcon(mov.categoria_icono, mov.tipo_movimiento)
   const sign      = isGasto ? '-' : isIngreso ? '+' : ''
   const montoColor = isGasto ? theme.expense : isIngreso ? theme.income : theme.textSec
   const symbol    = mov.moneda === 'USD' ? 'USD ' : '$'

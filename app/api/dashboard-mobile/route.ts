@@ -13,18 +13,30 @@ export async function GET(req: NextRequest) {
 
   // Parsear mes del query string
   const mesParam = req.nextUrl.searchParams.get('mes')
-  const today    = new Date()
+  const now      = new Date()
+
+  // "Hoy" en zona Argentina (UTC-3) para no confundir con UTC
+  const argOffset = -3 * 60
+  const localNow  = new Date(now.getTime() + (argOffset - now.getTimezoneOffset()) * 60000)
 
   let mesDate: Date
   if (mesParam && /^\d{4}-\d{2}$/.test(mesParam)) {
     mesDate = new Date(`${mesParam}-01T12:00:00`)
   } else {
-    mesDate = new Date(today.getFullYear(), today.getMonth(), 1)
+    mesDate = new Date(localNow.getFullYear(), localNow.getMonth(), 1)
   }
 
-  const mesStart = `${mesDate.getFullYear()}-${String(mesDate.getMonth() + 1).padStart(2, '0')}-01`
+  const curYear  = localNow.getFullYear()
+  const curMonth = localNow.getMonth()
+  const isMesActual = mesDate.getFullYear() === curYear && mesDate.getMonth() === curMonth
+
+  // Para el mes actual, cortar en "hoy"; para meses pasados/futuros, usar rango completo
+  const todayStr  = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2,'0')}-${String(localNow.getDate()).padStart(2,'0')}`
+  const mesStart  = `${mesDate.getFullYear()}-${String(mesDate.getMonth() + 1).padStart(2, '0')}-01`
   const nextMonth = new Date(mesDate.getFullYear(), mesDate.getMonth() + 1, 1)
-  const mesEnd   = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`
+  const mesEnd    = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`
+  // Tope de fecha: hoy para mes actual, fin de mes para los demás
+  const today = todayStr
 
   const mesLabel = mesDate
     .toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -60,24 +72,24 @@ export async function GET(req: NextRequest) {
       .eq('user_id', user.id)
       .order('tipo_cuenta'),
 
-    // Últimos 10 movimientos del mes seleccionado con categoría
+    // Últimos 10 movimientos del mes seleccionado con categoría (hasta hoy si es mes actual)
     adminClient
       .from('movimientos')
       .select('id, fecha, detalle, monto, moneda, tipo_movimiento, cuenta_origen, categorias(nombre_categoria, icono)')
       .eq('user_id', user.id)
       .gte('fecha', mesStart)
-      .lt('fecha', mesEnd)
+      .lte('fecha', isMesActual ? today : mesEnd.slice(0, 10))
       .order('fecha', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(10),
 
-    // Gastos e ingresos del mes seleccionado
+    // Gastos e ingresos del mes seleccionado (hasta hoy si es mes actual)
     adminClient
       .from('movimientos')
       .select('monto, tipo_movimiento')
       .eq('user_id', user.id)
       .gte('fecha', mesStart)
-      .lt('fecha', mesEnd)
+      .lte('fecha', isMesActual ? today : mesEnd.slice(0, 10))
       .in('tipo_movimiento', ['Gasto', 'Ingreso']),
   ])
 
