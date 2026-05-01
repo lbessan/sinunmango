@@ -4,7 +4,6 @@ import {
   RefreshControl, TouchableOpacity, ActivityIndicator, Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { apiGet } from '@/lib/api'
@@ -142,20 +141,32 @@ const mr = StyleSheet.create({
 })
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
+function mesActual() {
+  return new Date().toISOString().slice(0, 7) // 'YYYY-MM'
+}
+
+function addMonthStr(ym: string, n: number) {
+  const [y, m] = ym.split('-').map(Number)
+  const d = new Date(y, m - 1 + n, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
 export default function DashboardScreen() {
   const { theme } = useTheme()
+  const [mes, setMes]             = useState(mesActual)
   const [data, setData]           = useState<DashboardData | null>(null)
   const [loading, setLoading]     = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError]         = useState<string | null>(null)
   const [hidden, setHidden]       = useState(false)
 
-  const load = useCallback(async (isRefresh = false) => {
+  const load = useCallback(async (isRefresh = false, mesParam?: string) => {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
     setError(null)
     try {
-      const d = await apiGet<DashboardData>('/api/dashboard-mobile')
+      const m = mesParam ?? mes
+      const d = await apiGet<DashboardData>(`/api/dashboard-mobile?mes=${m}`)
       setData(d)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error al cargar')
@@ -163,9 +174,15 @@ export default function DashboardScreen() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [mes])
 
   useEffect(() => { load() }, [load])
+
+  const navMes = (delta: number) => {
+    const nuevo = addMonthStr(mes, delta)
+    setMes(nuevo)
+    load(false, nuevo)
+  }
 
   const mask = '• • • • •'
   const show = (v: number, prefix = '$') =>
@@ -192,12 +209,12 @@ export default function DashboardScreen() {
 
       {/* ── MES SELECTOR ── */}
       <View style={[s.mesNav, { backgroundColor: theme.bg }]}>
-        <TouchableOpacity style={s.mesArrow}>
-          <Ionicons name="chevron-back" size={20} color={theme.textSec} />
+        <TouchableOpacity style={[s.mesArrow, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => navMes(-1)}>
+          <Ionicons name="chevron-back" size={18} color={theme.textSec} />
         </TouchableOpacity>
-        <Text style={[s.mesLabel, { color: theme.text }]}>{data?.mes_label ?? '— —'}</Text>
-        <TouchableOpacity style={s.mesArrow}>
-          <Ionicons name="chevron-forward" size={20} color={theme.textSec} />
+        <Text style={[s.mesLabel, { color: theme.text }]}>{data?.mes_label ?? mes}</Text>
+        <TouchableOpacity style={[s.mesArrow, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => navMes(1)}>
+          <Ionicons name="chevron-forward" size={18} color={theme.textSec} />
         </TouchableOpacity>
       </View>
 
@@ -219,12 +236,7 @@ export default function DashboardScreen() {
         ) : (
           <>
             {/* ── BALANCE CARD ── */}
-            <LinearGradient
-              colors={theme.balanceBg}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={s.balanceCard}
-            >
+            <View style={[s.balanceCard, { backgroundColor: theme.primary }]}>
               {/* Header: label + eye toggle */}
               <View style={s.balanceTopRow}>
                 <Text style={s.balanceLabel}>BALANCE TOTAL  ·  ARS</Text>
@@ -264,7 +276,7 @@ export default function DashboardScreen() {
                   </Text>
                 </View>
               </View>
-            </LinearGradient>
+            </View>
 
             {/* ── MIS CUENTAS ── */}
             {(data?.cuentas?.length ?? 0) > 0 && (
@@ -348,7 +360,11 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 6, paddingHorizontal: 20, gap: 12,
   },
-  mesArrow: { padding: 4 },
+  mesArrow: {
+    width: 34, height: 34, borderRadius: 17,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
   mesLabel: {
     fontSize: 14, fontWeight: '700', letterSpacing: 0.5,
     minWidth: 120, textAlign: 'center',
