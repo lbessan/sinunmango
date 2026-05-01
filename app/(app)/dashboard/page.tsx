@@ -225,7 +225,11 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
       adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true).eq('user_id', userId),
       adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', userId).single(),
     ])
-  if (!resumen) return { saldoBase: 0, startSaldo: 0, saldoInicioMes: 0, proyecciones: [] as ProyeccionMes[] }
+  if (!resumen) return {
+    saldoBase: 0, startSaldo: 0, saldoInicioMes: 0,
+    datosDelMes: { totalIng: 0, gastosFijosEfectivo: 0, gastosFijosTarjeta: 0, totalTC: 0 },
+    proyecciones: [] as ProyeccionMes[],
+  }
   const dolar       = params?.valor ?? 1410
   const tarjetaIds  = new Set((tarjetasRaw ?? []).map(t => t.id))
   const deudaRest   = Math.max(0, resumen.deuda_tarjetas_periodo - resumen.pagos_tarjeta_mes)
@@ -246,6 +250,8 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
   // Para skipCount=1 (Junio): captura startSaldo (antes de i=1)
   // Para skipCount=2 (Julio): captura saldo después de Junio (antes de i=2)
   let saldoInicioMes = Math.round(startSaldo)
+  // Valores exactos usados en el cálculo del mes mostrado (para que la fórmula cierre)
+  let datosDelMes = { totalIng: 0, gastosFijosEfectivo: Math.round(gastosFijosEfectivo), gastosFijosTarjeta: Math.round(gastosFijosTarjeta), totalTC: 0 }
   const proyecciones: ProyeccionMes[] = []
   for (let i = 1; i <= totalLoop; i++) {
     // Capturar el saldo ANTES de procesar este mes (= inicio del mes i)
@@ -262,7 +268,16 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
     const totalIng = (ingresos ?? []).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
     const totalTC  = (gastosTC ?? []).filter(m => tarjetaIds.has(m.cuenta_origen)).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
     saldo = Math.round(saldo + totalIng - gastosFijosEfectivo - gastosFijosTarjeta - totalTC)
-    if (i === skipCount) saldoBase = saldo
+    if (i === skipCount) {
+      saldoBase = saldo
+      // Capturar exactamente lo que se usó para este mes
+      datosDelMes = {
+        totalIng:            Math.round(totalIng),
+        gastosFijosEfectivo: Math.round(gastosFijosEfectivo),
+        gastosFijosTarjeta:  Math.round(gastosFijosTarjeta),
+        totalTC:             Math.round(totalTC),
+      }
+    }
     if (i > skipCount) {
       const label = fecha.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
         .replace(' de ', ' ').replace(/^\w/, c => c.toUpperCase())
@@ -277,7 +292,7 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
       })
     }
   }
-  return { saldoBase, startSaldo: Math.round(startSaldo), saldoInicioMes, proyecciones }
+  return { saldoBase, startSaldo: Math.round(startSaldo), saldoInicioMes, datosDelMes, proyecciones }
 }
 
 // ─── Past month data ──────────────────────────────────────────────────────────
@@ -653,7 +668,7 @@ export default async function DashboardPage({
   }
 
   // ── FUTURE MONTH ───────────────────────────────────────────────────────────
-  const [future, { saldoBase: saldoMes, saldoInicioMes: saldoInicio, proyecciones }] = await Promise.all([
+  const [future, { saldoBase: saldoMes, saldoInicioMes: saldoInicio, datosDelMes, proyecciones }] = await Promise.all([
     fetchFutureMonth(user.id, mes),
     calcularProyecciones(user.id, mes, 4),
   ])
@@ -683,10 +698,10 @@ export default async function DashboardPage({
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Proyección del período</p>
               </div>
               {[
-                { label: 'Saldo proyectado inicio del mes',  value: saldoInicio,                color: 'var(--accent, #1a6b5a)', signo: ''  },
-                { label: 'Ingresos cargados',                value: future.totalIngresos,        color: 'var(--accent, #1a6b5a)', signo: '+' },
-                { label: 'Gastos fijos en efectivo / banco', value: future.totalGF_efectivo,     color: '#dc2626',                signo: '-' },
-                { label: 'Pago tarjetas estimado',           value: future.totalPagoTarjetas,    color: '#d97706',                signo: '-' },
+                { label: 'Saldo proyectado inicio del mes',  value: saldoInicio,                                                    color: 'var(--accent, #1a6b5a)', signo: ''  },
+                { label: 'Ingresos cargados',                value: datosDelMes.totalIng,                                            color: 'var(--accent, #1a6b5a)', signo: '+' },
+                { label: 'Gastos fijos en efectivo / banco', value: datosDelMes.gastosFijosEfectivo,                                  color: '#dc2626',                signo: '-' },
+                { label: 'Pago tarjetas estimado',           value: datosDelMes.gastosFijosTarjeta + datosDelMes.totalTC,             color: '#d97706',                signo: '-' },
               ].map(row => (
                 <div key={row.label} className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50 last:border-0">
                   <p className="text-sm text-slate-600">{row.label}</p>
