@@ -115,8 +115,9 @@ export function EditarMovimientoClient({
     if (res.ok) {
       setSaved(true)
       setTimeout(() => {
-        router.push('/movimientos')
+        // refresh() invalida el caché del router; back() vuelve a la URL anterior (preservando filtros)
         router.refresh()
+        router.back()
       }, 900)
     } else { const d = await res.json(); setError(d.error ?? 'Error al guardar') }
   }
