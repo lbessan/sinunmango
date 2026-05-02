@@ -78,7 +78,9 @@ export default function ConfiguracionScreen() {
                     style={[
                       s.accentBtn,
                       { backgroundColor: a.hex },
-                      isActive && { borderWidth: 3, borderColor: '#ffffff' },
+                      isActive
+                        ? { borderWidth: 3, borderColor: '#ffffff' }
+                        : { borderWidth: 3, borderColor: 'transparent' },
                     ]}
                     activeOpacity={0.8}
                   >
@@ -258,6 +260,6 @@ const s = StyleSheet.create({
 
   // Footer
   footer: { alignItems: 'center', gap: 6, marginTop: 8 },
-  footerLogo:    { width: 120, height: 30, opacity: 0.35 },
+  footerLogo:    { width: 180, height: 48, opacity: 0.3 },
   footerVersion: { fontSize: 11 },
 })

@@ -196,6 +196,62 @@ export default function DashboardScreen() {
               </View>
             </View>
 
+            {/* ── RESUMEN DEL MES ── */}
+            {!loading && data && (
+              <View style={s.section}>
+                <Text style={[s.sectionTitle, { color: theme.text }]}>Resumen del mes</Text>
+                <View style={s.resumeGrid}>
+
+                  {/* Proyección */}
+                  <View style={[s.resumeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                    <View style={[s.resumeIcon, { backgroundColor: theme.surfaceAlt }]}>
+                      <Ionicons name="trending-up-outline" size={16} color={theme.primary} />
+                    </View>
+                    <Text style={[s.resumeLabel, { color: theme.textMuted }]}>Proyectado fin de mes</Text>
+                    <Text style={[s.resumeValue, { color: (data.proyectado ?? 0) >= 0 ? theme.income : theme.expense }]}>
+                      {show(data.proyectado ?? 0)}
+                    </Text>
+                  </View>
+
+                  {/* Gastos fijos pendientes */}
+                  <View style={[s.resumeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                    <View style={[s.resumeIcon, { backgroundColor: theme.surfaceAlt }]}>
+                      <Ionicons name="receipt-outline" size={16} color="#f59e0b" />
+                    </View>
+                    <Text style={[s.resumeLabel, { color: theme.textMuted }]}>Gastos fijos pendientes</Text>
+                    <Text style={[s.resumeValue, { color: (data.gastos_fijos_pendientes ?? 0) > 0 ? '#f59e0b' : theme.text }]}>
+                      {show(data.gastos_fijos_pendientes ?? 0)}
+                    </Text>
+                  </View>
+
+                  {/* Deuda tarjetas */}
+                  <View style={[s.resumeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                    <View style={[s.resumeIcon, { backgroundColor: theme.surfaceAlt }]}>
+                      <Ionicons name="card-outline" size={16} color="#8b5cf6" />
+                    </View>
+                    <Text style={[s.resumeLabel, { color: theme.textMuted }]}>Deuda en tarjetas</Text>
+                    <Text style={[s.resumeValue, { color: (data.deuda_tarjetas ?? 0) > 0 ? '#8b5cf6' : theme.text }]}>
+                      {show(data.deuda_tarjetas ?? 0)}
+                    </Text>
+                  </View>
+
+                  {/* Dólar BNA */}
+                  {(data.dolar ?? 0) > 0 && (
+                    <View style={[s.resumeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                      <View style={[s.resumeIcon, { backgroundColor: theme.surfaceAlt }]}>
+                        <Ionicons name="cash-outline" size={16} color="#10b981" />
+                      </View>
+                      <Text style={[s.resumeLabel, { color: theme.textMuted }]}>Dólar BNA</Text>
+                      <Text style={[s.resumeValue, { color: theme.text }]}>
+                        {'$'}{fmt(data.dolar)}
+                      </Text>
+                    </View>
+                  )}
+
+                </View>
+              </View>
+            )}
+
             {/* ── MIS CUENTAS — grilla 2 columnas ── */}
             {cuentasFiltradas.length > 0 && (
               <View style={s.section}>
@@ -263,6 +319,20 @@ const s = StyleSheet.create({
   section:      { marginBottom: 16 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
   cuentaFila:   { flexDirection: 'row', gap: 10, marginBottom: 10 },
+
+  resumeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  resumeCard: {
+    width: '47%', borderRadius: 14, borderWidth: 1,
+    padding: 14, gap: 6,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  },
+  resumeIcon:  {
+    width: 32, height: 32, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 2,
+  },
+  resumeLabel: { fontSize: 11, fontWeight: '500', lineHeight: 14 },
+  resumeValue: { fontSize: 17, fontWeight: '800' },
 
   errorBox:  { alignItems: 'center', paddingTop: 60 },
   errorText: { fontSize: 14, textAlign: 'center', marginBottom: 16 },
