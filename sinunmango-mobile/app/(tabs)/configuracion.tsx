@@ -146,7 +146,7 @@ export default function ConfiguracionScreen() {
             <Text style={[s.appRowValue, { color: theme.textMuted }]}>1.0.0</Text>
           </View>
           <View style={s.appRow}>
-            <Text style={[s.appRowLabel, { color: theme.text }]}>sinunmango.com.ar</Text>
+            <Text style={[s.appRowLabel, { color: theme.text }]}>app.sinunmango.com.ar</Text>
             <Ionicons name="open-outline" size={14} color={theme.textMuted} />
           </View>
         </View>

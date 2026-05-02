@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
 
   const resendApiKey = process.env.RESEND_API_KEY
   const fromEmail    = process.env.RESEND_FROM       ?? 'alertas@sinunmango.com.ar'
-  const baseUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://sinunmango.com.ar'
+  const baseUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.sinunmango.com.ar'
 
   // Mes anterior
   const hoy      = new Date()
