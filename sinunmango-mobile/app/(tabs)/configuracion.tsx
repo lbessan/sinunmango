@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, Image,
+  ScrollView, Alert, Image, Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
+import { router } from 'expo-router'
 import { supabase } from '@/lib/supabase'
 import { useTheme, ACCENTS, type AccentId, type ModeId } from '@/context/ThemeContext'
 import type { User } from '@supabase/supabase-js'
@@ -40,7 +41,11 @@ export default function ConfiguracionScreen() {
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
         {/* ── PERFIL ── */}
-        <View style={[s.profileCard, { backgroundColor: theme.primary }]}>
+        <TouchableOpacity
+          style={[s.profileCard, { backgroundColor: theme.primary }]}
+          onPress={() => router.push('/perfil-modal')}
+          activeOpacity={0.85}
+        >
           <View style={s.profileInner}>
             <View style={s.avatarCircle}>
               <Text style={s.avatarInitial}>{initial}</Text>
@@ -52,7 +57,7 @@ export default function ConfiguracionScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* ── APARIENCIA ── */}
         <View style={[s.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -147,10 +152,14 @@ export default function ConfiguracionScreen() {
             <Text style={[s.appRowLabel, { color: theme.text }]}>Versión</Text>
             <Text style={[s.appRowValue, { color: theme.textMuted }]}>1.0.0</Text>
           </View>
-          <View style={s.appRow}>
-            <Text style={[s.appRowLabel, { color: theme.text }]}>app.sinunmango.com.ar</Text>
-            <Ionicons name="open-outline" size={14} color={theme.textMuted} />
-          </View>
+          <TouchableOpacity
+            style={s.appRow}
+            onPress={() => Linking.openURL('https://app.sinunmango.com.ar')}
+            activeOpacity={0.7}
+          >
+            <Text style={[s.appRowLabel, { color: theme.primary }]}>app.sinunmango.com.ar</Text>
+            <Ionicons name="open-outline" size={14} color={theme.primary} />
+          </TouchableOpacity>
         </View>
 
         {/* ── LOGOUT ── */}

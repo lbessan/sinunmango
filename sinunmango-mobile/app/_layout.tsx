@@ -98,6 +98,14 @@ export default function RootLayout() {
             headerShown:  false,
           }}
         />
+        <Stack.Screen
+          name="perfil-modal"
+          options={{
+            presentation: 'modal',
+            animation:    'slide_from_bottom',
+            headerShown:  false,
+          }}
+        />
       </Stack>
     </ThemeProvider>
   )
