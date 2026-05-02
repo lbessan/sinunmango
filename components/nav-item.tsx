@@ -10,12 +10,15 @@ interface NavItemProps {
   icon:    React.ReactNode
   label:   string
   tourId?: string
+  exact?:  boolean
 }
 
-export function NavItem({ href, icon, label, tourId }: NavItemProps) {
+export function NavItem({ href, icon, label, tourId, exact = false }: NavItemProps) {
   const pathname         = usePathname()
   const { closeSidebar } = useSidebar()
-  const isActive         = pathname === href || pathname.startsWith(href + '/')
+  const isActive         = exact
+    ? pathname === href
+    : pathname === href || pathname.startsWith(href + '/')
 
   return (
     <Link
