@@ -80,33 +80,33 @@ function DashboardBanner({
 
   return (
     <div
-      className="-mx-8 -mt-8 mb-8 text-white"
+      className="-mx-4 -mt-4 lg:-mx-8 lg:-mt-8 mb-6 lg:mb-8 text-white"
       style={{ background: 'linear-gradient(135deg, var(--sidebar-bg,#07192b) 0%, var(--accent2,#0b2d55) 50%, var(--accent,#0f4d3a) 100%)' }}
     >
-      <div className="px-10 pt-10 pb-9">
+      <div className="px-5 pt-6 pb-6 lg:px-10 lg:pt-10 lg:pb-9">
         {/* Top row: label + mes */}
-        <div className="flex items-start justify-between mb-10">
+        <div className="flex items-start justify-between gap-3 mb-6 lg:mb-10">
           <div>
             <p className="text-xs font-semibold text-white/70 uppercase tracking-widest mb-1.5">Resumen financiero</p>
             <p className="text-sm text-white/45">{badge}</p>
           </div>
-          <h1 className="text-5xl lg:text-6xl font-black tracking-tight text-white leading-none text-right">
+          <h1 className="text-3xl lg:text-6xl font-black tracking-tight text-white leading-none text-right">
             {bigLabel}
           </h1>
         </div>
 
         {/* Métricas — solo si se pasan */}
         {metricaIzq && metricaDer && (
-          <div className="grid grid-cols-2 gap-16 max-w-2xl mx-auto text-center mb-2">
+          <div className="grid grid-cols-2 gap-4 lg:gap-16 max-w-2xl mx-auto text-center mb-2">
             <div>
-              <p className="text-xs font-semibold text-white/55 uppercase tracking-widest mb-3">{metricaIzq.label}</p>
-              <div className="text-4xl font-bold text-white mb-1">{metricaIzq.value}</div>
-              <p className="text-xs text-white/40">{metricaIzq.sub}</p>
+              <p className="text-xs font-semibold text-white/55 uppercase tracking-widest mb-2 lg:mb-3">{metricaIzq.label}</p>
+              <div className="text-2xl lg:text-4xl font-bold text-white mb-1">{metricaIzq.value}</div>
+              <p className="text-xs text-white/40 hidden sm:block">{metricaIzq.sub}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-white/55 uppercase tracking-widest mb-3">{metricaDer.label}</p>
-              <div className="text-4xl font-bold text-white mb-1">{metricaDer.value}</div>
-              <p className="text-xs text-white/40">{metricaDer.sub}</p>
+              <p className="text-xs font-semibold text-white/55 uppercase tracking-widest mb-2 lg:mb-3">{metricaDer.label}</p>
+              <div className="text-2xl lg:text-4xl font-bold text-white mb-1">{metricaDer.value}</div>
+              <p className="text-xs text-white/40 hidden sm:block">{metricaDer.sub}</p>
             </div>
           </div>
         )}
@@ -120,7 +120,7 @@ function NavArrow({ mes, dir }: { mes: string; dir: 'prev' | 'next' }) {
   const target = offsetMes(mes, dir === 'prev' ? -1 : 1)
   const label  = mesLabel(target).split(' ')[0]
   return (
-    <div className="shrink-0 w-16 flex justify-center pt-1">
+    <div className="hidden lg:flex shrink-0 w-16 justify-center pt-1">
       <Link href={`/dashboard?mes=${target}`} className="flex flex-col items-center gap-2 group">
         <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-sm border border-slate-200 bg-white group-hover:shadow-md group-hover:border-slate-300 transition-all">
           {dir === 'prev'
@@ -452,6 +452,21 @@ export default async function DashboardPage({
 
         {/* Contenido con max-w */}
         <div className="max-w-6xl mx-auto space-y-6">
+          {/* Nav de mes — mobile: flechas compactas en línea */}
+          <div className="flex items-center justify-between lg:hidden">
+            <Link href={`/dashboard?mes=${offsetMes(mes, -1)}`}
+              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 px-3 py-2 rounded-xl border border-slate-200 bg-white transition-all">
+              <ChevronLeft size={16} />
+              <span>{mesLabel(offsetMes(mes, -1)).split(' ')[0]}</span>
+            </Link>
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{mesLabel(mes)}</span>
+            <Link href={`/dashboard?mes=${offsetMes(mes, 1)}`}
+              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 px-3 py-2 rounded-xl border border-slate-200 bg-white transition-all">
+              <span>{mesLabel(offsetMes(mes, 1)).split(' ')[0]}</span>
+              <ChevronRight size={16} />
+            </Link>
+          </div>
+
           <div className="flex items-start gap-3">
             <NavArrow mes={mes} dir="prev" />
             <div className="flex-1 min-w-0 space-y-6">
