@@ -62,9 +62,9 @@ export async function Sidebar() {
           paths={['/configuracion', '/categorias']}
           tourId="tour-configuracion"
         >
-          <NavItem href="/configuracion"        icon={<Settings  size={15} />} label="General" />
-          <NavItem href="/configuracion/bancos" icon={<Landmark  size={15} />} label="Bancos" />
-          <NavItem href="/categorias"           icon={<Tag       size={15} />} label="Categorías" />
+          <NavItem href="/configuracion"        icon={<Settings  size={15} />} label="General"    exact />
+          <NavItem href="/configuracion/bancos" icon={<Landmark  size={15} />} label="Bancos"     exact />
+          <NavItem href="/categorias"           icon={<Tag       size={15} />} label="Categorías" exact />
         </NavGroup>
       </nav>
 
