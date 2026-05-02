@@ -23,7 +23,7 @@ export function NavItem({ href, icon, label, tourId }: NavItemProps) {
       onClick={closeSidebar}
       data-tour={tourId}
       className={clsx(
-        'flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-all mx-2 rounded-lg',
+        'flex items-center gap-3 px-5 py-2 text-sm font-medium transition-all',
         isActive
           ? 'text-white'
           : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
