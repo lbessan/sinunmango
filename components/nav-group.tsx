@@ -20,13 +20,11 @@ export function NavGroup({ icon, label, paths, children, tourId }: NavGroupProps
 
   return (
     <div>
-      {/* px-2 en el wrapper para que w-full del botón no desborde el aside */}
-      <div className="px-2">
-        <button
+      <button
           onClick={() => setOpen(o => !o)}
           data-tour={tourId}
           className={clsx(
-            'w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all rounded-lg',
+            'w-full flex items-center gap-3 px-5 py-2 text-sm font-medium transition-all',
             isAnyActive
               ? 'text-white'
               : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
@@ -45,10 +43,9 @@ export function NavGroup({ icon, label, paths, children, tourId }: NavGroupProps
             style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
           />
         </button>
-      </div>
 
       {open && (
-        <div className="pl-3 mt-0.5 space-y-0.5">
+        <div className="mt-0.5 space-y-0.5">
           {children}
         </div>
       )}
