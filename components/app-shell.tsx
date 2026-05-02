@@ -41,23 +41,25 @@ export function AppShell({ sidebar, children }: AppShellProps) {
           }`}
           onClick={() => setOpen(false)}
         />
-        {/* Drawer panel */}
+        {/* Drawer panel — sin overflow visible, sin botones flotantes adentro */}
         <div
-          className={`fixed top-0 left-0 h-full z-50 lg:hidden transition-transform duration-300 ease-in-out ${
+          className={`fixed top-0 left-0 h-full z-50 lg:hidden transition-transform duration-300 ease-in-out overflow-hidden ${
             open ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          {/* Close button — solo visible cuando el drawer está abierto */}
-          {open && (
-            <button
-              onClick={() => setOpen(false)}
-              className="absolute top-4 right-[-44px] z-10 w-9 h-9 rounded-full bg-black/40 flex items-center justify-center text-white"
-            >
-              <X size={18} />
-            </button>
-          )}
           {sidebar}
         </div>
+        {/* Botón X — overlay independiente, fuera del drawer para que el transform no lo afecte */}
+        <button
+          onClick={() => setOpen(false)}
+          className={`fixed z-50 lg:hidden w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white transition-all duration-300 ${
+            open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          style={{ top: 16, left: 272 }}
+          aria-label="Cerrar menú"
+        >
+          <X size={18} />
+        </button>
 
         {/* ── Main content ────────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col min-w-0">
