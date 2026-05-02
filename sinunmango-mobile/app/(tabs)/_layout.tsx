@@ -78,7 +78,7 @@ const mi = StyleSheet.create({
 function FabOverlay({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }) {
   const insets = useSafeAreaInsets()
   const tabBarH = 70
-  const bottom  = insets.bottom + tabBarH - 28   // centrado sobre el tab bar, subido 28px
+  const bottom  = insets.bottom + tabBarH - 52   // el FAB se apoya sobre el tab bar, sobresale ~28px
 
   return (
     <TouchableOpacity
@@ -86,7 +86,7 @@ function FabOverlay({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }) 
       style={[fab.btn, { backgroundColor: theme.primary, bottom }]}
       activeOpacity={0.85}
     >
-      <Ionicons name="add" size={36} color="#ffffff" />
+      <Ionicons name="add" size={40} color="#ffffff" />
     </TouchableOpacity>
   )
 }
@@ -96,10 +96,10 @@ const fab = StyleSheet.create({
     position:       'absolute',
     alignSelf:      'center',
     left:           '50%',
-    marginLeft:     -38,   // mitad del ancho
-    width:          76,
-    height:         76,
-    borderRadius:   38,
+    marginLeft:     -42,   // mitad del ancho
+    width:          84,
+    height:         84,
+    borderRadius:   42,
     alignItems:     'center',
     justifyContent: 'center',
     zIndex:         99,
