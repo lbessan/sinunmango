@@ -20,14 +20,14 @@ export default function LoginScreen() {
     try {
       // La app (Expo Go o standalone) tiene su URL de deep link propia.
       // Supabase no acepta exp:// confiablemente, así que usamos la web como puente:
-      //   Supabase → sinunmango.com.ar/auth-callback?app=[appUrl] → app (deep link)
+      //   Supabase → app.sinunmango.com.ar/auth-callback?app=[appUrl] → app (deep link)
       const isExpoGo = Constants.appOwnership === 'expo'
       const appUrl = AuthSession.makeRedirectUri(
         isExpoGo
           ? { path: 'auth-callback' }                         // → exp://[ip]:8081/--/auth-callback
           : { scheme: 'sinunmango', path: 'auth-callback' }  // → sinunmango://auth-callback
       )
-      const redirectUrl = `https://sinunmango.com.ar/auth-callback?app=${encodeURIComponent(appUrl)}`
+      const redirectUrl = `https://app.sinunmango.com.ar/auth-callback?app=${encodeURIComponent(appUrl)}`
 
       console.log('[OAuth] App URL:', appUrl)
       console.log('[OAuth] Redirect URL (web bridge):', redirectUrl)
