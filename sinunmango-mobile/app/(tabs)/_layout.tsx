@@ -1,6 +1,7 @@
 import { Tabs, router } from 'expo-router'
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '@/context/ThemeContext'
 
 // ─── Tab icon wrapper (activo: bg surfaceAlt + color primary) ─────────────────
@@ -71,30 +72,37 @@ const mi = StyleSheet.create({
   },
 })
 
-// ─── FAB central ─────────────────────────────────────────────────────────────
-function FabButton({ onPress, theme }: {
-  onPress?: () => void
-  theme:    ReturnType<typeof useTheme>['theme']
-}) {
+// ─── FAB overlay ─────────────────────────────────────────────────────────────
+// Se renderiza fuera del tab bar como un overlay absoluto para evitar
+// recortes en dispositivos Android con distintas densidades de pantalla.
+function FabOverlay({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }) {
+  const insets = useSafeAreaInsets()
+  const tabBarH = 70
+  const bottom  = insets.bottom + tabBarH - 28   // centrado sobre el tab bar, subido 28px
+
   return (
     <TouchableOpacity
-      onPress={onPress}
-      style={[fab.btn, { backgroundColor: theme.primary }]}
+      onPress={() => router.push('/nuevo-modal')}
+      style={[fab.btn, { backgroundColor: theme.primary, bottom }]}
       activeOpacity={0.85}
     >
-      <Ionicons name="add" size={36} color="#ffffff" strokeWidth={2.5} />
+      <Ionicons name="add" size={36} color="#ffffff" />
     </TouchableOpacity>
   )
 }
 
 const fab = StyleSheet.create({
   btn: {
+    position:       'absolute',
+    alignSelf:      'center',
+    left:           '50%',
+    marginLeft:     -38,   // mitad del ancho
     width:          76,
     height:         76,
     borderRadius:   38,
     alignItems:     'center',
     justifyContent: 'center',
-    marginBottom:   56,   // sube el botón bien por encima del tab bar
+    zIndex:         99,
     shadowColor:    '#000',
     shadowOpacity:  0.3,
     shadowRadius:   14,
@@ -108,6 +116,8 @@ export default function TabsLayout() {
   const { theme } = useTheme()
 
   return (
+    <View style={{ flex: 1 }}>
+    <FabOverlay theme={theme} />
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -155,9 +165,7 @@ export default function TabsLayout() {
         name="nuevo"
         options={{
           title: '',
-          tabBarButton: () => (
-            <FabButton onPress={() => router.push('/nuevo-modal')} theme={theme} />
-          ),
+          tabBarButton: () => <View style={{ width: 76 }} />,
         }}
       />
 
@@ -181,5 +189,6 @@ export default function TabsLayout() {
         }}
       />
     </Tabs>
+    </View>
   )
 }
