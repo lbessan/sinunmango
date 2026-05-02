@@ -142,13 +142,13 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
                   <SortHeader col="fecha" label="Fecha" currentSort={sortCol} currentDir={sp.dir ?? 'desc'} sp={sp} />
                 </th>
                 <th className={thClass}>Detalle</th>
-                <th className={thClass}>
+                <th className={`${thClass} hidden sm:table-cell`}>
                   <SortHeader col="categoria" label="Categoría" currentSort={sortCol} currentDir={sp.dir ?? 'desc'} sp={sp} />
                 </th>
-                <th className={thClass}>
+                <th className={`${thClass} hidden md:table-cell`}>
                   <SortHeader col="periodo_tarjeta" label="Periodo" currentSort={sortCol} currentDir={sp.dir ?? 'desc'} sp={sp} />
                 </th>
-                <th className={thClass}>Cuenta</th>
+                <th className={`${thClass} hidden md:table-cell`}>Cuenta</th>
                 <th className={thClass}>
                   <SortHeader col="monto_estimado" label="Monto ARS" currentSort={sortCol} currentDir={sp.dir ?? 'desc'} sp={sp} />
                 </th>
@@ -191,17 +191,16 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
                         <p className="text-xs text-slate-400">Cuota {Math.min(mov.cuota_actual, mov.cuotas_total)}/{Math.max(mov.cuota_actual, mov.cuotas_total)}</p>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-sm">
-                      {/* Usa IconoCategoria en vez de texto crudo */}
+                    <td className="hidden sm:table-cell px-4 py-3 text-slate-600 whitespace-nowrap text-sm">
                       <span className="flex items-center gap-1.5">
                         <IconoCategoria icono={mov.categoria_icono} size={16} />
                         {mov.categoria_nombre ?? '—'}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden md:table-cell px-4 py-3">
                       <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-mono">{periodo}</span>
                     </td>
-                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap text-xs">{mov.cuenta_origen_nombre ?? '—'}</td>
+                    <td className="hidden md:table-cell px-4 py-3 text-slate-400 whitespace-nowrap text-xs">{mov.cuenta_origen_nombre ?? '—'}</td>
                     <td className={`px-4 py-3 font-semibold whitespace-nowrap ${
                       isIngreso ? 'text-emerald-600' : isTransf ? 'text-blue-500' : 'text-slate-800'
                     }`}>
