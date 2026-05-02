@@ -47,13 +47,15 @@ export function AppShell({ sidebar, children }: AppShellProps) {
             open ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          {/* Close button */}
-          <button
-            onClick={() => setOpen(false)}
-            className="absolute top-4 right-[-44px] z-10 w-9 h-9 rounded-full bg-black/40 flex items-center justify-center text-white"
-          >
-            <X size={18} />
-          </button>
+          {/* Close button — solo visible cuando el drawer está abierto */}
+          {open && (
+            <button
+              onClick={() => setOpen(false)}
+              className="absolute top-4 right-[-44px] z-10 w-9 h-9 rounded-full bg-black/40 flex items-center justify-center text-white"
+            >
+              <X size={18} />
+            </button>
+          )}
           {sidebar}
         </div>
 
