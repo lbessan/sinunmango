@@ -116,18 +116,39 @@ export default function PrivacidadPage() {
             </p>
           </section>
 
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">6. Tus derechos</h2>
+          <section id="eliminacion">
+            <h2 className="text-xl font-bold text-slate-900 mb-3">6. Tus derechos y eliminación de cuenta</h2>
             <p>Podés en cualquier momento:</p>
             <ul className="list-disc pl-6 mt-2 space-y-1 text-slate-600">
               <li>Acceder a todos tus datos desde la aplicación</li>
               <li>Solicitar la eliminación completa de tu cuenta y datos</li>
               <li>Desactivar las notificaciones por email desde Configuración</li>
             </ul>
-            <p className="mt-3">
-              Para solicitar la eliminación de tu cuenta, escribinos a{' '}
-              <a href="mailto:luchobessan@gmail.com" className="text-orange-500 hover:underline">luchobessan@gmail.com</a>.
-            </p>
+
+            <div className="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-5">
+              <h3 className="font-bold text-slate-800 mb-2">Cómo solicitar la eliminación de tu cuenta</h3>
+              <p className="text-slate-600 text-sm mb-3">
+                Para eliminar tu cuenta y todos los datos asociados, enviá un email a{' '}
+                <a href="mailto:luchobessan@gmail.com" className="text-orange-500 hover:underline">luchobessan@gmail.com</a>{' '}
+                con el asunto <strong>"Eliminar cuenta sinunmango"</strong> desde la dirección de email
+                con la que te registraste.
+              </p>
+              <p className="text-slate-600 text-sm mb-3">
+                Procesamos las solicitudes dentro de los <strong>7 días hábiles</strong>. Al eliminar tu cuenta se borran:
+              </p>
+              <ul className="list-disc pl-5 text-sm text-slate-600 space-y-1">
+                <li>Tu perfil y datos de acceso</li>
+                <li>Todos tus movimientos, cuentas y tarjetas</li>
+                <li>Tus categorías, gastos fijos e inversiones</li>
+                <li>Tus preferencias y configuración</li>
+              </ul>
+              <p className="text-slate-500 text-xs mt-3">
+                Nota: la vinculación con tu cuenta de Google se gestiona desde{' '}
+                <a href="https://myaccount.google.com/permissions" className="text-orange-500 hover:underline" target="_blank">
+                  myaccount.google.com/permissions
+                </a>.
+              </p>
+            </div>
           </section>
 
           <section>
