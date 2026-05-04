@@ -2,7 +2,7 @@
   "expo": {
     "name": "sinunmango",
     "slug": "sinunmango-mobile",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -21,7 +21,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0d2137"
       },
-      "package": "com.sinunmango.mobile"
+      "package": "com.sinunmango.mobile",
+      "versionCode": 2,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro"
@@ -40,6 +44,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1087170b-2239-4527-a64c-ade5b7d10b5d"
+      }
     }
   }
 }
