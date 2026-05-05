@@ -11,15 +11,20 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const params  = new URLSearchParams(window.location.search)
-    const appUrl  = params.get('app')   // ej: exp://192.168.68.58:8081/--/auth-callback
-    const hash    = window.location.hash // ej: #access_token=...&refresh_token=...
+    const appUrl  = params.get('app')   // ej: sinunmango://auth-callback
+    const hash    = window.location.hash // flujo implícito: #access_token=...
+    const code    = params.get('code')   // flujo PKCE: ?code=...
 
     if (appUrl && hash) {
-      // Flujo mobile: mandamos los tokens de vuelta a la app
+      // Flujo implícito: tokens en el hash → los pasamos a la app
       setStatus('redirecting')
       window.location.href = `${appUrl}${hash}`
+    } else if (appUrl && code) {
+      // Flujo PKCE: código en query string → lo pasamos a la app
+      setStatus('redirecting')
+      window.location.href = `${appUrl}?code=${code}`
     } else {
-      // Flujo web: Supabase client-side levanta la sesión del hash automáticamente
+      // Flujo web puro
       setStatus('web')
       window.location.href = '/'
     }
