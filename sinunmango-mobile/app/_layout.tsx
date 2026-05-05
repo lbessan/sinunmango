@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Stack, router } from 'expo-router'
+import { Stack, router, useRootNavigationState } from 'expo-router'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { storeSession } from '@/lib/session-store'
@@ -12,6 +12,7 @@ SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
+  const navState = useRootNavigationState()
 
   useEffect(() => {
     // Initial session check con timeout de seguridad para evitar splash infinita
@@ -38,7 +39,8 @@ export default function RootLayout() {
   }, [])
 
   useEffect(() => {
-    if (session === undefined) return // still loading
+    if (session === undefined) return  // todavía cargando
+    if (!navState?.key) return         // navegador aún no listo
 
     SplashScreen.hideAsync()
 
@@ -47,7 +49,7 @@ export default function RootLayout() {
     } else {
       router.replace('/(auth)/login')
     }
-  }, [session])
+  }, [session, navState?.key])
 
   // Handle deep-link OAuth callback (Android: el browser externo redirige a exp://...)
   useEffect(() => {
