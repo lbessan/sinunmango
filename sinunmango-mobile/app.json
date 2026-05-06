@@ -2,7 +2,7 @@
   "expo": {
     "name": "sinunmango",
     "slug": "sinunmango-mobile",
-    "version": "4.0.0",
+    "version": "5.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -22,7 +22,7 @@
         "backgroundColor": "#0d2137"
       },
       "package": "com.sinunmango.mobile",
-      "versionCode": 4,
+      "versionCode": 5,
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ]
