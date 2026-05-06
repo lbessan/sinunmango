@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { View, ActivityIndicator } from 'react-native'
+import { useEffect, useRef } from 'react'
 import { Stack, router } from 'expo-router'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
@@ -9,7 +8,6 @@ import * as Linking from 'expo-linking'
 import { ThemeProvider } from '@/context/ThemeContext'
 
 export default function RootLayout() {
-  const [ready, setReady] = useState(false)
   const sessionRef = useRef<Session | null>(null)
   const navigated = useRef(false)
 
@@ -24,9 +22,7 @@ export default function RootLayout() {
   }
 
   useEffect(() => {
-    // Timeout de seguridad: si getSession tarda más de 4s, ir al login
     const timeout = setTimeout(() => {
-      setReady(true)
       navigate(sessionRef.current)
     }, 4000)
 
@@ -34,21 +30,17 @@ export default function RootLayout() {
       clearTimeout(timeout)
       sessionRef.current = session
       storeSession(session)
-      setReady(true)
       navigate(session)
     }).catch(() => {
       clearTimeout(timeout)
-      setReady(true)
       navigate(null)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       storeSession(session)
       sessionRef.current = session
-      if (ready) {
-        navigated.current = false
-        navigate(session)
-      }
+      navigated.current = false
+      navigate(session)
     })
 
     return () => subscription.unsubscribe()
@@ -80,16 +72,6 @@ export default function RootLayout() {
     Linking.getInitialURL().then(url => { if (url) handleUrl({ url }) })
     return () => sub.remove()
   }, [])
-
-  // Mientras carga, mostrar pantalla azul con spinner (en vez de splash colgado)
-  if (!ready) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#07192b', justifyContent: 'center', alignItems: 'center' }}>
-        <StatusBar style="light" />
-        <ActivityIndicator size="large" color="#f97316" />
-      </View>
-    )
-  }
 
   return (
     <ThemeProvider>
