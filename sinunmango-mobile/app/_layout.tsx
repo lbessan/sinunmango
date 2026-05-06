@@ -1,63 +1,64 @@
-import { useEffect, useState } from 'react'
-import { Stack, router, useRootNavigationState } from 'expo-router'
+import { useEffect, useRef, useState } from 'react'
+import { View, ActivityIndicator } from 'react-native'
+import { Stack, router } from 'expo-router'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { storeSession } from '@/lib/session-store'
-import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import * as Linking from 'expo-linking'
 import { ThemeProvider } from '@/context/ThemeContext'
 
-SplashScreen.preventAutoHideAsync()
-
 export default function RootLayout() {
-  const [session, setSession] = useState<Session | null | undefined>(undefined)
-  const navState = useRootNavigationState()
+  const [ready, setReady] = useState(false)
+  const sessionRef = useRef<Session | null>(null)
+  const navigated = useRef(false)
 
-  useEffect(() => {
-    // Initial session check con timeout de seguridad para evitar splash infinita
-    const timeout = setTimeout(() => {
-      setSession(null) // si tarda más de 5s, mostrar login
-    }, 5000)
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      clearTimeout(timeout)
-      storeSession(session)
-      setSession(session)
-    }).catch(() => {
-      clearTimeout(timeout)
-      setSession(null)
-    })
-
-    // Listen for auth changes (incl. OAuth callback)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      storeSession(session)   // guardar en store compartido para api.ts
-      setSession(session)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  useEffect(() => {
-    if (session === undefined) return  // todavía cargando
-    if (!navState?.key) return         // navegador aún no listo
-
-    SplashScreen.hideAsync()
-
+  const navigate = (session: Session | null) => {
+    if (navigated.current) return
+    navigated.current = true
     if (session) {
       router.replace('/(tabs)/dashboard')
     } else {
       router.replace('/(auth)/login')
     }
-  }, [session, navState?.key])
+  }
 
-  // Handle deep-link OAuth callback (Android: el browser externo redirige a exp://...)
+  useEffect(() => {
+    // Timeout de seguridad: si getSession tarda más de 4s, ir al login
+    const timeout = setTimeout(() => {
+      setReady(true)
+      navigate(sessionRef.current)
+    }, 4000)
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout)
+      sessionRef.current = session
+      storeSession(session)
+      setReady(true)
+      navigate(session)
+    }).catch(() => {
+      clearTimeout(timeout)
+      setReady(true)
+      navigate(null)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      storeSession(session)
+      sessionRef.current = session
+      if (ready) {
+        navigated.current = false
+        navigate(session)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Handle deep-link OAuth callback
   useEffect(() => {
     const handleUrl = async ({ url }: { url: string }) => {
-      // Supabase puede devolver tokens en el hash (#access_token=...) o como query (?code=...)
       if (!url.includes('access_token=') && !url.includes('refresh_token=') && !url.includes('code=')) return
 
-      // Extraer parámetros del hash o del query string
       const hashPart  = url.includes('#') ? url.split('#')[1] : ''
       const queryPart = url.includes('?') ? url.split('?')[1]?.split('#')[0] : ''
       const params    = new URLSearchParams(hashPart || queryPart)
@@ -67,33 +68,28 @@ export default function RootLayout() {
       const code          = params.get('code')
 
       if (access_token && refresh_token) {
-        // Flujo implícito: tokens en el hash
         const { data, error } = await supabase.auth.setSession({ access_token, refresh_token })
-        if (error) {
-          console.error('[OAuth] setSession error:', error.message)
-        } else if (data.session) {
-          // Guardar explícitamente — no esperamos al evento async de onAuthStateChange
-          storeSession(data.session)
-          console.log('[OAuth] session stored, token:', data.session.access_token.slice(0, 20) + '...')
-        }
+        if (!error && data.session) storeSession(data.session)
       } else if (code) {
-        // Flujo PKCE: código en el query string
         const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) {
-          console.error('[OAuth] exchangeCodeForSession error:', error.message)
-        } else if (data.session) {
-          storeSession(data.session)
-          console.log('[OAuth] PKCE session stored')
-        }
+        if (!error && data.session) storeSession(data.session)
       }
     }
 
     const sub = Linking.addEventListener('url', handleUrl)
-    // También revisar el URL inicial (app abierta directamente desde el deep link)
     Linking.getInitialURL().then(url => { if (url) handleUrl({ url }) })
-
     return () => sub.remove()
   }, [])
+
+  // Mientras carga, mostrar pantalla azul con spinner (en vez de splash colgado)
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#07192b', justifyContent: 'center', alignItems: 'center' }}>
+        <StatusBar style="light" />
+        <ActivityIndicator size="large" color="#f97316" />
+      </View>
+    )
+  }
 
   return (
     <ThemeProvider>
