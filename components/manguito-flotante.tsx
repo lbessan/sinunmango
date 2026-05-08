@@ -220,9 +220,9 @@ export function ManguitoFlotante() {
               width:        'min(520px, calc(100vw - 48px))',
               height:       'min(680px, calc(100dvh - 140px))',
               borderRadius: 20,
-              background:   '#f8fafc',
+              background:   'var(--bg-card, #f8fafc)',
               boxShadow:    '0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.12)',
-              border:       '1px solid rgba(0,0,0,0.08)',
+              border:       '1px solid var(--border, rgba(0,0,0,0.08))',
             }}
           >
             {/* Header */}
@@ -267,7 +267,8 @@ export function ManguitoFlotante() {
               {/* Mensaje de bienvenida — siempre visible */}
               <div className="flex gap-2.5 items-start">
                 <Avatar size={28} />
-                <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm text-slate-700 leading-relaxed shadow-sm max-w-[85%]">
+                <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm text-slate-700 leading-relaxed shadow-sm max-w-[85%]"
+                  style={{ background: 'var(--bg-card-alt)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
                   Hola 👋 Soy Manguito, tu asistente financiero. Preguntame lo que necesites sobre tus finanzas o dictame un gasto para registrarlo.
                 </div>
               </div>
@@ -279,7 +280,8 @@ export function ManguitoFlotante() {
                     <button
                       key={ej}
                       onClick={() => sendMessage(ej)}
-                      className="text-left px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                      className="text-left px-3 py-2 rounded-xl text-xs transition-colors"
+                      style={{ background: 'var(--bg-card-alt)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
                     >
                       {ej}
                     </button>
@@ -303,9 +305,12 @@ export function ManguitoFlotante() {
                     <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
                       msg.role === 'user'
                         ? 'text-white rounded-tr-sm'
-                        : 'bg-white border border-slate-100 text-slate-800 rounded-tl-sm'
+                        : 'rounded-tl-sm'
                     }`}
-                      style={msg.role === 'user' ? { background: 'var(--accent2, #1B3A6B)' } : {}}
+                      style={msg.role === 'user'
+                        ? { background: 'var(--accent2, #1B3A6B)' }
+                        : { background: 'var(--bg-card-alt)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }
+                      }
                     >
                       {msg.content || (loading && msg.role === 'assistant'
                         ? <span className="flex gap-1.5 items-center text-slate-400 text-xs">
@@ -332,8 +337,8 @@ export function ManguitoFlotante() {
             </div>
 
             {/* Input */}
-            <div className="shrink-0 px-4 pb-4 pt-2">
-              <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 flex gap-2.5 items-end shadow-sm">
+            <div className="shrink-0 px-4 pb-4 pt-2" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
+              <div className="rounded-2xl px-3 py-2.5 flex gap-2.5 items-end shadow-sm" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
                 <textarea
                   ref={textareaRef}
                   value={input}

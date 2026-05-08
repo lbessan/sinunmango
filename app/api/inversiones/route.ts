@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
     const { data: mov, error: movErr } = await adminClient
       .from('movimientos')
       .insert({
+        id:              crypto.randomUUID(),
         user_id:         user.id,
         tipo_movimiento: 'Gasto',
         monto:           Math.abs(capital_inicial),
