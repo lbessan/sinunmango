@@ -8,12 +8,18 @@ export default async function AnaliticaPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const { data: movimientos } = await adminClient
-    .from('movimientos_completos')
-    .select('id, fecha, tipo_movimiento, monto, monto_estimado, detalle, categoria_nombre, categoria_icono')
-    .eq('user_id', user.id)
-    .in('tipo_movimiento', ['Ingreso', 'Gasto'])
-    .order('fecha', { ascending: true })
+  const [{ data: movimientos }, { data: subcategorias }] = await Promise.all([
+    adminClient
+      .from('movimientos_completos')
+      .select('id, fecha, tipo_movimiento, monto, monto_estimado, detalle, categoria_nombre, categoria_icono, subcategoria')
+      .eq('user_id', user.id)
+      .in('tipo_movimiento', ['Ingreso', 'Gasto'])
+      .order('fecha', { ascending: true }),
+    adminClient
+      .from('subcategorias')
+      .select('id, nombre_subcategoria, categoria_padre')
+      .eq('user_id', user.id),
+  ])
 
   return (
     <div>
@@ -35,7 +41,10 @@ export default async function AnaliticaPage() {
         </div>
       </div>
 
-      <AnaliticaCharts movimientos={movimientos ?? []} />
+      <AnaliticaCharts
+        movimientos={movimientos ?? []}
+        subcategorias={subcategorias ?? []}
+      />
     </div>
   )
 }

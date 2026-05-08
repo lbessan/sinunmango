@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, ChevronRight, X } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -14,6 +14,13 @@ export type MovAnalitica = {
   detalle: string | null
   categoria_nombre: string | null
   categoria_icono: string | null
+  subcategoria: string | null   // subcategoria ID
+}
+
+export type Subcategoria = {
+  id: string
+  nombre_subcategoria: string
+  categoria_padre: string
 }
 
 type Preset = '1M' | '3M' | '6M' | '12M' | 'todo' | 'custom'
@@ -129,7 +136,6 @@ function BarEvolucion({ data }: {
       <div className="flex items-end gap-1.5 pb-1" style={{ minWidth: data.length * 56 }}>
         {data.map(d => (
           <div key={d.mes} className="flex-1 min-w-[48px] flex flex-col items-center gap-1">
-            {/* bars */}
             <div className="w-full flex items-end justify-center gap-0.5" style={{ height: BAR_H }}>
               <div className="flex-1 flex items-end">
                 <div
@@ -152,9 +158,7 @@ function BarEvolucion({ data }: {
                 />
               </div>
             </div>
-            {/* label */}
             <p className="text-[10px] text-slate-400 text-center whitespace-nowrap">{d.label}</p>
-            {/* neto */}
             {(d.ingresos > 0 || d.gastos > 0) && (
               <p className={`text-[9px] font-medium ${d.neto >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
                 {d.neto >= 0 ? '+' : ''}{fmtK(d.neto)}
@@ -176,21 +180,17 @@ function Donut({ segments }: { segments: { nombre: string; icono: string | null;
   const cy   = SIZE / 2
   const circ = 2 * Math.PI * R
 
-  // Build SVG arc segments using stroke-dasharray trick
-  let offset = circ * 0.25 // start from top (12 o'clock = -90°)
+  let offset = circ * 0.25
   const arcs = segments.map(s => {
     const len = (s.pct / 100) * circ
     const arc = { color: s.color, dasharray: `${len} ${circ}`, dashoffset: -offset + circ * 0.25 }
     offset += len
     return arc
   })
-  // Rotate so first segment starts at top
-  // dashoffset = circumference * 0.25 means start at top
 
   return (
     <div className="relative shrink-0" style={{ width: SIZE, height: SIZE }}>
       <svg width={SIZE} height={SIZE} style={{ transform: 'rotate(-90deg)' }}>
-        {/* background ring */}
         <circle cx={cx} cy={cy} r={R} fill="none" stroke="#f1f5f9" strokeWidth={SIZE / 2 - HOLE / 2} />
         {segments.length === 0 ? null : arcs.map((a, i) => (
           <circle key={i} cx={cx} cy={cy} r={R}
@@ -206,28 +206,28 @@ function Donut({ segments }: { segments: { nombre: string; icono: string | null;
   )
 }
 
-// ─── Cumulative savings line chart ────────────────────────────────────────────
+// ─── Cumulative savings line chart (full width, taller) ───────────────────────
 function LineAcumulado({ data }: {
-  data: { label: string; acumulado: number }[]
+  data: { label: string; acumulado: number; neto: number }[]
 }) {
   if (data.length < 2)
     return <p className="text-center text-slate-400 text-sm py-10">Necesitás al menos 2 meses de datos</p>
 
-  const W = 460; const H = 180
-  const PL = 64; const PR = 16; const PT = 16; const PB = 32
+  const W = 900; const H = 240
+  const PL = 72; const PR = 24; const PT = 20; const PB = 36
   const cW = W - PL - PR; const cH = H - PT - PB
 
   const vals    = data.map(d => d.acumulado)
   const minVal  = Math.min(...vals)
   const maxVal  = Math.max(...vals)
-  const pad     = (maxVal - minVal) * 0.15 || 1000
+  const pad     = (maxVal - minVal) * 0.18 || 1000
   const eMin    = minVal - pad
   const eMax    = maxVal + pad
   const range   = eMax - eMin
 
   const xS = (i: number) => PL + (data.length === 1 ? cW / 2 : (i / (data.length - 1)) * cW)
   const yS = (v: number) => PT + cH - ((v - eMin) / range) * cH
-  const zeroY   = Math.min(Math.max(yS(0), PT), PT + cH)
+  const zeroY    = Math.min(Math.max(yS(0), PT), PT + cH)
   const showZero = zeroY > PT + 4 && zeroY < PT + cH - 4
 
   const lastVal  = vals[vals.length - 1]
@@ -237,75 +237,87 @@ function LineAcumulado({ data }: {
   const gradId   = 'acumAreaGrad'
 
   const pts = data.map((d, i) => `${xS(i)},${yS(d.acumulado)}`).join(' ')
-  // Standard area chart: fill from line down to the bottom of the chart
   const areaPath =
     `M${xS(0)},${PT + cH} ` +
     data.map((d, i) => `L${xS(i)},${yS(d.acumulado)}`).join(' ') +
     ` L${xS(data.length - 1)},${PT + cH} Z`
 
-  const tickVals = [minVal, (minVal + maxVal) / 2, maxVal]
+  // Y-axis ticks — 5 evenly spaced
+  const tickVals = Array.from({ length: 5 }, (_, i) => eMin + (i / 4) * (eMax - eMin))
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor={lineHex} stopOpacity="0.35" />
+          <stop offset="0%"   stopColor={lineHex} stopOpacity="0.3" />
           <stop offset="100%" stopColor={lineHex} stopOpacity="0.02" />
         </linearGradient>
       </defs>
 
       {/* Grid lines */}
-      {[0, 0.33, 0.66, 1].map(f => (
-        <line key={f} x1={PL} y1={PT + f * cH} x2={W - PR} y2={PT + f * cH}
+      {tickVals.map((v, i) => (
+        <line key={i} x1={PL} y1={yS(v)} x2={W - PR} y2={yS(v)}
           stroke="#f1f5f9" strokeWidth="1" />
       ))}
+
       {/* Zero reference line */}
       {showZero && (
         <line x1={PL} y1={zeroY} x2={W - PR} y2={zeroY}
-          stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="4 3" />
+          stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="5 4" />
       )}
 
       {/* Area fill */}
       <path d={areaPath} fill={`url(#${gradId})`} />
+
       {/* Line */}
       <polyline points={pts} fill="none" stroke={lineCol}
         strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      {/* Dots */}
-      {data.map((d, i) => (
-        <g key={i}>
-          <circle cx={xS(i)} cy={yS(d.acumulado)} r="4"
-            fill="white" stroke={lineCol} strokeWidth="2.5" />
-          {/* Value label above/below the dot */}
-          <text
-            x={xS(i)}
-            y={yS(d.acumulado) + (i === data.findIndex(d2 => d2.acumulado === minVal) ? 14 : -7)}
-            textAnchor="middle" fontSize="9" fontWeight="600" fill={lineHex}
-          >
-            {Math.abs(d.acumulado) >= 1000
-              ? `${d.acumulado < 0 ? '-' : ''}${(Math.abs(d.acumulado)/1000).toFixed(0)}k`
-              : d.acumulado.toFixed(0)}
-          </text>
-        </g>
-      ))}
 
-      {/* Y axis labels */}
+      {/* Dots + labels */}
+      {data.map((d, i) => {
+        const x = xS(i)
+        const y = yS(d.acumulado)
+        const isMin = d.acumulado === Math.min(...vals)
+        const labelY = isMin ? y + 16 : y - 9
+        const netoPositive = d.neto >= 0
+        return (
+          <g key={i}>
+            {/* Neto badge below dot */}
+            <text x={x} y={PT + cH + 14} textAnchor="middle" fontSize="9"
+              fill={netoPositive ? '#059669' : '#ef4444'} fontWeight="500">
+              {netoPositive ? '+' : ''}{fmtK(d.neto)}
+            </text>
+            {/* Dot */}
+            <circle cx={x} cy={y} r="5"
+              fill="white" stroke={lineCol} strokeWidth="2.5" />
+            {/* Value label */}
+            <text x={x} y={labelY} textAnchor="middle" fontSize="10"
+              fontWeight="700" fill={lineHex}>
+              {Math.abs(d.acumulado) >= 1000
+                ? `${d.acumulado < 0 ? '-' : ''}${(Math.abs(d.acumulado)/1000).toFixed(0)}k`
+                : d.acumulado.toFixed(0)}
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Y-axis labels */}
       {tickVals.map((v, i) => (
-        <text key={i} x={PL - 6} y={yS(v) + 4}
-          textAnchor="end" fontSize="9" fill="#94a3b8">
+        <text key={i} x={PL - 8} y={yS(v) + 4}
+          textAnchor="end" fontSize="10" fill="#94a3b8">
           {Math.abs(v) >= 1000
             ? `${v < 0 ? '-' : ''}${(Math.abs(v)/1000).toFixed(0)}k`
             : v.toFixed(0)}
         </text>
       ))}
-      {/* Zero label on axis */}
       {showZero && (
-        <text x={PL - 6} y={zeroY + 4} textAnchor="end" fontSize="9" fill="#cbd5e1">0</text>
+        <text x={PL - 8} y={zeroY + 4} textAnchor="end" fontSize="10" fill="#94a3b8">0</text>
       )}
 
-      {/* X axis labels */}
+      {/* X-axis labels */}
       {data.map((d, i) => (
         <text key={i} x={xS(i)} y={H - 4}
-          textAnchor="middle" fontSize="9" fill="#94a3b8">
+          textAnchor="middle" fontSize="10" fill="#94a3b8">
           {d.label}
         </text>
       ))}
@@ -385,12 +397,134 @@ function VariacionRow({ r }: {
   )
 }
 
+// ─── Subcategory drill-down panel ─────────────────────────────────────────────
+function SubcatPanel({
+  catNombre, catIcono, catColor, movs, subcategorias, onClose,
+}: {
+  catNombre: string
+  catIcono: string | null
+  catColor: string
+  movs: MovAnalitica[]
+  subcategorias: Subcategoria[]
+  onClose: () => void
+}) {
+  const catMovs = movs.filter(m => m.tipo_movimiento === 'Gasto' && (m.categoria_nombre ?? 'Sin categoría') === catNombre)
+  const totalCat = catMovs.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
+
+  // Build subcategory breakdown
+  const subcatMap: Record<string, { nombre: string; total: number; count: number }> = {}
+  const sinSubcat = { nombre: 'Sin subcategoría', total: 0, count: 0 }
+
+  catMovs.forEach(m => {
+    if (m.subcategoria) {
+      const sub = subcategorias.find(s => s.id === m.subcategoria)
+      const nombre = sub?.nombre_subcategoria ?? 'Otra'
+      if (!subcatMap[m.subcategoria]) subcatMap[m.subcategoria] = { nombre, total: 0, count: 0 }
+      subcatMap[m.subcategoria].total += m.monto_estimado ?? m.monto
+      subcatMap[m.subcategoria].count++
+    } else {
+      sinSubcat.total += m.monto_estimado ?? m.monto
+      sinSubcat.count++
+    }
+  })
+
+  const subcats = Object.values(subcatMap).sort((a, b) => b.total - a.total)
+  if (sinSubcat.total > 0) subcats.push(sinSubcat)
+
+  const hasSubcats = subcats.some(s => s.nombre !== 'Sin subcategoría')
+
+  // Top individual movimientos for this category
+  const topMovs = [...catMovs]
+    .sort((a, b) => (b.monto_estimado ?? b.monto) - (a.monto_estimado ?? a.monto))
+    .slice(0, 8)
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 p-6 animate-in fade-in slide-in-from-top-2 duration-200">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+          style={{ background: catColor + '22' }}>
+          <IconoCategoria icono={catIcono} size={16} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-800">{catNombre}</p>
+          <p className="text-xs text-slate-400">${fmt(totalCat)} · {catMovs.length} movimientos</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Subcategorías */}
+        <div>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            {hasSubcats ? 'Por subcategoría' : 'Movimientos'}
+          </p>
+          {hasSubcats ? (
+            <div className="space-y-2">
+              {subcats.map((s, i) => {
+                const pct = totalCat > 0 ? (s.total / totalCat) * 100 : 0
+                return (
+                  <div key={i}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-slate-700 truncate flex-1 mr-2">{s.nombre}</span>
+                      <span className="text-xs text-slate-400 shrink-0 mr-2">{s.count} mov.</span>
+                      <span className="text-sm font-semibold text-slate-800 shrink-0">${fmt(s.total)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, background: catColor }} />
+                      </div>
+                      <span className="text-[10px] text-slate-400 w-8 text-right">{pct.toFixed(0)}%</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 py-4">Esta categoría no tiene subcategorías asignadas en este período.</p>
+          )}
+        </div>
+
+        {/* Top movimientos individuales */}
+        <div>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Top movimientos</p>
+          <div className="space-y-2">
+            {topMovs.map((m, i) => (
+              <div key={i} className="flex items-center gap-2 py-1.5 border-b border-slate-50 last:border-0">
+                <span className="text-xs text-slate-300 w-4 text-right shrink-0">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-slate-700 font-medium truncate">{m.detalle || 'Sin detalle'}</p>
+                  <p className="text-[10px] text-slate-400">{new Date(m.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}</p>
+                </div>
+                <span className="text-sm font-semibold text-slate-800 shrink-0">${fmt(m.monto_estimado ?? m.monto)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
-export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }) {
+export function AnaliticaCharts({
+  movimientos,
+  subcategorias,
+}: {
+  movimientos: MovAnalitica[]
+  subcategorias: Subcategoria[]
+}) {
   const [preset, setPreset] = useState<Preset>('6M')
   const [customDesde, setCustomDesde] = useState('')
   const [customHasta, setCustomHasta] = useState('')
   const [variacionVista, setVariacionVista] = useState<'completa' | 'actual'>('completa')
+  const [selectedCat, setSelectedCat] = useState<{ nombre: string; icono: string | null; color: string } | null>(null)
 
   const { desde, hasta } = useMemo(() => {
     if (preset === 'custom' && customDesde && customHasta) {
@@ -399,11 +533,10 @@ export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }
         hasta: new Date(customHasta + 'T23:59:59'),
       }
     }
-    if (preset === 'custom') return getDateRange('6M') // fallback while filling dates
+    if (preset === 'custom') return getDateRange('6M')
     return getDateRange(preset)
   }, [preset, customDesde, customHasta])
 
-  // Filtered movements for the selected range
   const movsFiltrados = useMemo(() =>
     movimientos.filter(m => {
       const f = new Date(m.fecha + 'T12:00:00')
@@ -412,16 +545,12 @@ export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }
     [movimientos, desde, hasta]
   )
 
-  // Monthly buckets for bar chart
   const meses = useMemo(() => getMeses(desde, hasta), [desde, hasta])
 
   const mensualData = useMemo(() => {
     const map: Record<string, { ingresos: number; gastos: number }> = {}
     meses.forEach(m => { map[m] = { ingresos: 0, gastos: 0 } })
-    movimientos.filter(m => {
-      const f = new Date(m.fecha + 'T12:00:00')
-      return f >= desde && f <= hasta
-    }).forEach(m => {
+    movsFiltrados.forEach(m => {
       const key = m.fecha.slice(0, 7)
       if (!map[key]) return
       const val = m.monto_estimado ?? m.monto
@@ -437,7 +566,7 @@ export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }
       ...map[m],
       neto: map[m].ingresos - map[m].gastos,
     }))
-  }, [meses, movimientos, desde, hasta])
+  }, [meses, movsFiltrados])
 
   // KPIs
   const totalIngresos = useMemo(() =>
@@ -451,7 +580,7 @@ export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }
   const cntIngresos = movsFiltrados.filter(m => m.tipo_movimiento === 'Ingreso').length
   const cntGastos   = movsFiltrados.filter(m => m.tipo_movimiento === 'Gasto').length
 
-  // Category breakdown (gastos)
+  // Category breakdown
   const categorias = useMemo(() => {
     const map: Record<string, { nombre: string; icono: string | null; total: number }> = {}
     movsFiltrados.filter(m => m.tipo_movimiento === 'Gasto').forEach(m => {
@@ -469,23 +598,21 @@ export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }
     pct: donutTotal > 0 ? (c.total / donutTotal) * 100 : 0,
   }))
 
-  // ── Dates for variación ─────────────────────────────────────────────────────
+  // Variación dates
   const hoy       = new Date()
   const diaHoy    = hoy.getDate()
   const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
   const dM1       = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1)
   const dM2       = new Date(hoy.getFullYear(), hoy.getMonth() - 2, 1)
-  const mesPrevio   = `${dM1.getFullYear()}-${String(dM1.getMonth() + 1).padStart(2, '0')}` // M-1
-  const mesAnterior = `${dM2.getFullYear()}-${String(dM2.getMonth() + 1).padStart(2, '0')}` // M-2
+  const mesPrevio   = `${dM1.getFullYear()}-${String(dM1.getMonth() + 1).padStart(2, '0')}`
+  const mesAnterior = `${dM2.getFullYear()}-${String(dM2.getMonth() + 1).padStart(2, '0')}`
 
-  // Variación completa: M-2 (full) vs M-1 (full) — e.g. Feb vs Mar
   const variacionCompleta = useMemo(() => {
     const mapM2 = computeCatMap(movimientos.filter(m => m.fecha.slice(0, 7) === mesAnterior))
     const mapM1 = computeCatMap(movimientos.filter(m => m.fecha.slice(0, 7) === mesPrevio))
     return buildVariacion(mapM1, mapM2)
   }, [movimientos, mesAnterior, mesPrevio])
 
-  // Variación actual: M-1 days 1..diaHoy vs M days 1..diaHoy (fair same-day comparison)
   const variacionActual = useMemo(() => {
     const mapM1sd = computeCatMap(movimientos.filter(m =>
       m.fecha.slice(0, 7) === mesPrevio && parseInt(m.fecha.slice(8, 10)) <= diaHoy
@@ -502,18 +629,17 @@ export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }
 
   const varData = variacionVista === 'completa' ? variacionCompleta : variacionActual
 
-  // Cumulative savings line — skip months with no real data
+  // Cumulative savings — include neto per month
   const acumuladoData = useMemo(() => {
     let running = 0
     return mensualData
       .filter(d => d.ingresos > 0 || d.gastos > 0)
       .map(d => {
         running += d.neto
-        return { label: d.label, acumulado: running }
+        return { label: d.label, acumulado: running, neto: d.neto }
       })
   }, [mensualData])
 
-  // Top 10 individual expenses
   const topGastosData = useMemo(() =>
     movsFiltrados
       .filter(m => m.tipo_movimiento === 'Gasto')
@@ -527,6 +653,14 @@ export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }
       })),
     [movsFiltrados]
   )
+
+  const handleCatClick = (seg: typeof donutSegs[number]) => {
+    if (selectedCat?.nombre === seg.nombre) {
+      setSelectedCat(null)
+    } else {
+      setSelectedCat({ nombre: seg.nombre, icono: seg.icono, color: seg.color })
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -550,7 +684,6 @@ export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }
           ))}
         </div>
 
-        {/* Custom date pickers */}
         {preset === 'custom' && (
           <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5">
             <input
@@ -602,64 +735,96 @@ export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }
           <span className="flex items-center gap-1.5 text-xs text-slate-500">
             <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#ef4444' }} /> Gastos
           </span>
-          <span className="flex items-center gap-1.5 text-xs text-slate-500">
-            <span className="w-3 h-3 rounded-sm inline-block bg-slate-200" /> Neto (etiqueta bajo cada mes)
-          </span>
         </div>
       </div>
 
-      {/* ── Categorías + Ahorro acumulado ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* ── Gastos por categoría (full width, clickeable) ──────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6">
+        <div className="flex items-start justify-between mb-1">
+          <div>
+            <p className="text-sm font-semibold text-slate-700">Gastos por categoría</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Distribución en el período seleccionado · hacé clic en una categoría para ver el detalle
+            </p>
+          </div>
+          {selectedCat && (
+            <button
+              onClick={() => setSelectedCat(null)}
+              className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors mt-1"
+            >
+              <X size={12} /> Cerrar detalle
+            </button>
+          )}
+        </div>
 
-        {/* Category breakdown */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6">
-          <p className="text-sm font-semibold text-slate-700 mb-0.5">Gastos por categoría</p>
-          <p className="text-xs text-slate-400 mb-5">Distribución en el período seleccionado</p>
-
-          {donutTotal === 0 ? (
-            <p className="text-center text-slate-400 text-sm py-10">Sin gastos en este período</p>
-          ) : (
-            <>
-              {/* Donut + mini legend */}
-              <div className="flex items-center gap-5 mb-4">
-                <Donut segments={donutSegs} />
-                <div className="flex-1 space-y-1.5 min-w-0">
-                  {donutSegs.slice(0, 7).map(s => (
-                    <div key={s.nombre} className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
-                      <span className="text-xs text-slate-600 truncate flex-1">{s.nombre}</span>
-                      <span className="text-xs font-semibold text-slate-700 shrink-0">{s.pct.toFixed(0)}%</span>
-                    </div>
-                  ))}
-                </div>
+        {donutTotal === 0 ? (
+          <p className="text-center text-slate-400 text-sm py-10">Sin gastos en este período</p>
+        ) : (
+          <>
+            {/* Donut + mini legend */}
+            <div className="flex items-center gap-6 mb-5 mt-4">
+              <Donut segments={donutSegs} />
+              <div className="flex-1 grid grid-cols-2 gap-x-6 gap-y-1.5 min-w-0">
+                {donutSegs.slice(0, 8).map(s => (
+                  <div key={s.nombre} className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
+                    <span className="text-xs text-slate-600 truncate flex-1">{s.nombre}</span>
+                    <span className="text-xs font-semibold text-slate-700 shrink-0">{s.pct.toFixed(0)}%</span>
+                  </div>
+                ))}
               </div>
+            </div>
 
-              {/* Full list */}
-              <div className="border-t border-slate-50 pt-2">
-                {donutSegs.map(s => (
-                  <div key={s.nombre} className="flex items-center gap-3 py-1.5">
+            {/* Full list — clickeable */}
+            <div className="border-t border-slate-50 pt-2">
+              {donutSegs.map(s => {
+                const isSelected = selectedCat?.nombre === s.nombre
+                return (
+                  <button
+                    key={s.nombre}
+                    onClick={() => handleCatClick(s)}
+                    className="w-full flex items-center gap-3 py-2 px-2 rounded-xl transition-all text-left"
+                    style={{
+                      background: isSelected ? s.color + '12' : 'transparent',
+                      outline: isSelected ? `1.5px solid ${s.color}44` : 'none',
+                    }}
+                  >
                     <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: s.color }} />
                     <IconoCategoria icono={s.icono} size={14} />
                     <span className="text-sm text-slate-600 flex-1 truncate">{s.nombre}</span>
                     <span className="text-sm font-semibold text-slate-800">${fmt(s.total)}</span>
                     <span className="text-xs text-slate-400 min-w-[36px] text-right">{s.pct.toFixed(1)}%</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Cumulative savings */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6">
-          <p className="text-sm font-semibold text-slate-700 mb-0.5">Ahorro acumulado</p>
-          <p className="text-xs text-slate-400 mb-6">Saldo neto acumulado mes a mes en el período</p>
-          <LineAcumulado data={acumuladoData} />
-        </div>
-
+                    <ChevronRight size={13} className="text-slate-300 shrink-0" />
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* ── Variación de gastos (full width, with tabs) ───────────────────── */}
+      {/* ── Drill-down panel (cuando hay categoría seleccionada) ───────────── */}
+      {selectedCat && (
+        <SubcatPanel
+          catNombre={selectedCat.nombre}
+          catIcono={selectedCat.icono}
+          catColor={selectedCat.color}
+          movs={movsFiltrados}
+          subcategorias={subcategorias}
+          onClose={() => setSelectedCat(null)}
+        />
+      )}
+
+      {/* ── Ahorro acumulado (full width, más alto) ────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6">
+        <p className="text-sm font-semibold text-slate-700 mb-0.5">Ahorro acumulado</p>
+        <p className="text-xs text-slate-400 mb-6">
+          Saldo neto acumulado mes a mes · el número chico bajo cada punto es el neto de ese mes
+        </p>
+        <LineAcumulado data={acumuladoData} />
+      </div>
+
+      {/* ── Variación de gastos ────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-100 p-6">
         <div className="flex items-start justify-between gap-4 mb-5">
           <div>
@@ -694,7 +859,6 @@ export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }
           <p className="text-center text-slate-400 text-sm py-10">Sin datos suficientes para comparar</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10">
-            {/* Left column */}
             <div>
               <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
                 <span className="flex-1 text-xs text-slate-400 uppercase tracking-wide">Categoría</span>
@@ -710,7 +874,6 @@ export function AnaliticaCharts({ movimientos }: { movimientos: MovAnalitica[] }
                 <VariacionRow key={r.nombre} r={r} />
               ))}
             </div>
-            {/* Right column */}
             <div>
               <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
                 <span className="flex-1 text-xs text-slate-400 uppercase tracking-wide">Categoría</span>
