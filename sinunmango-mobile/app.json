@@ -2,7 +2,7 @@
   "expo": {
     "name": "sinunmango",
     "slug": "sinunmango-mobile",
-    "version": "6.0.5",
+    "version": "6.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -41,8 +41,7 @@
         }
       ],
       "expo-font",
-      "expo-web-browser",
-      "react-native-purchases"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
