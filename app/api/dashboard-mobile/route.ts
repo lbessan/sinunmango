@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminClient } from '@/lib/supabase/admin'
 import { getUserFromRequest } from '@/lib/auth'
+import { getUserPlan } from '@/lib/subscription'
 
 // ─── GET /api/dashboard-mobile ───────────────────────────────────────────────
 // Returns dashboard summary + cuentas + últimos movimientos for the mobile app.
@@ -43,14 +44,19 @@ export async function GET(req: NextRequest) {
     .toUpperCase()
     .replace(' DE ', ' ')
 
-  // Run all queries in parallel
+  // Run all queries in parallel (plan incluido)
   const [
-    { data: resumen, error: resumenError },
-    { data: params },
-    { data: cuentas },
-    { data: movRecientes },
-    { data: movMes },
+    planInfo,
+    [
+      { data: resumen, error: resumenError },
+      { data: params },
+      { data: cuentas },
+      { data: movRecientes },
+      { data: movMes },
+    ],
   ] = await Promise.all([
+    getUserPlan(user.id),
+    Promise.all([
     adminClient
       .from('dashboard_resumen')
       .select('*')
@@ -91,6 +97,7 @@ export async function GET(req: NextRequest) {
       .gte('fecha', mesStart)
       .lte('fecha', isMesActual ? today : mesEnd.slice(0, 10))
       .in('tipo_movimiento', ['Gasto', 'Ingreso']),
+    ]),
   ])
 
   if (resumenError || !resumen) {
@@ -152,6 +159,8 @@ export async function GET(req: NextRequest) {
   })
 
   return NextResponse.json({
+    plan:                    planInfo.plan,
+    has_pro_access:          planInfo.has_pro_access,
     mes_label:               mesLabel,
     mes:                     `${mesDate.getFullYear()}-${String(mesDate.getMonth() + 1).padStart(2, '0')}`,
     saldo_disponible:        Math.round(resumen.disponible_real),
