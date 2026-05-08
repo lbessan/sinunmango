@@ -50,9 +50,10 @@ export async function GET(request: NextRequest) {
 
   if (!existing) {
     // ── USUARIO NUEVO: crear perfil + sembrar datos por defecto ─────────
+    // plan = 'free' explícito (la DB tiene default 'free', pero lo dejamos claro)
     const { error: insertError } = await adminClient
       .from('user_profiles')
-      .insert({ user_id: user.id, email: user.email ?? '', authorized: true })
+      .insert({ user_id: user.id, email: user.email ?? '', authorized: true, plan: 'free' })
 
     if (insertError) {
       console.error('[auth/callback] Error creando perfil:', insertError.message)
