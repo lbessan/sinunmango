@@ -97,6 +97,13 @@ function isEmailAllowed(email: string): boolean {
 
 // ── Categorías por defecto para usuarios nuevos ────────────────────────────
 async function seedDefaultCategories(userId: string) {
+  // Verificar si ya tiene categorías (idempotente: si algo falló y se llama 2 veces)
+  const { count } = await adminClient
+    .from('categorias')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+  if (count && count > 0) return
+
   const categorias = [
     // Gastos
     { nombre_categoria: 'Supermercado',    tipo_default: 'Gasto',   icono: '🛒' },
@@ -116,7 +123,7 @@ async function seedDefaultCategories(userId: string) {
     { nombre_categoria: 'Freelance',       tipo_default: 'Ingreso',  icono: '💼' },
     { nombre_categoria: 'Inversiones',     tipo_default: 'Ingreso',  icono: '📈' },
     { nombre_categoria: 'Otros ingresos',  tipo_default: 'Ingreso',  icono: '➕' },
-  ].map(c => ({ ...c, user_id: userId }))
+  ].map(c => ({ ...c, id: crypto.randomUUID(), user_id: userId }))
 
   const { error } = await adminClient.from('categorias').insert(categorias)
   if (error) console.error('[seedDefaultCategories] Error:', error.message)

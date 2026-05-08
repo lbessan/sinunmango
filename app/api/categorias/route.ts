@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json()
-  const id = 'cat_' + Date.now().toString(36)
+  const id = crypto.randomUUID()
 
   const { error } = await adminClient.from('categorias').insert({
     id,
