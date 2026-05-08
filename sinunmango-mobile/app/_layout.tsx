@@ -6,6 +6,7 @@ import { storeSession } from '@/lib/session-store'
 import { StatusBar } from 'expo-status-bar'
 import * as Linking from 'expo-linking'
 import { ThemeProvider } from '@/context/ThemeContext'
+import { SubscriptionProvider } from '@/context/SubscriptionContext'
 
 export default function RootLayout() {
   const sessionRef = useRef<Session | null>(null)
@@ -75,6 +76,7 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
+      <SubscriptionProvider>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen
@@ -94,6 +96,7 @@ export default function RootLayout() {
           }}
         />
       </Stack>
+      </SubscriptionProvider>
     </ThemeProvider>
   )
 }
