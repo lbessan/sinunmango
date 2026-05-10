@@ -3,8 +3,12 @@ import { getUserFromRequest } from '@/lib/auth'
 import { adminClient } from '@/lib/supabase/admin'
 
 // ─── POST /api/asistente-accion ───────────────────────────────────────────────
-// Executes an action parsed from the AI assistant's response.
-// Currently supports: nuevo_movimiento
+// Ejecuta una acción parseada desde la respuesta del asistente IA (Manguito).
+// Hoy solo soporta: nuevo_movimiento.
+//
+// Importante: el payload viene de un LLM. Validamos TODO antes de tocar la DB
+// (cuotas, monto, moneda, IDs, fecha, detalle). Una alucinación o cliente
+// malicioso no debe poder insertar basura ni acceder a datos de otro usuario.
 
 type AccionMovimiento = {
   tipo:          'nuevo_movimiento'
@@ -14,10 +18,108 @@ type AccionMovimiento = {
   cuotas:        number
   cuenta_id:     string
   categoria_id:  string
-  fecha:         string
+  fecha:         string  // YYYY-MM-DD
 }
 
-function calcularPeriodo(fecha: string, cierre: number | null, vence: number | null, esTarjeta: boolean): string {
+// ─── Validación ───────────────────────────────────────────────────────────────
+const ID_PATTERN     = /^[a-zA-Z0-9_-]{1,64}$/      // cta_xxx, UUIDs, etc.
+const FECHA_PATTERN  = /^\d{4}-\d{2}-\d{2}$/        // ISO date
+const MONTO_MAX      = 1_000_000_000                // 1.000.000.000 — defensa contra overflow / typos
+const CUOTAS_MAX     = 60                            // 5 años de cuotas mensuales
+const DETALLE_MAX    = 200
+
+type Validated =
+  | { ok: true;  accion: AccionMovimiento }
+  | { ok: false; error: string }
+
+function validateAccion(raw: unknown): Validated {
+  if (typeof raw !== 'object' || raw === null) {
+    return { ok: false, error: 'Body inválido' }
+  }
+  const a = raw as Record<string, unknown>
+
+  // tipo
+  if (a.tipo !== 'nuevo_movimiento') {
+    return { ok: false, error: 'Tipo de acción no soportado' }
+  }
+
+  // detalle
+  if (typeof a.detalle !== 'string') {
+    return { ok: false, error: 'Detalle inválido' }
+  }
+  const detalleClean = a.detalle.trim()
+  if (detalleClean.length === 0) {
+    return { ok: false, error: 'Detalle es requerido' }
+  }
+  if (detalleClean.length > DETALLE_MAX) {
+    return { ok: false, error: `Detalle demasiado largo (máx ${DETALLE_MAX} caracteres)` }
+  }
+
+  // monto: número finito > 0 y dentro de rango razonable
+  if (typeof a.monto !== 'number' || !Number.isFinite(a.monto)) {
+    return { ok: false, error: 'Monto inválido' }
+  }
+  if (a.monto <= 0) {
+    return { ok: false, error: 'Monto debe ser mayor a 0' }
+  }
+  if (a.monto > MONTO_MAX) {
+    return { ok: false, error: 'Monto fuera de rango' }
+  }
+
+  // moneda
+  if (a.moneda !== 'ARS' && a.moneda !== 'USD') {
+    return { ok: false, error: 'Moneda inválida (debe ser ARS o USD)' }
+  }
+
+  // cuotas: entero entre 1 y CUOTAS_MAX
+  if (typeof a.cuotas !== 'number' || !Number.isInteger(a.cuotas)) {
+    return { ok: false, error: 'Cuotas inválidas' }
+  }
+  if (a.cuotas < 1 || a.cuotas > CUOTAS_MAX) {
+    return { ok: false, error: `Cuotas debe estar entre 1 y ${CUOTAS_MAX}` }
+  }
+
+  // cuenta_id
+  if (typeof a.cuenta_id !== 'string' || !ID_PATTERN.test(a.cuenta_id)) {
+    return { ok: false, error: 'ID de cuenta inválido' }
+  }
+
+  // categoria_id
+  if (typeof a.categoria_id !== 'string' || !ID_PATTERN.test(a.categoria_id)) {
+    return { ok: false, error: 'ID de categoría inválido' }
+  }
+
+  // fecha: formato + parseable
+  if (typeof a.fecha !== 'string' || !FECHA_PATTERN.test(a.fecha)) {
+    return { ok: false, error: 'Fecha inválida (formato esperado YYYY-MM-DD)' }
+  }
+  const dt = new Date(a.fecha + 'T12:00:00')
+  if (isNaN(dt.getTime())) {
+    return { ok: false, error: 'Fecha inválida' }
+  }
+
+  return {
+    ok: true,
+    accion: {
+      tipo:         'nuevo_movimiento',
+      detalle:      detalleClean,
+      monto:        a.monto,
+      moneda:       a.moneda,
+      cuotas:       a.cuotas,
+      cuenta_id:    a.cuenta_id,
+      categoria_id: a.categoria_id,
+      fecha:        a.fecha,
+    },
+  }
+}
+
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+function calcularPeriodo(
+  fecha: string,
+  cierre: number | null,
+  vence: number | null,
+  esTarjeta: boolean
+): string {
   const d    = new Date(fecha + 'T12:00:00')
   let mes    = d.getMonth()
   let anio   = d.getFullYear()
@@ -40,32 +142,57 @@ function addMonths(d: string, n: number): string {
   return dt.toISOString().slice(0, 10)
 }
 
+// ─── Handler ──────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const accion = (await req.json()) as AccionMovimiento
-
-  if (accion.tipo !== 'nuevo_movimiento') {
-    return NextResponse.json({ error: 'Tipo de acción no soportado.' }, { status: 400 })
+  // Parsear body
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
   }
 
-  // Validate cuenta belongs to user
-  const { data: cuenta } = await adminClient
-    .from('cuentas')
-    .select('id, tipo_cuenta, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta, nombre_cuenta')
-    .eq('id', accion.cuenta_id)
-    .eq('user_id', user.id)
-    .single()
+  // Validar
+  const v = validateAccion(body)
+  if (!v.ok) {
+    return NextResponse.json({ error: v.error }, { status: 400 })
+  }
+  const accion = v.accion
 
+  // Validar que cuenta + categoría pertenezcan al user (en paralelo)
+  const [cuentaRes, categoriaRes] = await Promise.all([
+    adminClient
+      .from('cuentas')
+      .select('id, tipo_cuenta, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta, nombre_cuenta')
+      .eq('id', accion.cuenta_id)
+      .eq('user_id', user.id)
+      .single(),
+    adminClient
+      .from('categorias')
+      .select('id')
+      .eq('id', accion.categoria_id)
+      .eq('user_id', user.id)
+      .single(),
+  ])
+
+  const cuenta = cuentaRes.data
   if (!cuenta) {
     return NextResponse.json({ error: 'Cuenta no encontrada.' }, { status: 404 })
   }
+  if (!categoriaRes.data) {
+    return NextResponse.json({ error: 'Categoría no encontrada.' }, { status: 404 })
+  }
 
-  const isTarjeta = cuenta.tipo_cuenta === 'Tarjeta Credito'
-  const cierre    = cuenta.fecha_cierre_tarjeta    ? new Date(cuenta.fecha_cierre_tarjeta    + 'T12:00:00').getDate() : null
-  const vence     = cuenta.fecha_vencimiento_tarjeta ? new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
-  const cuotas    = accion.cuotas ?? 1
+  // Construir movimientos (con cuotas)
+  const isTarjeta  = cuenta.tipo_cuenta === 'Tarjeta Credito'
+  const cierre     = cuenta.fecha_cierre_tarjeta
+    ? new Date(cuenta.fecha_cierre_tarjeta + 'T12:00:00').getDate() : null
+  const vence      = cuenta.fecha_vencimiento_tarjeta
+    ? new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
+  const cuotas     = accion.cuotas
   const montoCuota = accion.monto / cuotas
 
   const records = Array.from({ length: cuotas }, (_, i) => {
@@ -93,6 +220,7 @@ export async function POST(req: NextRequest) {
 
   const { error } = await adminClient.from('movimientos').insert(records)
   if (error) {
+    console.error('[asistente-accion] insert error:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
