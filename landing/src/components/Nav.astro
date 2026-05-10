@@ -1,0 +1,42 @@
+---
+// Nav superior fijo. Minimalista: logo + link a la app.
+---
+
+<header class="absolute inset-x-0 top-0 z-20">
+  <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+    <a href="/" class="flex items-center gap-2 group">
+      <img
+        src="/logo.png"
+        alt="sinunmango"
+        width="36"
+        height="36"
+        class="h-9 w-9 transition-transform group-hover:scale-105"
+      />
+      <span class="text-lg font-semibold tracking-tight text-[var(--color-ink)]">
+        sinunmango
+      </span>
+    </a>
+
+    <div class="flex items-center gap-3">
+      <a
+        href="#features"
+        class="hidden rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-block"
+      >
+        Qué hace
+      </a>
+      <a
+        href="#faq"
+        class="hidden rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-block"
+      >
+        Preguntas
+      </a>
+      <a
+        href="https://app.sinunmango.com.ar"
+        class="bg-brand-gradient inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5"
+      >
+        Ir a la app
+        <span aria-hidden="true">→</span>
+      </a>
+    </div>
+  </nav>
+</header>

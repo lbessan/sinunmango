@@ -1,0 +1,321 @@
+---
+import ManguitoPresenter from "./ManguitoPresenter.astro";
+
+// Showcase con capturas reales de la app (datos demo, sin info personal).
+// Cada slot reusa el browser frame para coherencia visual. Mezcla pantallas
+// principales 2x2 y miniaturas 3-col, y al final una banda especial sobre
+// la proyección del mes que viene (un diferenciador fuerte).
+
+type Shot = {
+  image: string;
+  alt: string;
+  title: string;
+  caption: string;
+};
+
+const main: Shot[] = [
+  {
+    image: "/screenshots/dashboard.jpg",
+    alt: "Dashboard con saldo, indicadores del mes y proyecciones futuras",
+    title: "Dashboard",
+    caption:
+      "Saldo en pesos y dólares, gastos del mes, deuda en tarjetas y la proyección de cómo terminás.",
+  },
+  {
+    image: "/screenshots/conciliaciones.jpg",
+    alt: "Lista de tarjetas para conciliar movimientos del mes",
+    title: "Conciliaciones",
+    caption:
+      "Cada tarjeta con sus stats: cuánto cargado, cuánto pendiente, cuánto al día. Lo que falta queda en ámbar.",
+  },
+  {
+    image: "/screenshots/analitica.jpg",
+    alt: "Analítica con evolución mensual, gastos por categoría y top 10",
+    title: "Analítica",
+    caption:
+      "Evolución mes a mes, gastos por categoría y top 10 individuales. Variación entre meses para detectar lo que se te escapó.",
+  },
+  {
+    image: "/screenshots/ingresos-detalle.jpg",
+    alt: "Detalle de ingresos del mes desglosado por categoría y movimiento",
+    title: "Drilldown en cualquier número",
+    caption:
+      "Hacés click en un indicador y te llevamos al detalle: cada movimiento, su categoría y a qué cuenta entró.",
+  },
+];
+
+const small: Shot[] = [
+  {
+    image: "/screenshots/movimientos.jpg",
+    alt: "Lista de movimientos con filtros por tipo, período y cuenta",
+    title: "Movimientos",
+    caption: "Filtrable por categoría, período, cuenta.",
+  },
+  {
+    image: "/screenshots/tarjetas.jpg",
+    alt: "Lista de tarjetas de crédito con thumbnail del plástico físico",
+    title: "Tarjetas",
+    caption: "Con su plástico real y todo.",
+  },
+  {
+    image: "/screenshots/nueva-inversion.jpg",
+    alt: "Formulario de nueva inversión con 8 tipos disponibles",
+    title: "Inversiones",
+    caption: "PF, FCI, CEDEAR, dólar, crypto, bonos.",
+  },
+];
+---
+
+<section id="vistas" class="relative py-24 sm:py-32">
+  <div class="mx-auto max-w-6xl px-6">
+    <ManguitoPresenter
+      align="left"
+      text="Pasá. Te muestro cómo se ve por dentro. Hacé click en cualquier captura para verla en grande."
+    />
+
+    <div class="mx-auto max-w-2xl text-center">
+      <h2
+        class="text-3xl font-bold tracking-tight text-[var(--color-ink)] sm:text-4xl"
+      >
+        Así se ve cuando entrás.
+      </h2>
+      <p class="mt-4 text-lg text-[var(--color-ink-soft)]">
+        Una interfaz tranquila para algo que normalmente no lo es.
+      </p>
+    </div>
+
+    <!-- 4 pantallas principales -->
+    <div class="mt-14 grid gap-6 lg:grid-cols-2">
+      {
+        main.map((s) => (
+          <figure class="card overflow-hidden p-0">
+            <div class="flex items-center gap-2 border-b border-[var(--color-border)] bg-[#f5f5f7] px-4 py-3">
+              <span class="h-3 w-3 rounded-full bg-[#ff5f57]" />
+              <span class="h-3 w-3 rounded-full bg-[#febc2e]" />
+              <span class="h-3 w-3 rounded-full bg-[#28c840]" />
+              <div class="ml-3 flex h-6 flex-1 items-center justify-center rounded-md bg-white px-3 text-xs text-[var(--color-ink-muted)]">
+                app.sinunmango.com.ar
+              </div>
+            </div>
+            <div class="aspect-[16/12] w-full overflow-hidden bg-white">
+              <img
+                src={s.image}
+                alt={s.alt}
+                width="1240"
+                height="930"
+                loading="lazy"
+                decoding="async"
+                data-caption={s.caption}
+                class="h-full w-full object-cover object-top"
+              />
+            </div>
+            <figcaption class="border-t border-[var(--color-border)] px-5 py-4">
+              <h3 class="text-sm font-semibold text-[var(--color-ink)]">
+                {s.title}
+              </h3>
+              <p class="mt-1 text-sm text-[var(--color-ink-soft)]">
+                {s.caption}
+              </p>
+            </figcaption>
+          </figure>
+        ))
+      }
+    </div>
+
+    <!-- Trío chico -->
+    <div class="mt-6 grid gap-6 sm:grid-cols-3">
+      {
+        small.map((s) => (
+          <figure class="card overflow-hidden p-0">
+            <div class="aspect-[4/3] w-full overflow-hidden bg-white">
+              <img
+                src={s.image}
+                alt={s.alt}
+                width="800"
+                height="600"
+                loading="lazy"
+                decoding="async"
+                data-caption={s.caption}
+                class="h-full w-full object-cover object-top"
+              />
+            </div>
+            <figcaption class="px-4 py-3">
+              <h3 class="text-sm font-semibold text-[var(--color-ink)]">
+                {s.title}
+              </h3>
+              <p class="mt-1 text-xs text-[var(--color-ink-soft)]">
+                {s.caption}
+              </p>
+            </figcaption>
+          </figure>
+        ))
+      }
+    </div>
+
+    <!-- Banda especial: planificación del mes futuro + selector de tema interactivo -->
+    <div
+      class="mt-12 overflow-hidden rounded-3xl bg-[var(--color-sidebar)] text-white"
+      data-theme-picker
+    >
+      <div class="grid items-center gap-8 p-8 sm:p-10 lg:grid-cols-[0.9fr_1.1fr]">
+        <div>
+          <span
+            class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white/90"
+          >
+            ✨ Planificación
+          </span>
+          <h3 class="mt-4 text-2xl font-bold leading-tight sm:text-3xl">
+            Sabé hoy lo que vas a tener
+            <span class="text-white/95">el mes que viene.</span>
+          </h3>
+          <p class="mt-4 text-base leading-relaxed text-white/80">
+            Cada mes futuro suma tus ingresos esperados, resta los gastos
+            fijos cargados y descuenta las cuotas pendientes. Te da la
+            liquidez estimada para hasta 12 meses adelante.
+          </p>
+
+          <div class="mt-6">
+            <p class="text-xs font-semibold uppercase tracking-wider text-white/60">
+              Probá los temas
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                data-theme="verde"
+                aria-label="Tema verde"
+                class="theme-swatch h-9 w-9 rounded-full bg-[#1a6b5a] ring-2 ring-white/10 transition-all hover:scale-110"
+              ></button>
+              <button
+                type="button"
+                data-theme="azul"
+                aria-label="Tema azul"
+                class="theme-swatch h-9 w-9 rounded-full bg-[#2563eb] ring-2 ring-white/10 transition-all hover:scale-110"
+              ></button>
+              <button
+                type="button"
+                data-theme="violeta"
+                aria-label="Tema violeta (activo)"
+                aria-pressed="true"
+                class="theme-swatch is-active relative h-9 w-9 rounded-full bg-[#7c3aed] ring-2 ring-white transition-all hover:scale-110"
+              >
+                <span class="absolute inset-0 flex items-center justify-center text-xs font-bold leading-none text-white">✓</span>
+              </button>
+              <button
+                type="button"
+                data-theme="naranja"
+                aria-label="Tema naranja"
+                class="theme-swatch h-9 w-9 rounded-full bg-[#c2410c] ring-2 ring-white/10 transition-all hover:scale-110"
+              ></button>
+              <button
+                type="button"
+                data-theme="rosado"
+                aria-label="Tema rosado"
+                class="theme-swatch h-9 w-9 rounded-full bg-[#be185d] ring-2 ring-white/10 transition-all hover:scale-110"
+              ></button>
+            </div>
+            <p class="mt-3 text-xs text-white/50">
+              Tocá un color para ver cómo cambia. La paleta violeta es la
+              que ves en esta web.
+            </p>
+          </div>
+        </div>
+
+        <!-- Imagen interactiva: cambia con los swatches -->
+        <div class="relative mx-auto w-full max-w-xl">
+          <!-- Halo decorativo que también cambia de color -->
+          <div
+            data-theme-glow
+            class="pointer-events-none absolute left-1/2 top-1/2 h-[80%] w-[80%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7c3aed] opacity-30 blur-3xl transition-colors duration-500"
+            aria-hidden="true"
+          ></div>
+          <div class="relative overflow-hidden rounded-xl border border-white/10 bg-white shadow-2xl">
+            <img
+              data-theme-image
+              src="/screenshots/dashboard-tema-violeta.png"
+              alt="Dashboard del mes que viene en el tema seleccionado"
+              width="2130"
+              height="1440"
+              loading="lazy"
+              decoding="async"
+              class="block h-auto w-full transition-opacity duration-300"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Selector de tema interactivo en la banda de planificación
+      const picker = document.querySelector<HTMLElement>("[data-theme-picker]");
+      if (picker) {
+        const swatches = picker.querySelectorAll<HTMLButtonElement>(".theme-swatch");
+        const img = picker.querySelector<HTMLImageElement>("[data-theme-image]");
+        const glow = picker.querySelector<HTMLElement>("[data-theme-glow]");
+
+        // Color de marca de cada tema (para el halo y el ring activo)
+        const themeColors: Record<string, string> = {
+          verde:   "#1a6b5a",
+          azul:    "#2563eb",
+          violeta: "#7c3aed",
+          naranja: "#c2410c",
+          rosado:  "#be185d",
+        };
+
+        function selectTheme(theme: string) {
+          if (!img) return;
+          // Cross-fade suave
+          img.style.opacity = "0";
+          window.setTimeout(() => {
+            img.src = `/screenshots/dashboard-tema-${theme}.png`;
+            img.style.opacity = "1";
+          }, 200);
+
+          // Actualizar halo
+          if (glow) {
+            glow.style.backgroundColor = themeColors[theme] ?? "#7c3aed";
+          }
+
+          // Actualizar swatches: quitar activo de todos, marcar el seleccionado
+          swatches.forEach((s) => {
+            const isActive = s.dataset.theme === theme;
+            s.classList.toggle("is-active", isActive);
+            s.setAttribute("aria-pressed", String(isActive));
+            // Reemplazar ring blanco/transparente
+            s.classList.toggle("ring-white", isActive);
+            s.classList.toggle("ring-white/10", !isActive);
+            // Mostrar/ocultar el check
+            const check = s.querySelector("span");
+            if (isActive && !check) {
+              const span = document.createElement("span");
+              span.className =
+                "absolute inset-0 flex items-center justify-center text-xs font-bold leading-none text-white";
+              span.textContent = "✓";
+              s.appendChild(span);
+              s.classList.add("relative");
+            } else if (!isActive && check) {
+              check.remove();
+            }
+          });
+        }
+
+        swatches.forEach((s) => {
+          s.addEventListener("click", () => {
+            const theme = s.dataset.theme;
+            if (theme) selectTheme(theme);
+          });
+        });
+      }
+    </script>
+
+    <p class="mt-10 text-center text-sm text-[var(--color-ink-muted)]">
+      ¿Querés ver más?
+      <a
+        href="https://app.sinunmango.com.ar"
+        class="font-semibold text-[var(--color-accent)] hover:underline"
+      >
+        Entrá con tu Google
+      </a>
+      y probala.
+    </p>
+  </div>
+</section>

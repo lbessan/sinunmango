@@ -1,0 +1,89 @@
+---
+// Hero — copy "manguito-forward". Headline juega con el nombre.
+// Hero shot: dashboard real de la app con halo decorativo de marca.
+---
+
+<section class="bg-hero-glow relative overflow-hidden pt-32 pb-20 sm:pt-44 sm:pb-28 lg:pt-48 lg:pb-32">
+  <div class="mx-auto grid max-w-7xl items-center gap-14 px-6 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
+    <div class="text-center lg:text-left">
+      <span
+        class="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white/70 px-3.5 py-1.5 text-xs font-medium text-[var(--color-ink-soft)] backdrop-blur"
+      >
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]"></span>
+        Hecho en Argentina · pesos, dólares y todo lo del medio
+      </span>
+
+      <h1
+        class="mt-7 text-5xl font-bold leading-[1.02] tracking-tight text-[var(--color-ink)] sm:text-6xl lg:text-7xl xl:text-[5rem]"
+      >
+        Tus finanzas,
+        <span class="text-brand-gradient">sin un mango</span>
+        menos.
+      </h1>
+
+      <p
+        class="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-[var(--color-ink-soft)] sm:text-xl lg:mx-0"
+      >
+        Reenviame los mails del banco. Subí el resumen de la tarjeta. Mandale
+        un mensaje a Manguito. Como te quede más cómodo: tus gastos se
+        cargan solos.
+      </p>
+
+      <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
+        <a
+          href="https://app.sinunmango.com.ar"
+          class="bg-brand-gradient inline-flex items-center gap-2 rounded-xl px-7 py-4 text-base font-semibold text-white shadow-lg shadow-[color:var(--color-accent)]/20 transition-transform hover:-translate-y-0.5 sm:text-lg"
+        >
+          Probar la app
+          <span aria-hidden="true">→</span>
+        </a>
+        <a
+          href="#features"
+          class="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-white px-7 py-4 text-base font-semibold text-[var(--color-ink)] transition-colors hover:border-[var(--color-accent)]/40 sm:text-lg"
+        >
+          Ver qué hace
+        </a>
+      </div>
+
+      <p class="mt-6 text-sm text-[var(--color-ink-muted)]">
+        Entrás con tu cuenta de Google. Sin tarjeta, sin trial.
+      </p>
+    </div>
+
+    <!-- Hero shot: dashboard real con halo decorativo -->
+    <div class="relative mx-auto w-full max-w-3xl lg:max-w-none">
+      <!-- Halo decorativo más amplio para que se sienta aireado -->
+      <div
+        class="bg-brand-gradient absolute -inset-6 rounded-[2rem] opacity-25 blur-3xl"
+        aria-hidden="true"
+      ></div>
+
+      <!-- Browser frame con dashboard -->
+      <div
+        class="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-2xl shadow-[color:var(--color-accent2)]/20"
+      >
+        <div
+          class="flex items-center gap-2 border-b border-[var(--color-border)] bg-[#f5f5f7] px-4 py-3"
+        >
+          <span class="h-3 w-3 rounded-full bg-[#ff5f57]"></span>
+          <span class="h-3 w-3 rounded-full bg-[#febc2e]"></span>
+          <span class="h-3 w-3 rounded-full bg-[#28c840]"></span>
+          <div
+            class="ml-2 flex h-6 flex-1 items-center justify-center rounded bg-white px-3 text-xs text-[var(--color-ink-muted)]"
+          >
+            app.sinunmango.com.ar
+          </div>
+        </div>
+        <img
+          src="/screenshots/dashboard.jpg"
+          alt="Dashboard de sinunmango: saldo total, indicadores del mes, proyecciones y estado de cuentas"
+          width="1570"
+          height="950"
+          fetchpriority="high"
+          decoding="async"
+          class="block h-auto w-full"
+        />
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,162 @@
+---
+// Manguito presentando una sección. Se renderiza como un avatar con un
+// bocadillo al lado, anclando emocionalmente la sección al asistente IA.
+
+interface Props {
+  /** Lo que dice Manguito */
+  text: string;
+  /** Lado donde aparece el avatar (default: left) */
+  align?: "left" | "right";
+  /** "sm" para secciones secundarias, "md" para principales */
+  size?: "sm" | "md";
+}
+
+const { text, align = "left", size = "md" } = Astro.props;
+
+const avatarSize = size === "sm" ? "h-14 w-14 sm:h-16 sm:w-16" : "h-20 w-20 sm:h-24 sm:w-24";
+const flexDir =
+  align === "right" ? "sm:flex-row-reverse" : "sm:flex-row";
+---
+
+<div
+  class:list={[
+    "manguito-presenter mx-auto mb-10 flex max-w-2xl flex-col items-center gap-4",
+    flexDir,
+  ]}
+  data-align={align}
+>
+  <div class="bg-brand-gradient relative shrink-0 rounded-full p-1 shadow-lg shadow-[color:var(--color-accent)]/20">
+    <div class={`${avatarSize} overflow-hidden rounded-full bg-white`}>
+      <img
+        src="/manguito.png"
+        alt="Manguito, el asistente"
+        width="120"
+        height="120"
+        loading="lazy"
+        decoding="async"
+        class="h-full w-full object-cover"
+      />
+    </div>
+    <span
+      class="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--color-accent)] text-[9px] font-bold text-white"
+      title="Asistente IA"
+    >
+      IA
+    </span>
+  </div>
+
+  <div
+    class:list={[
+      "manguito-bubble relative max-w-md rounded-2xl border px-5 py-3 text-base leading-snug text-[var(--color-ink)] shadow-md",
+      align === "right" ? "manguito-bubble--right" : "manguito-bubble--left",
+    ]}
+  >
+    <p>{text}</p>
+  </div>
+</div>
+
+<style>
+  /* Bocadillo con tinte de marca (más cálido, más vivo) */
+  .manguito-bubble {
+    position: relative;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-accent) 8%, white) 0%,
+      white 60%
+    );
+    border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+    box-shadow: 0 6px 20px -10px color-mix(in srgb, var(--color-accent) 40%, transparent);
+  }
+
+  /* Triángulo lateral apuntando al avatar (desktop) */
+  @media (min-width: 640px) {
+    .manguito-bubble--left::before,
+    .manguito-bubble--right::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      width: 14px;
+      height: 14px;
+      background: color-mix(in srgb, var(--color-accent) 8%, white);
+      transform: translateY(-50%) rotate(45deg);
+    }
+    .manguito-bubble--left::before {
+      left: -8px;
+      border-left: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+      border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+    }
+    .manguito-bubble--right::before {
+      right: -8px;
+      border-right: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+      border-top: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+    }
+  }
+
+  /* Entrada del bloque al hacerse visible */
+  .manguito-presenter {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 600ms ease, transform 600ms ease;
+  }
+  .manguito-presenter.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Manguito tiene dos animaciones combinadas:
+     1) Saludito grande al aparecer (una vez)
+     2) Idle continuo: respiración + balanceo muy sutil */
+  .manguito-presenter img {
+    transform-origin: 50% 80%;
+    animation: manguito-idle 4.5s ease-in-out infinite;
+  }
+  .manguito-presenter.is-visible img {
+    animation:
+      manguito-wave 1.4s ease-out 0.2s 1,
+      manguito-idle 4.5s ease-in-out 1.6s infinite;
+  }
+
+  @keyframes manguito-wave {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    20%      { transform: rotate(-10deg) scale(1.05); }
+    50%      { transform: rotate(8deg) scale(1.05); }
+    80%      { transform: rotate(-3deg) scale(1.02); }
+  }
+
+  /* Loop continuo: respira (escala) y se inclina muy sutil */
+  @keyframes manguito-idle {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    25%      { transform: rotate(-2deg) scale(1.02); }
+    50%      { transform: rotate(0deg) scale(1.04); }
+    75%      { transform: rotate(2deg) scale(1.02); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .manguito-presenter,
+    .manguito-presenter img,
+    .manguito-presenter.is-visible img {
+      animation: none !important;
+      transition: none !important;
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  // Activar la animación al entrar al viewport
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      }
+    },
+    { threshold: 0.3 }
+  );
+  document
+    .querySelectorAll(".manguito-presenter")
+    .forEach((el) => observer.observe(el));
+</script>
