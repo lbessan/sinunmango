@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminClient } from '@/lib/supabase/admin'
-import { getUserFromRequest } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 import { getUserPlan } from '@/lib/subscription'
 
 // ─── GET /api/dashboard-mobile ───────────────────────────────────────────────
@@ -9,7 +8,7 @@ import { getUserPlan } from '@/lib/subscription'
 // Query params: ?mes=YYYY-MM (default: current month)
 
 export async function GET(req: NextRequest) {
-  const user = await getUserFromRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Parsear mes del query string
@@ -36,8 +35,7 @@ export async function GET(req: NextRequest) {
   const mesStart  = `${mesDate.getFullYear()}-${String(mesDate.getMonth() + 1).padStart(2, '0')}-01`
   const nextMonth = new Date(mesDate.getFullYear(), mesDate.getMonth() + 1, 1)
   const mesEnd    = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`
-  // Tope de fecha: hoy para mes actual, fin de mes para los demás
-  const today = todayStr
+  const today     = todayStr
 
   const mesLabel = mesDate
     .toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -55,48 +53,48 @@ export async function GET(req: NextRequest) {
       { data: movMes },
     ],
   ] = await Promise.all([
-    getUserPlan(user.id),
+    getUserPlan(supabase),
     Promise.all([
-    adminClient
-      .from('dashboard_resumen')
-      .select('*')
-      .eq('user_id', user.id)
-      .single(),
+      supabase
+        .from('dashboard_resumen')
+        .select('*')
+        .eq('user_id', user.id)
+        .single(),
 
-    adminClient
-      .from('parametros')
-      .select('valor')
-      .eq('id', 'Dolar_Tarjeta_BNA')
-      .eq('user_id', user.id)
-      .single(),
+      supabase
+        .from('parametros')
+        .select('valor')
+        .eq('id', 'Dolar_Tarjeta_BNA')
+        .eq('user_id', user.id)
+        .single(),
 
-    // Cuentas con saldo calculado (view) — siempre el saldo actual
-    adminClient
-      .from('saldo_actual_cuentas')
-      .select('id, nombre_cuenta, tipo_cuenta, moneda, saldo_actual, activa')
-      .eq('activa', true)
-      .eq('user_id', user.id)
-      .order('tipo_cuenta'),
+      // Cuentas con saldo calculado (view) — siempre el saldo actual
+      supabase
+        .from('saldo_actual_cuentas')
+        .select('id, nombre_cuenta, tipo_cuenta, moneda, saldo_actual, activa')
+        .eq('activa', true)
+        .eq('user_id', user.id)
+        .order('tipo_cuenta'),
 
-    // Últimos 10 movimientos del mes seleccionado con categoría (hasta hoy si es mes actual)
-    adminClient
-      .from('movimientos')
-      .select('id, fecha, detalle, monto, moneda, tipo_movimiento, cuenta_origen, categorias(nombre_categoria, icono)')
-      .eq('user_id', user.id)
-      .gte('fecha', mesStart)
-      .lte('fecha', isMesActual ? today : mesEnd.slice(0, 10))
-      .order('fecha', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(10),
+      // Últimos 10 movimientos del mes seleccionado con categoría (hasta hoy si es mes actual)
+      supabase
+        .from('movimientos')
+        .select('id, fecha, detalle, monto, moneda, tipo_movimiento, cuenta_origen, categorias(nombre_categoria, icono)')
+        .eq('user_id', user.id)
+        .gte('fecha', mesStart)
+        .lte('fecha', isMesActual ? today : mesEnd.slice(0, 10))
+        .order('fecha', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(10),
 
-    // Gastos e ingresos del mes seleccionado (hasta hoy si es mes actual)
-    adminClient
-      .from('movimientos')
-      .select('monto, tipo_movimiento')
-      .eq('user_id', user.id)
-      .gte('fecha', mesStart)
-      .lte('fecha', isMesActual ? today : mesEnd.slice(0, 10))
-      .in('tipo_movimiento', ['Gasto', 'Ingreso']),
+      // Gastos e ingresos del mes seleccionado (hasta hoy si es mes actual)
+      supabase
+        .from('movimientos')
+        .select('monto, tipo_movimiento')
+        .eq('user_id', user.id)
+        .gte('fecha', mesStart)
+        .lte('fecha', isMesActual ? today : mesEnd.slice(0, 10))
+        .in('tipo_movimiento', ['Gasto', 'Ingreso']),
     ]),
   ])
 

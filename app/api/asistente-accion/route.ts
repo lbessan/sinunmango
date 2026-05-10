@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromRequest } from '@/lib/auth'
-import { adminClient } from '@/lib/supabase/admin'
+import { createClientForRequest } from '@/lib/supabase/route'
 
 // ─── POST /api/asistente-accion ───────────────────────────────────────────────
 // Ejecuta una acción parseada desde la respuesta del asistente IA (Manguito).
@@ -9,22 +8,23 @@ import { adminClient } from '@/lib/supabase/admin'
 // Importante: el payload viene de un LLM. Validamos TODO antes de tocar la DB
 // (cuotas, monto, moneda, IDs, fecha, detalle). Una alucinación o cliente
 // malicioso no debe poder insertar basura ni acceder a datos de otro usuario.
+// RLS hace cumplir ownership de cuenta y categoría también a nivel DB.
 
 type AccionMovimiento = {
-  tipo:          'nuevo_movimiento'
-  detalle:       string
-  monto:         number
-  moneda:        'ARS' | 'USD'
-  cuotas:        number
-  cuenta_id:     string
-  categoria_id:  string
-  fecha:         string  // YYYY-MM-DD
+  tipo:         'nuevo_movimiento'
+  detalle:      string
+  monto:        number
+  moneda:       'ARS' | 'USD'
+  cuotas:       number
+  cuenta_id:    string
+  categoria_id: string
+  fecha:        string  // YYYY-MM-DD
 }
 
 // ─── Validación ───────────────────────────────────────────────────────────────
 const ID_PATTERN     = /^[a-zA-Z0-9_-]{1,64}$/      // cta_xxx, UUIDs, etc.
 const FECHA_PATTERN  = /^\d{4}-\d{2}-\d{2}$/        // ISO date
-const MONTO_MAX      = 1_000_000_000                // 1.000.000.000 — defensa contra overflow / typos
+const MONTO_MAX      = 1_000_000_000                // defensa contra overflow / typos
 const CUOTAS_MAX     = 60                            // 5 años de cuotas mensuales
 const DETALLE_MAX    = 200
 
@@ -38,12 +38,9 @@ function validateAccion(raw: unknown): Validated {
   }
   const a = raw as Record<string, unknown>
 
-  // tipo
   if (a.tipo !== 'nuevo_movimiento') {
     return { ok: false, error: 'Tipo de acción no soportado' }
   }
-
-  // detalle
   if (typeof a.detalle !== 'string') {
     return { ok: false, error: 'Detalle inválido' }
   }
@@ -54,8 +51,6 @@ function validateAccion(raw: unknown): Validated {
   if (detalleClean.length > DETALLE_MAX) {
     return { ok: false, error: `Detalle demasiado largo (máx ${DETALLE_MAX} caracteres)` }
   }
-
-  // monto: número finito > 0 y dentro de rango razonable
   if (typeof a.monto !== 'number' || !Number.isFinite(a.monto)) {
     return { ok: false, error: 'Monto inválido' }
   }
@@ -65,31 +60,21 @@ function validateAccion(raw: unknown): Validated {
   if (a.monto > MONTO_MAX) {
     return { ok: false, error: 'Monto fuera de rango' }
   }
-
-  // moneda
   if (a.moneda !== 'ARS' && a.moneda !== 'USD') {
     return { ok: false, error: 'Moneda inválida (debe ser ARS o USD)' }
   }
-
-  // cuotas: entero entre 1 y CUOTAS_MAX
   if (typeof a.cuotas !== 'number' || !Number.isInteger(a.cuotas)) {
     return { ok: false, error: 'Cuotas inválidas' }
   }
   if (a.cuotas < 1 || a.cuotas > CUOTAS_MAX) {
     return { ok: false, error: `Cuotas debe estar entre 1 y ${CUOTAS_MAX}` }
   }
-
-  // cuenta_id
   if (typeof a.cuenta_id !== 'string' || !ID_PATTERN.test(a.cuenta_id)) {
     return { ok: false, error: 'ID de cuenta inválido' }
   }
-
-  // categoria_id
   if (typeof a.categoria_id !== 'string' || !ID_PATTERN.test(a.categoria_id)) {
     return { ok: false, error: 'ID de categoría inválido' }
   }
-
-  // fecha: formato + parseable
   if (typeof a.fecha !== 'string' || !FECHA_PATTERN.test(a.fecha)) {
     return { ok: false, error: 'Fecha inválida (formato esperado YYYY-MM-DD)' }
   }
@@ -144,7 +129,7 @@ function addMonths(d: string, n: number): string {
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const user = await getUserFromRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Parsear body
@@ -162,15 +147,16 @@ export async function POST(req: NextRequest) {
   }
   const accion = v.accion
 
-  // Validar que cuenta + categoría pertenezcan al user (en paralelo)
+  // Validar que cuenta + categoría pertenezcan al user (en paralelo).
+  // RLS también lo asegura, pero hacemos los chequeos para devolver 404 explícito.
   const [cuentaRes, categoriaRes] = await Promise.all([
-    adminClient
+    supabase
       .from('cuentas')
       .select('id, tipo_cuenta, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta, nombre_cuenta')
       .eq('id', accion.cuenta_id)
       .eq('user_id', user.id)
       .single(),
-    adminClient
+    supabase
       .from('categorias')
       .select('id')
       .eq('id', accion.categoria_id)
@@ -218,7 +204,7 @@ export async function POST(req: NextRequest) {
     }
   })
 
-  const { error } = await adminClient.from('movimientos').insert(records)
+  const { error } = await supabase.from('movimientos').insert(records)
   if (error) {
     console.error('[asistente-accion] insert error:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })

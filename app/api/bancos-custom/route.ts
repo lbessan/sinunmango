@@ -1,12 +1,11 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
-  const user = await getCurrentUser()
+export async function GET(req: NextRequest) {
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const { data, error } = await adminClient
+  const { data, error } = await supabase
     .from('bancos_custom')
     .select('*')
     .eq('user_id', user.id)
@@ -17,18 +16,18 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json()
   const id   = 'banco_' + Date.now().toString(36)
 
-  const { error } = await adminClient.from('bancos_custom').insert({
+  const { error } = await supabase.from('bancos_custom').insert({
     id,
-    user_id:          user.id,
-    nombre:           body.nombre,
-    color:            body.color ?? '#475569',
-    imagen_url:       body.imagen_url ?? null,
+    user_id:           user.id,
+    nombre:            body.nombre,
+    color:             body.color ?? '#475569',
+    imagen_url:        body.imagen_url ?? null,
     imagen_banner_url: body.imagen_banner_url ?? null,
   })
 

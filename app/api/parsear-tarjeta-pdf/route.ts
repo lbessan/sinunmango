@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 
 // ─── POST /api/parsear-tarjeta-pdf ────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), extrae metadata de la tarjeta
@@ -9,7 +9,7 @@ import { getCurrentUser } from '@/lib/auth'
 // Response: { ok: true, tarjeta: {...}, transacciones: [...] }
 
 export async function POST(req: NextRequest) {
-  const user = await getCurrentUser()
+  const { user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const apiKey = process.env.ANTHROPIC_API_KEY

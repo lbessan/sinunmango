@@ -1,12 +1,11 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
-  const user = await getCurrentUser()
+export async function GET(req: NextRequest) {
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const { data, error } = await adminClient
+  const { data, error } = await supabase
     .from('cuentas')
     .select('*')
     .eq('tipo_cuenta', 'Tarjeta Credito')
@@ -18,17 +17,18 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json()
   const id   = 'tar_' + Date.now().toString(36)
 
-  const { error } = await adminClient.from('cuentas').insert({
+  // user_id y tipo_cuenta van después del spread para que el body no pueda pisarlos
+  const { error } = await supabase.from('cuentas').insert({
     id,
     ...body,
     tipo_cuenta: 'Tarjeta Credito',
-    user_id: user.id,
+    user_id:     user.id,
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })

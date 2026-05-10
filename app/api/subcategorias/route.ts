@@ -1,11 +1,10 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser()
+    const { supabase, user } = await createClientForRequest(req)
     if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
     const body = await req.json()
@@ -13,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 })
 
     const id = `subcat_${nanoid(8)}`
-    const { data, error } = await adminClient.from('subcategorias').insert({
+    const { data, error } = await supabase.from('subcategorias').insert({
       id,
       nombre_subcategoria: body.nombre_subcategoria.trim(),
       categoria_padre:     body.categoria_padre ?? null,
@@ -30,7 +29,7 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const user = await getCurrentUser()
+    const { supabase, user } = await createClientForRequest(req)
     if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
     const body = await req.json()
@@ -41,7 +40,7 @@ export async function PATCH(req: NextRequest) {
     if (body.categoria_padre     !== undefined) updates.categoria_padre     = body.categoria_padre
     if (body.icono               !== undefined) updates.icono               = body.icono
 
-    const { data, error } = await adminClient
+    const { data, error } = await supabase
       .from('subcategorias')
       .update(updates)
       .eq('id', body.id)
