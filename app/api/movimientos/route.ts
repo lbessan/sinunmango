@@ -1,4 +1,5 @@
 import { createClientForRequest } from '@/lib/supabase/route'
+import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   validateString, validateEnum, validatePositiveNumber, validateFiniteNumber,
@@ -28,6 +29,7 @@ type MovimientoInsert = {
   cuotas_total:    number
   cuota_actual:    number
   ciclo_actual:    number
+  grupo_cuotas:    string | null
 }
 
 function validateMovimiento(raw: unknown): Validated<MovimientoInsert> {
@@ -87,6 +89,11 @@ function validateMovimiento(raw: unknown): Validated<MovimientoInsert> {
   const cicloOpt = optional(b.ciclo_actual, v => validateInteger(v, { min: 1, max: 1000, field: 'ciclo_actual' }))
   if (!cicloOpt.ok) return cicloOpt
 
+  // grupo_cuotas: UUID que linkea cuotas hermanas. Opcional al insertar manual,
+  // pero los flows que crean N cuotas en batch lo asignan abajo.
+  const grupoOpt = optional(b.grupo_cuotas, v => validateId(v, 'grupo_cuotas'))
+  if (!grupoOpt.ok) return grupoOpt
+
   return {
     ok: true,
     data: {
@@ -105,6 +112,7 @@ function validateMovimiento(raw: unknown): Validated<MovimientoInsert> {
       cuotas_total:    cuotasTotalOpt.data ?? 1,
       cuota_actual:    cuotaActualOpt.data ?? 1,
       ciclo_actual:    cicloOpt.data ?? 1,
+      grupo_cuotas:    grupoOpt.data,
     },
   }
 }
@@ -128,10 +136,28 @@ export async function POST(req: NextRequest) {
     validated.push(v.data)
   }
 
+  // Auto-grupo: si vinieron 2+ records que claramente son cuotas hermanas
+  // (mismo cuotas_total > 1 + mismo cuenta_origen + ninguno trae grupo_cuotas),
+  // asignamos un grupo_cuotas común para poder linkearlos después.
+  if (validated.length > 1) {
+    const primer = validated[0]
+    const sonHermanas = primer.cuotas_total > 1 && validated.every(r =>
+      r.cuotas_total   === primer.cuotas_total &&
+      r.cuenta_origen  === primer.cuenta_origen &&
+      r.tipo_movimiento === primer.tipo_movimiento &&
+      !r.grupo_cuotas
+    )
+    if (sonHermanas) {
+      const grupo = crypto.randomUUID()
+      for (const r of validated) r.grupo_cuotas = grupo
+    }
+  }
+
   // user_id se setea desde el server, NUNCA del body. El id se genera si no viene.
   const withUser = validated.map(r => ({ id: crypto.randomUUID(), ...r, user_id: user.id }))
 
   const { error } = await supabase.from('movimientos').insert(withUser)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  revalidatePath('/movimientos')
   return NextResponse.json({ ok: true })
 }

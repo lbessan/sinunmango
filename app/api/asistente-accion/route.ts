@@ -152,6 +152,9 @@ export async function POST(req: NextRequest) {
     ? new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
   const cuotas     = accion.cuotas
   const montoCuota = accion.monto / cuotas
+  // Si hay más de una cuota, todas comparten un grupo_cuotas para poder
+  // editar/eliminar el conjunto desde la UI.
+  const grupoCuotas = cuotas > 1 ? crypto.randomUUID() : null
 
   const records = Array.from({ length: cuotas }, (_, i) => {
     const fechaCuota = addMonths(accion.fecha, i)
@@ -172,6 +175,7 @@ export async function POST(req: NextRequest) {
       cuotas_total:    cuotas,
       cuota_actual:    i + 1,
       ciclo_actual:    1,
+      grupo_cuotas:    grupoCuotas,
       user_id:         user.id,
     }
   })

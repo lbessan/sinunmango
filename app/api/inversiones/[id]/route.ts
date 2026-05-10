@@ -1,4 +1,5 @@
 import { createClientForRequest } from '@/lib/supabase/route'
+import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   validateString, validateEnum, validatePositiveNumber, validateISODate,
@@ -124,5 +125,6 @@ export async function DELETE(
     .eq('user_id', user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  revalidatePath('/inversiones')
   return NextResponse.json({ ok: true })
 }

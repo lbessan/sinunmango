@@ -403,6 +403,8 @@ export async function POST(req: NextRequest) {
     // Los ingresos no se dividen en cuotas
     const cuotasEfectivas = isIngreso ? 1 : parsed.cuotas
     const montoCuota      = parsed.monto / cuotasEfectivas
+    // Si hay más de una cuota, todas comparten un grupo_cuotas
+    const grupoCuotas     = cuotasEfectivas > 1 ? crypto.randomUUID() : null
 
     const records = Array.from({ length: cuotasEfectivas }, (_, i) => {
       const fechaCuota   = addMonths(parsed.fecha, i)
@@ -430,6 +432,7 @@ export async function POST(req: NextRequest) {
         cuotas_total:    cuotasEfectivas,
         cuota_actual:    i + 1,
         ciclo_actual:    1,
+        grupo_cuotas:    grupoCuotas,
         user_id:         cuenta.user_id,
       }
     })

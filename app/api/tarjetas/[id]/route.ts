@@ -1,4 +1,5 @@
 import { createClientForRequest } from '@/lib/supabase/route'
+import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   validateString, validateEnum, validateBoolean, validateHexColor,
@@ -121,6 +122,8 @@ export async function PATCH(
     .eq('user_id', user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  revalidatePath('/tarjetas')
+  revalidatePath('/dashboard')
   return NextResponse.json({ ok: true })
 }
 
@@ -141,5 +144,7 @@ export async function DELETE(
     .eq('user_id', user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  revalidatePath('/tarjetas')
+  revalidatePath('/dashboard')
   return NextResponse.json({ ok: true })
 }

@@ -1,4 +1,5 @@
 import { createClientForRequest } from '@/lib/supabase/route'
+import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   validateString, validateEnum, validatePositiveNumber, validateBoolean,
@@ -11,6 +12,15 @@ const TIPOS_MOV  = ['Gasto', 'Ingreso', 'Transferencia'] as const
 const MONTO_MAX  = 1_000_000_000
 const CUOTAS_MAX = 60
 const DETALLE_MAX = 500
+
+// Campos que tiene sentido aplicar a TODAS las cuotas hermanas
+// (los que NO están: fecha, periodo_tarjeta, cuota_actual, cuotas_total, detalle)
+const CAMPOS_COMPARTIBLES = new Set([
+  'monto', 'moneda', 'tipo_movimiento',
+  'cuenta_origen', 'cuenta_destino',
+  'categoria', 'subcategoria',
+  'cotizacion', 'conciliado',
+])
 
 function validateMovimientoUpdate(raw: unknown): Validated<Record<string, unknown>> {
   if (typeof raw !== 'object' || raw === null) return { ok: false, error: 'Body inválido' }
@@ -132,6 +142,7 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
+  const aplicarAGrupo = req.nextUrl.searchParams.get('grupo') === 'true'
 
   let body: unknown
   try { body = await req.json() } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }) }
@@ -142,6 +153,42 @@ export async function PATCH(
     return NextResponse.json({ error: 'Sin campos para actualizar' }, { status: 400 })
   }
 
+  if (aplicarAGrupo) {
+    // Necesitamos el grupo_cuotas del movimiento actual para encontrar las hermanas
+    const { data: actual } = await supabase
+      .from('movimientos')
+      .select('grupo_cuotas')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!actual?.grupo_cuotas) {
+      return NextResponse.json({ error: 'Este movimiento no tiene cuotas linkeadas' }, { status: 400 })
+    }
+
+    // Solo permitimos aplicar campos compartibles al grupo
+    // (fecha, periodo, detalle, cuota_actual NO se replican)
+    const shared: Record<string, unknown> = {}
+    for (const [k, value] of Object.entries(v.data)) {
+      if (CAMPOS_COMPARTIBLES.has(k)) shared[k] = value
+    }
+    if (Object.keys(shared).length === 0) {
+      return NextResponse.json({ error: 'Ningún campo es aplicable al grupo' }, { status: 400 })
+    }
+
+    const { error, count } = await supabase
+      .from('movimientos')
+      .update(shared, { count: 'exact' })
+      .eq('grupo_cuotas', actual.grupo_cuotas)
+      .eq('user_id', user.id)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+    revalidatePath('/movimientos')
+    return NextResponse.json({ ok: true, afectados: count ?? 0 })
+  }
+
+  // PATCH normal: solo este movimiento
   const { error } = await supabase
     .from('movimientos')
     .update(v.data)
@@ -149,6 +196,7 @@ export async function PATCH(
     .eq('user_id', user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  revalidatePath('/movimientos')
   return NextResponse.json({ ok: true })
 }
 
@@ -160,7 +208,34 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
+  const eliminarGrupo = req.nextUrl.searchParams.get('grupo') === 'true'
 
+  if (eliminarGrupo) {
+    // Eliminar TODAS las cuotas del mismo grupo (incluyendo la actual)
+    const { data: actual } = await supabase
+      .from('movimientos')
+      .select('grupo_cuotas')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!actual?.grupo_cuotas) {
+      return NextResponse.json({ error: 'Este movimiento no tiene cuotas linkeadas' }, { status: 400 })
+    }
+
+    const { error, count } = await supabase
+      .from('movimientos')
+      .delete({ count: 'exact' })
+      .eq('grupo_cuotas', actual.grupo_cuotas)
+      .eq('user_id', user.id)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+    revalidatePath('/movimientos')
+    return NextResponse.json({ ok: true, eliminados: count ?? 0 })
+  }
+
+  // DELETE normal: solo este movimiento
   const { error } = await supabase
     .from('movimientos')
     .delete()
@@ -168,5 +243,6 @@ export async function DELETE(
     .eq('user_id', user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  revalidatePath('/movimientos')
   return NextResponse.json({ ok: true })
 }

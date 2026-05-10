@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Link2, AlertTriangle } from 'lucide-react'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodoCuenta as calcularPeriodo } from '@/lib/tarjeta-periodo'
 
@@ -15,8 +16,21 @@ type Cuenta = {
 type Categoria = { id: string; nombre_categoria: string; icono: string | null; tipo_default: string }
 type Subcategoria = { id: string; categoria_padre: string; nombre_subcategoria: string }
 
+type CuotaHermana = {
+  id: string
+  fecha: string
+  detalle: string | null
+  monto: number
+  moneda: string
+  cuota_actual: number
+  cuotas_total: number
+  periodo_tarjeta: string | null
+  conciliado: boolean
+}
+
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-white'
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
+const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export function EditarMovimientoClient({
   movimiento,
@@ -36,6 +50,11 @@ export function EditarMovimientoClient({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState('')
 
+  // Cuotas hermanas — se cargan al montar si el movimiento es parte de un grupo
+  const [hermanas, setHermanas]                   = useState<CuotaHermana[]>([])
+  const [aplicarAGrupo, setAplicarAGrupo]         = useState(false)
+  const [eliminarTodoGrupo, setEliminarTodoGrupo] = useState(false)
+
   const [form, setForm] = useState({
     fecha:          movimiento.fecha ?? '',
     detalle:        movimiento.detalle ?? '',
@@ -46,12 +65,22 @@ export function EditarMovimientoClient({
     cuenta_origen:  movimiento.cuenta_origen ?? '',
     categoria:      movimiento.categoria ?? '',
     subcategoria:   movimiento.subcategoria ?? '',
-    // Período: guardado en YYYY-MM para <input type="month">; se puede pisar manualmente
     periodo_mes:    (movimiento.periodo_tarjeta ?? '').slice(0, 7),
     periodo_manual: false as boolean,
   })
 
   const set = (k: string, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
+
+  // Cargar cuotas hermanas si corresponde
+  useEffect(() => {
+    if ((movimiento.cuotas_total ?? 1) <= 1) return
+    let cancelled = false
+    fetch(`/api/movimientos/${movimiento.id}/grupo`)
+      .then(r => r.json())
+      .then(d => { if (!cancelled) setHermanas(d.cuotas ?? []) })
+      .catch(() => { /* silencioso: si falla, simplemente no mostramos opción de grupo */ })
+    return () => { cancelled = true }
+  }, [movimiento.id, movimiento.cuotas_total])
 
   const cuentaSeleccionada    = cuentas.find(c => c.id === form.cuenta_origen)
   const categoriaSeleccionada = categorias.find(c => c.id === form.categoria)
@@ -59,12 +88,14 @@ export function EditarMovimientoClient({
   const isUSD                 = form.moneda === 'USD'
   const isTarjeta             = cuentaSeleccionada?.tipo_cuenta === 'Tarjeta Credito'
 
-  // Período auto-calculado (cuando el usuario no lo pisó manualmente)
+  // Excluímos la cuota actual de la lista — solo mostramos "las otras"
+  const otrasCuotas    = hermanas.filter(h => h.id !== movimiento.id)
+  const tieneHermanas  = otrasCuotas.length > 0
+
   const periodoAuto = form.fecha && form.cuenta_origen
     ? calcularPeriodo(form.fecha, cuentaSeleccionada).slice(0, 7)
     : ''
   const periodoEfectivo = form.periodo_manual ? form.periodo_mes : periodoAuto
-
   const periodoLabel = periodoEfectivo
     ? new Date(periodoEfectivo + '-01T12:00:00')
         .toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -75,12 +106,15 @@ export function EditarMovimientoClient({
     setError('')
     const periodo = (periodoEfectivo || periodoAuto) + '-01'
 
-    const res = await fetch(`/api/movimientos/${movimiento.id}`, {
+    const url = aplicarAGrupo
+      ? `/api/movimientos/${movimiento.id}?grupo=true`
+      : `/api/movimientos/${movimiento.id}`
+
+    const res = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        fecha:           form.fecha,
-        detalle:         form.detalle || null,
+        // Campos compartibles — se replican al grupo si aplicarAGrupo=true
         monto:           parseFloat(form.monto) || 0,
         moneda:          form.moneda,
         cotizacion:      isUSD && form.cotizacion ? parseFloat(form.cotizacion) : null,
@@ -89,6 +123,10 @@ export function EditarMovimientoClient({
         categoria:       form.categoria || null,
         subcategoria:    form.subcategoria || null,
         tipo_movimiento: categoriaSeleccionada?.tipo_default ?? movimiento.tipo_movimiento,
+        // Específicos de la cuota — se mandan siempre, el server filtra
+        // automáticamente cuando aplicarAGrupo=true (CAMPOS_COMPARTIBLES whitelist)
+        fecha:           form.fecha,
+        detalle:         form.detalle || null,
         periodo_tarjeta: periodo,
       }),
     })
@@ -97,20 +135,30 @@ export function EditarMovimientoClient({
     if (res.ok) {
       setSaved(true)
       setTimeout(() => {
-        // refresh() invalida el caché del router; back() vuelve a la URL anterior (preservando filtros)
         router.refresh()
         router.back()
       }, 900)
-    } else { const d = await res.json(); setError(d.error ?? 'Error al guardar') }
+    } else {
+      const d = await res.json()
+      setError(d.error ?? 'Error al guardar')
+    }
   }
 
   const handleEliminar = async () => {
     if (!confirmDelete) { setConfirmDelete(true); return }
     setDeleting(true)
-    const res = await fetch(`/api/movimientos/${movimiento.id}`, { method: 'DELETE' })
+    const url = eliminarTodoGrupo
+      ? `/api/movimientos/${movimiento.id}?grupo=true`
+      : `/api/movimientos/${movimiento.id}`
+    const res = await fetch(url, { method: 'DELETE' })
     setDeleting(false)
-    if (res.ok) router.back()
-    else { const d = await res.json(); setError(d.error ?? 'Error al eliminar') }
+    if (res.ok) {
+      router.refresh()
+      router.back()
+    } else {
+      const d = await res.json()
+      setError(d.error ?? 'Error al eliminar')
+    }
   }
 
   return (
@@ -193,7 +241,6 @@ export function EditarMovimientoClient({
           </select>
         </div>
 
-        {/* Período de imputación — editable */}
         {(isTarjeta || form.cuenta_origen) && (
           <div className="bg-slate-50 rounded-xl px-4 py-3 space-y-2">
             <div className="flex items-center justify-between text-xs">
@@ -232,6 +279,44 @@ export function EditarMovimientoClient({
           </div>
         )}
 
+        {/* ── Cuotas hermanas: toggle para aplicar al grupo ─────────────────── */}
+        {tieneHermanas && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={aplicarAGrupo}
+                onChange={e => setAplicarAGrupo(e.target.checked)}
+                className="w-4 h-4 mt-0.5 shrink-0"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-blue-700">
+                  <Link2 size={14} />
+                  Aplicar a las {otrasCuotas.length} cuota{otrasCuotas.length !== 1 ? 's' : ''} restante{otrasCuotas.length !== 1 ? 's' : ''}
+                </div>
+                <p className="text-xs text-blue-600 mt-1">
+                  Solo se replican monto, moneda, cuenta, categoría y conciliado.
+                  La fecha, el detalle y el período son específicos de cada cuota.
+                </p>
+                {aplicarAGrupo && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-blue-500 cursor-pointer hover:text-blue-700">
+                      Ver cuotas que se van a actualizar ({otrasCuotas.length})
+                    </summary>
+                    <ul className="mt-2 space-y-0.5 text-xs text-blue-600 max-h-32 overflow-y-auto">
+                      {otrasCuotas.map(c => (
+                        <li key={c.id}>
+                          Cuota {c.cuota_actual}/{c.cuotas_total} · {c.fecha} · ${fmt(c.monto)}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            </label>
+          </div>
+        )}
+
         {error && <p className="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
 
         <div className="flex gap-3">
@@ -244,11 +329,36 @@ export function EditarMovimientoClient({
             className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-colors"
             style={{ background: saved ? '#16a34a' : 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))', opacity: saving ? 0.7 : 1 }}
           >
-            {saved ? '✓ Guardado' : saving ? 'Guardando...' : 'Guardar cambios'}
+            {saved
+              ? '✓ Guardado'
+              : saving
+                ? 'Guardando...'
+                : aplicarAGrupo ? `Guardar (${otrasCuotas.length + 1} cuotas)` : 'Guardar cambios'}
           </button>
         </div>
 
-        <div className="pt-2 border-t border-slate-100">
+        <div className="pt-2 border-t border-slate-100 space-y-2">
+          {/* Toggle para eliminar todo el grupo */}
+          {tieneHermanas && (
+            <label className="flex items-start gap-3 cursor-pointer bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+              <input
+                type="checkbox"
+                checked={eliminarTodoGrupo}
+                onChange={e => setEliminarTodoGrupo(e.target.checked)}
+                className="w-4 h-4 mt-0.5 shrink-0"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-red-700">
+                  <AlertTriangle size={14} />
+                  Eliminar también las {otrasCuotas.length} cuota{otrasCuotas.length !== 1 ? 's' : ''} restante{otrasCuotas.length !== 1 ? 's' : ''}
+                </div>
+                <p className="text-xs text-red-600 mt-1">
+                  Si lo marcás, se borran las {otrasCuotas.length + 1} cuotas del grupo en lugar de solo esta.
+                </p>
+              </div>
+            </label>
+          )}
+
           <button
             onClick={handleEliminar}
             disabled={deleting}
@@ -258,7 +368,15 @@ export function EditarMovimientoClient({
                 : 'text-red-400 hover:bg-red-50 border border-red-100'
             }`}
           >
-            {deleting ? 'Eliminando...' : confirmDelete ? '¿Confirmar eliminación?' : 'Eliminar movimiento'}
+            {deleting
+              ? 'Eliminando...'
+              : confirmDelete
+                ? eliminarTodoGrupo
+                  ? `¿Confirmar eliminación de ${otrasCuotas.length + 1} cuotas?`
+                  : '¿Confirmar eliminación?'
+                : eliminarTodoGrupo
+                  ? `Eliminar ${otrasCuotas.length + 1} cuotas del grupo`
+                  : 'Eliminar movimiento'}
           </button>
           {confirmDelete && (
             <p className="text-xs text-center text-slate-400 mt-2">
