@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminClient } from '@/lib/supabase/admin'
+import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
 import crypto from 'crypto'
 
 // crypto.createHmac requiere runtime Node (no Edge)
@@ -60,35 +61,6 @@ function verifySvixSignature({ id, timestamp, signature, body, secret }: {
       return false
     }
   })
-}
-
-// ─── Period + date helpers ────────────────────────────────────────────────────
-function calcularPeriodo(
-  fechaStr: string,
-  cierreDay: number | null,
-  venceDay:  number | null,
-  isTarjeta: boolean
-): string {
-  const d    = new Date(fechaStr + 'T12:00:00')
-  let mes    = d.getMonth()
-  let anio   = d.getFullYear()
-  if (isTarjeta && cierreDay && venceDay) {
-    const day = d.getDate()
-    if (day <= cierreDay) {
-      if (venceDay <= cierreDay) mes += 1
-    } else {
-      if (venceDay > cierreDay) mes += 1
-      else                       mes += 2
-    }
-    while (mes > 11) { mes -= 12; anio++ }
-  }
-  return `${anio}-${String(mes + 1).padStart(2, '0')}-01`
-}
-
-function addMeses(fechaStr: string, n: number): string {
-  const d = new Date(fechaStr + 'T12:00:00')
-  d.setMonth(d.getMonth() + n)
-  return d.toISOString().slice(0, 10)
 }
 
 // ─── Gmail forwarding verification detector ───────────────────────────────────
@@ -433,7 +405,7 @@ export async function POST(req: NextRequest) {
     const montoCuota      = parsed.monto / cuotasEfectivas
 
     const records = Array.from({ length: cuotasEfectivas }, (_, i) => {
-      const fechaCuota   = addMeses(parsed.fecha, i)
+      const fechaCuota   = addMonths(parsed.fecha, i)
       // El periodo de tarjeta aplica solo a gastos con tarjeta
       const periodoCuota = calcularPeriodo(
         fechaCuota, cierreDay, venceDay,
