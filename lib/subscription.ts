@@ -1,5 +1,6 @@
 import { adminClient } from '@/lib/supabase/admin'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/lib/database.types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ const DEFAULT_PLAN: UserPlan = {
  *
  * Usar desde routes que ya tienen el cliente del helper createClientForRequest.
  */
-export async function getUserPlan(supabase: SupabaseClient): Promise<UserPlan> {
+export async function getUserPlan(supabase: SupabaseClient<Database>): Promise<UserPlan> {
   const { data } = await supabase
     .from('user_profiles')
     .select('plan, plan_expires_at, google_subscription_id')
