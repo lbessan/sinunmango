@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
@@ -16,15 +15,15 @@ export default async function ConciliacionDetallePage({
 }: {
   params: Promise<{ cuentaId: string; periodo: string }>
 }) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const { cuentaId, periodo } = await params
 
   const [{ data: cuenta }, { data: movimientos }, { data: categorias }, { data: subcategorias }] =
     await Promise.all([
-      adminClient.from('cuentas').select('*').eq('id', cuentaId).eq('user_id', user.id).single(),
-      adminClient
+      supabase.from('cuentas').select('*').eq('id', cuentaId).eq('user_id', user.id).single(),
+      supabase
         .from('movimientos_completos')
         .select('*')
         .eq('cuenta_origen', cuentaId)
@@ -32,12 +31,12 @@ export default async function ConciliacionDetallePage({
         .in('tipo_movimiento', ['Gasto', 'Ingreso'])
         .eq('user_id', user.id)
         .order('fecha', { ascending: true }),
-      adminClient
+      supabase
         .from('categorias')
         .select('id, nombre_categoria, icono, tipo_default')
         .eq('user_id', user.id)
         .order('nombre_categoria'),
-      adminClient
+      supabase
         .from('subcategorias')
         .select('id, categoria_padre, nombre_subcategoria')
         .eq('user_id', user.id),

@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import { EditarSubcategoriaClient } from '@/components/editar-subcategoria-client'
 
@@ -8,19 +7,19 @@ export default async function EditarSubcategoriaPage({
 }: {
   params: Promise<{ catId: string; subId: string }>
 }) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const { catId, subId } = await params
 
   const [{ data: sub }, { data: categorias }] = await Promise.all([
-    adminClient
+    supabase
       .from('subcategorias')
       .select('*')
       .eq('id', subId)
       .eq('user_id', user.id)
       .single(),
-    adminClient
+    supabase
       .from('categorias')
       .select('id, nombre_categoria, icono')
       .eq('user_id', user.id)

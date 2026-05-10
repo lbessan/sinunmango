@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ArrowLeft, Pencil } from 'lucide-react'
@@ -20,7 +19,7 @@ export default async function ResumenPage({
 }: {
   searchParams: Promise<{ tipo?: string }>
 }) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const { tipo = 'ingresos' } = await searchParams
@@ -36,7 +35,7 @@ export default async function ResumenPage({
 
   if (tipo === 'ingresos') {
     // Ingresos: periodo del mes actual, fecha <= hoy
-    const { data } = await adminClient
+    const { data } = await supabase
       .from('movimientos_completos').select('*')
       .eq('tipo_movimiento', 'Ingreso')
       .eq('periodo_tarjeta', periodoActual)
@@ -47,7 +46,7 @@ export default async function ResumenPage({
 
   } else if (tipo === 'gastos') {
     // Gastos: FECHA en el mes actual (sin importar periodo_tarjeta)
-    const { data } = await adminClient
+    const { data } = await supabase
       .from('movimientos_completos').select('*')
       .eq('tipo_movimiento', 'Gasto')
       .eq('user_id', user.id)
@@ -57,9 +56,9 @@ export default async function ResumenPage({
     movimientos = data ?? []
 
   } else if (tipo === 'tarjetas') {
-    const { data: tarjetas } = await adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('user_id', user.id)
+    const { data: tarjetas } = await supabase.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('user_id', user.id)
     const tarjetaIds = new Set((tarjetas ?? []).map(t => t.id))
-    const { data } = await adminClient
+    const { data } = await supabase
       .from('movimientos_completos').select('*')
       .eq('tipo_movimiento', 'Gasto')
       .eq('periodo_tarjeta', periodoActual)
@@ -70,10 +69,10 @@ export default async function ResumenPage({
 
   } else if (tipo === 'proyectado') {
     const [{ data: res }, { data: gastosFijos }, { data: ingresosFuturos }, { data: params }] = await Promise.all([
-      adminClient.from('dashboard_resumen').select('*').eq('user_id', user.id).single(),
-      adminClient.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta), categorias(nombre_categoria, icono)').eq('activo', true).eq('user_id', user.id).order('dia_vencimiento'),
-      adminClient.from('movimientos_completos').select('*').eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodoActual).eq('user_id', user.id).gt('fecha', todayStr),
-      adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', user.id).single(),
+      supabase.from('dashboard_resumen').select('*').eq('user_id', user.id).single(),
+      supabase.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta), categorias(nombre_categoria, icono)').eq('activo', true).eq('user_id', user.id).order('dia_vencimiento'),
+      supabase.from('movimientos_completos').select('*').eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodoActual).eq('user_id', user.id).gt('fecha', todayStr),
+      supabase.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', user.id).single(),
     ])
     resumenData = { res, gastosFijos, ingresosFuturos, dolarBna: params?.valor ?? 1410 }
   }

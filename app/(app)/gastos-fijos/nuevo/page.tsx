@@ -1,16 +1,15 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { GastoFijoFormClient } from '@/components/gasto-fijo-form-client'
 
 export default async function NuevoGastoFijoPage() {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const [{ data: categorias }, { data: subcategorias }, { data: cuentas }] = await Promise.all([
-    adminClient.from('categorias').select('id, nombre_categoria, icono').eq('user_id', user.id).order('nombre_categoria'),
-    adminClient.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', user.id),
-    adminClient.from('cuentas').select('id, nombre_cuenta, tipo_cuenta').eq('activa', true).eq('user_id', user.id),
+    supabase.from('categorias').select('id, nombre_categoria, icono').eq('user_id', user.id).order('nombre_categoria'),
+    supabase.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', user.id),
+    supabase.from('cuentas').select('id, nombre_cuenta, tipo_cuenta').eq('activa', true).eq('user_id', user.id),
   ])
 
   return (

@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, TrendingUp, TrendingDown, Clock, ChevronRight } from 'lucide-react'
@@ -83,17 +82,17 @@ function subDisplay(inv: Inversion): string {
 }
 
 export default async function InversionesPage() {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const [{ data: inversiones }, { data: params }] = await Promise.all([
-    adminClient
+    supabase
       .from('inversiones')
       .select('*')
       .eq('user_id', user.id)
       .neq('estado', 'liquidado')
       .order('fecha_inicio', { ascending: false }),
-    adminClient
+    supabase
       .from('parametros')
       .select('valor')
       .eq('id', 'Dolar_Tarjeta_BNA')

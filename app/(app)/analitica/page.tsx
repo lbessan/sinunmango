@@ -1,21 +1,20 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AnaliticaCharts } from '@/components/analitica-charts'
 import { BarChart2 } from 'lucide-react'
 
 export default async function AnaliticaPage() {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const [{ data: movimientos }, { data: subcategorias }] = await Promise.all([
-    adminClient
+    supabase
       .from('movimientos_completos')
       .select('id, fecha, tipo_movimiento, monto, monto_estimado, detalle, categoria_nombre, categoria_icono, subcategoria')
       .eq('user_id', user.id)
       .in('tipo_movimiento', ['Ingreso', 'Gasto'])
       .order('fecha', { ascending: true }),
-    adminClient
+    supabase
       .from('subcategorias')
       .select('id, nombre_subcategoria, categoria_padre')
       .eq('user_id', user.id),

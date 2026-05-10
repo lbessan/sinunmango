@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { GastoFijoFormClient } from '@/components/gasto-fijo-form-client'
 import { notFound, redirect } from 'next/navigation'
 
@@ -8,16 +7,16 @@ export default async function EditarGastoFijoPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const { id } = await params
 
   const [{ data: gasto }, { data: categorias }, { data: subcategorias }, { data: cuentas }] = await Promise.all([
-    adminClient.from('gastos_fijos').select('*').eq('id', id).eq('user_id', user.id).single(),
-    adminClient.from('categorias').select('id, nombre_categoria, icono').eq('user_id', user.id).order('nombre_categoria'),
-    adminClient.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', user.id),
-    adminClient.from('cuentas').select('id, nombre_cuenta, tipo_cuenta').eq('activa', true).eq('user_id', user.id),
+    supabase.from('gastos_fijos').select('*').eq('id', id).eq('user_id', user.id).single(),
+    supabase.from('categorias').select('id, nombre_categoria, icono').eq('user_id', user.id).order('nombre_categoria'),
+    supabase.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', user.id),
+    supabase.from('cuentas').select('id, nombre_cuenta, tipo_cuenta').eq('activa', true).eq('user_id', user.id),
   ])
 
   if (!gasto) notFound()
