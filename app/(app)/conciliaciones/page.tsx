@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CheckCircle, AlertCircle, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react'
@@ -19,7 +18,7 @@ export default async function ConciliacionesPage({
 }: {
   searchParams: Promise<{ periodo?: string }>
 }) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const { periodo: periodoParam } = await searchParams
@@ -28,7 +27,7 @@ export default async function ConciliacionesPage({
   const periodoActual = periodoParam ?? mesActualStr
 
   // 1. Tarjetas de crédito activas
-  const { data: tarjetas } = await adminClient
+  const { data: tarjetas } = await supabase
     .from('cuentas')
     .select('*')
     .eq('tipo_cuenta', 'Tarjeta Credito')
@@ -47,7 +46,7 @@ export default async function ConciliacionesPage({
   }
 
   // 2. Todos los períodos con movimientos de tarjeta (para navegación)
-  const { data: todosMovsPeriodos } = await adminClient
+  const { data: todosMovsPeriodos } = await supabase
     .from('movimientos')
     .select('periodo_tarjeta')
     .in('cuenta_origen', tarjetaIds)
@@ -67,7 +66,7 @@ export default async function ConciliacionesPage({
   const nextPeriodo = currentIdx < todosPeriodos.length - 1 ? todosPeriodos[currentIdx + 1] : null
 
   // 3. ¿Meses anteriores con pendientes?
-  const { data: movsVencidos } = await adminClient
+  const { data: movsVencidos } = await supabase
     .from('movimientos')
     .select('periodo_tarjeta')
     .in('cuenta_origen', tarjetaIds)
@@ -81,7 +80,7 @@ export default async function ConciliacionesPage({
   const hayMesesVencidos = (movsVencidos ?? []).length > 0
 
   // 4. Movimientos del período actual (batch único) — incluye Ingresos (descuentos)
-  const { data: movsDelPeriodo } = await adminClient
+  const { data: movsDelPeriodo } = await supabase
     .from('movimientos')
     .select('cuenta_origen, conciliado, monto, tipo_movimiento, moneda, cotizacion')
     .in('cuenta_origen', tarjetaIds)

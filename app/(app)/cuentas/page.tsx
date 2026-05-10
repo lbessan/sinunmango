@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Pencil, ChevronRight } from 'lucide-react'
@@ -66,17 +65,17 @@ function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
 }
 
 export default async function CuentasPage() {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
-  const { data: cuentas } = await adminClient
+  const { data: cuentas } = await supabase
     .from('saldo_actual_cuentas')
     .select('*')
     .eq('activa', true)
     .eq('user_id', user.id)
     .order('tipo_cuenta')
 
-  const { data: cuentasExtra } = await adminClient
+  const { data: cuentasExtra } = await supabase
     .from('cuentas')
     .select('id, imagen_url, color_primario')
     .eq('user_id', user.id)

@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Pencil, ChevronRight, CreditCard } from 'lucide-react'
@@ -33,10 +32,10 @@ function CardThumbnailServer({ imagenUrl, color, nombre }: {
 }
 
 export default async function TarjetasPage() {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
-  const { data: tarjetas } = await adminClient
+  const { data: tarjetas } = await supabase
     .from('saldo_actual_cuentas')
     .select('*')
     .eq('tipo_cuenta', 'Tarjeta Credito')
@@ -44,7 +43,7 @@ export default async function TarjetasPage() {
     .eq('user_id', user.id)
     .order('nombre_cuenta')
 
-  const { data: extras } = await adminClient
+  const { data: extras } = await supabase
     .from('cuentas')
     .select('id, imagen_url, color_primario')
     .eq('tipo_cuenta', 'Tarjeta Credito')

@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Pencil, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
@@ -37,7 +36,7 @@ function SortHeader({ col, label, currentSort, currentDir, sp }: {
 }
 
 export default async function MovimientosPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const sp       = await searchParams
@@ -52,7 +51,7 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
   const allowed  = ['fecha', 'monto_estimado', 'periodo_tarjeta', 'categoria']
   const orderCol = allowed.includes(sortCol) ? sortCol : 'fecha'
 
-  let query = adminClient
+  let query = supabase
     .from('movimientos_completos')
     .select('*', { count: 'exact' })
     .eq('user_id', user.id)
@@ -75,10 +74,10 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
     { count: countFuturos },
   ] = await Promise.all([
     query,
-    adminClient.from('movimientos').select('periodo_tarjeta').eq('user_id', user.id).order('periodo_tarjeta', { ascending: false }),
-    adminClient.from('categorias').select('id, nombre_categoria, icono').eq('user_id', user.id).order('nombre_categoria'),
-    adminClient.from('cuentas').select('id, nombre_cuenta').eq('activa', true).eq('user_id', user.id).order('nombre_cuenta'),
-    adminClient.from('movimientos').select('*', { count: 'exact', head: true }).eq('user_id', user.id).gt('fecha', today),
+    supabase.from('movimientos').select('periodo_tarjeta').eq('user_id', user.id).order('periodo_tarjeta', { ascending: false }),
+    supabase.from('categorias').select('id, nombre_categoria, icono').eq('user_id', user.id).order('nombre_categoria'),
+    supabase.from('cuentas').select('id, nombre_cuenta').eq('activa', true).eq('user_id', user.id).order('nombre_cuenta'),
+    supabase.from('movimientos').select('*', { count: 'exact', head: true }).eq('user_id', user.id).gt('fecha', today),
   ])
 
   const totalPages = Math.ceil((count ?? 0) / pageSize)

@@ -1,27 +1,26 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { InversionFormClient } from '@/components/inversion-form-client'
 
 export default async function NuevaInversionPage() {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const [{ data: cuentas }, { data: categorias }, { data: params }] = await Promise.all([
-    adminClient
+    supabase
       .from('cuentas')
       .select('id, nombre_cuenta, tipo_cuenta')
       .eq('activa', true)
       .eq('user_id', user.id)
       .order('nombre_cuenta'),
-    adminClient
+    supabase
       .from('categorias')
       .select('id, nombre_categoria, tipo_default')
       .eq('user_id', user.id)
       .order('nombre_categoria'),
-    adminClient
+    supabase
       .from('parametros')
       .select('valor')
       .eq('id', 'Dolar_Tarjeta_BNA')

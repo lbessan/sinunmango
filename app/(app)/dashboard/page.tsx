@@ -1,8 +1,8 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type React from 'react'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { TourTrigger } from '@/components/tour-trigger'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
@@ -214,15 +214,15 @@ type ProyeccionMes = {
   proyeccion: number; diferencia: number
 }
 
-async function calcularProyecciones(userId: string, desde: string, meses = 4) {
+async function calcularProyecciones(supabase: SupabaseClient, userId: string, desde: string, meses = 4) {
   const today  = new Date()
   const curMes = currentMes(today)
   const [{ data: resumen }, { data: gastosFijosRaw }, { data: tarjetasRaw }, { data: params }] =
     await Promise.all([
-      adminClient.from('dashboard_resumen').select('*').eq('user_id', userId).single(),
-      adminClient.from('gastos_fijos').select('*, cuentas(tipo_cuenta)').eq('activo', true).eq('user_id', userId),
-      adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true).eq('user_id', userId),
-      adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', userId).single(),
+      supabase.from('dashboard_resumen').select('*').eq('user_id', userId).single(),
+      supabase.from('gastos_fijos').select('*, cuentas(tipo_cuenta)').eq('activo', true).eq('user_id', userId),
+      supabase.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true).eq('user_id', userId),
+      supabase.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', userId).single(),
     ])
   if (!resumen) return {
     saldoBase: 0, startSaldo: 0, saldoInicioMes: 0,
@@ -259,9 +259,9 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
     const fecha   = new Date(cy, cm - 1 + i, 1)
     const periodo = fecha.toISOString().slice(0, 10)
     const [{ data: ingresos }, { data: gastosTC }] = await Promise.all([
-      adminClient.from('movimientos').select('monto, moneda')
+      supabase.from('movimientos').select('monto, moneda')
         .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodo).eq('user_id', userId),
-      adminClient.from('movimientos').select('monto, moneda, cuenta_origen')
+      supabase.from('movimientos').select('monto, moneda, cuenta_origen')
         .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', periodo).eq('user_id', userId),
     ])
     const totalIng = (ingresos ?? []).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
@@ -295,23 +295,23 @@ async function calcularProyecciones(userId: string, desde: string, meses = 4) {
 }
 
 // ─── Past month data ──────────────────────────────────────────────────────────
-async function fetchPastMonth(userId: string, mes: string) {
+async function fetchPastMonth(supabase: SupabaseClient, userId: string, mes: string) {
   const start = `${mes}-01`
   const end   = `${offsetMes(mes, 1)}-01`
 
   const [{ data: movs }, { data: tcuentas }, { data: resumen }, { data: postMovs }] = await Promise.all([
     // Movimientos del mes
-    adminClient.from('movimientos')
+    supabase.from('movimientos')
       .select('id, monto, moneda, tipo_movimiento, cuenta_origen, periodo_tarjeta, categorias(nombre_categoria, icono)')
       .eq('user_id', userId).gte('fecha', start).lt('fecha', end),
     // IDs de tarjetas (para filtrar gastos de tarjeta)
-    adminClient.from('cuentas').select('id')
+    supabase.from('cuentas').select('id')
       .eq('tipo_cuenta', 'Tarjeta Credito').eq('user_id', userId),
     // Balance actual (para reverse-calcular el saldo al fin del mes)
-    adminClient.from('dashboard_resumen').select('disponible_real').eq('user_id', userId).single(),
+    supabase.from('dashboard_resumen').select('disponible_real').eq('user_id', userId).single(),
     // Movimientos ARS posteriores al mes (para restar del saldo actual y llegar al saldo de fin del mes)
     // ⚠️ Limitamos a hoy para no incluir ingresos futuros ya cargados
-    adminClient.from('movimientos')
+    supabase.from('movimientos')
       .select('monto, tipo_movimiento, cuenta_origen, moneda')
       .eq('user_id', userId).eq('moneda', 'ARS').gte('fecha', end)
       .lte('fecha', new Date().toISOString().slice(0, 10)),
@@ -358,20 +358,20 @@ async function fetchPastMonth(userId: string, mes: string) {
 }
 
 // ─── Future month data ────────────────────────────────────────────────────────
-async function fetchFutureMonth(userId: string, mes: string) {
+async function fetchFutureMonth(supabase: SupabaseClient, userId: string, mes: string) {
   const mesStart = `${mes}-01`
   const [{ data: cuotasRaw }, { data: gastosFijos }, { data: tcuentas }, { data: ingresosRaw }, { data: params }] = await Promise.all([
-    adminClient.from('movimientos')
+    supabase.from('movimientos')
       .select('id, detalle, monto, moneda, cuenta_origen, cuentas(nombre_cuenta, imagen_url, color_primario)')
       .eq('user_id', userId).eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', mesStart),
-    adminClient.from('gastos_fijos')
+    supabase.from('gastos_fijos')
       .select('*, cuentas(nombre_cuenta, tipo_cuenta)')
       .eq('activo', true).eq('user_id', userId).order('dia_vencimiento'),
-    adminClient.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('user_id', userId),
-    adminClient.from('movimientos')
+    supabase.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('user_id', userId),
+    supabase.from('movimientos')
       .select('monto, moneda')
       .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', mesStart).eq('user_id', userId),
-    adminClient.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', userId).single(),
+    supabase.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', userId).single(),
   ])
   // Misma conversión USD que calcularProyecciones para que la fórmula cierre
   const dolar         = params?.valor ?? 1410
@@ -407,7 +407,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ tour?: string; mes?: string }>
 }) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
   const params   = await searchParams
   const today    = new Date()
@@ -420,11 +420,11 @@ export default async function DashboardPage({
   if (tipo === 'actual') {
     const [{ data: resumen }, { data: cuentas }, { data: gastosFijos }, { data: cuentasExtra },
       { saldoBase: proyectadoActual, proyecciones }] = await Promise.all([
-      adminClient.from('dashboard_resumen').select('*').eq('user_id', user.id).single(),
-      adminClient.from('saldo_actual_cuentas').select('*').eq('activa', true).eq('user_id', user.id),
-      adminClient.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta)').eq('activo', true).eq('user_id', user.id).order('dia_vencimiento'),
-      adminClient.from('cuentas').select('id, imagen_url, color_primario').eq('user_id', user.id),
-      calcularProyecciones(user.id, cur, 4),
+      supabase.from('dashboard_resumen').select('*').eq('user_id', user.id).single(),
+      supabase.from('saldo_actual_cuentas').select('*').eq('activa', true).eq('user_id', user.id),
+      supabase.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta)').eq('activo', true).eq('user_id', user.id).order('dia_vencimiento'),
+      supabase.from('cuentas').select('id, imagen_url, color_primario').eq('user_id', user.id),
+      calcularProyecciones(supabase, user.id, cur, 4),
     ])
     if (!resumen) return <EmptyState />
     const extraMap = Object.fromEntries((cuentasExtra ?? []).map(c => [c.id, c]))
@@ -593,7 +593,7 @@ export default async function DashboardPage({
 
   // ── PAST MONTH ─────────────────────────────────────────────────────────────
   if (tipo === 'pasado') {
-    const past   = await fetchPastMonth(user.id, mes)
+    const past   = await fetchPastMonth(supabase, user.id, mes)
     const maxCat = past.topCats[0]?.total ?? 1
 
     return (
@@ -683,8 +683,8 @@ export default async function DashboardPage({
 
   // ── FUTURE MONTH ───────────────────────────────────────────────────────────
   const [future, { saldoBase: saldoMes, saldoInicioMes: saldoInicio, datosDelMes, proyecciones }] = await Promise.all([
-    fetchFutureMonth(user.id, mes),
-    calcularProyecciones(user.id, mes, 4),
+    fetchFutureMonth(supabase, user.id, mes),
+    calcularProyecciones(supabase, user.id, mes, 4),
   ])
 
   return (

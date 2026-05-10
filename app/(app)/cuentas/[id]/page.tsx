@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { Pencil, ArrowLeft } from 'lucide-react'
@@ -23,7 +22,7 @@ function esColorOscuro(hex: string): boolean {
 }
 
 export default async function CuentaDetallePage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const { id } = await params
@@ -31,20 +30,20 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
 
   const [{ data: cuenta }, { data: extra }, { data: movPasados }, { data: movFuturos }, { data: categorias }, { data: subcategorias }, { data: otrasCuentas }] =
     await Promise.all([
-      adminClient.from('saldo_actual_cuentas').select('*').eq('id', id).eq('user_id', user.id).single(),
-      adminClient.from('cuentas').select('imagen_url, imagen_banner_url, color_primario').eq('id', id).eq('user_id', user.id).single(),
-      adminClient.from('movimientos_completos').select('*')
+      supabase.from('saldo_actual_cuentas').select('*').eq('id', id).eq('user_id', user.id).single(),
+      supabase.from('cuentas').select('imagen_url, imagen_banner_url, color_primario').eq('id', id).eq('user_id', user.id).single(),
+      supabase.from('movimientos_completos').select('*')
         .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
         .eq('user_id', user.id)
         .lte('fecha', today).order('fecha', { ascending: false }).limit(200),
-      adminClient.from('movimientos_completos').select('*')
+      supabase.from('movimientos_completos').select('*')
         .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
         .eq('user_id', user.id)
         .gt('fecha', today)
         .order('periodo_tarjeta', { ascending: true }).order('fecha', { ascending: true }),
-      adminClient.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', user.id).order('nombre_categoria'),
-      adminClient.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', user.id),
-      adminClient.from('cuentas').select('id, nombre_cuenta').eq('activa', true).eq('user_id', user.id).neq('id', id).order('nombre_cuenta'),
+      supabase.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', user.id).order('nombre_categoria'),
+      supabase.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', user.id),
+      supabase.from('cuentas').select('id, nombre_cuenta').eq('activa', true).eq('user_id', user.id).neq('id', id).order('nombre_cuenta'),
     ])
 
   if (!cuenta) notFound()

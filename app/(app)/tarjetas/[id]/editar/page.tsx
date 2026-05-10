@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { TarjetaFormClient } from '@/components/tarjeta-form-client'
 import { notFound, redirect } from 'next/navigation'
 import { BANKS } from '@/constants/banks'
@@ -17,11 +16,11 @@ export default async function EditarTarjetaPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
   const { id } = await params
-  const { data: t } = await adminClient
+  const { data: t } = await supabase
     .from('cuentas')
     .select('*')
     .eq('id', id)

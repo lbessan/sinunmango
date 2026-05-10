@@ -2,8 +2,7 @@ import { Sidebar } from '@/components/sidebar'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AppShell } from '@/components/app-shell'
 import { ManguitoFlotante } from '@/components/manguito-flotante'
-import { getCurrentUser } from '@/lib/auth'
-import { adminClient } from '@/lib/supabase/admin'
+import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 export default async function AppLayout({
@@ -11,11 +10,12 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
-  // Onboarding gate: si el usuario no tiene cuentas activas, lo mandamos al onboarding
-  const { count } = await adminClient
+  // Onboarding gate: si el usuario no tiene cuentas activas, lo mandamos al onboarding.
+  // RLS filtra automático por user_id; el .eq() se mantiene como defensa.
+  const { count } = await supabase
     .from('cuentas')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', user.id)
