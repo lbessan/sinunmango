@@ -1,5 +1,5 @@
 import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ─── Validaciones ─────────────────────────────────────────────────────────────
@@ -37,8 +37,16 @@ function detectImageMime(bytes: Uint8Array): { mime: string; ext: string } | nul
 //   - carpeta: 'cuentas' | 'bancos' | 'categorias'
 //   - id:      identificador del recurso (alfanumérico + _ y -, hasta 64 chars)
 
+// NOTA: las operaciones de Storage (.list, .upload, .remove) usan adminClient
+// porque las RLS policies de storage.objects son distintas a las de tablas y
+// no las migré en este round. Para hardening seguimos confiando en:
+//  - validación de carpeta/id/MIME/tamaño (acá arriba)
+//  - el path es server-controlled (no dejamos que el cliente elija ruta)
+// Migrar storage a user-scoped es un refactor aparte (requiere policies en
+// storage.objects basadas en `name LIKE 'cuentas/%' AND auth.uid() = ...`).
+
 export async function POST(req: NextRequest) {
-  const user = await getCurrentUser()
+  const { user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let formData: FormData

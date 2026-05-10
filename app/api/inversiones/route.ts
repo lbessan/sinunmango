@@ -1,13 +1,12 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ─── GET /api/inversiones ─────────────────────────────────────────────────────
-export async function GET() {
-  const user = await getCurrentUser()
+export async function GET(req: NextRequest) {
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const { data, error } = await adminClient
+  const { data, error } = await supabase
     .from('inversiones')
     .select('*')
     .eq('user_id', user.id)
@@ -21,7 +20,7 @@ export async function GET() {
 // ─── POST /api/inversiones ────────────────────────────────────────────────────
 // Crea la inversión y, si se pasa cuenta_origen_id, registra el movimiento de salida.
 export async function POST(req: NextRequest) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json()
@@ -54,7 +53,7 @@ export async function POST(req: NextRequest) {
     }
     const detalleMovimiento = nombre || `${labelTipo[tipo] ?? 'Inversión'} — capital inicial`
 
-    const { data: mov, error: movErr } = await adminClient
+    const { data: mov, error: movErr } = await supabase
       .from('movimientos')
       .insert({
         id:              crypto.randomUUID(),
@@ -79,7 +78,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 2. Crear la inversión ─────────────────────────────────────────────────
-  const { data: inv, error: invErr } = await adminClient
+  const { data: inv, error: invErr } = await supabase
     .from('inversiones')
     .insert({
       user_id:             user.id,
@@ -101,7 +100,7 @@ export async function POST(req: NextRequest) {
   if (invErr) {
     // Rollback: eliminar el movimiento si falló la inversión
     if (movimiento_origen_id) {
-      await adminClient.from('movimientos').delete().eq('id', movimiento_origen_id)
+      await supabase.from('movimientos').delete().eq('id', movimiento_origen_id).eq('user_id', user.id)
     }
     return NextResponse.json({ error: invErr.message }, { status: 400 })
   }

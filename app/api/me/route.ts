@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromRequest } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 import { getUserPlan } from '@/lib/subscription'
 
 // ─── GET /api/me ──────────────────────────────────────────────────────────────
@@ -8,16 +8,16 @@ import { getUserPlan } from '@/lib/subscription'
 // Auth: Bearer token (JWT) o cookie de sesión.
 
 export async function GET(req: NextRequest) {
-  const user = await getUserFromRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const planInfo = await getUserPlan(user.id)
+  const planInfo = await getUserPlan(supabase)
 
   return NextResponse.json({
-    id:             user.id,
-    email:          user.email,
-    plan:           planInfo.plan,
-    has_pro_access: planInfo.has_pro_access,
+    id:              user.id,
+    email:           user.email,
+    plan:            planInfo.plan,
+    has_pro_access:  planInfo.has_pro_access,
     plan_expires_at: planInfo.plan_expires_at,
   })
 }

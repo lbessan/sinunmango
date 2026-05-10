@@ -1,5 +1,4 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ─── PATCH /api/inversiones/[id] ──────────────────────────────────────────────
@@ -7,14 +6,14 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
   const body   = await req.json()
 
   // Verificar que la inversión pertenece al usuario
-  const { data: existing } = await adminClient
+  const { data: existing } = await supabase
     .from('inversiones')
     .select('id')
     .eq('id', id)
@@ -31,7 +30,7 @@ export async function PATCH(
     if (field in body) updates[field] = body[field]
   }
 
-  const { data, error } = await adminClient
+  const { data, error } = await supabase
     .from('inversiones')
     .update(updates)
     .eq('id', id)
@@ -49,12 +48,12 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
 
-  const { error } = await adminClient
+  const { error } = await supabase
     .from('inversiones')
     .update({ estado: 'liquidado' })
     .eq('id', id)

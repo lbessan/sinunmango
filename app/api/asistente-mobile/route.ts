@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromRequest } from '@/lib/auth'
-import { adminClient } from '@/lib/supabase/admin'
+import { createClientForRequest } from '@/lib/supabase/route'
 
 // ─── POST /api/asistente-mobile ───────────────────────────────────────────────
 // Non-streaming version of /api/asistente for the mobile app.
@@ -12,7 +11,7 @@ export const runtime = 'nodejs'
 const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
 export async function POST(req: NextRequest) {
-  const user = await getUserFromRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const apiKey = process.env.ANTHROPIC_API_KEY
@@ -43,40 +42,40 @@ export async function POST(req: NextRequest) {
     { data: movHistorico },
     { data: movRecientes },
   ] = await Promise.all([
-    adminClient
+    supabase
       .from('saldo_actual_cuentas')
       .select('id, nombre_cuenta, tipo_cuenta, moneda, saldo_actual')
       .eq('activa', true)
       .eq('user_id', user.id),
-    adminClient
+    supabase
       .from('dashboard_resumen')
       .select('*')
       .eq('user_id', user.id)
       .single(),
-    adminClient
+    supabase
       .from('categorias')
       .select('id, nombre_categoria, tipo_default')
       .eq('user_id', user.id)
       .order('nombre_categoria'),
-    adminClient
+    supabase
       .from('gastos_fijos')
       .select('nombre_gasto, monto_estimado, moneda, dia_vencimiento, cuentas(nombre_cuenta, tipo_cuenta)')
       .eq('activo', true)
       .eq('user_id', user.id)
       .order('dia_vencimiento'),
-    adminClient
+    supabase
       .from('parametros')
       .select('valor')
       .eq('id', 'Dolar_Tarjeta_BNA')
       .eq('user_id', user.id)
       .single(),
-    adminClient
+    supabase
       .from('movimientos')
       .select('fecha, monto, moneda, tipo_movimiento, categorias(nombre_categoria)')
       .eq('user_id', user.id)
       .gte('fecha', hace6Str)
       .order('fecha', { ascending: false }),
-    adminClient
+    supabase
       .from('movimientos')
       .select('fecha, detalle, monto, moneda, tipo_movimiento, categorias(nombre_categoria), cuentas(nombre_cuenta)')
       .eq('user_id', user.id)
@@ -93,7 +92,7 @@ export async function POST(req: NextRequest) {
     const monto = Number(m.monto)
     if (m.tipo_movimiento === 'Gasto') {
       porMes[mes].gastos += monto
-      const cat = (m.categorias as any)?.nombre_categoria ?? 'Sin categoría'
+      const cat = (m.categorias as { nombre_categoria?: string } | null)?.nombre_categoria ?? 'Sin categoría'
       porMes[mes].topCats[cat] = (porMes[mes].topCats[cat] ?? 0) + monto
     } else if (m.tipo_movimiento === 'Ingreso') {
       porMes[mes].ingresos += monto
@@ -113,16 +112,17 @@ export async function POST(req: NextRequest) {
     `  - ${c.nombre_cuenta} (${c.tipo_cuenta}): ${c.moneda === 'USD' ? 'US$' : '$'}${fmt(c.saldo_actual ?? 0)} [id: ${c.id}]`
   ).join('\n')
   const gastosFijosStr = (gastosFijos ?? []).map(g => {
-    const monto = g.moneda === 'USD' ? `US$${g.monto_estimado} (~$${fmt(Math.round((g.monto_estimado ?? 0) * dolar))})` : `$${fmt(g.monto_estimado ?? 0)}`
-    return `  - ${g.nombre_gasto}: ${monto} · día ${g.dia_vencimiento ?? '—'} · ${(g.cuentas as any)?.nombre_cuenta ?? '—'}`
+    const cuentaJoin = g.cuentas as { nombre_cuenta?: string } | null
+    const monto      = g.moneda === 'USD' ? `US$${g.monto_estimado} (~$${fmt(Math.round((g.monto_estimado ?? 0) * dolar))})` : `$${fmt(g.monto_estimado ?? 0)}`
+    return `  - ${g.nombre_gasto}: ${monto} · día ${g.dia_vencimiento ?? '—'} · ${cuentaJoin?.nombre_cuenta ?? '—'}`
   }).join('\n')
-  const totalGF_ef = (gastosFijos ?? []).filter(g => (g.cuentas as any)?.tipo_cuenta !== 'Tarjeta Credito')
+  const totalGF_ef = (gastosFijos ?? []).filter(g => (g.cuentas as { tipo_cuenta?: string } | null)?.tipo_cuenta !== 'Tarjeta Credito')
     .reduce((s, g) => s + (g.moneda === 'USD' ? (g.monto_estimado ?? 0) * dolar : (g.monto_estimado ?? 0)), 0)
-  const totalGF_tc = (gastosFijos ?? []).filter(g => (g.cuentas as any)?.tipo_cuenta === 'Tarjeta Credito')
+  const totalGF_tc = (gastosFijos ?? []).filter(g => (g.cuentas as { tipo_cuenta?: string } | null)?.tipo_cuenta === 'Tarjeta Credito')
     .reduce((s, g) => s + (g.moneda === 'USD' ? (g.monto_estimado ?? 0) * dolar : (g.monto_estimado ?? 0)), 0)
   const movStr = (movRecientes ?? []).map(m => {
-    const cat = (m.categorias as any)?.nombre_categoria ?? ''
-    const cta = (m.cuentas as any)?.nombre_cuenta ?? ''
+    const cat = (m.categorias as { nombre_categoria?: string } | null)?.nombre_categoria ?? ''
+    const cta = (m.cuentas    as { nombre_cuenta?: string }    | null)?.nombre_cuenta    ?? ''
     return `  ${m.fecha} | ${m.tipo_movimiento.padEnd(8)} | $${String(m.monto).padStart(10)} ${m.moneda} | ${m.detalle ?? '—'}${cat ? ' [' + cat + ']' : ''}${cta ? ' (' + cta + ')' : ''}`
   }).join('\n')
   const categoriasStr = (categorias ?? []).map(c => `  - ${c.nombre_categoria} (${c.tipo_default}) [id: ${c.id}]`).join('\n')

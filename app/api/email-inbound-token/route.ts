@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromRequest } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 import { adminClient } from '@/lib/supabase/admin'
 
 // ─── Token generation ─────────────────────────────────────────────────────────
@@ -10,9 +10,14 @@ function randomSuffix(n = 4): string {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-/** Genera un token legible basado en el email del usuario.
- *  ej: "luchobessan" → "luchobessan@sinunmango.com.ar"
- *  Si hay colisión, agrega un sufijo corto. */
+/**
+ * Genera un token legible basado en el email del usuario.
+ * Si hay colisión con otro user, agrega un sufijo random.
+ *
+ * IMPORTANTE: la verificación de unicidad necesita leer tokens de OTROS users,
+ * cosa que RLS no permite con el cliente del user. Por eso usamos adminClient
+ * solo para esta query puntual (read-only, sobre una sola columna).
+ */
 async function generateTokenForUser(email: string): Promise<string> {
   const base = email
     .split('@')[0]
@@ -22,7 +27,6 @@ async function generateTokenForUser(email: string): Promise<string> {
 
   const candidate = base || randomSuffix(8)
 
-  // Verificar unicidad
   const { data: existing } = await adminClient
     .from('user_preferences')
     .select('user_id')
@@ -38,10 +42,10 @@ async function generateTokenForUser(email: string): Promise<string> {
 // ─── GET /api/email-inbound-token ─────────────────────────────────────────────
 // Returns existing token (or creates one if none exists yet)
 export async function GET(req: NextRequest) {
-  const user = await getUserFromRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data } = await adminClient
+  const { data } = await supabase
     .from('user_preferences')
     .select('email_inbound_token, gmail_verification_code')
     .eq('user_id', user.id)
@@ -49,14 +53,14 @@ export async function GET(req: NextRequest) {
 
   if (data?.email_inbound_token) {
     return NextResponse.json({
-      token:                 data.email_inbound_token,
+      token:                   data.email_inbound_token,
       gmail_verification_code: data.gmail_verification_code ?? null,
     })
   }
 
   // First time: generate and persist token based on email
   const token = await generateTokenForUser(user.email ?? '')
-  await adminClient
+  await supabase
     .from('user_preferences')
     .upsert(
       { user_id: user.id, email_inbound_token: token, updated_at: new Date().toISOString() },
@@ -69,11 +73,11 @@ export async function GET(req: NextRequest) {
 // ─── POST /api/email-inbound-token ────────────────────────────────────────────
 // Regenerates the token (invalidates the previous one)
 export async function POST(req: NextRequest) {
-  const user = await getUserFromRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const token = await generateTokenForUser(user.email ?? '')
-  await adminClient
+  await supabase
     .from('user_preferences')
     .upsert(
       {
@@ -91,10 +95,10 @@ export async function POST(req: NextRequest) {
 // ─── PATCH /api/email-inbound-token ───────────────────────────────────────────
 // Marca el reenvío de Gmail como confirmado manualmente por el usuario
 export async function PATCH(req: NextRequest) {
-  const user = await getUserFromRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await adminClient
+  await supabase
     .from('user_preferences')
     .upsert(
       { user_id: user.id, gmail_verification_code: 'VERIFIED', updated_at: new Date().toISOString() },

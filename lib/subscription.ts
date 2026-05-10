@@ -1,35 +1,41 @@
 import { adminClient } from '@/lib/supabase/admin'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Plan = 'free' | 'pro' | 'grandfathered'
 
 export type UserPlan = {
-  plan:                    Plan
-  plan_expires_at:         string | null  // ISO string o null
-  google_subscription_id:  string | null
-  has_pro_access:          boolean        // true si es grandfathered o pro vigente
+  plan:                   Plan
+  plan_expires_at:        string | null  // ISO string o null
+  google_subscription_id: string | null
+  has_pro_access:         boolean        // true si grandfathered o pro vigente
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const DEFAULT_PLAN: UserPlan = {
+  plan:                   'free',
+  plan_expires_at:        null,
+  google_subscription_id: null,
+  has_pro_access:         false,
+}
+
+// ─── User-scoped: leer plan del usuario actual ───────────────────────────────
 
 /**
- * Obtiene el plan del usuario desde user_profiles.
- * Usa el adminClient (service role) así funciona tanto en API routes como en server components.
+ * Obtiene el plan del usuario actual usando el cliente Supabase autenticado.
+ * RLS filtra a la fila del propio user, no hace falta pasar userId.
+ *
+ * Usar desde routes que ya tienen el cliente del helper createClientForRequest.
  */
-export async function getUserPlan(userId: string): Promise<UserPlan> {
-  const { data } = await adminClient
+export async function getUserPlan(supabase: SupabaseClient): Promise<UserPlan> {
+  const { data } = await supabase
     .from('user_profiles')
     .select('plan, plan_expires_at, google_subscription_id')
-    .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
-  if (!data) {
-    // Si por alguna razón no hay perfil, tratar como free sin acceso
-    return { plan: 'free', plan_expires_at: null, google_subscription_id: null, has_pro_access: false }
-  }
+  if (!data) return DEFAULT_PLAN
 
-  const plan = (data.plan ?? 'free') as Plan
+  const plan    = (data.plan ?? 'free') as Plan
   const expires = data.plan_expires_at as string | null
   const has_pro_access =
     plan === 'grandfathered' ||
@@ -43,32 +49,19 @@ export async function getUserPlan(userId: string): Promise<UserPlan> {
   }
 }
 
-/**
- * Versión rápida: solo retorna true/false.
- * Ideal para guards en API routes.
- */
-export async function hasProAccess(userId: string): Promise<boolean> {
-  const { plan } = await getUserPlan(userId)
-  if (plan === 'grandfathered') return true
-  if (plan !== 'pro') return false
-  const { data } = await adminClient
-    .from('user_profiles')
-    .select('plan_expires_at')
-    .eq('user_id', userId)
-    .single()
-  const expires = data?.plan_expires_at as string | null
-  return !expires || new Date(expires) > new Date()
-}
+// ─── Admin: actualizar plan (llamado solo desde webhooks) ────────────────────
 
 /**
- * Actualiza el plan de un usuario. Llamado desde el webhook de Google Play.
+ * Actualiza el plan de un usuario desde el webhook de Google Play.
+ * Usa adminClient (service role) porque el webhook no tiene sesión de usuario
+ * — Google nos manda la notificación con el userId en obfuscatedExternalAccountId.
  */
 export async function updateUserPlan(
   userId: string,
   plan: Plan,
   opts?: {
-    plan_expires_at?:      string | null
-    google_purchase_token?: string | null
+    plan_expires_at?:        string | null
+    google_purchase_token?:  string | null
     google_subscription_id?: string | null
   }
 ) {
@@ -76,8 +69,8 @@ export async function updateUserPlan(
     .from('user_profiles')
     .update({
       plan,
-      plan_expires_at:        opts?.plan_expires_at       ?? null,
-      google_purchase_token:  opts?.google_purchase_token ?? null,
+      plan_expires_at:        opts?.plan_expires_at        ?? null,
+      google_purchase_token:  opts?.google_purchase_token  ?? null,
       google_subscription_id: opts?.google_subscription_id ?? null,
     })
     .eq('user_id', userId)

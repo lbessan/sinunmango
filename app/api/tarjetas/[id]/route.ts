@@ -1,18 +1,17 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
   const body   = await req.json()
 
-  const { error } = await adminClient
+  const { error } = await supabase
     .from('cuentas')
     .update(body)
     .eq('id', id)
@@ -24,15 +23,15 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
 
-  const { error } = await adminClient
+  const { error } = await supabase
     .from('cuentas')
     .update({ activa: false })
     .eq('id', id)

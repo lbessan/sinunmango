@@ -1,9 +1,8 @@
-import { adminClient } from '@/lib/supabase/admin'
-import { getCurrentUser } from '@/lib/auth'
+import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
-  const user = await getCurrentUser()
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { cuentaId, periodo } = await req.json()
@@ -12,7 +11,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'cuentaId y periodo son requeridos' }, { status: 400 })
   }
 
-  const { error } = await adminClient
+  const { error } = await supabase
     .from('movimientos')
     .update({ conciliado: true })
     .eq('cuenta_origen', cuentaId)

@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromRequest } from '@/lib/auth'
-import { adminClient } from '@/lib/supabase/admin'
+import { createClientForRequest } from '@/lib/supabase/route'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type UserPreferences = {
   alerta_vencimientos_activa: boolean
-  alerta_vencimientos_dias: number[]    // e.g. [0, 1, 3]
-  alerta_resumen_semanal: boolean
-  alerta_resumen_mensual: boolean
+  alerta_vencimientos_dias:   number[]    // e.g. [0, 1, 3]
+  alerta_resumen_semanal:     boolean
+  alerta_resumen_mensual:     boolean
 }
 
 const DEFAULTS: UserPreferences = {
@@ -19,10 +18,10 @@ const DEFAULTS: UserPreferences = {
 
 // ─── GET /api/user-preferences ────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
-  const user = await getUserFromRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await adminClient
+  const { data, error } = await supabase
     .from('user_preferences')
     .select('alerta_vencimientos_activa, alerta_vencimientos_dias, alerta_resumen_semanal, alerta_resumen_mensual')
     .eq('user_id', user.id)
@@ -36,18 +35,19 @@ export async function GET(req: NextRequest) {
 
 // ─── PATCH /api/user-preferences ─────────────────────────────────────────────
 export async function PATCH(req: NextRequest) {
-  const user = await getUserFromRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = (await req.json()) as Partial<UserPreferences>
 
-  // Upsert — insert or update on conflict
-  const { data, error } = await adminClient
+  // Upsert — insert or update on conflict.
+  // user_id se setea desde el server, no del body.
+  const { data, error } = await supabase
     .from('user_preferences')
     .upsert(
       {
-        user_id: user.id,
         ...body,
+        user_id:    user.id,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'user_id' }
