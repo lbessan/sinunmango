@@ -206,8 +206,13 @@ REGLAS CRÍTICAS:
     body: JSON.stringify({
       model:      'claude-sonnet-4-6',
       max_tokens: 1024,
-      system:     systemPrompt,
-      stream:     false,
+      // Prompt caching: el contexto financiero (saldos, movs, categorías) cambia
+      // poco entre mensajes consecutivos. Cache TTL 5min reduce costo de
+      // tokens cacheados a 0.1x para llamadas subsecuentes.
+      system: [
+        { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
+      ],
+      stream:   false,
       messages,
     }),
   })
