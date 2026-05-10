@@ -1,0 +1,147 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
+
+const lastUpdated = "2 de mayo de 2026";
+---
+
+<Layout
+  title="Política de privacidad — sinunmango"
+  description="Cómo sinunmango maneja tus datos personales y financieros."
+>
+  <Nav />
+  <main class="bg-white pt-32 pb-20">
+    <article class="mx-auto max-w-3xl px-6">
+      <p class="text-sm text-[var(--color-ink-muted)]">
+        Última actualización: {lastUpdated}
+      </p>
+      <h1 class="mt-3 text-4xl font-bold tracking-tight text-[var(--color-ink)]">
+        Política de privacidad
+      </h1>
+      <p class="mt-4 text-lg text-[var(--color-ink-soft)]">
+        Esta política explica qué datos recolecta sinunmango, cómo los usa y
+        qué control tenés sobre ellos. En castellano claro, no en
+        legalese.
+      </p>
+
+      <div
+        class="prose mt-10 max-w-none [&_h2]:mt-10 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-[var(--color-ink)] [&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-[var(--color-ink)] [&_p]:mb-4 [&_p]:leading-relaxed [&_p]:text-[var(--color-ink-soft)] [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:text-[var(--color-ink-soft)] [&_li]:mb-2 [&_a]:text-[var(--color-accent)] [&_a]:underline"
+      >
+        <h2>Quiénes somos</h2>
+        <p>
+          sinunmango es un proyecto personal mantenido por Lucho Bessan. No
+          es una empresa, no es un banco, no es una entidad regulada por el
+          BCRA ni por la CNV. Es una herramienta de uso personal para llevar
+          finanzas individuales.
+        </p>
+
+        <h2>Qué datos recolectamos</h2>
+        <h3>Datos de cuenta</h3>
+        <p>
+          Cuando iniciás sesión con Google, recibimos tu dirección de email
+          y tu nombre público. No tenemos acceso a tu contraseña.
+        </p>
+        <h3>Datos financieros que cargás</h3>
+        <p>
+          Todos los movimientos, cuentas, tarjetas, gastos fijos e
+          inversiones que cargás en la app se guardan en nuestra base de
+          datos. Estos datos son tuyos: solo vos los podés ver, modificar o
+          borrar.
+        </p>
+        <h3>Emails reenviados de tu banco</h3>
+        <p>
+          Si activás la importación automática, te asignamos una dirección
+          tipo <em>tu-usuario@sinunmango.com.ar</em>. Los emails que
+          reenvíes a esa dirección se procesan para extraer los movimientos
+          (fecha, monto, comercio, cuenta). Una vez extraído el dato, el
+          email original se descarta — no lo conservamos. Solo guardamos
+          metadatos mínimos (de qué cuenta vino, cuándo se procesó) para
+          que puedas auditarlo.
+        </p>
+        <h3>PDFs de resumen de tarjeta</h3>
+        <p>
+          Cuando subís un resumen, lo procesamos con IA (Anthropic /
+          Claude) para detectar banco, red, variante, fechas y consumos.
+          El PDF se usa solo para esa extracción y no queda almacenado en
+          nuestros servidores después del análisis. Lo que persiste son
+          los movimientos cargados, que vos podés revisar y editar.
+        </p>
+        <h3>Datos técnicos</h3>
+        <p>
+          Guardamos logs mínimos para detectar errores: timestamp,
+          identificador de usuario y mensaje de error. No usamos analytics
+          de terceros que rastreen tu comportamiento.
+        </p>
+
+        <h2>Dónde viven tus datos</h2>
+        <p>
+          La base de datos está alojada en
+          <a href="https://supabase.com">Supabase</a> (Postgres). El sitio y
+          la app se sirven desde
+          <a href="https://vercel.com">Vercel</a>. Los emails de alerta los
+          envía <a href="https://resend.com">Resend</a>. El asistente
+          Manguito usa la API de
+          <a href="https://www.anthropic.com">Anthropic (Claude)</a>; cuando
+          le hacés una pregunta, enviamos el contexto necesario para
+          responderla y nada más. Anthropic no usa tus mensajes para
+          entrenar modelos.
+        </p>
+
+        <h2>Seguridad</h2>
+        <p>
+          Toda la base de datos tiene <strong>Row Level Security</strong>
+          activado: a nivel base de datos, un usuario solo puede leer y
+          escribir filas marcadas con su propio identificador. Las
+          conexiones siempre van por HTTPS.
+        </p>
+
+        <h2>Compartir datos con terceros</h2>
+        <p>
+          No vendemos tus datos. No los compartimos con terceros excepto en
+          los casos estrictamente necesarios para que la app funcione
+          (Supabase para almacenarlos, Vercel para servir la web, Resend
+          para mandar emails, Anthropic para responder preguntas a
+          Manguito).
+        </p>
+
+        <h2>Tus derechos</h2>
+        <ul>
+          <li>
+            <strong>Acceso y portabilidad:</strong> podés exportar tus
+            datos cuando quieras.
+          </li>
+          <li>
+            <strong>Rectificación:</strong> editás cualquier movimiento
+            o cuenta directamente desde la app.
+          </li>
+          <li>
+            <strong>Borrado:</strong> escribime a
+            <a href="mailto:luchobessan@gmail.com">luchobessan@gmail.com</a>
+            y borramos tu cuenta y todos tus datos asociados en menos de 7 días.
+          </li>
+        </ul>
+
+        <h2>Cookies</h2>
+        <p>
+          La app usa cookies estrictamente necesarias para mantener tu
+          sesión iniciada. No usamos cookies de tracking ni publicidad.
+        </p>
+
+        <h2>Cambios en esta política</h2>
+        <p>
+          Si actualizamos esta política, vamos a actualizar la fecha de
+          arriba. Los cambios significativos se anuncian por email a los
+          usuarios activos.
+        </p>
+
+        <h2>Contacto</h2>
+        <p>
+          Cualquier pregunta sobre privacidad, escribime a
+          <a href="mailto:luchobessan@gmail.com">luchobessan@gmail.com</a>.
+        </p>
+      </div>
+    </article>
+  </main>
+  <Footer />
+</Layout>
