@@ -1,0 +1,65 @@
+name: Build Android (mobile)
+
+# Cuándo se dispara este workflow:
+#   - Manualmente desde la UI de GitHub (botón "Run workflow" en la pestaña Actions)
+#   - Automáticamente cuando se pushea a main y hay cambios en sinunmango-mobile/
+#
+# Corre `eas build --local` en un runner gratuito de GitHub. NO consume cuota
+# del plan free de EAS porque el cómputo es local del runner. La keystore para
+# firmar el AAB se baja desde EAS usando EXPO_TOKEN (no hay que tenerla local).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'sinunmango-mobile/**'
+      - '.github/workflows/build-mobile.yml'
+
+jobs:
+  build:
+    name: EAS local build (Android)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: sinunmango-mobile/package-lock.json
+
+      - name: Setup Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Expo + EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: sinunmango-mobile
+        run: npm ci
+
+      - name: Build Android AAB (local)
+        working-directory: sinunmango-mobile
+        run: eas build --platform android --profile production --local --non-interactive --output ./app-release.aab
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sinunmango-android-aab
+          path: sinunmango-mobile/app-release.aab
+          retention-days: 14
+
+      - name: Done
+        run: |
+          echo "::notice::Build OK. Bajá el AAB del artifact 'sinunmango-android-aab' (panel a la derecha del run)."
