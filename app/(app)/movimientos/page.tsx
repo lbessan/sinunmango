@@ -1,4 +1,5 @@
 import { getAuthedClient } from '@/lib/supabase/server'
+import { stripCuotaSuffix } from '@/lib/tarjeta-periodo'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Pencil, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
@@ -185,7 +186,7 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-700 max-w-xs truncate">{mov.detalle ?? '—'}</p>
+                      <p className="font-medium text-slate-700 max-w-xs truncate">{stripCuotaSuffix(mov.detalle) || '—'}</p>
                       {mov.cuotas_total > 1 && (
                         <p className="text-xs text-slate-400">Cuota {Math.min(mov.cuota_actual, mov.cuotas_total)}/{Math.max(mov.cuota_actual, mov.cuotas_total)}</p>
                       )}

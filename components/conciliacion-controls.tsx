@@ -5,7 +5,7 @@ import { CheckCircle, Circle, Pencil, X, Plus, Save, ArrowUpDown, ArrowUp, Arrow
 import { NuevoItemModal }  from '@/components/nuevo-item-modal'
 import { IconoCategoria }  from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
-import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
+import { calcularPeriodo, addMonths, stripCuotaSuffix } from '@/lib/tarjeta-periodo'
 
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -907,7 +907,7 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
         <td className="px-4 py-3">
           <div className="flex items-center gap-1.5">
             <p className={`text-sm font-medium max-w-xs truncate ${mov.conciliado ? 'text-slate-400 line-through' : esDescuento ? 'text-emerald-700' : 'text-slate-700'}`}>
-              {mov.detalle ?? '—'}
+              {stripCuotaSuffix(mov.detalle) || '—'}
             </p>
             {esDescuento && (
               <span className="shrink-0 text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-1.5 py-0.5 rounded-full">
