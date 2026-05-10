@@ -6,7 +6,7 @@ import { Pencil, Plus, X, ArrowUp, ArrowDown, ArrowUpDown, Search } from 'lucide
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
 import { IconoCategoria } from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
-import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
+import { calcularPeriodo, addMonths, stripCuotaSuffix } from '@/lib/tarjeta-periodo'
 
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -454,7 +454,7 @@ export function CuentaMovimientosTable({
                   <tr key={mov.id} className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${futuro ? 'opacity-75' : ''}`}>
                     <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{mov.fecha}</td>
                     <td className="px-4 py-3">
-                      <p className="text-sm font-medium text-slate-700 max-w-xs truncate">{mov.detalle ?? '—'}</p>
+                      <p className="text-sm font-medium text-slate-700 max-w-xs truncate">{stripCuotaSuffix(mov.detalle) || '—'}</p>
                       {mov.cuotas_total > 1 && (() => {
                         // Normaliza datos viejos donde actual/total pudieran estar invertidos
                         const ca = Math.min(mov.cuota_actual, mov.cuotas_total)

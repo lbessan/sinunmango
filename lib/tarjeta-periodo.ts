@@ -61,6 +61,19 @@ export function addMonths(fecha: string, n: number): string {
 }
 
 /**
+ * Remueve el sufijo "(Cuota N/T)" o "(Cuota N)" del final de un detalle.
+ *
+ * Lo usamos al renderizar listas/tablas de movimientos: el detalle se guarda
+ * en la DB con el sufijo (para que sea identificable y agrupable por regex),
+ * pero la UI ya muestra "Cuota X/Y" como subtitle aparte. Strippear el sufijo
+ * evita duplicación visual del tipo "COTO (Cuota 5/12)" + abajo "Cuota 5/12".
+ */
+export function stripCuotaSuffix(detalle: string | null | undefined): string {
+  if (!detalle) return ''
+  return detalle.replace(/\s*\(Cuota\s+\d+(?:\/\d+)?\)\s*$/i, '').trim()
+}
+
+/**
  * Variante de `calcularPeriodo` que recibe el objeto cuenta directamente
  * (extrae los días de cierre/vencimiento internamente). Cómodo para los
  * formularios donde ya tenés la cuenta cargada.

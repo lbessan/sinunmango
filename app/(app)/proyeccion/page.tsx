@@ -1,4 +1,5 @@
 import { getAuthedClient } from '@/lib/supabase/server'
+import { stripCuotaSuffix } from '@/lib/tarjeta-periodo'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
@@ -254,7 +255,7 @@ export default async function ProyeccionMesPage({
                         <tr key={m.id} className="border-b border-slate-50 hover:bg-slate-50">
                           <td className="px-4 py-2.5 text-xs text-slate-400 whitespace-nowrap">{m.fecha}</td>
                           <td className="px-4 py-2.5">
-                            <p className="text-sm text-slate-700 max-w-xs truncate">{m.detalle ?? '—'}</p>
+                            <p className="text-sm text-slate-700 max-w-xs truncate">{stripCuotaSuffix(m.detalle) || '—'}</p>
                             {m.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {Math.min(m.cuota_actual, m.cuotas_total)}/{Math.max(m.cuota_actual, m.cuotas_total)}</p>}
                           </td>
                           <td className="px-4 py-2.5 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
