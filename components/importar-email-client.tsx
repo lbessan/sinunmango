@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Clipboard, CheckCircle, AlertCircle, Loader2, ChevronRight, CreditCard, ArrowLeft } from 'lucide-react'
 import { CategoriaSelect } from '@/components/categoria-select'
+import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
 import type { ParsedMov } from '@/lib/email-parsers'
 
 const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -21,35 +22,7 @@ type Cuenta = {
 type Categoria    = { id: string; nombre_categoria: string; icono: string | null; tipo_default?: string }
 type Subcategoria = { id: string; categoria_padre: string; nombre_subcategoria: string }
 
-// ─── Period calc (same logic as cuenta-movimientos-table) ─────────────────────
-function calcularPeriodo(
-  fechaStr: string,
-  cierreDay: number | null,
-  venceDay: number | null,
-  isTarjeta: boolean
-): string {
-  const d = new Date(fechaStr + 'T12:00:00')
-  let mes  = d.getMonth()
-  let anio = d.getFullYear()
-  if (isTarjeta && cierreDay && venceDay) {
-    const day = d.getDate()
-    if (day <= cierreDay) {
-      if (venceDay <= cierreDay) mes += 1
-    } else {
-      if (venceDay > cierreDay) mes += 1
-      else                       mes += 2
-    }
-    while (mes > 11) { mes -= 12; anio++ }
-  }
-  return `${anio}-${String(mes + 1).padStart(2, '0')}-01`
-}
-
-function addMeses(fechaStr: string, n: number): string {
-  const d = new Date(fechaStr + 'T12:00:00')
-  d.setMonth(d.getMonth() + n)
-  return d.toISOString().slice(0, 10)
-}
-
+// calcularPeriodo + addMonths importados de @/lib/tarjeta-periodo
 function formatPeriodo(p: string): string {
   return new Date(p + 'T12:00:00')
     .toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -145,7 +118,7 @@ export function ImportarEmailClient({ cuentas, categorias }: {
     const cotizNum   = isUSD && cotizacion ? parseFloat(cotizacion) : null
 
     const records = Array.from({ length: cuotas }, (_, i) => {
-      const fechaCuota   = addMeses(fecha, i)
+      const fechaCuota   = addMonths(fecha, i)
       const periodoCuota = calcularPeriodo(fechaCuota, cierreDay, venceDay, isTarjeta && !isUSD)
       return {
         id:              crypto.randomUUID(),
@@ -332,7 +305,7 @@ export function ImportarEmailClient({ cuentas, categorias }: {
                     <p className="font-medium mb-1">{cuotas} cuotas — distribución de períodos:</p>
                     <div className="space-y-0.5">
                       {Array.from({ length: cuotas }, (_, i) => {
-                        const f = addMeses(fecha, i)
+                        const f = addMonths(fecha, i)
                         const p = calcularPeriodo(f, cierreDay, venceDay, true)
                         return (
                           <p key={i} className="text-blue-600">

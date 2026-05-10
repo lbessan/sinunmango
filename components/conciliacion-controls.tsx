@@ -5,9 +5,7 @@ import { CheckCircle, Circle, Pencil, X, Plus, Save, ArrowUpDown, ArrowUp, Arrow
 import { NuevoItemModal }  from '@/components/nuevo-item-modal'
 import { IconoCategoria }  from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
-
-// Re-export calcularPeriodo signature compatible with conciliacion helpers
-// (uses cierreDay/venceDay numbers, not cuenta objects)
+import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
 
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -26,21 +24,7 @@ type Categoria   = { id: string; nombre_categoria: string; icono: string | null;
 type Subcategoria = { id: string; categoria_padre: string; nombre_subcategoria: string }
 
 // ─── Helpers período ──────────────────────────────────────────────────────────
-function calcularPeriodo(fechaStr: string, cierreDay: number | null, venceDay: number | null, isTarjeta: boolean): string {
-  const d = new Date(fechaStr + 'T12:00:00')
-  let mes = d.getMonth(); let anio = d.getFullYear()
-  if (isTarjeta && cierreDay && venceDay) {
-    const day = d.getDate()
-    if (day <= cierreDay) { if (venceDay <= cierreDay) mes += 1 }
-    else { if (venceDay > cierreDay) mes += 1; else mes += 2 }
-    while (mes > 11) { mes -= 12; anio++ }
-  }
-  return `${anio}-${String(mes + 1).padStart(2, '0')}-01`
-}
-function addMeses(fechaStr: string, n: number): string {
-  const d = new Date(fechaStr + 'T12:00:00'); d.setMonth(d.getMonth() + n)
-  return d.toISOString().slice(0, 10)
-}
+// calcularPeriodo + addMonths importados de @/lib/tarjeta-periodo
 function formatPeriodo(p: string): string {
   return new Date(p + 'T12:00:00')
     .toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -274,7 +258,7 @@ function AddModal({ cuentaId, periodo: periodoBase, cierreDay, venceDay, categor
   const previewCuotas = useMemo(() => {
     if (cuotas <= 1) return []
     return Array.from({ length: cuotas }, (_, i) => {
-      const f = addMeses(fecha, i)
+      const f = addMonths(fecha, i)
       return { cuota: i + 1, fecha: f, periodo: calcularPeriodo(f, cierreDay ?? null, venceDay ?? null, isTarjeta) }
     })
   }, [cuotas, fecha, cierreDay, venceDay, isTarjeta])
@@ -287,7 +271,7 @@ function AddModal({ cuentaId, periodo: periodoBase, cierreDay, venceDay, categor
     const cat        = categorias.find(c => c.id === catId)
 
     const nuevosMovs = Array.from({ length: cuotas }, (_, i) => {
-      const fechaCuota   = addMeses(fecha, i)
+      const fechaCuota   = addMonths(fecha, i)
       const periodoCuota = calcularPeriodo(fechaCuota, cierreDay ?? null, venceDay ?? null, isTarjeta)
       return {
         id: crypto.randomUUID(), fecha: fechaCuota,
@@ -529,7 +513,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       const cat = categorias.find(c => c.id === tx.catId)
       const tipoMov = tx.es_descuento ? 'Ingreso' : 'Gasto'
       return Array.from({ length: tx.cuotas_total }, (_, i) => {
-        const fechaCuota   = addMeses(tx.fecha, i)
+        const fechaCuota   = addMonths(tx.fecha, i)
         const periodoCuota = calcularPeriodo(fechaCuota, cierreDay ?? null, venceDay ?? null, isTarjeta)
         return {
           id: crypto.randomUUID(), fecha: fechaCuota,

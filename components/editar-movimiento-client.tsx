@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CategoriaSelect } from '@/components/categoria-select'
+import { calcularPeriodoCuenta as calcularPeriodo } from '@/lib/tarjeta-periodo'
 
 type Cuenta = {
   id: string
@@ -13,25 +14,6 @@ type Cuenta = {
 }
 type Categoria = { id: string; nombre_categoria: string; icono: string | null; tipo_default: string }
 type Subcategoria = { id: string; categoria_padre: string; nombre_subcategoria: string }
-
-function calcularPeriodo(fecha: string, cuenta: Cuenta | undefined): string {
-  if (!cuenta || cuenta.tipo_cuenta !== 'Tarjeta Credito') return fecha.slice(0, 7) + '-01'
-  if (!cuenta.fecha_cierre_tarjeta || !cuenta.fecha_vencimiento_tarjeta) return fecha.slice(0, 7) + '-01'
-  const cierreDay = new Date(cuenta.fecha_cierre_tarjeta + 'T12:00:00').getDate()
-  const venceDay  = new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate()
-  const d   = new Date(fecha + 'T12:00:00')
-  let mes   = d.getMonth()
-  let anio  = d.getFullYear()
-  const day = d.getDate()
-  if (day <= cierreDay) {
-    if (venceDay <= cierreDay) mes += 1
-  } else {
-    if (venceDay > cierreDay) mes += 1
-    else                       mes += 2
-  }
-  while (mes > 11) { mes -= 12; anio++ }
-  return `${anio}-${String(mes + 1).padStart(2, '0')}-01`
-}
 
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-white'
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'

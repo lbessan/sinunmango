@@ -13,6 +13,7 @@ import {
   THEMES, type ThemeKey, STORAGE_THEME, STORAGE_DARKMODE,
   applyTheme, applyDarkMode,
 } from '@/components/theme-provider'
+import { calcularPeriodoCuenta as calcularPeriodo } from '@/lib/tarjeta-periodo'
 
 // ─── Variantes de tarjeta ─────────────────────────────────────────────────────
 
@@ -79,27 +80,7 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
-function calcularPeriodo(
-  fecha: string,
-  cuenta: { tipo_cuenta: string; fecha_cierre_tarjeta: string | null; fecha_vencimiento_tarjeta: string | null } | null
-): string {
-  if (!cuenta || cuenta.tipo_cuenta !== 'Tarjeta Credito') return fecha.slice(0, 7) + '-01'
-  if (!cuenta.fecha_cierre_tarjeta || !cuenta.fecha_vencimiento_tarjeta) return fecha.slice(0, 7) + '-01'
-  const cierreDay = new Date(cuenta.fecha_cierre_tarjeta + 'T12:00:00').getDate()
-  const venceDay  = new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate()
-  const d   = new Date(fecha + 'T12:00:00')
-  let mes   = d.getMonth()
-  let anio  = d.getFullYear()
-  const day = d.getDate()
-  if (day <= cierreDay) {
-    if (venceDay <= cierreDay) mes += 1
-  } else {
-    if (venceDay > cierreDay) mes += 1
-    else                       mes += 2
-  }
-  while (mes > 11) { mes -= 12; anio++ }
-  return `${anio}-${String(mes + 1).padStart(2, '0')}-01`
-}
+// calcularPeriodo importado de @/lib/tarjeta-periodo (alias de calcularPeriodoCuenta)
 
 function buildDate(day: string): string | null {
   const d = parseInt(day)

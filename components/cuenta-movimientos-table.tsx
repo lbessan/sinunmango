@@ -6,6 +6,7 @@ import { Pencil, Plus, X, ArrowUp, ArrowDown, ArrowUpDown, Search } from 'lucide
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
 import { IconoCategoria } from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
+import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
 
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -21,40 +22,7 @@ type Categoria    = { id: string; nombre_categoria: string; icono: string | null
 type Subcategoria = { id: string; categoria_padre: string; nombre_subcategoria: string }
 type CuentaItem   = { id: string; nombre_cuenta: string }
 
-// ─── Calcula el periodo_tarjeta dado fecha, cierreDay y venceDay ──────────────
-function calcularPeriodo(
-  fechaStr: string,
-  cierreDay: number | null,
-  venceDay: number | null,
-  isTarjeta: boolean
-): string {
-  const d = new Date(fechaStr + 'T12:00:00')
-  let mes  = d.getMonth()   // 0-indexed
-  let anio = d.getFullYear()
-
-  if (isTarjeta && cierreDay && venceDay) {
-    const day = d.getDate()
-    if (day <= cierreDay) {
-      // Mismo ciclo de facturación
-      if (venceDay <= cierreDay) mes += 1 // vence el mes siguiente
-      // else: vence en el mismo mes → no cambia
-    } else {
-      // Siguiente ciclo
-      if (venceDay > cierreDay) mes += 1
-      else                       mes += 2
-    }
-    while (mes > 11) { mes -= 12; anio++ }
-  }
-
-  return `${anio}-${String(mes + 1).padStart(2, '0')}-01`
-}
-
-function addMeses(fechaStr: string, n: number): string {
-  const d = new Date(fechaStr + 'T12:00:00')
-  d.setMonth(d.getMonth() + n)
-  return d.toISOString().slice(0, 10)
-}
-
+// calcularPeriodo + addMonths importados de @/lib/tarjeta-periodo
 function formatPeriodo(p: string): string {
   return new Date(p + 'T12:00:00')
     .toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -104,7 +72,7 @@ function AddMovModal({ cuentaId, isTarjeta, cierreDay, venceDay, categorias: cat
   const previewCuotas = useMemo(() => {
     if (cuotas <= 1) return []
     return Array.from({ length: cuotas }, (_, i) => {
-      const f = addMeses(fecha, i)
+      const f = addMonths(fecha, i)
       const p = calcularPeriodo(f, cierreDay, venceDay, isTarjeta && tipo === 'Gasto')
       return { cuota: i + 1, fecha: f, periodo: p }
     })
@@ -121,7 +89,7 @@ function AddMovModal({ cuentaId, isTarjeta, cierreDay, venceDay, categorias: cat
     // Generar N movimientos (uno por cuota, 1 para transferencia)
     const isTransf = tipo === 'Transferencia'
     const nuevosMovs = Array.from({ length: isTransf ? 1 : cuotas }, (_, i) => {
-      const fechaCuota   = addMeses(fecha, i)
+      const fechaCuota   = addMonths(fecha, i)
       const periodoCuota = calcularPeriodo(fechaCuota, cierreDay, venceDay, isTarjeta && tipo === 'Gasto')
       return {
         id:              crypto.randomUUID(),
