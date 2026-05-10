@@ -61,22 +61,39 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   const configuredRef = useRef(false)
 
+  // ── Helper: configurar RC sin tirar abajo la app si algo falla ───────────
+  // Defensa contra:
+  //  - API key vacía o no válida (skip configure, no rompe la app)
+  //  - Excepciones del SDK nativo (try/catch + plan='free' como fallback)
+  // El crash original por apiKey vacío era una IllegalArgumentException tirada
+  // en el thread nativo `mqt_v_native`, que un try/catch en JS no puede atrapar
+  // — por eso el guard de la key ANTES de la llamada es la defensa principal.
+  const safeConfigureRC = useCallback(async (userId: string) => {
+    if (!RC_ANDROID_KEY || !RC_ANDROID_KEY.startsWith('goog_')) {
+      console.warn('[SubscriptionContext] RC_ANDROID_KEY ausente o inválida — skip configure')
+      setState(s => ({ ...s, loading: false }))
+      return
+    }
+    try {
+      if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG)
+      await Purchases.configure({ apiKey: RC_ANDROID_KEY, appUserID: userId })
+      await loadData()
+    } catch (err) {
+      console.error('[SubscriptionContext] configure error:', err)
+      configuredRef.current = false
+      setState(s => ({ ...s, loading: false, hasPro: false, plan: 'free' }))
+    }
+  }, [])
+
   // ── Inicializar RevenueCat con el user ID de Supabase ─────────────────────
   useEffect(() => {
     if (Platform.OS === 'web') return
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user && !configuredRef.current) {
         configuredRef.current = true
-
-        if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG)
-
-        await Purchases.configure({
-          apiKey:    RC_ANDROID_KEY,
-          appUserID: session.user.id,  // usamos el UUID de Supabase como RC user ID
-        })
-
-        await loadData()
+        // Sin await: errores ya manejados dentro de safeConfigureRC
+        safeConfigureRC(session.user.id)
       }
 
       if (!session?.user) {
@@ -87,22 +104,21 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     })
 
     // Chequear sesión inicial
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user && !configuredRef.current) {
-        configuredRef.current = true
-        if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG)
-        await Purchases.configure({
-          apiKey:    RC_ANDROID_KEY,
-          appUserID: session.user.id,
-        })
-        await loadData()
-      } else if (!session?.user) {
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (session?.user && !configuredRef.current) {
+          configuredRef.current = true
+          return safeConfigureRC(session.user.id)
+        }
         setState(s => ({ ...s, loading: false }))
-      }
-    })
+      })
+      .catch(err => {
+        console.error('[SubscriptionContext] getSession error:', err)
+        setState(s => ({ ...s, loading: false }))
+      })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [safeConfigureRC])
 
   // ── Cargar customer info + offerings ─────────────────────────────────────
   const loadData = useCallback(async () => {
