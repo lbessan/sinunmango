@@ -1,5 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminClient } from '@/lib/supabase/admin'
+import crypto from 'crypto'
+
+// crypto.createHmac requiere runtime Node (no Edge)
+export const runtime = 'nodejs'
+
+// ─── Verificación de firma Svix (Resend usa Svix internamente) ───────────────
+//
+// Resend firma cada webhook con HMAC-SHA256 sobre `${id}.${timestamp}.${body}`
+// usando un secret que el usuario configura en el dashboard de Resend.
+// El secret viene en formato "whsec_<base64>".
+//
+// Sin esta verificación, cualquiera con la URL pública del webhook puede
+// inyectar movimientos en cualquier cuenta cuyo token conozca o adivine.
+function verifySvixSignature({ id, timestamp, signature, body, secret }: {
+  id: string
+  timestamp: string
+  signature: string
+  body: string
+  secret: string
+}): boolean {
+  // Replay protection: descartar mensajes con timestamp fuera de ±5 min
+  const ts = parseInt(timestamp, 10)
+  if (isNaN(ts)) return false
+  const nowSec = Math.floor(Date.now() / 1000)
+  if (Math.abs(nowSec - ts) > 5 * 60) {
+    console.warn('[email-inbound] Svix timestamp outside ±5min tolerance')
+    return false
+  }
+
+  // El secret se guarda como "whsec_<base64>"; el secret real es la parte después
+  const secretMatch = secret.match(/^whsec_(.+)$/)
+  if (!secretMatch) {
+    console.error('[email-inbound] RESEND_WEBHOOK_SECRET formato inválido (esperado whsec_…)')
+    return false
+  }
+  const secretBytes = Buffer.from(secretMatch[1], 'base64')
+
+  // El payload firmado es {id}.{timestamp}.{body}
+  const signedPayload = `${id}.${timestamp}.${body}`
+  const expectedSig   = crypto.createHmac('sha256', secretBytes).update(signedPayload).digest('base64')
+
+  // Header viene como "v1,sig1 v1,sig2 ..." — puede haber múltiples versiones
+  const receivedSigs = signature.split(' ')
+    .map(part => {
+      const [version, sig] = part.split(',')
+      return version === 'v1' ? sig : null
+    })
+    .filter((s): s is string => Boolean(s))
+
+  if (receivedSigs.length === 0) return false
+
+  // Comparación timing-safe (no leak por short-circuit)
+  return receivedSigs.some(sig => {
+    if (sig.length !== expectedSig.length) return false
+    try {
+      return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))
+    } catch {
+      return false
+    }
+  })
+}
 
 // ─── Period + date helpers ────────────────────────────────────────────────────
 function calcularPeriodo(
@@ -177,14 +238,55 @@ ${emailText.slice(0, 3000)}`
 
 // ─── Route handler ────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  // Leemos el body como STRING raw para poder verificar la firma del webhook.
+  // El JSON.parse va después porque la firma se calcula sobre los bytes exactos.
+  const rawBody = await req.text()
 
-  const body = await req.json() as Record<string, unknown>
+  let body: Record<string, unknown>
+  try {
+    body = JSON.parse(rawBody) as Record<string, unknown>
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
 
   // ── Detect Resend Inbound webhook format ─────────────────────────────────
   // Resend envía el email directo como { object: 'email', id, from, to, text, ... }
   const isResend = body.object === 'email'
     || body.type === 'email.received'
     || (typeof body.data === 'object' && body.data !== null && ('email_id' in (body.data as object) || 'id' in (body.data as object)))
+
+  // ── Verificar firma Svix (solo para webhooks tipo Resend) ────────────────
+  if (isResend) {
+    const secret = process.env.RESEND_WEBHOOK_SECRET
+    if (secret) {
+      const svixId        = req.headers.get('svix-id')
+      const svixTimestamp = req.headers.get('svix-timestamp')
+      const svixSignature = req.headers.get('svix-signature')
+
+      if (!svixId || !svixTimestamp || !svixSignature) {
+        console.warn('[email-inbound] Faltan headers de Svix (svix-id/timestamp/signature)')
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+
+      const valid = verifySvixSignature({
+        id:        svixId,
+        timestamp: svixTimestamp,
+        signature: svixSignature,
+        body:      rawBody,
+        secret,
+      })
+
+      if (!valid) {
+        console.warn('[email-inbound] Firma Svix inválida')
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    } else {
+      // Fallback: secret no configurado todavía. Loggear pero no romper para
+      // permitir despliegue gradual (configurás el secret en Resend + Vercel sin
+      // downtime del webhook). Quitar este else cuando el secret esté en prod.
+      console.warn('[email-inbound] RESEND_WEBHOOK_SECRET no configurado — webhook procesado SIN verificar firma')
+    }
+  }
 
   let emailText = ''
   let userId: string | null = null
