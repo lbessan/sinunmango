@@ -38,7 +38,14 @@ export function DeleteButton({ endpoint, redirectTo, onSuccess, label = 'este el
     if (onSuccess) {
       onSuccess()
     } else if (redirectTo) {
-      router.push(redirectTo)
+      // replace() en lugar de push() + refresh(): si el delete se hizo desde
+      // la página de detalle del item, la ruta actual ya no es válida (el item
+      // no existe). replace() la sustituye en el historial. revalidatePath del
+      // endpoint ya invalidó el RSC cache del destino.
+      router.replace(redirectTo)
+    } else {
+      // Sin redirect: el DeleteButton se invocó desde una lista, refrescamos
+      // la lista actual para que el item desaparezca.
       router.refresh()
     }
     setOpen(false)
