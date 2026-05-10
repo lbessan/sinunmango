@@ -1,5 +1,81 @@
 import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  validateString, validateEnum, validateBoolean, validateHexColor,
+  validateISODate, optional,
+  isString, TERMINACION_4,
+  type Validated,
+} from '@/lib/validators'
+
+const MONEDAS = ['ARS', 'USD'] as const
+
+type TarjetaInsert = {
+  nombre_cuenta:             string
+  institucion:               string | null
+  moneda:                    'ARS' | 'USD'
+  imagen_url:                string | null
+  imagen_banner_url:         string | null
+  color_primario:            string
+  terminacion_tarjeta:       string | null
+  fecha_cierre_tarjeta:      string | null
+  fecha_vencimiento_tarjeta: string | null
+  activa:                    boolean
+}
+
+function validateTarjeta(raw: unknown): Validated<TarjetaInsert> {
+  if (typeof raw !== 'object' || raw === null) return { ok: false, error: 'Body inválido' }
+  const b = raw as Record<string, unknown>
+
+  const nombre = validateString(b.nombre_cuenta ?? b.nombre, { max: 100, field: 'nombre_cuenta' })
+  if (!nombre.ok) return nombre
+
+  const moneda = validateEnum(b.moneda, MONEDAS, 'moneda')
+  if (!moneda.ok) return moneda
+
+  const institucionOpt = optional(b.institucion, v => validateString(v, { max: 100, field: 'institucion' }))
+  if (!institucionOpt.ok) return institucionOpt
+
+  const imgOpt = optional(b.imagen_url, v => validateString(v, { max: 500, field: 'imagen_url' }))
+  if (!imgOpt.ok) return imgOpt
+  const bannerOpt = optional(b.imagen_banner_url, v => validateString(v, { max: 500, field: 'imagen_banner_url' }))
+  if (!bannerOpt.ok) return bannerOpt
+
+  const colorOpt = optional(b.color_primario, v => validateHexColor(v, 'color_primario'))
+  if (!colorOpt.ok) return colorOpt
+
+  // Terminación: 4 dígitos exactos
+  let terminacion: string | null = null
+  if (b.terminacion_tarjeta !== undefined && b.terminacion_tarjeta !== null && b.terminacion_tarjeta !== '') {
+    if (!isString(b.terminacion_tarjeta) || !TERMINACION_4.test(b.terminacion_tarjeta)) {
+      return { ok: false, error: 'terminacion_tarjeta debe ser exactamente 4 dígitos' }
+    }
+    terminacion = b.terminacion_tarjeta
+  }
+
+  const cierreOpt = optional(b.fecha_cierre_tarjeta, v => validateISODate(v, 'fecha_cierre_tarjeta'))
+  if (!cierreOpt.ok) return cierreOpt
+  const venceOpt = optional(b.fecha_vencimiento_tarjeta, v => validateISODate(v, 'fecha_vencimiento_tarjeta'))
+  if (!venceOpt.ok) return venceOpt
+
+  const activaOpt = optional(b.activa, v => validateBoolean(v, 'activa'))
+  if (!activaOpt.ok) return activaOpt
+
+  return {
+    ok: true,
+    data: {
+      nombre_cuenta:             nombre.data,
+      institucion:               institucionOpt.data,
+      moneda:                    moneda.data,
+      imagen_url:                imgOpt.data,
+      imagen_banner_url:         bannerOpt.data,
+      color_primario:            colorOpt.data ?? '#1e293b',
+      terminacion_tarjeta:       terminacion,
+      fecha_cierre_tarjeta:      cierreOpt.data,
+      fecha_vencimiento_tarjeta: venceOpt.data,
+      activa:                    activaOpt.data ?? true,
+    },
+  }
+}
 
 export async function GET(req: NextRequest) {
   const { supabase, user } = await createClientForRequest(req)
@@ -20,13 +96,17 @@ export async function POST(req: NextRequest) {
   const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const body = await req.json()
-  const id   = 'tar_' + Date.now().toString(36)
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }) }
 
-  // user_id y tipo_cuenta van después del spread para que el body no pueda pisarlos
+  const v = validateTarjeta(body)
+  if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
+
+  // tipo_cuenta forzado a 'Tarjeta Credito' por este endpoint (no del body)
+  const id = 'tar_' + Date.now().toString(36)
   const { error } = await supabase.from('cuentas').insert({
     id,
-    ...body,
+    ...v.data,
     tipo_cuenta: 'Tarjeta Credito',
     user_id:     user.id,
   })
