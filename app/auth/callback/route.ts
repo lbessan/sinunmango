@@ -3,6 +3,14 @@ import { adminClient } from '@/lib/supabase/admin'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
+// ─── GET /auth/callback ──────────────────────────────────────────────────────
+// Se llama después del OAuth de Google. Intercambia el código por sesión,
+// crea el perfil del usuario si es nuevo, y redirige al dashboard u onboarding.
+//
+// Nota: usa adminClient (service role) porque corre ANTES de que la sesión
+// esté completamente establecida — el primer query a user_profiles tiene que
+// pasar por encima de RLS para crear/leer la fila del usuario que recién entra.
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
@@ -32,25 +40,18 @@ export async function GET(request: NextRequest) {
 
   const user = session.user
 
-  // ── Allowlist: verificar que el email esté permitido ─────────────────
-  // Configurar ALLOWED_EMAILS en Vercel con emails separados por coma.
-  // Ejemplo: luchobessan@gmail.com,amigo@gmail.com
-  // Si la variable no existe o está vacía, NADIE puede entrar (closed beta).
-  if (!isEmailAllowed(user.email ?? '')) {
-    console.warn('[auth/callback] Email no permitido:', user.email)
-    return NextResponse.redirect(new URL('/login?error=not_authorized', request.url))
-  }
-
-  // ── Leer perfil existente ────────────────────────────────────────────
+  // ── Buscar perfil existente ──────────────────────────────────────────────
   const { data: existing } = await adminClient
     .from('user_profiles')
-    .select('authorized')
+    .select('user_id')
     .eq('user_id', user.id)
     .single()
 
   if (!existing) {
-    // ── USUARIO NUEVO: crear perfil + sembrar datos por defecto ─────────
-    // plan = 'free' explícito (la DB tiene default 'free', pero lo dejamos claro)
+    // ── USUARIO NUEVO: crear perfil + sembrar categorías por defecto ───────
+    // plan = 'free' explícito. authorized = true se conserva para mantener
+    // compatibilidad con la columna existente y permitir bans manuales en el
+    // futuro (`UPDATE user_profiles SET authorized = false WHERE ...`).
     const { error: insertError } = await adminClient
       .from('user_profiles')
       .insert({ user_id: user.id, email: user.email ?? '', authorized: true, plan: 'free' })
@@ -66,12 +67,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/onboarding', request.url))
   }
 
-  // ── USUARIO EXISTENTE: verificar autorización ────────────────────────
-  if (!existing.authorized) {
-    return NextResponse.redirect(new URL('/login?error=not_authorized', request.url))
-  }
-
-  // Si el usuario nunca completó el onboarding (no tiene cuentas), mandarlo ahí
+  // ── USUARIO EXISTENTE ────────────────────────────────────────────────────
+  // Si nunca completó el onboarding (no tiene cuentas), mandarlo ahí
   const { count } = await adminClient
     .from('cuentas')
     .select('id', { count: 'exact', head: true })
@@ -82,18 +79,6 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.redirect(new URL('/dashboard', request.url))
-}
-
-// ── Email allowlist ───────────────────────────────────────────────────────────
-// Lee ALLOWED_EMAILS del entorno. Soporta emails exactos y dominios (@empresa.com).
-function isEmailAllowed(email: string): boolean {
-  const raw = process.env.ALLOWED_EMAILS ?? ''
-  if (!raw.trim()) return false // sin variable = cerrado
-  const allowed = raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
-  const lower   = email.toLowerCase()
-  return allowed.some(entry =>
-    entry.startsWith('@') ? lower.endsWith(entry) : lower === entry
-  )
 }
 
 // ── Categorías por defecto para usuarios nuevos ────────────────────────────
