@@ -94,7 +94,12 @@ function AddMovModal({ cuentaId, isTarjeta, cierreDay, venceDay, categorias: cat
       return {
         id:              crypto.randomUUID(),
         fecha:           fechaCuota,
-        detalle:         detalle ? (cuotas > 1 && !isTransf ? `${detalle} (Cuota ${i + 1})` : detalle) : null,
+        // Sufijo "(Cuota N/T)" con el total para consistencia con todos los flows.
+        // El detalle vacío queda en `null`; si hay cuotas múltiples y no hay detalle,
+        // generamos al menos "Cuota N/T" para que la fila sea identificable.
+        detalle:         cuotas > 1 && !isTransf
+          ? (detalle ? `${detalle} (Cuota ${i + 1}/${cuotas})` : `Cuota ${i + 1}/${cuotas}`)
+          : (detalle || null),
         monto:           montoCuota,
         moneda,
         tipo_movimiento: tipo,

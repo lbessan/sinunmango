@@ -131,12 +131,19 @@ function NuevoMovimientoContent() {
     setSaving(true)
     const cuotas = parseInt(form.cuotas_total) || 1
     const montoPorCuota = parseFloat(form.monto) / cuotas
+    const detalleBase = (form.detalle || '').trim()
     const records = []
     for (let i = 0; i < cuotas; i++) {
       const fechaCuota = addMonths(form.fecha, i)
+      // Si hay más de una cuota, agregamos sufijo "(Cuota N/T)" al detalle.
+      // Ayuda a identificar la fila en listados y permite que el backfill SQL
+      // futuro pueda agruparlas por regex si llegaran a perder el grupo_cuotas.
+      const detalleFinal = cuotas > 1
+        ? (detalleBase ? `${detalleBase} (Cuota ${i + 1}/${cuotas})` : `Cuota ${i + 1}/${cuotas}`)
+        : (detalleBase || null)
       records.push({
         id: crypto.randomUUID(), fecha: fechaCuota,
-        detalle: form.detalle || null, monto: montoPorCuota, moneda: form.moneda,
+        detalle: detalleFinal, monto: montoPorCuota, moneda: form.moneda,
         tipo_movimiento: tipoMovimiento,
         cuenta_origen: form.cuenta_origen,
         cuenta_destino: isTransferencia ? form.cuenta_destino : null,
@@ -144,7 +151,7 @@ function NuevoMovimientoContent() {
         cotizacion: isUSD && form.cotizacion ? parseFloat(form.cotizacion) : null,
         conciliado: form.conciliado,
         periodo_tarjeta: calcularPeriodo(fechaCuota, cuentaSeleccionada),
-        cuotas_total: cuotas, cuota_actual: i + 1, ciclo_actual: i + 1,
+        cuotas_total: cuotas, cuota_actual: i + 1, ciclo_actual: 1,
       })
     }
     const res = await fetch('/api/movimientos', {

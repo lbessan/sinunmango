@@ -275,7 +275,10 @@ function AddModal({ cuentaId, periodo: periodoBase, cierreDay, venceDay, categor
       const periodoCuota = calcularPeriodo(fechaCuota, cierreDay ?? null, venceDay ?? null, isTarjeta)
       return {
         id: crypto.randomUUID(), fecha: fechaCuota,
-        detalle: detalle ? (cuotas > 1 ? `${detalle} (Cuota ${i + 1})` : detalle) : null,
+        // Sufijo "(Cuota N/T)" con total. Si no hay detalle, generamos uno mínimo.
+        detalle: cuotas > 1
+          ? (detalle ? `${detalle} (Cuota ${i + 1}/${cuotas})` : `Cuota ${i + 1}/${cuotas}`)
+          : (detalle || null),
         monto: montoCuota, moneda, tipo_movimiento: 'Gasto',
         cuenta_origen: cuentaId, categoria: catId || null, subcategoria: subcatId || null,
         cotizacion: isUSD && cotizacion ? parseFloat(cotizacion) : null,
