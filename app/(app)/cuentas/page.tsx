@@ -10,20 +10,17 @@ const fmt = (n: number) =>
 
 function labelTipo(tipo: string): string {
   switch (tipo) {
-    case 'Banco CA':        return 'Caja de Ahorro'
-    case 'Banco CC':        return 'Cuenta Corriente'
-    case 'Billetera':       return 'Billetera virtual'
-    case 'Billetera/Banco': return 'Banco / Billetera'
-    case 'Efectivo':        return 'Efectivo'
-    default:                return tipo
+    case 'Banco CA':  return 'Caja de Ahorro'
+    case 'Banco CC':  return 'Cuenta Corriente'
+    case 'Billetera': return 'Billetera virtual'
+    case 'Efectivo':  return 'Efectivo'
+    default:          return tipo
   }
 }
 
 function grupoDe(tipo: string): string {
   if (tipo === 'Banco CA' || tipo === 'Banco CC') return 'Bancos'
   if (tipo === 'Billetera') return 'Billeteras'
-  // 'Billetera/Banco' legacy — grupo neutro hasta ejecutar migración SQL
-  if (tipo === 'Billetera/Banco') return 'Bancos y billeteras'
   return tipo  // 'Efectivo'
 }
 
@@ -99,10 +96,9 @@ export default async function CuentasPage() {
   }
 
   const labelGrupo: Record<string, string> = {
-    'Bancos':             'Bancos',
-    'Billeteras':         'Billeteras virtuales',
-    'Bancos y billeteras':'Bancos y billeteras',
-    'Efectivo':           'Efectivo',
+    'Bancos':     'Bancos',
+    'Billeteras': 'Billeteras virtuales',
+    'Efectivo':   'Efectivo',
   }
 
   return (

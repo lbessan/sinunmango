@@ -28,7 +28,7 @@ export default async function EditarCuentaPage({
         nombre_cuenta:       cuenta.nombre_cuenta ?? '',
         institucion:         cuenta.institucion ?? '',
         moneda:              cuenta.moneda ?? 'ARS',
-        tipo_cuenta:         cuenta.tipo_cuenta ?? 'Billetera/Banco',
+        tipo_cuenta:         cuenta.tipo_cuenta ?? 'Banco CA',
         saldo_inicial:       String(cuenta.saldo_inicial ?? 0),
         activa:              cuenta.activa ?? true,
         imagen_url:          cuenta.imagen_url ?? '',

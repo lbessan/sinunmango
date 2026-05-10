@@ -7,7 +7,7 @@ export default function NuevaCuentaPage() {
         nombre_cuenta:       '',
         institucion:         '',
         moneda:              'ARS',
-        tipo_cuenta:         'Billetera/Banco',
+        tipo_cuenta:         'Banco CA',
         saldo_inicial:       '0',
         activa:              true,
         imagen_url:          '',
