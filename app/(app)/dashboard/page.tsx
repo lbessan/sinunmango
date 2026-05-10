@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type React from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/lib/database.types'
+
+type DB = SupabaseClient<Database>
 import { TourTrigger } from '@/components/tour-trigger'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
@@ -214,7 +217,7 @@ type ProyeccionMes = {
   proyeccion: number; diferencia: number
 }
 
-async function calcularProyecciones(supabase: SupabaseClient, userId: string, desde: string, meses = 4) {
+async function calcularProyecciones(supabase: DB, userId: string, desde: string, meses = 4) {
   const today  = new Date()
   const curMes = currentMes(today)
   const [{ data: resumen }, { data: gastosFijosRaw }, { data: tarjetasRaw }, { data: params }] =
@@ -295,7 +298,7 @@ async function calcularProyecciones(supabase: SupabaseClient, userId: string, de
 }
 
 // ─── Past month data ──────────────────────────────────────────────────────────
-async function fetchPastMonth(supabase: SupabaseClient, userId: string, mes: string) {
+async function fetchPastMonth(supabase: DB, userId: string, mes: string) {
   const start = `${mes}-01`
   const end   = `${offsetMes(mes, 1)}-01`
 
@@ -358,7 +361,7 @@ async function fetchPastMonth(supabase: SupabaseClient, userId: string, mes: str
 }
 
 // ─── Future month data ────────────────────────────────────────────────────────
-async function fetchFutureMonth(supabase: SupabaseClient, userId: string, mes: string) {
+async function fetchFutureMonth(supabase: DB, userId: string, mes: string) {
   const mesStart = `${mes}-01`
   const [{ data: cuotasRaw }, { data: gastosFijos }, { data: tcuentas }, { data: ingresosRaw }, { data: params }] = await Promise.all([
     supabase.from('movimientos')
