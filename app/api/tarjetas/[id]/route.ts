@@ -1,5 +1,99 @@
 import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  validateString, validateEnum, validateBoolean, validateHexColor,
+  validateISODate,
+  isString, TERMINACION_4,
+  type Validated,
+} from '@/lib/validators'
+
+const MONEDAS = ['ARS', 'USD'] as const
+
+function validateTarjetaUpdate(raw: unknown): Validated<Record<string, unknown>> {
+  if (typeof raw !== 'object' || raw === null) return { ok: false, error: 'Body inválido' }
+  const b = raw as Record<string, unknown>
+  const updates: Record<string, unknown> = {}
+
+  if (b.nombre_cuenta !== undefined) {
+    const v = validateString(b.nombre_cuenta, { max: 100, field: 'nombre_cuenta' })
+    if (!v.ok) return v
+    updates.nombre_cuenta = v.data
+  }
+  if (b.institucion !== undefined) {
+    if (b.institucion === null || b.institucion === '') {
+      updates.institucion = null
+    } else {
+      const v = validateString(b.institucion, { max: 100, field: 'institucion' })
+      if (!v.ok) return v
+      updates.institucion = v.data
+    }
+  }
+  if (b.moneda !== undefined) {
+    const v = validateEnum(b.moneda, MONEDAS, 'moneda')
+    if (!v.ok) return v
+    updates.moneda = v.data
+  }
+  if (b.color_primario !== undefined) {
+    const v = validateHexColor(b.color_primario, 'color_primario')
+    if (!v.ok) return v
+    updates.color_primario = v.data
+  }
+  if (b.imagen_url !== undefined) {
+    if (b.imagen_url === null || b.imagen_url === '') {
+      updates.imagen_url = null
+    } else {
+      const v = validateString(b.imagen_url, { max: 500, field: 'imagen_url' })
+      if (!v.ok) return v
+      updates.imagen_url = v.data
+    }
+  }
+  if (b.imagen_banner_url !== undefined) {
+    if (b.imagen_banner_url === null || b.imagen_banner_url === '') {
+      updates.imagen_banner_url = null
+    } else {
+      const v = validateString(b.imagen_banner_url, { max: 500, field: 'imagen_banner_url' })
+      if (!v.ok) return v
+      updates.imagen_banner_url = v.data
+    }
+  }
+  if (b.terminacion_tarjeta !== undefined) {
+    if (b.terminacion_tarjeta === null || b.terminacion_tarjeta === '') {
+      updates.terminacion_tarjeta = null
+    } else {
+      if (!isString(b.terminacion_tarjeta) || !TERMINACION_4.test(b.terminacion_tarjeta)) {
+        return { ok: false, error: 'terminacion_tarjeta debe ser exactamente 4 dígitos' }
+      }
+      updates.terminacion_tarjeta = b.terminacion_tarjeta
+    }
+  }
+  if (b.fecha_cierre_tarjeta !== undefined) {
+    if (b.fecha_cierre_tarjeta === null || b.fecha_cierre_tarjeta === '') {
+      updates.fecha_cierre_tarjeta = null
+    } else {
+      const v = validateISODate(b.fecha_cierre_tarjeta, 'fecha_cierre_tarjeta')
+      if (!v.ok) return v
+      updates.fecha_cierre_tarjeta = v.data
+    }
+  }
+  if (b.fecha_vencimiento_tarjeta !== undefined) {
+    if (b.fecha_vencimiento_tarjeta === null || b.fecha_vencimiento_tarjeta === '') {
+      updates.fecha_vencimiento_tarjeta = null
+    } else {
+      const v = validateISODate(b.fecha_vencimiento_tarjeta, 'fecha_vencimiento_tarjeta')
+      if (!v.ok) return v
+      updates.fecha_vencimiento_tarjeta = v.data
+    }
+  }
+  if (b.activa !== undefined) {
+    const v = validateBoolean(b.activa, 'activa')
+    if (!v.ok) return v
+    updates.activa = v.data
+  }
+  // Importante: tipo_cuenta NUNCA se permite cambiar desde aquí
+  // (este endpoint es solo para tarjetas)
+
+  return { ok: true, data: updates }
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -9,11 +103,19 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
-  const body   = await req.json()
+
+  let body: unknown
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }) }
+
+  const v = validateTarjetaUpdate(body)
+  if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
+  if (Object.keys(v.data).length === 0) {
+    return NextResponse.json({ error: 'Sin campos para actualizar' }, { status: 400 })
+  }
 
   const { error } = await supabase
     .from('cuentas')
-    .update(body)
+    .update(v.data)
     .eq('id', id)
     .eq('tipo_cuenta', 'Tarjeta Credito')
     .eq('user_id', user.id)
