@@ -35,12 +35,11 @@ function mesLabel(mes: string): string {
 // ─── Thumbnail ────────────────────────────────────────────────────────────────
 function labelTipo(tipo: string): string {
   switch (tipo) {
-    case 'Banco CA':        return 'Caja de Ahorro'
-    case 'Banco CC':        return 'Cuenta Corriente'
-    case 'Billetera':       return 'Billetera virtual'
-    case 'Billetera/Banco': return 'Banco / Billetera'
-    case 'Efectivo':        return 'Efectivo'
-    default:                return tipo
+    case 'Banco CA':  return 'Caja de Ahorro'
+    case 'Banco CC':  return 'Cuenta Corriente'
+    case 'Billetera': return 'Billetera virtual'
+    case 'Efectivo':  return 'Efectivo'
+    default:          return tipo
   }
 }
 function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {

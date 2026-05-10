@@ -1,5 +1,5 @@
 export type Moneda = 'ARS' | 'USD'
-export type TipoCuenta = 'Billetera/Banco' | 'Tarjeta Credito' | 'Efectivo'
+export type TipoCuenta = 'Banco CA' | 'Banco CC' | 'Billetera' | 'Efectivo' | 'Tarjeta Credito'
 export type TipoMovimiento = 'Gasto' | 'Ingreso' | 'Transferencia'
 
 export interface Cuenta {
