@@ -153,8 +153,14 @@ export function EditarMovimientoClient({
     const res = await fetch(url, { method: 'DELETE' })
     setDeleting(false)
     if (res.ok) {
-      router.refresh()
-      router.back()
+      // El movimiento que este form está mostrando ya no existe (lo acabamos de
+      // borrar, o cuando ?grupo=true, está dentro del grupo eliminado). Usamos
+      // replace() en vez de back() para REEMPLAZAR la entrada del historial
+      // — si hicieramos back() + refresh() en paralelo, Next.js intenta revalidar
+      // la ruta de editar con un movimiento que ya no existe y queda un render
+      // mezclado entre el form viejo y la lista nueva. revalidatePath en el
+      // endpoint ya invalidó el RSC cache de /movimientos.
+      router.replace('/movimientos')
     } else {
       const d = await res.json()
       setError(d.error ?? 'Error al eliminar')
