@@ -7,6 +7,10 @@ name: Build Android (mobile)
 # Corre `eas build --local` en un runner gratuito de GitHub. NO consume cuota
 # del plan free de EAS porque el cómputo es local del runner. La keystore para
 # firmar el AAB se baja desde EAS usando EXPO_TOKEN (no hay que tenerla local).
+#
+# Auto-bump: antes del build, el workflow incrementa android.versionCode en
+# app.json y commitea el cambio (con [skip ci] para no dispararse a sí mismo).
+# Así Play Console nunca te rebota por "versionCode ya usado".
 
 on:
   workflow_dispatch:
@@ -15,6 +19,10 @@ on:
     paths:
       - 'sinunmango-mobile/**'
       - '.github/workflows/build-mobile.yml'
+
+# Permiso necesario para que el workflow pueda commitear el bump del versionCode
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -25,6 +33,11 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          # Necesario para poder pushear el bump del versionCode al final
+          ref: ${{ github.ref_name }}
+          persist-credentials: true
+          fetch-depth: 1
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
@@ -49,6 +62,16 @@ jobs:
         working-directory: sinunmango-mobile
         run: npm ci
 
+      - name: Bump versionCode (in-place, antes del build)
+        id: bump
+        working-directory: sinunmango-mobile
+        run: |
+          CURRENT=$(jq '.expo.android.versionCode' app.json)
+          NEW=$((CURRENT + 1))
+          jq ".expo.android.versionCode = $NEW" app.json > app.json.tmp && mv app.json.tmp app.json
+          echo "new_version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "::notice::versionCode bumped: $CURRENT → $NEW"
+
       - name: Build Android AAB (local)
         working-directory: sinunmango-mobile
         run: eas build --platform android --profile production --local --non-interactive --output ./app-release.aab
@@ -56,10 +79,23 @@ jobs:
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sinunmango-android-aab
+          name: sinunmango-android-aab-v${{ steps.bump.outputs.new_version }}
           path: sinunmango-mobile/app-release.aab
           retention-days: 14
 
+      - name: Commit versionCode bump
+        if: success()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sinunmango-mobile/app.json
+          if git diff --cached --quiet; then
+            echo "Nada para committear (versionCode ya estaba sincronizado)"
+          else
+            git commit -m "ci: bump versionCode to ${{ steps.bump.outputs.new_version }} [skip ci]"
+            git push
+          fi
+
       - name: Done
         run: |
-          echo "::notice::Build OK. Bajá el AAB del artifact 'sinunmango-android-aab' (panel a la derecha del run)."
+          echo "::notice::Build OK. AAB versionCode=${{ steps.bump.outputs.new_version }}. Bajalo del artifact 'sinunmango-android-aab-v${{ steps.bump.outputs.new_version }}'."
