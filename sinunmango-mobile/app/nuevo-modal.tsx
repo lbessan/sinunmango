@@ -10,6 +10,7 @@ import * as Crypto from 'expo-crypto'
 import { supabase } from '@/lib/supabase'
 import { apiPost } from '@/lib/api'
 import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
+import { todayAR } from '@/lib/timezone'
 import { useTheme, type Theme } from '@/context/ThemeContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -28,15 +29,10 @@ type Form = {
   categoria_id: string; subcategoria_id: string; fecha: string
 }
 
-function today() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 const EMPTY_FORM: Form = {
   detalle: '', monto: '', moneda: 'ARS', cuotas: '1',
   cuenta_id: '', cuenta_destino_id: '',
-  categoria_id: '', subcategoria_id: '', fecha: today(),
+  categoria_id: '', subcategoria_id: '', fecha: todayAR(),
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -300,7 +296,7 @@ export default function NuevoModalScreen() {
       Alert.alert('✓ Guardado', `${form.detalle} por $${monto.toLocaleString('es-AR')} registrado.`, [
         { text: 'OK', onPress: () => router.back() },
       ])
-      setForm({ ...EMPTY_FORM, fecha: today(), cuenta_id: form.cuenta_id })
+      setForm({ ...EMPTY_FORM, fecha: todayAR(), cuenta_id: form.cuenta_id })
     } catch (e: unknown) {
       Alert.alert('Error', e instanceof Error ? e.message : 'No se pudo guardar.')
     } finally {
