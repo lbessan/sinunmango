@@ -1,6 +1,8 @@
 import { adminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 
+type CategoriaJoin = { nombre_categoria?: string | null } | null
+
 const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
 function buildEmailHtml(
@@ -126,7 +128,7 @@ export async function GET(req: NextRequest) {
     // Top 5 categorías de gasto
     const catMap: Record<string, number> = {}
     for (const m of (movs ?? []).filter(m => m.tipo_movimiento === 'Gasto')) {
-      const nombre = (m.categorias as any)?.nombre_categoria ?? 'Sin categoría'
+      const nombre = (m.categorias as CategoriaJoin)?.nombre_categoria ?? 'Sin categoría'
       catMap[nombre] = (catMap[nombre] ?? 0) + m.monto
     }
     const topGastos = Object.entries(catMap)
