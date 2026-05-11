@@ -1,5 +1,6 @@
 import { getAuthedClient } from '@/lib/supabase/server'
 import { stripCuotaSuffix } from '@/lib/tarjeta-periodo'
+import { todayAR, todayPartsAR } from '@/lib/timezone'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ArrowLeft, Pencil } from 'lucide-react'
@@ -26,10 +27,11 @@ export default async function ResumenPage({
   const { tipo = 'ingresos' } = await searchParams
   const meta = TIPOS[tipo as keyof typeof TIPOS] ?? TIPOS.ingresos
 
-  const today         = new Date()
-  const todayStr      = today.toISOString().slice(0, 10)
-  const inicioMes     = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10)
-  const periodoActual = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
+  const { year: yAR, month: mAR } = todayPartsAR()
+  const today         = new Date(yAR, mAR - 1, 1)
+  const todayStr      = todayAR()
+  const inicioMes     = `${yAR}-${String(mAR).padStart(2, '0')}-01`
+  const periodoActual = inicioMes
 
   let movimientos: any[] = []
   let resumenData: any   = null

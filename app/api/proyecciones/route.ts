@@ -1,12 +1,14 @@
 import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
+import { todayPartsAR } from '@/lib/timezone'
 
 export async function GET(req: NextRequest) {
   const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const meses = parseInt(new URL(req.url).searchParams.get('meses') ?? '4')
-  const today = new Date()
+  const { year: yAR, month: mAR } = todayPartsAR()
+  const today = new Date(yAR, mAR - 1, 1)
 
   // ── Datos base ────────────────────────────────────────────────────────────
   const [{ data: resumen }, { data: gastosFijos }, { data: tarjetas }, { data: params }] =

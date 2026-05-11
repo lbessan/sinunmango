@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { getUserPlan } from '@/lib/subscription'
+import { todayAR, todayPartsAR } from '@/lib/timezone'
 
 // ─── GET /api/dashboard-mobile ───────────────────────────────────────────────
 // Returns dashboard summary + cuentas + últimos movimientos for the mobile app.
@@ -13,25 +14,24 @@ export async function GET(req: NextRequest) {
 
   // Parsear mes del query string
   const mesParam = req.nextUrl.searchParams.get('mes')
-  const now      = new Date()
 
-  // "Hoy" en zona Argentina (UTC-3) para no confundir con UTC
-  const argOffset = -3 * 60
-  const localNow  = new Date(now.getTime() + (argOffset - now.getTimezoneOffset()) * 60000)
+  // "Hoy" en zona Argentina (timezone-aware, sin manual offset)
+  const { year: curYearAR, month: curMonthAR } = todayPartsAR()
+  // curMonthAR es 1-12, lo pasamos a 0-11 para Date
+  const curYear  = curYearAR
+  const curMonth = curMonthAR - 1
 
   let mesDate: Date
   if (mesParam && /^\d{4}-\d{2}$/.test(mesParam)) {
     mesDate = new Date(`${mesParam}-01T12:00:00`)
   } else {
-    mesDate = new Date(localNow.getFullYear(), localNow.getMonth(), 1)
+    mesDate = new Date(curYear, curMonth, 1)
   }
 
-  const curYear  = localNow.getFullYear()
-  const curMonth = localNow.getMonth()
   const isMesActual = mesDate.getFullYear() === curYear && mesDate.getMonth() === curMonth
 
   // Para el mes actual, cortar en "hoy"; para meses pasados/futuros, usar rango completo
-  const todayStr  = `${localNow.getFullYear()}-${String(localNow.getMonth() + 1).padStart(2,'0')}-${String(localNow.getDate()).padStart(2,'0')}`
+  const todayStr  = todayAR()
   const mesStart  = `${mesDate.getFullYear()}-${String(mesDate.getMonth() + 1).padStart(2, '0')}-01`
   const nextMonth = new Date(mesDate.getFullYear(), mesDate.getMonth() + 1, 1)
   const mesEnd    = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-01`

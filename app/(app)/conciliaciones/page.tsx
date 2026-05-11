@@ -1,4 +1,5 @@
 import { getAuthedClient } from '@/lib/supabase/server'
+import { primerDiaMesAR } from '@/lib/timezone'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CheckCircle, AlertCircle, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react'
@@ -22,8 +23,7 @@ export default async function ConciliacionesPage({
   if (!user) redirect('/login')
 
   const { periodo: periodoParam } = await searchParams
-  const today        = new Date()
-  const mesActualStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
+  const mesActualStr = primerDiaMesAR()
   const periodoActual = periodoParam ?? mesActualStr
 
   // 1. Tarjetas de crédito activas
