@@ -43,7 +43,7 @@ export default function ConfiguracionScreen() {
         {/* ── PERFIL ── */}
         <TouchableOpacity
           style={[s.profileCard, { backgroundColor: theme.primary }]}
-          onPress={() => router.push('/perfil-modal')}
+          onPress={() => router.push('/perfil-modal' as never)}
           activeOpacity={0.85}
         >
           <View style={s.profileInner}>

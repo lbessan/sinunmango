@@ -25,7 +25,7 @@ export default function AuthCallback() {
         console.error('[auth-callback] error:', e)
       }
 
-      router.replace('/(tabs)/dashboard')
+      router.replace('/(tabs)/dashboard' as never)
     }
 
     handle()

@@ -9,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker'
 import * as Crypto from 'expo-crypto'
 import { supabase } from '@/lib/supabase'
 import { apiPost } from '@/lib/api'
+import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
 import { useTheme, type Theme } from '@/context/ThemeContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -46,24 +47,6 @@ function isEmoji(s: string | null): boolean {
 
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-
-function calcularPeriodo(
-  fecha: string, cierre: number | null, vence: number | null, esTarjeta: boolean,
-) {
-  const d = new Date(fecha + 'T12:00:00')
-  let mes = d.getMonth(); let anio = d.getFullYear()
-  if (esTarjeta && cierre && vence) {
-    const day = d.getDate()
-    if (day <= cierre) { if (vence <= cierre) mes++ } else { if (vence > cierre) mes++; else mes += 2 }
-    while (mes > 11) { mes -= 12; anio++ }
-  }
-  return `${anio}-${String(mes + 1).padStart(2, '0')}-01`
-}
-
-function addMonths(d: string, n: number) {
-  const dt = new Date(d + 'T12:00:00'); dt.setMonth(dt.getMonth() + n)
-  return dt.toISOString().slice(0, 10)
-}
 
 // ─── Selector Modal ───────────────────────────────────────────────────────────
 function SelectorModal<T extends { id: string; label: string; sub?: string; icon?: string }>({
