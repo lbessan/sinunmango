@@ -80,7 +80,7 @@ export default async function ProyeccionMesPage({
       .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', cursor).eq('user_id', user.id)
 
     const ingTotal = (ingM ?? []).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
-    const tcTotal  = (gasM ?? []).filter(m => tarjetaIds.has(m.cuenta_origen))
+    const tcTotal  = (gasM ?? []).filter(m => m.cuenta_origen != null && tarjetaIds.has(m.cuenta_origen))
       .reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
 
     saldoInicio += ingTotal - gastosFijosEfectivo - tcTotal
@@ -95,10 +95,10 @@ export default async function ProyeccionMesPage({
       .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', periodo).eq('user_id', user.id).order('fecha'),
   ])
 
-  const gastosTC_filtrados = (gastosTC ?? []).filter(m => tarjetaIds.has(m.cuenta_origen))
+  const gastosTC_filtrados = (gastosTC ?? []).filter(m => m.cuenta_origen != null && tarjetaIds.has(m.cuenta_origen))
 
-  const totalIngresos = (ingresosMes ?? []).reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
-  const totalTC       = gastosTC_filtrados.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
+  const totalIngresos = (ingresosMes ?? []).reduce((a, m) => a + (m.monto_estimado ?? m.monto ?? 0), 0)
+  const totalTC       = gastosTC_filtrados.reduce((a, m) => a + (m.monto_estimado ?? m.monto ?? 0), 0)
   const proyeccion    = saldoInicio + totalIngresos - gastosFijosEfectivo - totalTC
   const esPositivo    = proyeccion >= 0
 
@@ -174,7 +174,7 @@ export default async function ProyeccionMesPage({
                     <td className="px-4 py-3 text-sm text-slate-700">{m.detalle ?? '—'}</td>
                     <td className="px-4 py-3 text-sm text-slate-500"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
                     <td className="px-4 py-3 text-xs text-slate-400">{m.cuenta_origen_nombre ?? '—'}</td>
-                    <td className="px-4 py-3 font-semibold text-right text-emerald-600">${fmt(m.monto_estimado ?? m.monto)}</td>
+                    <td className="px-4 py-3 font-semibold text-right text-emerald-600">${fmt(m.monto_estimado ?? m.monto ?? 0)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -221,7 +221,7 @@ export default async function ProyeccionMesPage({
               const k = m.cuenta_origen ?? 'x'
               if (!acc[k]) acc[k] = { nombre: m.cuenta_origen_nombre ?? '—', movs: [], subtotal: 0 }
               acc[k].movs.push(m)
-              acc[k].subtotal += m.monto_estimado ?? m.monto
+              acc[k].subtotal += m.monto_estimado ?? m.monto ?? 0
               return acc
             }, {})
             return Object.values(porTarjeta).sort((a, b) => b.subtotal - a.subtotal).map(t => (
@@ -237,7 +237,7 @@ export default async function ProyeccionMesPage({
                     t.movs.reduce<Record<string, { icono: string | null; nombre: string; subtotal: number }>>((acc, m) => {
                       const k = m.categoria ?? 'x'
                       if (!acc[k]) acc[k] = { icono: m.categoria_icono, nombre: m.categoria_nombre ?? 'Sin cat', subtotal: 0 }
-                      acc[k].subtotal += m.monto_estimado ?? m.monto
+                      acc[k].subtotal += m.monto_estimado ?? m.monto ?? 0
                       return acc
                     }, {})
                   ).sort((a, b) => b.subtotal - a.subtotal).map(cat => (
@@ -259,7 +259,7 @@ export default async function ProyeccionMesPage({
                             {m.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {Math.min(m.cuota_actual, m.cuotas_total)}/{Math.max(m.cuota_actual, m.cuotas_total)}</p>}
                           </td>
                           <td className="px-4 py-2.5 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
-                          <td className="px-4 py-2.5 font-semibold text-right text-amber-700 whitespace-nowrap">${fmt(m.monto_estimado ?? m.monto)}</td>
+                          <td className="px-4 py-2.5 font-semibold text-right text-amber-700 whitespace-nowrap">${fmt(m.monto_estimado ?? m.monto ?? 0)}</td>
                         </tr>
                       ))}
                     </tbody>

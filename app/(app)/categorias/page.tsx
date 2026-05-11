@@ -1,6 +1,9 @@
+import type { ComponentProps } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CategoriasClient } from '@/components/categorias-client'
+
+type CatProps = ComponentProps<typeof CategoriasClient>
 
 export default async function CategoriasPage() {
   const { supabase, user } = await getAuthedClient()
@@ -13,8 +16,8 @@ export default async function CategoriasPage() {
 
   return (
     <CategoriasClient
-      categorias={categorias ?? []}
-      subcategorias={subcategorias ?? []}
+      categorias={(categorias ?? []) as CatProps['categorias']}
+      subcategorias={(subcategorias ?? []) as CatProps['subcategorias']}
     />
   )
 }

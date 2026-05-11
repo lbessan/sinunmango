@@ -1,7 +1,10 @@
+import type { ComponentProps } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AnaliticaCharts } from '@/components/analitica-charts'
 import { BarChart2 } from 'lucide-react'
+
+type AnaliticaProps = ComponentProps<typeof AnaliticaCharts>
 
 export default async function AnaliticaPage() {
   const { supabase, user } = await getAuthedClient()
@@ -22,7 +25,7 @@ export default async function AnaliticaPage() {
 
   return (
     <div>
-      {/* ── Banner full-bleed ────────────────────────────────────────────── */}
+      {/* ── Banner full-bleed ───────────────────────────────────────────── */}
       <div
         className="-mx-8 -mt-8 mb-8 text-white"
         style={{ background: 'linear-gradient(135deg, var(--sidebar-bg, #07192b) 0%, var(--accent2, #0b2d55) 50%, var(--accent, #0f4d3a) 100%)' }}
@@ -41,8 +44,8 @@ export default async function AnaliticaPage() {
       </div>
 
       <AnaliticaCharts
-        movimientos={movimientos ?? []}
-        subcategorias={subcategorias ?? []}
+        movimientos={(movimientos ?? []) as AnaliticaProps['movimientos']}
+        subcategorias={(subcategorias ?? []) as AnaliticaProps['subcategorias']}
       />
     </div>
   )

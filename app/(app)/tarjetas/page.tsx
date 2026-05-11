@@ -68,6 +68,7 @@ export default async function TarjetasPage() {
       {tarjetas && tarjetas.length > 0 ? (
         <div className="space-y-2">
           {tarjetas.map(t => {
+            if (!t.id || !t.nombre_cuenta) return null
             const extra    = extraMap[t.id]
             const imgUrl   = extra?.imagen_url
             const color    = extra?.color_primario ?? '#1e293b'

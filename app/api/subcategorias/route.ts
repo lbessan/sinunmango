@@ -114,7 +114,7 @@ export async function PATCH(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('subcategorias')
-      .update(v.data)
+      .update(v.data as never)
       .eq('id', idCheck.data)
       .eq('user_id', user.id)
       .select()

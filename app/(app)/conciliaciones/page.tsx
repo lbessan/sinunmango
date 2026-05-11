@@ -91,6 +91,7 @@ export default async function ConciliacionesPage({
   type MovIdx = { monto: number; conciliado: boolean; tipo: string; moneda: string; cotizacion: number | null }
   const movsByTarjeta: Record<string, MovIdx[]> = {}
   for (const m of movsDelPeriodo ?? []) {
+    if (!m.cuenta_origen || !m.tipo_movimiento) continue
     if (!movsByTarjeta[m.cuenta_origen]) movsByTarjeta[m.cuenta_origen] = []
     movsByTarjeta[m.cuenta_origen].push({
       monto: m.monto, conciliado: m.conciliado, tipo: m.tipo_movimiento,

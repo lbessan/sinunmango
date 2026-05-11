@@ -1,6 +1,9 @@
+import type { ComponentProps } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import { EditarMovimientoClient } from '@/components/editar-movimiento-client'
+
+type Props = ComponentProps<typeof EditarMovimientoClient>
 
 export default async function EditarMovimientoPage({
   params,
@@ -25,9 +28,9 @@ export default async function EditarMovimientoPage({
   return (
     <EditarMovimientoClient
       movimiento={mov}
-      cuentas={cuentas ?? []}
-      categorias={categorias ?? []}
-      subcategorias={subcategorias ?? []}
+      cuentas={(cuentas ?? []) as Props['cuentas']}
+      categorias={(categorias ?? []) as Props['categorias']}
+      subcategorias={(subcategorias ?? []) as Props['subcategorias']}
     />
   )
 }

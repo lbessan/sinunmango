@@ -1,8 +1,11 @@
+import type { ComponentProps } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { ConciliacionControls } from '@/components/conciliacion-controls'
+
+type ConcProps = ComponentProps<typeof ConciliacionControls>
 
 function formatPeriodo(p: string) {
   return new Date(p + 'T12:00:00')
@@ -70,11 +73,11 @@ export default async function ConciliacionDetallePage({
       </div>
 
       <ConciliacionControls
-        movimientos={movimientos ?? []}
+        movimientos={(movimientos ?? []) as ConcProps['movimientos']}
         cuentaId={cuentaId}
         periodo={periodo}
-        categorias={categorias ?? []}
-        subcategorias={subcategorias ?? []}
+        categorias={(categorias ?? []) as ConcProps['categorias']}
+        subcategorias={(subcategorias ?? []) as ConcProps['subcategorias']}
         cierreDay={cierreDay}
         venceDay={venceDay}
       />

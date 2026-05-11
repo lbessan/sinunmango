@@ -9,34 +9,15 @@ const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 /**
  * Devuelve un cliente Supabase autenticado como el user de la request, junto
- * con el user mismo. Funciona para web (cookies de sesión) y mobile (Bearer JWT).
+ * con el user. Funciona para web (cookies) y mobile (Bearer JWT).
  *
- * Las queries hechas con este cliente respetan RLS — un user solo ve y modifica
- * sus propias filas, sin necesidad de agregar filtros manuales (igual conviene
- * mantener `.eq('user_id', user.id)` como defensa en profundidad).
- *
- * Patrón típico:
- *
- *   export async function POST(req: NextRequest) {
- *     const { supabase, user } = await createClientForRequest(req)
- *     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
- *     const { error } = await supabase.from('movimientos').insert({ ..., user_id: user.id })
- *     ...
- *   }
- *
- * Routes que NO deben usar este helper (no tienen user en sesión):
- *  - /api/webhooks/google-play (notificación de Pub/Sub)
- *  - /api/email-inbound (webhook de Resend)
- *  - /api/cron/* (cron jobs server-side)
- *  - /api/auth/callback (crea perfil antes de que la sesión esté establecida)
- *
- * Esos siguen usando `adminClient` con filtros explícitos por user_id.
+ * Las queries respetan RLS - solo se ven las filas propias del user.
  */
 export async function createClientForRequest(req?: NextRequest): Promise<{
   supabase: SupabaseClient<Database>
   user:     User | null
 }> {
-  // ── Bearer (mobile) ─────────────────────────────────────────────────────────
+  // Bearer (mobile)
   const authHeader = req?.headers.get('authorization')
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7)
@@ -44,14 +25,11 @@ export async function createClientForRequest(req?: NextRequest): Promise<{
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth:   { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     })
-    // getUser(token) valida el JWT contra Supabase Auth y devuelve el user.
-    // El header Authorization global hace que las queries siguientes pasen el
-    // mismo token, así RLS resuelve auth.uid() correctamente.
     const { data: { user } } = await supabase.auth.getUser(token)
     return { supabase, user }
   }
 
-  // ── Cookie (web) ────────────────────────────────────────────────────────────
+  // Cookie (web)
   const cookieStore = await cookies()
   const supabase = createServerClient<Database>(URL, ANON, {
     cookies: {
@@ -61,9 +39,7 @@ export async function createClientForRequest(req?: NextRequest): Promise<{
           cookiesToSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, options)
           )
-        } catch {
-          // En route handlers que no escriben respuesta, set() puede fallar — lo ignoramos.
-        }
+        } catch {}
       },
     },
   })

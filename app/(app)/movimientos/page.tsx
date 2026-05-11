@@ -166,7 +166,7 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
               {(movimientos ?? []).map(mov => {
                 const isIngreso = mov.tipo_movimiento === 'Ingreso'
                 const isTransf  = mov.tipo_movimiento === 'Transferencia'
-                const isFuturo  = mov.fecha > today
+                const isFuturo  = (mov.fecha ?? '') > today
                 const periodo   = mov.periodo_tarjeta
                   ? new Date(mov.periodo_tarjeta + 'T12:00:00')
                       .toLocaleDateString('es-AR', { month: '2-digit', year: 'numeric' })
@@ -187,8 +187,8 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-slate-700 max-w-xs truncate">{stripCuotaSuffix(mov.detalle) || '—'}</p>
-                      {mov.cuotas_total > 1 && (
-                        <p className="text-xs text-slate-400">Cuota {Math.min(mov.cuota_actual, mov.cuotas_total)}/{Math.max(mov.cuota_actual, mov.cuotas_total)}</p>
+                      {(mov.cuotas_total ?? 0) > 1 && (
+                        <p className="text-xs text-slate-400">Cuota {Math.min(mov.cuota_actual ?? 0, mov.cuotas_total ?? 0)}/{Math.max(mov.cuota_actual ?? 0, mov.cuotas_total ?? 0)}</p>
                       )}
                     </td>
                     <td className="hidden sm:table-cell px-4 py-3 text-slate-600 whitespace-nowrap text-sm">
@@ -204,7 +204,7 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
                     <td className={`px-4 py-3 font-semibold whitespace-nowrap ${
                       isIngreso ? 'text-emerald-600' : isTransf ? 'text-blue-500' : 'text-slate-800'
                     }`}>
-                      {isIngreso ? '+' : isTransf ? '' : '-'}${fmt(mov.monto_estimado ?? mov.monto)}
+                      {isIngreso ? '+' : isTransf ? '' : '-'}${fmt(mov.monto_estimado ?? mov.monto ?? 0)}
                     </td>
                     <td className="px-4 py-3">
                       <Link href={`/movimientos/${mov.id}/editar`} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors inline-flex">

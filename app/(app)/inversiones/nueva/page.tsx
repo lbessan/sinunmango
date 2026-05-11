@@ -1,8 +1,11 @@
+import type { ComponentProps } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { InversionFormClient } from '@/components/inversion-form-client'
+
+type Props = ComponentProps<typeof InversionFormClient>
 
 export default async function NuevaInversionPage() {
   const { supabase, user } = await getAuthedClient()
@@ -38,8 +41,8 @@ export default async function NuevaInversionPage() {
       </div>
 
       <InversionFormClient
-        cuentas={cuentas ?? []}
-        categorias={categorias ?? []}
+        cuentas={(cuentas ?? []) as Props['cuentas']}
+        categorias={(categorias ?? []) as Props['categorias']}
         dolar={params?.valor ?? 1410}
       />
     </div>
