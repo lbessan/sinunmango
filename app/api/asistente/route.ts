@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { todayAR, todayPartsAR } from '@/lib/timezone'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 // ─── POST /api/asistente ─────────────────────────────────────────────────────
 // Streaming chat with Claude.
@@ -13,6 +14,11 @@ const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0,
 export async function POST(req: NextRequest) {
   const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Rate limit: 20 requests por minuto. Protege contra loops accidentales que
+  // facturan en la API de Claude.
+  const rl = await checkRateLimit(user.id, '/api/asistente', { max: 20, windowSeconds: 60 })
+  if (!rl.allowed) return NextResponse.json({ error: rl.message }, { status: 429 })
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {

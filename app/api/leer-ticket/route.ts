@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { todayAR } from '@/lib/timezone'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 // ─── POST /api/leer-ticket ───────────────────────────────────────────────────
 // Receives a base64 image of a receipt/ticket, sends it to Claude Vision,
@@ -11,6 +12,10 @@ import { todayAR } from '@/lib/timezone'
 export async function POST(req: NextRequest) {
   const { user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Rate limit: 10/min — OCR es menos común y más caro que el chat
+  const rl = await checkRateLimit(user.id, '/api/leer-ticket', { max: 10, windowSeconds: 60 })
+  if (!rl.allowed) return NextResponse.json({ error: rl.message }, { status: 429 })
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
