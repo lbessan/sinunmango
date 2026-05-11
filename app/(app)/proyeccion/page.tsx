@@ -6,6 +6,10 @@ import { redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
 
+// Tipos para joins de Supabase (no se infieren bien desde Database)
+type CuentaJoin    = { tipo_cuenta?: string | null; nombre_cuenta?: string | null } | null
+type CategoriaJoin = { nombre_categoria?: string | null; icono?: string | null } | null
+
 const fmt  = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const fmtR = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0,  maximumFractionDigits: 0  })
 
@@ -52,7 +56,7 @@ export default async function ProyeccionMesPage({
 
   // Gastos fijos mensuales en efectivo/banco
   const gastosFijosEfectivo = (gastosFijos ?? [])
-    .filter(g => (g.cuentas as any)?.tipo_cuenta !== 'Tarjeta Credito')
+    .filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta !== 'Tarjeta Credito')
     .reduce((acc, g) => acc + (g.moneda === 'USD' ? g.monto_estimado * dolar : g.monto_estimado), 0)
 
   // Proyectado fin del mes actual (punto de partida)
@@ -190,7 +194,7 @@ export default async function ProyeccionMesPage({
           <p className="text-sm font-bold text-red-600">${fmtR(gastosFijosEfectivo)}</p>
         </div>
         {(gastosFijos ?? [])
-          .filter(g => (g.cuentas as any)?.tipo_cuenta !== 'Tarjeta Credito')
+          .filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta !== 'Tarjeta Credito')
           .map(g => {
             const monto = g.moneda === 'USD' ? g.monto_estimado * dolar : g.monto_estimado
             return (
@@ -198,9 +202,9 @@ export default async function ProyeccionMesPage({
                 <div>
                   <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
                   <p className="text-xs text-slate-400">
-                    <IconoCategoria icono={(g.categorias as any)?.icono ?? null} size={14} /> {(g.categorias as any)?.nombre_categoria}
+                    <IconoCategoria icono={(g.categorias as CategoriaJoin)?.icono ?? null} size={14} /> {(g.categorias as CategoriaJoin)?.nombre_categoria}
                     {g.dia_vencimiento ? ` · Día ${g.dia_vencimiento}` : ''}
-                    {(g.cuentas as any)?.nombre_cuenta ? ` · ${(g.cuentas as any).nombre_cuenta}` : ''}
+                    {(g.cuentas as CuentaJoin)?.nombre_cuenta ? ` · ${(g.cuentas as CuentaJoin)?.nombre_cuenta}` : ''}
                   </p>
                 </div>
                 <p className="text-sm font-semibold text-red-500">${fmtR(monto)}</p>
@@ -217,7 +221,8 @@ export default async function ProyeccionMesPage({
             <p className="text-sm font-bold text-amber-700">${fmtR(totalTC)}</p>
           </div>
           {(() => {
-            const porTarjeta = gastosTC_filtrados.reduce<Record<string, { nombre: string; movs: any[]; subtotal: number }>>((acc, m) => {
+            type GastoTC = typeof gastosTC_filtrados[number]
+            const porTarjeta = gastosTC_filtrados.reduce<Record<string, { nombre: string; movs: GastoTC[]; subtotal: number }>>((acc, m) => {
               const k = m.cuenta_origen ?? 'x'
               if (!acc[k]) acc[k] = { nombre: m.cuenta_origen_nombre ?? '—', movs: [], subtotal: 0 }
               acc[k].movs.push(m)
@@ -256,7 +261,7 @@ export default async function ProyeccionMesPage({
                           <td className="px-4 py-2.5 text-xs text-slate-400 whitespace-nowrap">{m.fecha}</td>
                           <td className="px-4 py-2.5">
                             <p className="text-sm text-slate-700 max-w-xs truncate">{stripCuotaSuffix(m.detalle) || '—'}</p>
-                            {m.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {Math.min(m.cuota_actual, m.cuotas_total)}/{Math.max(m.cuota_actual, m.cuotas_total)}</p>}
+                            {(m.cuotas_total ?? 0) > 1 && <p className="text-xs text-slate-400">Cuota {Math.min(m.cuota_actual ?? 0, m.cuotas_total ?? 0)}/{Math.max(m.cuota_actual ?? 0, m.cuotas_total ?? 0)}</p>}
                           </td>
                           <td className="px-4 py-2.5 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
                           <td className="px-4 py-2.5 font-semibold text-right text-amber-700 whitespace-nowrap">${fmt(m.monto_estimado ?? m.monto ?? 0)}</td>

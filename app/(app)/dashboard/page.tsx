@@ -8,6 +8,11 @@ import { TourTrigger } from '@/components/tour-trigger'
 import { todayAR, todayPartsAR } from '@/lib/timezone'
 
 type DB = SupabaseClient<Database>
+
+// Tipos para joins de Supabase (no se infieren bien desde Database)
+type CuentaJoin    = { tipo_cuenta?: string | null; nombre_cuenta?: string | null } | null
+type CategoriaJoin = { nombre_categoria?: string | null; icono?: string | null } | null
+
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
 
@@ -239,10 +244,10 @@ async function calcularProyecciones(supabase: DB, userId: string, desde: string,
   const deudaRest   = Math.max(0, (resumen.deuda_tarjetas_periodo ?? 0) - (resumen.pagos_tarjeta_mes ?? 0))
   const startSaldo  = (resumen.disponible_real ?? 0) + (resumen.ingresos_futuros_mes ?? 0) - (resumen.gastos_fijos_pendientes ?? 0) - deudaRest
   const gastosFijosEfectivo = (gastosFijosRaw ?? [])
-    .filter(g => (g.cuentas as any)?.tipo_cuenta !== 'Tarjeta Credito')
+    .filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta !== 'Tarjeta Credito')
     .reduce((a, g) => a + (g.moneda === 'USD' ? g.monto_estimado * dolar : g.monto_estimado), 0)
   const gastosFijosTarjeta = (gastosFijosRaw ?? [])
-    .filter(g => (g.cuentas as any)?.tipo_cuenta === 'Tarjeta Credito')
+    .filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta === 'Tarjeta Credito')
     .reduce((a, g) => a + (g.moneda === 'USD' ? g.monto_estimado * dolar : g.monto_estimado), 0)
   const [cy, cm]  = curMes.split('-').map(Number)
   const [dy, dm]  = desde.split('-').map(Number)
@@ -345,7 +350,7 @@ async function fetchPastMonth(supabase: DB, userId: string, mes: string) {
   // Top categorías
   const catMap: Record<string, { nombre: string; icono: string | null; total: number }> = {}
   for (const m of all.filter(m => m.tipo_movimiento === 'Gasto')) {
-    const cat = m.categorias as any
+    const cat = m.categorias as CategoriaJoin
     const key = cat?.nombre_categoria ?? 'Sin categoría'
     if (!catMap[key]) catMap[key] = { nombre: key, icono: cat?.icono ?? null, total: 0 }
     catMap[key].total += m.monto
@@ -385,8 +390,8 @@ async function fetchFutureMonth(supabase: DB, userId: string, mes: string) {
   const totalCuotasTC = cuotasTC.reduce((s, m) => s + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
 
   // Separar gastos fijos: efectivo/banco vs tarjeta de crédito (con conversión USD)
-  const gfEfectivo        = (gastosFijos ?? []).filter(g => (g.cuentas as any)?.tipo_cuenta !== 'Tarjeta Credito')
-  const gfTarjeta         = (gastosFijos ?? []).filter(g => (g.cuentas as any)?.tipo_cuenta === 'Tarjeta Credito')
+  const gfEfectivo        = (gastosFijos ?? []).filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta !== 'Tarjeta Credito')
+  const gfTarjeta         = (gastosFijos ?? []).filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta === 'Tarjeta Credito')
   const totalGF_efectivo  = gfEfectivo.reduce((s, g) => s + (g.moneda === 'USD' ? (g.monto_estimado ?? 0) * dolar : (g.monto_estimado ?? 0)), 0)
   const totalGF_tarjeta   = gfTarjeta.reduce((s, g) => s + (g.moneda === 'USD' ? (g.monto_estimado ?? 0) * dolar : (g.monto_estimado ?? 0)), 0)
   // Total pago tarjetas = cuotas ya registradas + gastos fijos recurrentes de tarjeta
@@ -564,7 +569,7 @@ export default async function DashboardPage({
                   ) : (
                     <div className="divide-y divide-slate-50 max-h-96 overflow-y-auto">
                       {gastosFijosProximos.map(g => {
-                        const esTarjeta = (g.cuentas as any)?.tipo_cuenta === 'Tarjeta Credito'
+                        const esTarjeta = (g.cuentas as CuentaJoin)?.tipo_cuenta === 'Tarjeta Credito'
                         const hoy       = g.dia_vencimiento === todayDay
                         const diasResta = (g.dia_vencimiento ?? 0) - todayDay
                         return (
@@ -573,7 +578,7 @@ export default async function DashboardPage({
                               <div className={`w-2 h-2 rounded-full shrink-0 ${hoy ? 'bg-red-400 animate-pulse' : diasResta <= 3 ? 'bg-amber-400' : esTarjeta ? 'bg-blue-400' : 'bg-emerald-400'}`} />
                               <div>
                                 <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
-                                <p className="text-xs text-slate-400">Día {g.dia_vencimiento} · {(g.cuentas as any)?.nombre_cuenta ?? '—'}</p>
+                                <p className="text-xs text-slate-400">Día {g.dia_vencimiento} · {(g.cuentas as CuentaJoin)?.nombre_cuenta ?? '—'}</p>
                               </div>
                             </div>
                             <div className="text-right shrink-0 ml-4">
@@ -762,11 +767,11 @@ export default async function DashboardPage({
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-50 max-h-80 overflow-y-auto">
-                    {future.gfEfectivo.map((g: any) => (
+                    {future.gfEfectivo.map(g => (
                       <div key={g.id} className="flex items-center justify-between px-5 py-3">
                         <div>
                           <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
-                          <p className="text-xs text-slate-400">Día {g.dia_vencimiento} · {(g.cuentas as any)?.nombre_cuenta ?? '—'}</p>
+                          <p className="text-xs text-slate-400">Día {g.dia_vencimiento} · {(g.cuentas as CuentaJoin)?.nombre_cuenta ?? '—'}</p>
                         </div>
                         <p className="text-sm font-medium text-slate-800">${fmt(g.monto_estimado ?? 0)}</p>
                       </div>
@@ -793,11 +798,11 @@ export default async function DashboardPage({
                       <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Gastos fijos recurrentes</p>
                     </div>
                     <div className="divide-y divide-slate-50">
-                      {future.gfTarjeta.map((g: any) => (
+                      {future.gfTarjeta.map(g => (
                         <div key={g.id} className="flex items-center justify-between px-5 py-2.5">
                           <div>
                             <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
-                            <p className="text-xs text-slate-400">{(g.cuentas as any)?.nombre_cuenta ?? '—'}</p>
+                            <p className="text-xs text-slate-400">{(g.cuentas as CuentaJoin)?.nombre_cuenta ?? '—'}</p>
                           </div>
                           <p className="text-sm font-medium text-slate-800">${fmt(g.monto_estimado ?? 0)}</p>
                         </div>
@@ -820,7 +825,7 @@ export default async function DashboardPage({
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-50 max-h-52 overflow-y-auto">
-                    {future.cuotasTC.map((m: any) => (
+                    {future.cuotasTC.map(m => (
                       <div key={m.id} className="flex items-center justify-between px-5 py-2.5">
                         <p className="text-sm text-slate-700 truncate">{m.detalle}</p>
                         <p className="text-sm font-medium text-slate-800 shrink-0 ml-3">${fmt(m.monto)}</p>

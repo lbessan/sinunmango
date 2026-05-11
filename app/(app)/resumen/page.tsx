@@ -6,6 +6,10 @@ import { redirect } from 'next/navigation'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
 
+// Tipos para joins de Supabase
+type CuentaJoin    = { tipo_cuenta?: string | null; nombre_cuenta?: string | null } | null
+type CategoriaJoin = { nombre_categoria?: string | null; icono?: string | null } | null
+
 const fmt  = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const fmtR = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0,  maximumFractionDigits: 0  })
 
@@ -290,7 +294,7 @@ export default async function ResumenPage({
                     <div>
                       <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
                       <p className="text-xs text-slate-400">
-                        <IconoCategoria icono={(g.categorias as any)?.icono ?? null} size={14} /> {(g.categorias as any)?.nombre_categoria} · Día {g.dia_vencimiento} · {(g.cuentas as any)?.nombre_cuenta}
+                        <IconoCategoria icono={(g.categorias as CategoriaJoin)?.icono ?? null} size={14} /> {(g.categorias as CategoriaJoin)?.nombre_categoria} · Día {g.dia_vencimiento} · {(g.cuentas as CuentaJoin)?.nombre_cuenta}
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-red-500">${fmtR(g.monto_estimado)}</p>
