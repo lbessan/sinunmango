@@ -28,11 +28,11 @@ export async function GET(req: NextRequest) {
   const tarjetaIds = new Set((tarjetas ?? []).map(t => t.id))
 
   // Proyectado fin de mes actual (punto de partida)
-  const deudaRestante = Math.max(0, resumen.deuda_tarjetas_periodo - resumen.pagos_tarjeta_mes)
+  const deudaRestante = Math.max(0, (resumen.deuda_tarjetas_periodo ?? 0) - (resumen.pagos_tarjeta_mes ?? 0))
   const proyectadoActual =
-    resumen.disponible_real +
-    resumen.ingresos_futuros_mes -
-    resumen.gastos_fijos_pendientes -
+    (resumen.disponible_real ?? 0) +
+    (resumen.ingresos_futuros_mes ?? 0) -
+    (resumen.gastos_fijos_pendientes ?? 0) -
     deudaRestante
 
   // Gastos fijos mensuales que se pagan en efectivo/banco (recurrentes)
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
       .eq('user_id', user.id)
 
     const totalGastosTC = (gastosTC ?? [])
-      .filter(m => tarjetaIds.has(m.cuenta_origen))
+      .filter(m => m.cuenta_origen != null && tarjetaIds.has(m.cuenta_origen))
       .reduce((acc, m) => {
         const monto = m.moneda === 'USD'
           ? (m.conciliado ? m.monto * (m.cotizacion ?? dolarBna) : m.monto * dolarBna)

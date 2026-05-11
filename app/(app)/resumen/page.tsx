@@ -66,7 +66,7 @@ export default async function ResumenPage({
       .eq('user_id', user.id)
       .order('cuenta_origen_nombre', { ascending: true })
       .order('fecha', { ascending: false })
-    movimientos = (data ?? []).filter(m => tarjetaIds.has(m.cuenta_origen))
+    movimientos = (data ?? []).filter(m => m.cuenta_origen != null && tarjetaIds.has(m.cuenta_origen))
 
   } else if (tipo === 'proyectado') {
     const [{ data: res }, { data: gastosFijos }, { data: ingresosFuturos }, { data: params }] = await Promise.all([

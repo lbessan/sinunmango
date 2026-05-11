@@ -450,7 +450,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Insertar ──────────────────────────────────────────────────────────────
-  const { error } = await adminClient.from('movimientos').insert(allRecords)
+  const { error } = await adminClient.from('movimientos').insert(allRecords as never)
   if (error) {
     console.error('[email-inbound] Insert error:', error.message)
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 })

@@ -4,9 +4,9 @@ import Link from 'next/link'
 import type React from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
+import { TourTrigger } from '@/components/tour-trigger'
 
 type DB = SupabaseClient<Database>
-import { TourTrigger } from '@/components/tour-trigger'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
 
@@ -234,8 +234,8 @@ async function calcularProyecciones(supabase: DB, userId: string, desde: string,
   }
   const dolar       = params?.valor ?? 1410
   const tarjetaIds  = new Set((tarjetasRaw ?? []).map(t => t.id))
-  const deudaRest   = Math.max(0, resumen.deuda_tarjetas_periodo - resumen.pagos_tarjeta_mes)
-  const startSaldo  = resumen.disponible_real + resumen.ingresos_futuros_mes - resumen.gastos_fijos_pendientes - deudaRest
+  const deudaRest   = Math.max(0, (resumen.deuda_tarjetas_periodo ?? 0) - (resumen.pagos_tarjeta_mes ?? 0))
+  const startSaldo  = (resumen.disponible_real ?? 0) + (resumen.ingresos_futuros_mes ?? 0) - (resumen.gastos_fijos_pendientes ?? 0) - deudaRest
   const gastosFijosEfectivo = (gastosFijosRaw ?? [])
     .filter(g => (g.cuentas as any)?.tipo_cuenta !== 'Tarjeta Credito')
     .reduce((a, g) => a + (g.moneda === 'USD' ? g.monto_estimado * dolar : g.monto_estimado), 0)
@@ -268,7 +268,7 @@ async function calcularProyecciones(supabase: DB, userId: string, desde: string,
         .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', periodo).eq('user_id', userId),
     ])
     const totalIng = (ingresos ?? []).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
-    const totalTC  = (gastosTC ?? []).filter(m => tarjetaIds.has(m.cuenta_origen)).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
+    const totalTC  = (gastosTC ?? []).filter(m => m.cuenta_origen != null && tarjetaIds.has(m.cuenta_origen)).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
     saldo = Math.round(saldo + totalIng - gastosFijosEfectivo - gastosFijosTarjeta - totalTC)
     if (i === skipCount) {
       saldoBase = saldo
@@ -442,7 +442,7 @@ export default async function DashboardPage({
         {/* Banner full-bleed: fuera del max-w, -mx-8 -mt-8 cancela el p-8 del <main> */}
         <DashboardBanner
           mes={mes} tipo="actual"
-          metricaIzq={{ label: 'Saldo disponible', value: `$${fmt(resumen.disponible_real)}`, sub: 'Suma de billeteras y efectivo ARS' }}
+          metricaIzq={{ label: 'Saldo disponible', value: `$${fmt(resumen.disponible_real ?? 0)}`, sub: 'Suma de billeteras y efectivo ARS' }}
           metricaDer={{
             label: 'Proyectado fin de mes',
             value: <span className={proyectadoActual >= 0 ? 'text-emerald-300' : 'text-red-300'}>
@@ -477,9 +477,9 @@ export default async function DashboardPage({
               <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
                 <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3 px-1">Indicadores del mes</p>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <KpiCard href="/resumen?tipo=ingresos"   label="Ingresos actuales" value={`$${fmt(resumen.ingresos_actuales)}`}      sub="Cobrados este mes"   accent="emerald" />
-                  <KpiCard href="/resumen?tipo=gastos"     label="Gastos actuales"   value={`$${fmt(resumen.gastos_actuales)}`}        sub="Gastado en el mes"   accent="red"     />
-                  <KpiCard href="/resumen?tipo=tarjetas"   label="Deuda tarjetas"    value={`$${fmt(resumen.deuda_tarjetas_periodo)}`} sub="Período actual"      accent="amber"   />
+                  <KpiCard href="/resumen?tipo=ingresos"   label="Ingresos actuales" value={`$${fmt(resumen.ingresos_actuales ?? 0)}`}      sub="Cobrados este mes"   accent="emerald" />
+                  <KpiCard href="/resumen?tipo=gastos"     label="Gastos actuales"   value={`$${fmt(resumen.gastos_actuales ?? 0)}`}        sub="Gastado en el mes"   accent="red"     />
+                  <KpiCard href="/resumen?tipo=tarjetas"   label="Deuda tarjetas"    value={`$${fmt(resumen.deuda_tarjetas_periodo ?? 0)}`} sub="Período actual"      accent="amber"   />
                   <KpiCard href="/resumen?tipo=proyectado" label="Proyectado EOM"
                     value={`${proyectadoActual < 0 ? '-' : ''}$${fmt(Math.abs(proyectadoActual))}`}
                     sub="Liquidez estimada" accent={proyectadoActual >= 0 ? 'emerald' : 'red'} />
@@ -497,6 +497,7 @@ export default async function DashboardPage({
                   </div>
                   <div className="divide-y divide-slate-50">
                     {cuentasEfectivo.map(c => {
+                      if (!c.id || !c.tipo_cuenta || !c.nombre_cuenta) return null
                       const extra = extraMap[c.id]
                       return (
                         <Link key={c.id} href={`/cuentas/${c.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
@@ -519,6 +520,7 @@ export default async function DashboardPage({
                   </div>
                   <div className="divide-y divide-slate-50">
                     {tarjetas.map(c => {
+                      if (!c.id || !c.tipo_cuenta || !c.nombre_cuenta) return null
                       const extra  = extraMap[c.id]
                       const cierre = c.fecha_cierre_tarjeta ? new Date(c.fecha_cierre_tarjeta + 'T12:00:00').getDate() : '—'
                       const vence  = c.fecha_vencimiento_tarjeta ? new Date(c.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : '—'

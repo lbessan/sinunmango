@@ -1,6 +1,9 @@
+import type { ComponentProps } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { GastoFijoFormClient } from '@/components/gasto-fijo-form-client'
 import { notFound, redirect } from 'next/navigation'
+
+type Props = ComponentProps<typeof GastoFijoFormClient>
 
 export default async function EditarGastoFijoPage({
   params,
@@ -34,9 +37,9 @@ export default async function EditarGastoFijoPage({
         cuenta_pago_default: gasto.cuenta_pago_default ?? '',
         activo: gasto.activo ?? true,
       }}
-      categorias={categorias ?? []}
-      subcategorias={subcategorias ?? []}
-      cuentas={cuentas ?? []}
+      categorias={(categorias ?? []) as Props['categorias']}
+      subcategorias={(subcategorias ?? []) as Props['subcategorias']}
+      cuentas={(cuentas ?? []) as Props['cuentas']}
     />
   )
 }

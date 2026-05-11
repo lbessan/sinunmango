@@ -163,22 +163,23 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 2. Crear la inversión ─────────────────────────────────────────────────
+  const invPayload = {
+    user_id:           user.id,
+    tipo,
+    nombre,
+    fecha_inicio,
+    fecha_vencimiento,
+    moneda,
+    capital_inicial,
+    valor_actual:      capital_inicial,   // al inicio, valor actual = capital
+    estado:            'activo',
+    datos,
+    movimiento_origen_id,
+    notas,
+  }
   const { data: inv, error: invErr } = await supabase
     .from('inversiones')
-    .insert({
-      user_id:           user.id,
-      tipo,
-      nombre,
-      fecha_inicio,
-      fecha_vencimiento,
-      moneda,
-      capital_inicial,
-      valor_actual:      capital_inicial,   // al inicio, valor actual = capital
-      estado:            'activo',
-      datos,
-      movimiento_origen_id,
-      notas,
-    })
+    .insert(invPayload as never)
     .select('*')
     .single()
 

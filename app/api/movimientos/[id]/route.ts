@@ -178,7 +178,7 @@ export async function PATCH(
 
     const { error, count } = await supabase
       .from('movimientos')
-      .update(shared, { count: 'exact' })
+      .update(shared as never, { count: 'exact' })
       .eq('grupo_cuotas', actual.grupo_cuotas)
       .eq('user_id', user.id)
 
@@ -191,7 +191,7 @@ export async function PATCH(
   // PATCH normal: solo este movimiento
   const { error } = await supabase
     .from('movimientos')
-    .update(v.data)
+    .update(v.data as never)
     .eq('id', id)
     .eq('user_id', user.id)
 

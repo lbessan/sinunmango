@@ -114,11 +114,11 @@ export async function GET(req: NextRequest) {
     .reduce((acc, m) => acc + Number(m.monto), 0)
 
   // Calcular proyectado a fin de mes (solo para mes actual)
-  const deudaRestante = Math.max(0, resumen.deuda_tarjetas_periodo - resumen.pagos_tarjeta_mes)
+  const deudaRestante = Math.max(0, (resumen.deuda_tarjetas_periodo ?? 0) - (resumen.pagos_tarjeta_mes ?? 0))
   const proyectadoActual = Math.round(
-    resumen.disponible_real +
-    resumen.ingresos_futuros_mes -
-    resumen.gastos_fijos_pendientes -
+    (resumen.disponible_real ?? 0) +
+    (resumen.ingresos_futuros_mes ?? 0) -
+    (resumen.gastos_fijos_pendientes ?? 0) -
     deudaRestante
   )
 
@@ -150,7 +150,7 @@ export async function GET(req: NextRequest) {
       monto:            Math.round(Number(m.monto)),
       moneda:           m.moneda,
       tipo:             m.tipo_movimiento,
-      cuenta_nombre:    cuentaMap[m.cuenta_origen] ?? null,
+      cuenta_nombre:    (m.cuenta_origen != null ? cuentaMap[m.cuenta_origen] : null) ?? null,
       categoria_nombre: cat?.nombre_categoria ?? null,
       categoria_icono:  cat?.icono ?? null,
     }
@@ -161,7 +161,7 @@ export async function GET(req: NextRequest) {
     has_pro_access:          planInfo.has_pro_access,
     mes_label:               mesLabel,
     mes:                     `${mesDate.getFullYear()}-${String(mesDate.getMonth() + 1).padStart(2, '0')}`,
-    saldo_disponible:        Math.round(resumen.disponible_real),
+    saldo_disponible:        Math.round(resumen.disponible_real ?? 0),
     saldo_usd:               Math.round(saldoUsd * 100) / 100,
     proyectado:              proyectadoActual,
     gastos_mes:              Math.round(gastosMes),

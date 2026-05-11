@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     .select('user_id')
     .eq('id', 'Dolar_Tarjeta_BNA')
 
-  const userIds = [...new Set((usuarios ?? []).map(u => u.user_id).filter(Boolean))]
+  const userIds = [...new Set((usuarios ?? []).map(u => u.user_id).filter((v): v is string => !!v))]
 
   let actualizados = 0
   for (const userId of userIds) {
@@ -47,6 +47,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     valor: valorNuevo,
-    usuarios_actualizados: actualizados,
+        usuarios_actualizados: actualizados,
   })
 }

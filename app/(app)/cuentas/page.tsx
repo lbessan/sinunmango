@@ -88,7 +88,7 @@ export default async function CuentasPage() {
     'Efectivo':   [],
   }
   for (const c of cuentas ?? []) {
-    if (c.tipo_cuenta === 'Tarjeta Credito') continue
+    if (!c.tipo_cuenta || c.tipo_cuenta === 'Tarjeta Credito') continue
     const g = grupoDe(c.tipo_cuenta)
     if (!grupos[g]) grupos[g] = []
     grupos[g]!.push(c)
@@ -129,6 +129,7 @@ export default async function CuentasPage() {
 
             <div className="space-y-2">
               {lista.map(c => {
+                if (!c.id || !c.nombre_cuenta || !c.tipo_cuenta) return null
                 const extra     = extraMap[c.id]
                 const imgUrl    = extra?.imagen_url
                 const colorPrim = extra?.color_primario ?? '#0d3b6e'

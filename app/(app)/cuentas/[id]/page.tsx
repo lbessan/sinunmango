@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
@@ -5,6 +6,9 @@ import { Pencil, ArrowLeft } from 'lucide-react'
 import { CuentaSaldoReactivo } from '@/components/cuenta-saldo-reactivo'
 import { CuentaMovimientosTable } from '@/components/cuenta-movimientos-table'
 import { DeleteButton } from '@/components/delete-button'
+
+type SaldoProps = ComponentProps<typeof CuentaSaldoReactivo>
+type TableProps = ComponentProps<typeof CuentaMovimientosTable>
 
 function formatPeriodo(p: string | null): string {
   if (!p) return 'Sin periodo'
@@ -81,7 +85,7 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
         <DeleteButton
           endpoint={deleteEndpoint}
           redirectTo={backHref}
-          label={cuenta.nombre_cuenta}
+          label={cuenta.nombre_cuenta ?? ''}
           variant="icon"
         />
         <Link href={isTarjeta ? `/tarjetas/${id}/editar` : `/cuentas/${id}/editar`}
@@ -94,12 +98,12 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
   )
 
   // Props compartidas para CuentaSaldoReactivo
-  const saldoProps = {
-    movimientos:   movPasados ?? [],
+  const saldoProps: SaldoProps = {
+    movimientos:   (movPasados ?? []) as SaldoProps['movimientos'],
     cuentaId:      id,
-    categorias:    categorias ?? [],
-    subcategorias: subcategorias ?? [],
-    cuentas:       otrasCuentas ?? [],
+    categorias:    (categorias ?? []) as SaldoProps['categorias'],
+    subcategorias: (subcategorias ?? []) as SaldoProps['subcategorias'],
+    cuentas:       (otrasCuentas ?? []) as SaldoProps['cuentas'],
     saldoInicial:  cuenta.saldo_actual ?? 0,
     moneda:        cuenta.moneda ?? 'ARS',
     isTarjeta,
@@ -120,7 +124,7 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
             {imagenUrl
               ? <img
                   src={imagenUrl}
-                  alt={cuenta.nombre_cuenta}
+                  alt={cuenta.nombre_cuenta ?? ''}
                   className="w-full max-w-sm rounded-xl shadow-2xl"
                   style={{ aspectRatio: '1.586/1', objectFit: 'cover' }}
                 />
@@ -137,15 +141,14 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
           {navBar}
           <div className="flex items-center justify-center px-8 py-6">
             {bannerUrl
-              ? <img src={bannerUrl} alt={cuenta.nombre_cuenta} className="max-h-16 max-w-xs object-contain" style={{ filter: textoClaro ? 'brightness(0) invert(1)' : 'none' }} />
+              ? <img src={bannerUrl} alt={cuenta.nombre_cuenta ?? ''} className="max-h-16 max-w-xs object-contain" style={{ filter: textoClaro ? 'brightness(0) invert(1)' : 'none' }} />
               : (() => {
-                  // Efectivo sin imagen personalizada → ícono por moneda
                   const efectivoSrc = isEfectivo
                     ? (cuenta.moneda === 'USD' ? '/logo_dollar.png' : '/logo_peso.png')
                     : null
                   const src = imagenUrl ?? efectivoSrc
                   return src
-                    ? <img src={src} alt={cuenta.nombre_cuenta} className="h-16 w-16 object-contain" />
+                    ? <img src={src} alt={cuenta.nombre_cuenta ?? ''} className="h-16 w-16 object-contain" />
                     : <p className="text-2xl font-bold" style={{ color: textColor }}>{cuenta.nombre_cuenta}</p>
                 })()
             }
@@ -184,10 +187,10 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
                 </div>
                 <div className="px-5 py-4">
                   <CuentaMovimientosTable
-                    movimientos={movs}
+                    movimientos={movs as TableProps['movimientos']}
                     cuentaId={id}
-                    categorias={categorias ?? []}
-                    subcategorias={subcategorias ?? []}
+                    categorias={(categorias ?? []) as TableProps['categorias']}
+                    subcategorias={(subcategorias ?? []) as TableProps['subcategorias']}
                     futuro
                   />
                 </div>

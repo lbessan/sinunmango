@@ -116,7 +116,7 @@ export async function PATCH(
 
   const { error } = await supabase
     .from('cuentas')
-    .update(v.data)
+    .update(v.data as never)
     .eq('id', id)
     .eq('tipo_cuenta', 'Tarjeta Credito')
     .eq('user_id', user.id)
