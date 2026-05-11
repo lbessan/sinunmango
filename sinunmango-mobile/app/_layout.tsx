@@ -16,7 +16,7 @@ export default function RootLayout() {
     if (navigated.current) return
     navigated.current = true
     if (session) {
-      router.replace('/(tabs)/dashboard')
+      router.replace('/(tabs)/dashboard' as never)
     } else {
       router.replace('/(auth)/login')
     }

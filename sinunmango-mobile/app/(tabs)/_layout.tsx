@@ -82,7 +82,7 @@ function FabOverlay({ theme }: { theme: ReturnType<typeof useTheme>['theme'] }) 
 
   return (
     <TouchableOpacity
-      onPress={() => router.push('/nuevo-modal')}
+      onPress={() => router.push('/nuevo-modal' as never)}
       style={[fab.btn, { backgroundColor: theme.primary, bottom }]}
       activeOpacity={0.85}
     >
@@ -134,10 +134,6 @@ export default function TabsLayout() {
         tabBarLabelStyle: {
           fontSize:   10,
           marginTop:  2,
-        },
-        tabBarActiveLabelStyle: {
-          fontWeight: '600',
-          color:      theme.primary,
         },
       }}
     >
