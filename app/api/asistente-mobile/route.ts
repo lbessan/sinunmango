@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
+import { todayAR, todayPartsAR } from '@/lib/timezone'
 
 // ─── POST /api/asistente-mobile ───────────────────────────────────────────────
 // Non-streaming version of /api/asistente for the mobile app.
@@ -26,11 +27,12 @@ export async function POST(req: NextRequest) {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>
   }
 
-  // ── Rangos de fechas ─────────────────────────────────────────────────────
-  const today      = new Date()
-  const todayStr   = today.toISOString().slice(0, 10)
-  const hace6Meses = new Date(today.getFullYear(), today.getMonth() - 5, 1)
-  const hace6Str   = hace6Meses.toISOString().slice(0, 10)
+  // ── Rangos de fechas (zona horaria AR) ──────────────────────────────────
+  const { year: yAR, month: mAR, day: dAR } = todayPartsAR()
+  const today      = new Date(yAR, mAR - 1, dAR)
+  const todayStr   = todayAR()
+  const hace6Meses = new Date(yAR, mAR - 1 - 5, 1)
+  const hace6Str   = `${hace6Meses.getFullYear()}-${String(hace6Meses.getMonth() + 1).padStart(2, '0')}-01`
 
   // ── Carga paralela de contexto ───────────────────────────────────────────
   const [
@@ -235,7 +237,9 @@ REGLAS CRÍTICAS:
     try {
       accion = JSON.parse(accionMatch[1].trim())
       text   = fullText.replace(/<accion>[\s\S]*?<\/accion>/, '').trim()
-    } catch { /* keep text as-is */ }
+    } catch (e) {
+      console.error('[asistente-mobile] error parsing accion:', e)
+    }
   }
 
   return NextResponse.json({ text, accion })

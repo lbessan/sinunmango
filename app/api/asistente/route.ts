@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
+import { todayAR, todayPartsAR } from '@/lib/timezone'
 
 // ─── POST /api/asistente ─────────────────────────────────────────────────────
 // Streaming chat with Claude.
@@ -25,11 +26,12 @@ export async function POST(req: NextRequest) {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>
   }
 
-  // ── Rangos de fechas ─────────────────────────────────────────────────────
-  const today       = new Date()
-  const todayStr    = today.toISOString().slice(0, 10)
-  const hace6Meses  = new Date(today.getFullYear(), today.getMonth() - 5, 1)
-  const hace6Str    = hace6Meses.toISOString().slice(0, 10)
+  // ── Rangos de fechas (zona horaria AR) ──────────────────────────────────
+  const { year: yAR, month: mAR, day: dAR } = todayPartsAR()
+  const today       = new Date(yAR, mAR - 1, dAR)
+  const todayStr    = todayAR()
+  const hace6Meses  = new Date(yAR, mAR - 1 - 5, 1)
+  const hace6Str    = `${hace6Meses.getFullYear()}-${String(hace6Meses.getMonth() + 1).padStart(2, '0')}-01`
 
   // ── Carga paralela de todo el contexto ───────────────────────────────────
   const [
@@ -280,7 +282,7 @@ REGLAS CRÍTICAS:
   return new NextResponse(stream, {
     headers: {
       'Content-Type':  'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       'Connection':    'keep-alive',
     },
   })

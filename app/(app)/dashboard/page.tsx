@@ -5,6 +5,7 @@ import type React from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
 import { TourTrigger } from '@/components/tour-trigger'
+import { todayAR, todayPartsAR } from '@/lib/timezone'
 
 type DB = SupabaseClient<Database>
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -218,8 +219,9 @@ type ProyeccionMes = {
 }
 
 async function calcularProyecciones(supabase: DB, userId: string, desde: string, meses = 4) {
-  const today  = new Date()
-  const curMes = currentMes(today)
+  const { year: cyAR, month: cmAR } = todayPartsAR()
+  const today  = new Date(cyAR, cmAR - 1, 1)
+  const curMes = `${cyAR}-${String(cmAR).padStart(2, '0')}`
   const [{ data: resumen }, { data: gastosFijosRaw }, { data: tarjetasRaw }, { data: params }] =
     await Promise.all([
       supabase.from('dashboard_resumen').select('*').eq('user_id', userId).single(),
@@ -317,7 +319,7 @@ async function fetchPastMonth(supabase: DB, userId: string, mes: string) {
     supabase.from('movimientos')
       .select('monto, tipo_movimiento, cuenta_origen, moneda')
       .eq('user_id', userId).eq('moneda', 'ARS').gte('fecha', end)
-      .lte('fecha', new Date().toISOString().slice(0, 10)),
+      .lte('fecha', todayAR()),
   ])
 
   const tarjetaIds = new Set((tcuentas ?? []).map(t => t.id))
@@ -413,9 +415,10 @@ export default async function DashboardPage({
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
   const params   = await searchParams
-  const today    = new Date()
-  const todayDay = today.getDate()
-  const cur      = currentMes(today)
+  const { year: yAR, month: mAR, day: dAR } = todayPartsAR()
+  const today    = new Date(yAR, mAR - 1, dAR)
+  const todayDay = dAR
+  const cur      = `${yAR}-${String(mAR).padStart(2, '0')}`
   const mes      = parseMes(params.mes, today)
   const tipo     = mes < cur ? 'pasado' : mes > cur ? 'futuro' : 'actual'
 

@@ -1,5 +1,6 @@
 import { getAuthedClient } from '@/lib/supabase/server'
 import { stripCuotaSuffix } from '@/lib/tarjeta-periodo'
+import { primerDiaMesAR } from '@/lib/timezone'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
@@ -32,8 +33,7 @@ export default async function ProyeccionMesPage({
   const { periodo } = await searchParams
   if (!periodo) return <p className="text-slate-400">Periodo no especificado</p>
 
-  const today     = new Date()
-  const mesActual = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
+  const mesActual = primerDiaMesAR()
   const label     = periodoLabel(periodo)
 
   // ── Datos base ────────────────────────────────────────────────────────────

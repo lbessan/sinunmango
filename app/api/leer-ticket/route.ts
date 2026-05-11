@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
+import { todayAR } from '@/lib/timezone'
 
 // ─── POST /api/leer-ticket ───────────────────────────────────────────────────
 // Receives a base64 image of a receipt/ticket, sends it to Claude Vision,
@@ -67,7 +68,7 @@ Devolvé ÚNICAMENTE el JSON, sin texto adicional, con este formato exacto:
 
 Notas:
 - "moneda" debe ser "ARS" o "USD"
-- "fecha" en formato ISO YYYY-MM-DD (si no está visible, usá hoy: ${new Date().toISOString().slice(0, 10)})
+- "fecha" en formato ISO YYYY-MM-DD (si no está visible, usá hoy: ${todayAR()})
 - "monto" es el total a pagar (número, sin símbolo de moneda)
 - "cuotas" es la cantidad de cuotas (1 si es contado)
 - "detalle" es el nombre del negocio o descripción breve`,
@@ -98,7 +99,7 @@ Notas:
       detalle: parsed.detalle  ?? null,
       monto:   parsed.monto    ?? null,
       moneda:  parsed.moneda   ?? 'ARS',
-      fecha:   parsed.fecha    ?? new Date().toISOString().slice(0, 10),
+      fecha:   parsed.fecha    ?? todayAR(),
       cuotas:  parsed.cuotas   ?? 1,
     })
   } catch {

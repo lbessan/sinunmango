@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminClient } from '@/lib/supabase/admin'
 import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
+import { todayAR } from '@/lib/timezone'
 import crypto from 'crypto'
 
 // crypto.createHmac requiere runtime Node (no Edge)
@@ -141,7 +142,7 @@ type ParsedMov = {
 }
 
 async function parseEmailWithClaude(emailText: string): Promise<ParsedMov[]> {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayAR()
 
   const prompt = `Sos un extractor de datos de emails de notificación bancaria argentina.
 Analizá el siguiente email y extraé TODAS las transacciones financieras que encuentres.

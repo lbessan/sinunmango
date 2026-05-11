@@ -1,5 +1,6 @@
 import { getAuthedClient } from '@/lib/supabase/server'
 import { stripCuotaSuffix } from '@/lib/tarjeta-periodo'
+import { todayAR } from '@/lib/timezone'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Pencil, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
@@ -47,7 +48,7 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
   const sortCol  = sp.sort ?? 'fecha'
   const sortDir  = sp.dir === 'asc'
   const mostrarFuturos = sp.futuros === '1'
-  const today    = new Date().toISOString().slice(0, 10)
+  const today    = todayAR()
 
   const allowed  = ['fecha', 'monto_estimado', 'periodo_tarjeta', 'categoria']
   const orderCol = allowed.includes(sortCol) ? sortCol : 'fecha'

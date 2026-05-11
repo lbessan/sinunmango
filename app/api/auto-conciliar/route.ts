@@ -1,17 +1,18 @@
 import { adminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { todayPartsAR } from '@/lib/timezone'
 
 // Este endpoint es llamado por el cron de Vercel diariamente a las 3am
 // Replica la lógica de AppSheet: si HOY = día de vencimiento de la tarjeta,
 // marca como conciliados todos los movimientos no conciliados con periodo <= mes anterior
 
 export async function GET() {
-  const today    = new Date()
-  const todayDay = today.getDate()
+  const { year: yAR, month: mAR, day: dAR } = todayPartsAR()
+  const today    = new Date(yAR, mAR - 1, dAR)
+  const todayDay = dAR
 
-  // Primer día del mes actual
-  const inicioMesActual = new Date(today.getFullYear(), today.getMonth(), 1)
-    .toISOString().slice(0, 10)
+  // Primer día del mes actual (en AR)
+  const inicioMesActual = `${yAR}-${String(mAR).padStart(2, '0')}-01`
 
   // Buscar tarjetas cuyo vencimiento es hoy
   const { data: tarjetas, error: errTarjetas } = await adminClient
@@ -51,7 +52,6 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     fecha: today.toISOString(),
-    procesadas: resultados.length,
-    resultados,
+    procesadas: resultados,
   })
 }

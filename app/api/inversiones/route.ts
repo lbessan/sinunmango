@@ -1,5 +1,6 @@
 import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
+import { todayAR } from '@/lib/timezone'
 import {
   validateString, validateEnum, validatePositiveNumber, validateISODate,
   validateId, optional,
@@ -74,7 +75,7 @@ function validateInversion(raw: unknown): Validated<ValidatedFull> {
     data: {
       tipo:              tipo.data,
       nombre:            nombreOpt.data,
-      fecha_inicio:      fechaInicioOpt.data ?? new Date().toISOString().slice(0, 10),
+      fecha_inicio:      fechaInicioOpt.data ?? todayAR(),
       fecha_vencimiento: venceOpt.data,
       moneda:            moneda.data,
       capital_inicial:   capital.data,

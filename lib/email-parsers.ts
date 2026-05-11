@@ -1,6 +1,8 @@
 // ─── Shared email parser library ─────────────────────────────────────────────
 // Used by both /api/importar-email (manual paste) and /api/email-inbound (webhook)
 
+import { todayAR } from './timezone'
+
 export type ParsedMov = {
   fecha:       string           // ISO "2026-04-14"
   detalle:     string           // Merchant / description
@@ -74,7 +76,7 @@ export function parseMercadoPago(texto: string): ParsedMov | null {
   const comercioM = texto.match(/Le compraste a\s+(.+)/i)
 
   return {
-    fecha:       new Date().toISOString().slice(0, 10),
+    fecha:       todayAR(),
     detalle:     comercioM?.[1]?.trim() ?? 'Mercado Pago',
     monto:       parseMontoAR(montoM[1]),
     moneda:      'ARS',
@@ -99,7 +101,7 @@ export function parseMercadoPagoTransferencia(texto: string): ParsedMov | null {
   const fechaM = texto.match(/(\d{2}\/\d{2}\/\d{4})/)
 
   return {
-    fecha:       fechaM ? fechaARtoISO(fechaM[1]) : new Date().toISOString().slice(0, 10),
+    fecha:       fechaM ? fechaARtoISO(fechaM[1]) : todayAR(),
     detalle:     destinoM ? `MP → ${destinoM[1].trim()}` : 'Transferencia Mercado Pago',
     monto:       parseMontoAR(montoM[1]),
     moneda:      'ARS',

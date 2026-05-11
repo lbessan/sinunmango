@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
+import { todayAR } from '@/lib/timezone'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { Pencil, ArrowLeft } from 'lucide-react'
@@ -30,7 +31,7 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
   if (!user) redirect('/login')
 
   const { id } = await params
-  const today   = new Date().toISOString().slice(0, 10)
+  const today   = todayAR()
 
   const [{ data: cuenta }, { data: extra }, { data: movPasados }, { data: movFuturos }, { data: categorias }, { data: subcategorias }, { data: otrasCuentas }] =
     await Promise.all([
