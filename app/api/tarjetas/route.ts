@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
 
   // tipo_cuenta forzado a 'Tarjeta Credito' por este endpoint (no del body)
-  const id = 'tar_' + Date.now().toString(36)
+  const id = crypto.randomUUID()
   const { error } = await supabase.from('cuentas').insert({
     id,
     ...v.data,

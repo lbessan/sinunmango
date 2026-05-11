@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
   const v = validateGastoFijo(body)
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
 
-  const id = 'fijo_' + Date.now().toString(36)
+  const id = crypto.randomUUID()
   const { error } = await supabase.from('gastos_fijos').insert({ id, ...v.data, user_id: user.id })
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   return NextResponse.json({ ok: true, id })

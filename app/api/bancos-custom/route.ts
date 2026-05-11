@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
   const v = validateBanco(body)
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
 
-  const id = 'banco_' + Date.now().toString(36)
+  const id = crypto.randomUUID()
   const { error } = await supabase.from('bancos_custom').insert({ id, user_id: user.id, ...v.data })
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   return NextResponse.json({ ok: true, id })
