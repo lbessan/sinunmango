@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { apiGet } from '@/lib/api'
+import { currentMesAR } from '@/lib/timezone'
 import { useTheme } from '@/context/ThemeContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,8 +31,7 @@ function saludo() {
 }
 
 function mesActual() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  return currentMesAR()
 }
 
 function labelTipo(tipo: string) {

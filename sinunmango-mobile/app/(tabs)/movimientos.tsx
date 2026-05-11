@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '@/lib/supabase'
+import { todayAR, todayPartsAR } from '@/lib/timezone'
 import { useTheme } from '@/context/ThemeContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,30 +31,32 @@ const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
 function formatFecha(iso: string) {
-  const d    = new Date(iso + 'T12:00:00')
-  const hoy  = new Date()
-  const ayer = new Date(); ayer.setDate(hoy.getDate() - 1)
-  if (d.toDateString() === hoy.toDateString())  return 'Hoy'
-  if (d.toDateString() === ayer.toDateString()) return 'Ayer'
-  return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+  // "Hoy" / "Ayer" en zona AR (consistente con server)
+  const hoyStr  = todayAR()
+  const ayerD   = new Date(hoyStr + 'T12:00:00'); ayerD.setDate(ayerD.getDate() - 1)
+  const ayerStr = `${ayerD.getFullYear()}-${String(ayerD.getMonth() + 1).padStart(2, '0')}-${String(ayerD.getDate()).padStart(2, '0')}`
+  if (iso === hoyStr)  return 'Hoy'
+  if (iso === ayerStr) return 'Ayer'
+  return new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 }
 
 function buildDateFilter(key: FechaKey): { gte?: string; lt?: string } {
-  const now = new Date()
+  const { year, month, day } = todayPartsAR()
   if (key === 'este_mes') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1)
-    const end   = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    const start = new Date(year, month - 1, 1)
+    const end   = new Date(year, month, 1)
     return { gte: start.toISOString().slice(0, 10), lt: end.toISOString().slice(0, 10) }
   }
   if (key === 'mes_anterior') {
-    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const end   = new Date(now.getFullYear(), now.getMonth(), 1)
+    const start = new Date(year, month - 2, 1)
+    const end   = new Date(year, month - 1, 1)
     return { gte: start.toISOString().slice(0, 10), lt: end.toISOString().slice(0, 10) }
   }
   if (key === 'esta_semana') {
-    const day   = now.getDay()
-    const start = new Date(now); start.setDate(now.getDate() - day)
-    const end   = new Date(now); end.setDate(start.getDate() + 7)
+    const now   = new Date(year, month - 1, day)
+    const dow   = now.getDay()
+    const start = new Date(year, month - 1, day - dow)
+    const end   = new Date(year, month - 1, day - dow + 7)
     return { gte: start.toISOString().slice(0, 10), lt: end.toISOString().slice(0, 10) }
   }
   return {}
