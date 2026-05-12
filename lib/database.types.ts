@@ -588,6 +588,7 @@ export type Database = {
           detalle: string | null
           fecha: string | null
           foto_comprobante: string | null
+          grupo_cuotas: string | null
           id: string | null
           moneda: string | null
           monto: number | null
