@@ -87,7 +87,7 @@ export default async function ResumenPage({
         categoria: `__pago_${m.cuenta_destino}`,
       }))
 
-    movimientos = [...gastos, ...pagos].sort((a, b) => b.fecha.localeCompare(a.fecha))
+    movimientos = [...gastos, ...pagos].sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? ''))
 
   } else if (tipo === 'tarjetas') {
     // Tres conceptos distintos que el user maneja:
