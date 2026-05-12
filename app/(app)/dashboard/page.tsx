@@ -5,6 +5,7 @@ import type React from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
 import { TourTrigger } from '@/components/tour-trigger'
+import { CargarIngresosCTA } from '@/components/cargar-ingresos-cta'
 import { todayAR, todayPartsAR } from '@/lib/timezone'
 
 type DB = SupabaseClient<Database>
@@ -145,8 +146,8 @@ function NavArrow({ mes, dir }: { mes: string; dir: 'prev' | 'next' }) {
 }
 
 // ─── KpiCard ──────────────────────────────────────────────────────────────────
-function KpiCard({ href, label, value, sub, accent }: {
-  href?: string; label: string; value: string; sub: string
+function KpiCard({ href, label, value, valueExtra, sub, accent }: {
+  href?: string; label: string; value: string; valueExtra?: string; sub: string
   accent: 'emerald' | 'red' | 'amber' | 'blue' | 'slate'
 }) {
   const styles = {
@@ -162,6 +163,7 @@ function KpiCard({ href, label, value, sub, accent }: {
       <div className={`w-2 h-2 rounded-full ${s.dot} mb-3`} />
       <p className="text-xs text-slate-500 mb-1.5">{label}</p>
       <p className={`text-xl font-bold ${s.text} leading-none`}>{value}</p>
+      {valueExtra && <p className={`text-xs font-semibold ${s.text} mt-1`}>{valueExtra}</p>}
       <p className="text-xs text-slate-400 mt-1">{sub}</p>
       {href && <p className="text-xs text-slate-300 mt-2 group-hover:text-slate-400 transition-colors">Ver detalle →</p>}
     </div>
@@ -310,56 +312,81 @@ async function fetchPastMonth(supabase: DB, userId: string, mes: string) {
   const end   = `${offsetMes(mes, 1)}-01`
 
   const [{ data: movs }, { data: tcuentas }, { data: resumen }, { data: postMovs }] = await Promise.all([
-    // Movimientos del mes
-    supabase.from('movimientos')
-      .select('id, monto, moneda, tipo_movimiento, cuenta_origen, periodo_tarjeta, categorias(nombre_categoria, icono)')
+    // Movimientos del mes — usamos la VISTA para tener monto_estimado (USD→ARS convertido)
+    supabase.from('movimientos_completos')
+      .select('id, monto, monto_estimado, moneda, tipo_movimiento, cuenta_origen, cuenta_destino, periodo_tarjeta, categoria_nombre, categoria_icono')
       .eq('user_id', userId).gte('fecha', start).lt('fecha', end),
     // IDs de tarjetas (para filtrar gastos de tarjeta)
     supabase.from('cuentas').select('id')
       .eq('tipo_cuenta', 'Tarjeta Credito').eq('user_id', userId),
     // Balance actual (para reverse-calcular el saldo al fin del mes)
     supabase.from('dashboard_resumen').select('disponible_real').eq('user_id', userId).single(),
-    // Movimientos ARS posteriores al mes (para restar del saldo actual y llegar al saldo de fin del mes)
-    // ⚠️ Limitamos a hoy para no incluir ingresos futuros ya cargados
-    supabase.from('movimientos')
-      .select('monto, tipo_movimiento, cuenta_origen, moneda')
-      .eq('user_id', userId).eq('moneda', 'ARS').gte('fecha', end)
+    // Movimientos posteriores al mes (para restar del saldo actual y llegar al fin del mes)
+    // Usamos la vista para tener monto_estimado coherente con la fórmula del mes
+    supabase.from('movimientos_completos')
+      .select('monto, monto_estimado, tipo_movimiento, cuenta_origen, cuenta_destino')
+      .eq('user_id', userId).gte('fecha', end)
       .lte('fecha', todayAR()),
   ])
 
   const tarjetaIds = new Set((tcuentas ?? []).map(t => t.id))
+  const isTarjeta  = (cuentaId: string | null | undefined) => !!cuentaId && tarjetaIds.has(cuentaId)
   const all = movs ?? []
+  // Helper: monto_estimado convierte USD→ARS según cotización; si está null usamos monto
+  const monto = (m: { monto: number | null; monto_estimado: number | null }) =>
+    m.monto_estimado ?? m.monto ?? 0
 
-  // Totales del mes
-  const ingresos = all.filter(m => m.tipo_movimiento === 'Ingreso').reduce((s, m) => s + m.monto, 0)
-  const gastos   = all.filter(m => m.tipo_movimiento === 'Gasto').reduce((s, m) => s + m.monto, 0)
+  // ── Totales del mes (CASH FLOW REAL, convertido a ARS) ──
+  // Para que la fórmula cierre con postNet, ingresos y gastos filtran por
+  // cuenta_origen no-tarjeta (un "Ingreso" con origen tarjeta es un refund,
+  // no entra cash). Pagos a tarjeta cuentan igual aunque origen sea otra
+  // cuenta cash (origen siempre no-tarjeta para un pago).
+  const ingresos = all
+    .filter(m => m.tipo_movimiento === 'Ingreso' && !isTarjeta(m.cuenta_origen))
+    .reduce((s, m) => s + monto(m), 0)
+
+  const gastosCash = all
+    .filter(m => m.tipo_movimiento === 'Gasto' && !isTarjeta(m.cuenta_origen))
+    .reduce((s, m) => s + monto(m), 0)
+
+  const pagosTarjeta = all
+    .filter(m => m.tipo_movimiento === 'Transferencia'
+              && !isTarjeta(m.cuenta_origen)
+              && isTarjeta(m.cuenta_destino))
+    .reduce((s, m) => s + monto(m), 0)
+
+  const gastos    = gastosCash + pagosTarjeta
   const resultado = Math.round(ingresos - gastos)
 
-  // Saldo fin del mes = saldo actual − movimientos netos ARS no-tarjeta posteriores al mes
+  // ── Saldo fin del mes (reverse-calcular del actual hacia atrás) ──
+  // Mismas reglas + mismo monto_estimado para que saldoFinMes == saldoInicioMesSiguiente
   const disponibleHoy = resumen?.disponible_real ?? 0
   const postNet = (postMovs ?? [])
-    .filter(m => !tarjetaIds.has(m.cuenta_origen ?? ''))
+    .filter(m => !isTarjeta(m.cuenta_origen))
     .reduce((s, m) => {
-      if (m.tipo_movimiento === 'Ingreso') return s + m.monto
-      if (m.tipo_movimiento === 'Gasto')   return s - m.monto
-      return s  // Transferencias: neutral
+      const v = monto(m)
+      if (m.tipo_movimiento === 'Ingreso') return s + v
+      if (m.tipo_movimiento === 'Gasto')   return s - v
+      if (m.tipo_movimiento === 'Transferencia' && isTarjeta(m.cuenta_destino)) return s - v
+      return s
     }, 0)
   const saldoFinMes    = Math.round(disponibleHoy - postNet)
   const saldoInicioMes = saldoFinMes - resultado
 
-  // Top categorías
+  // ── Top categorías (vista de CONSUMO — incluye tarjeta) ──
   const catMap: Record<string, { nombre: string; icono: string | null; total: number }> = {}
   for (const m of all.filter(m => m.tipo_movimiento === 'Gasto')) {
-    const cat = m.categorias as CategoriaJoin
-    const key = cat?.nombre_categoria ?? 'Sin categoría'
-    if (!catMap[key]) catMap[key] = { nombre: key, icono: cat?.icono ?? null, total: 0 }
-    catMap[key].total += m.monto
+    const key = m.categoria_nombre ?? 'Sin categoría'
+    if (!catMap[key]) catMap[key] = { nombre: key, icono: m.categoria_icono, total: 0 }
+    catMap[key].total += monto(m)
   }
   const topCats = Object.values(catMap).sort((a, b) => b.total - a.total).slice(0, 5)
 
   return {
     ingresos:     Math.round(ingresos),
     gastos:       Math.round(gastos),
+    gastosCash:   Math.round(gastosCash),
+    pagosTarjeta: Math.round(pagosTarjeta),
     resultado,
     saldoFinMes,
     saldoInicioMes,
@@ -429,15 +456,34 @@ export default async function DashboardPage({
 
   // ── CURRENT MONTH ──────────────────────────────────────────────────────────
   if (tipo === 'actual') {
+    const inicioMesCur = `${cur}-01`
     const [{ data: resumen }, { data: cuentas }, { data: gastosFijos }, { data: cuentasExtra },
+      { data: categoriasIng }, { data: deudaTarjMovs },
       { saldoBase: proyectadoActual, proyecciones }] = await Promise.all([
       supabase.from('dashboard_resumen').select('*').eq('user_id', user.id).single(),
       supabase.from('saldo_actual_cuentas').select('*').eq('activa', true).eq('user_id', user.id),
       supabase.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta)').eq('activo', true).eq('user_id', user.id).order('dia_vencimiento'),
       supabase.from('cuentas').select('id, imagen_url, color_primario').eq('user_id', user.id),
+      supabase.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', user.id),
+      // Movs del período actual sobre tarjetas — para desglose ARS/USD nativo en el card
+      supabase.from('movimientos_completos')
+        .select('monto, moneda, tipo_movimiento, cuenta_origen_tipo')
+        .in('tipo_movimiento', ['Gasto', 'Ingreso'])
+        .eq('periodo_tarjeta', inicioMesCur)
+        .eq('cuenta_origen_tipo', 'Tarjeta Credito')
+        .eq('user_id', user.id),
       calcularProyecciones(supabase, user.id, cur, 4),
     ])
     if (!resumen) return <EmptyState />
+
+    // Desglose nativo de la deuda del período (Ingresos restan, igual que /resumen?tipo=tarjetas)
+    let deudaArs = 0, deudaUsd = 0
+    for (const m of deudaTarjMovs ?? []) {
+      const signo = m.tipo_movimiento === 'Ingreso' ? -1 : 1
+      const raw   = (Number(m.monto) || 0) * signo
+      if (m.moneda === 'USD') deudaUsd += raw
+      else                    deudaArs += raw
+    }
     const extraMap = Object.fromEntries((cuentasExtra ?? []).map(c => [c.id, c]))
     const gastosFijosProximos = (gastosFijos ?? [])
       .filter(g => (g.dia_vencimiento ?? 0) >= todayDay)
@@ -486,8 +532,8 @@ export default async function DashboardPage({
                 <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3 px-1">Indicadores del mes</p>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <KpiCard href="/resumen?tipo=ingresos"   label="Ingresos actuales" value={`$${fmt(resumen.ingresos_actuales ?? 0)}`}      sub="Cobrados este mes"   accent="emerald" />
-                  <KpiCard href="/resumen?tipo=gastos"     label="Gastos actuales"   value={`$${fmt(resumen.gastos_actuales ?? 0)}`}        sub="Gastado en el mes"   accent="red"     />
-                  <KpiCard href="/resumen?tipo=tarjetas"   label="Deuda tarjetas"    value={`$${fmt(resumen.deuda_tarjetas_periodo ?? 0)}`} sub="Período actual"      accent="amber"   />
+                  <KpiCard href="/resumen?tipo=gastos"     label="Gastos del mes"    value={`$${fmt(resumen.gastos_actuales ?? 0)}`}        sub="Cash + pagos a tarjetas"   accent="red"     />
+                  <KpiCard href="/resumen?tipo=tarjetas"   label="Deuda tarjetas"    value={`$${fmt(deudaArs)}`} valueExtra={deudaUsd > 0 ? `+ U$S ${fmt(deudaUsd)}` : undefined} sub="Período actual"      accent="amber"   />
                   <KpiCard href="/resumen?tipo=proyectado" label="Proyectado EOM"
                     value={`${proyectadoActual < 0 ? '-' : ''}$${fmt(Math.abs(proyectadoActual))}`}
                     sub="Liquidez estimada" accent={proyectadoActual >= 0 ? 'emerald' : 'red'} />
@@ -496,6 +542,14 @@ export default async function DashboardPage({
 
               {/* Proyecciones */}
               <ProyeccionesStrip proyecciones={proyecciones} saldoBase={proyectadoActual} label="Proyecciones Mensuales" />
+
+              {/* CTA: cargar ingresos a futuro para mejorar la precisión de Proyecciones */}
+              <CargarIngresosCTA
+                cuentas={(cuentas ?? [])
+                  .filter((c): c is typeof c & { id: string } => c.id != null)
+                  .map(c => ({ id: c.id, nombre_cuenta: c.nombre_cuenta, tipo_cuenta: c.tipo_cuenta }))}
+                categorias={categoriasIng ?? []}
+              />
 
               {/* Cuentas + Gastos fijos */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -628,7 +682,9 @@ export default async function DashboardPage({
                 <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Gastos del mes</p>
                   <p className="text-2xl font-bold leading-none text-red-700">${fmt(past.gastos)}</p>
-                  <p className="text-xs text-slate-400 mt-1.5">Gastado en el mes</p>
+                  <p className="text-xs text-slate-400 mt-1.5" title="Cash flow: gastos efectivo/banco + pagos a tarjeta">
+                    ${fmt(past.gastosCash)} cash {past.pagosTarjeta > 0 && `+ $${fmt(past.pagosTarjeta)} a tarjetas`}
+                  </p>
                 </div>
                 <div className={`rounded-2xl border p-5 ${past.resultado >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Ahorro del mes</p>
@@ -657,12 +713,12 @@ export default async function DashboardPage({
                 </div>
               </div>
 
-              {/* ── Top gastos por categoría ── */}
+              {/* ── Top categorías de consumo (incluye tarjeta) ── */}
               {past.topCats.length > 0 && (
                 <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                   <div className="px-5 py-4 border-b border-slate-50">
-                    <h2 className="text-sm font-semibold text-slate-700">Top gastos por categoría</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Basado en movimientos reales del mes</p>
+                    <h2 className="text-sm font-semibold text-slate-700">Top categorías de consumo</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">En qué consumiste este mes (incluye consumos con tarjeta — distinto del cash flow de arriba)</p>
                   </div>
                   <div className="px-5 py-4 space-y-3">
                     {past.topCats.map(cat => {
