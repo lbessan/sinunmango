@@ -1,12 +1,13 @@
 import {
   LayoutDashboard, ArrowLeftRight, PlusCircle, CreditCard,
   Receipt, ShieldCheck, BarChart2, Settings,
-  Landmark, Tag, Wallet, TrendingUp,
+  Landmark, Tag, Wallet, TrendingUp, Sparkles,
 } from 'lucide-react'
 import { NavItem }   from './nav-item'
 import { NavGroup }  from './nav-group'
-import { LogoutButton }   from './logout-button'
-import { DarkModeToggle } from './dark-mode-toggle'
+import { LogoutButton }       from './logout-button'
+import { DarkModeToggle }     from './dark-mode-toggle'
+import { SidebarUsageWidget } from './sidebar-usage-widget'
 
 async function getDolarBNA(): Promise<number> {
   try {
@@ -44,6 +45,7 @@ export async function Sidebar() {
         <NavItem href="/movimientos/nuevo" icon={<PlusCircle size={17} />}      label="Nuevo movimiento" />
         <NavItem href="/conciliaciones"    icon={<ShieldCheck size={17} />}     label="Conciliaciones" />
         <NavItem href="/analitica"         icon={<BarChart2 size={17} />}       label="Analítica" />
+        <NavItem href="/pro"               icon={<Sparkles size={17} />}        label="Pro" />
 
         <p className="text-xs uppercase tracking-widest px-5 py-2 mt-3" style={{ color: '#4b6a8a' }}>
           Mis cuentas
@@ -67,6 +69,9 @@ export async function Sidebar() {
           <NavItem href="/categorias"           icon={<Tag       size={15} />} label="Categorías" exact />
         </NavGroup>
       </nav>
+
+      {/* Widget de cupos del mes (Free) o badge Pro */}
+      <SidebarUsageWidget />
 
       {/* Footer */}
       <div className="px-4 py-4 border-t border-white/8 space-y-3">

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, X, User, CheckCircle, AlertCircle, Loader2, Minimize2, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { Send, X, User, CheckCircle, AlertCircle, Loader2, Minimize2, Trash2, Sparkles } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Message = {
@@ -11,6 +12,8 @@ type Message = {
   accion?:      Record<string, unknown>
   accionEstado?: 'pendiente' | 'confirmando' | 'ok' | 'error'
   accionMsg?:   string
+  // Caso especial: al usuario se le acabó el cupo Free del mes
+  limitReached?: { limit: number; used: number }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -70,6 +73,43 @@ function AccionCard({ accion, estado, msg, onConfirmar, onCancelar }: {
           Cancelar
         </button>
       </div>
+    </div>
+  )
+}
+
+// ─── LimitReachedCard ─────────────────────────────────────────────────────────
+// Reemplaza el mensaje crudo "Error: limit_reached" con un card ameno y un
+// CTA a la página /pro. Tono cálido, no penalizante.
+function LimitReachedCard({ limit, used }: { limit: number; used: number }) {
+  return (
+    <div
+      className="rounded-2xl rounded-tl-sm p-4 shadow-sm max-w-[280px]"
+      style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #ffffff 60%, #eef2ff 100%)', border: '1px solid #e0e7ff' }}
+    >
+      <div className="flex items-start gap-2.5 mb-2">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
+          style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+        >
+          <Sparkles size={15} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-800 leading-tight">Llegaste al límite del mes</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Usaste {used} de {limit} mensajes Free
+          </p>
+        </div>
+      </div>
+      <p className="text-xs text-slate-600 leading-relaxed mb-3">
+        Pasate a Pro y tené el asistente sin límites, parseo de tickets y resúmenes, e insights con IA. Probalo 7 días gratis.
+      </p>
+      <Link
+        href="/pro"
+        className="block text-center px-3 py-2 rounded-lg text-xs font-semibold text-white shadow-sm hover:shadow transition-shadow"
+        style={{ background: 'linear-gradient(90deg, #6366f1, #8b5cf6)' }}
+      >
+        Ver Plan Pro →
+      </Link>
     </div>
   )
 }
@@ -134,10 +174,24 @@ export function ManguitoFlotante() {
         body:    JSON.stringify({ messages: history }),
       })
       if (!res.ok) {
-        const { error } = await res.json()
-        setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: `Error: ${error}` } : m))
+        const data = await res.json().catch(() => ({ error: 'unknown' }))
+        if (data.error === 'limit_reached') {
+          setMessages(prev => prev.map(m => m.id === assistantId
+            ? { ...m, content: '', limitReached: { limit: data.limit ?? 5, used: data.used ?? 0 } }
+            : m
+          ))
+        } else {
+          setMessages(prev => prev.map(m => m.id === assistantId
+            ? { ...m, content: `Ups, algo no salió bien. Probá de nuevo en un ratito.` }
+            : m
+          ))
+        }
+        // Notificar al sidebar para que refresque el contador de cupos
+        window.dispatchEvent(new Event('usage:changed'))
         return
       }
+      // Llamada OK: refrescar contador post-stream
+      window.dispatchEvent(new Event('usage:changed'))
 
       const reader  = res.body!.getReader()
       const decoder = new TextDecoder()
@@ -302,22 +356,26 @@ export function ManguitoFlotante() {
                     )
                   }
                   <div className={`max-w-[82%] flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                    <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
-                      msg.role === 'user'
-                        ? 'text-white rounded-tr-sm'
-                        : 'rounded-tl-sm'
-                    }`}
-                      style={msg.role === 'user'
-                        ? { background: 'var(--accent2, #1B3A6B)' }
-                        : { background: 'var(--bg-card-alt)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }
-                      }
-                    >
-                      {msg.content || (loading && msg.role === 'assistant'
-                        ? <span className="flex gap-1.5 items-center text-slate-400 text-xs">
-                            <Loader2 size={11} className="animate-spin" />pensando...
-                          </span>
-                        : '')}
-                    </div>
+                    {msg.limitReached ? (
+                      <LimitReachedCard limit={msg.limitReached.limit} used={msg.limitReached.used} />
+                    ) : (
+                      <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
+                        msg.role === 'user'
+                          ? 'text-white rounded-tr-sm'
+                          : 'rounded-tl-sm'
+                      }`}
+                        style={msg.role === 'user'
+                          ? { background: 'var(--accent2, #1B3A6B)' }
+                          : { background: 'var(--bg-card-alt)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }
+                        }
+                      >
+                        {msg.content || (loading && msg.role === 'assistant'
+                          ? <span className="flex gap-1.5 items-center text-slate-400 text-xs">
+                              <Loader2 size={11} className="animate-spin" />pensando...
+                            </span>
+                          : '')}
+                      </div>
+                    )}
                     {msg.accion && msg.accionEstado && (
                       <div className="w-full">
                         <AccionCard

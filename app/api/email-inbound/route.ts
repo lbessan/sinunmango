@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminClient } from '@/lib/supabase/admin'
 import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
 import { todayAR } from '@/lib/timezone'
+import { getUserPlanById } from '@/lib/subscription'
+import { enforceMonthlyLimitAsAdmin } from '@/lib/usage-limits'
 import crypto from 'crypto'
 
 // crypto.createHmac requiere runtime Node (no Edge)
@@ -358,6 +360,19 @@ export async function POST(req: NextRequest) {
 
   if (!emailText) {
     return NextResponse.json({ ok: false, skipped: true, reason: 'empty body' })
+  }
+
+  // ── Gate de plan: no llamamos a Claude sin saber a qué user atribuir ──────
+  // Free tier: 1 mail parseado/mes. Pro: ilimitado. Si no hay userId
+  // (token desconocido o user eliminado), no procesamos para evitar abuso.
+  if (!userId) {
+    return NextResponse.json({ ok: false, skipped: true, reason: 'no userId for token' })
+  }
+  const plan  = await getUserPlanById(adminClient, userId)
+  const usage = await enforceMonthlyLimitAsAdmin(adminClient, userId, 'mail_tarjeta', plan.has_pro_access)
+  if (!usage.allowed) {
+    console.log(`[email-inbound] limit_reached user=${userId} feature=mail_tarjeta`)
+    return NextResponse.json({ ok: false, skipped: true, reason: 'free_tier_limit_reached', limit: usage.limit })
   }
 
   // ── Parsear con Claude ────────────────────────────────────────────────────

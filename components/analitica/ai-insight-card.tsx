@@ -141,7 +141,7 @@ export function AIInsightCard({
               "En los últimos 6 meses tuviste tu mejor racha de ahorro: 32% vs 18% del semestre anterior, gracias a una caída de 47% en Suscripciones. La señal a mirar: Restaurants creció 28% y se acerca a tu promedio histórico. Si lo contenés ahora, podrías cerrar el año con ~$340k extra de ahorro."
             </div>
             <a
-              href="/configuracion?tab=plan"
+              href="/pro"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white"
               style={{ background: 'linear-gradient(90deg, #6366f1, #8b5cf6)' }}
             >

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
+import { getUserPlan } from '@/lib/subscription'
+import { enforceMonthlyLimit, usageHeaders } from '@/lib/usage-limits'
 
 // ─── POST /api/parsear-resumen ────────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), lo procesa con Claude y
@@ -8,8 +10,18 @@ import { createClientForRequest } from '@/lib/supabase/route'
 // Body: { pdf: string (base64), movimientosExistentes: { detalle, monto, fecha }[] }
 
 export async function POST(req: NextRequest) {
-  const { user } = await createClientForRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+
+  // Monthly usage gate (free tier): 1 resumen/mes. Pro: ilimitado.
+  const plan  = await getUserPlan(supabase)
+  const usage = await enforceMonthlyLimit(supabase, 'resumen', plan.has_pro_access)
+  if (!usage.allowed) {
+    return NextResponse.json(
+      { error: 'limit_reached', feature: 'resumen', limit: usage.limit, used: usage.used },
+      { status: 429 },
+    )
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -174,7 +186,7 @@ Notas importantes:
     // Intento de parse normal
     try {
       const parsed = JSON.parse(clean)
-      return NextResponse.json({ ok: true, transacciones: parsed.transacciones ?? [] })
+      return NextResponse.json({ ok: true, transacciones: parsed.transacciones ?? [] }, { headers: usageHeaders(usage) })
     } catch {
       // Si el JSON está truncado, intentar rescatar lo que se pudo parsear
       // buscamos el array de transacciones e intentamos cerrar el JSON manualmente
@@ -187,7 +199,7 @@ Notas importantes:
         try {
           const txs = JSON.parse(arr)
           console.warn('[parsear-resumen] Partial parse recovered', txs.length, 'transactions')
-          return NextResponse.json({ ok: true, transacciones: txs })
+          return NextResponse.json({ ok: true, transacciones: txs }, { headers: usageHeaders(usage) })
         } catch { /* fall through */ }
       }
       console.error('[parsear-resumen] Could not parse Claude response:', rawText.slice(0, 500))

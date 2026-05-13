@@ -1,11 +1,14 @@
 import { getAuthedClient } from '@/lib/supabase/server'
+import { getUserPlan } from '@/lib/subscription'
 import { redirect } from 'next/navigation'
 import { ConfiguracionClient } from '@/components/configuracion-client'
 import { Settings } from 'lucide-react'
 
 export default async function ConfiguracionPage() {
-  const { user } = await getAuthedClient()
+  const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+
+  const plan = await getUserPlan(supabase)
 
   return (
     <div>
@@ -30,6 +33,7 @@ export default async function ConfiguracionPage() {
       <ConfiguracionClient
         email={user?.email ?? ''}
         createdAt={user?.created_at ?? null}
+        hasProAccess={plan.has_pro_access}
       />
     </div>
   )

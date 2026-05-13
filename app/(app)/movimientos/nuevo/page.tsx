@@ -6,6 +6,7 @@ import { Plus, Camera, Loader2 } from 'lucide-react'
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodoCuenta as calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
+import { LimitReachedModal, tryParseLimitReached, type LimitReachedInfo } from '@/components/limit-reached-modal'
 
 type Cuenta = {
   id: string; nombre_cuenta: string; tipo_cuenta: string
@@ -30,6 +31,7 @@ function NuevoMovimientoContent() {
   const [cargado, setCargado]           = useState(false)
   const [scanningTicket, setScanningTicket] = useState(false)
   const [scanMsg, setScanMsg]           = useState<string | null>(null)
+  const [limitInfo, setLimitInfo]       = useState<LimitReachedInfo | null>(null)
   const fileInputRef                    = useRef<HTMLInputElement>(null)
 
   const today = new Date().toISOString().slice(0, 10)
@@ -88,11 +90,19 @@ function NuevoMovimientoContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64, mimeType: file.type }),
       })
+      const limitReached = await tryParseLimitReached(res)
+      if (limitReached) {
+        setLimitInfo(limitReached)
+        setScanMsg(null)
+        window.dispatchEvent(new Event('usage:changed'))
+        return
+      }
       const data = await res.json()
       if (!res.ok || !data.ok) {
         setScanMsg(data.error ?? 'No se pudo leer el ticket.')
         return
       }
+      window.dispatchEvent(new Event('usage:changed'))
       // Pre-fill form fields
       if (data.detalle) set('detalle', data.detalle)
       if (data.monto)   set('monto',   String(data.monto))
@@ -414,6 +424,8 @@ function NuevoMovimientoContent() {
           onClose={() => setModal(null)}
         />
       )}
+
+      <LimitReachedModal info={limitInfo} onClose={() => setLimitInfo(null)} />
     </div>
   )
 }
