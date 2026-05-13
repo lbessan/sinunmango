@@ -5,8 +5,9 @@ import {
   User, Shield, Palette, Moon, Sun, Check,
   ChevronRight, Mail, KeyRound, ShieldCheck, ShieldAlert,
   Info, Loader2, Smartphone, Bell, CalendarClock,
-  Copy, RefreshCw, Filter, AtSign,
+  Copy, RefreshCw, Filter, AtSign, Lock, Sparkles,
 } from 'lucide-react'
+import { LimitReachedModal } from '@/components/limit-reached-modal'
 import {
   THEMES, ThemeKey, applyTheme,
   STORAGE_THEME, useTheme,
@@ -766,17 +767,28 @@ function EmailInboundSection() {
 export function ConfiguracionClient({
   email,
   createdAt,
+  hasProAccess,
 }: {
   email: string
   createdAt: string | null
+  hasProAccess: boolean
 }) {
   // ── Theme ──────────────────────────────────────────────────────────────────
-  const [activeTheme, setActiveTheme] = useState<ThemeKey>(() => {
-    if (typeof window === 'undefined') return 'verde'
-    return (localStorage.getItem(STORAGE_THEME) as ThemeKey) ?? 'verde'
-  })
+  // Two-pass rendering: el primer render usa el default ('verde') para que
+  // matchee con el SSR. Después de hydration, useEffect lee localStorage y
+  // actualiza al theme real. Esto evita el hydration mismatch que aparece
+  // cuando el user tiene un theme custom guardado.
+  const [activeTheme, setActiveTheme] = useState<ThemeKey>('verde')
+  const [showProGate, setShowProGate] = useState(false)
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_THEME) as ThemeKey | null
+    if (stored && stored in THEMES) {
+      setActiveTheme(stored)
+    }
+  }, [])
 
   const handleTheme = (key: ThemeKey) => {
+    if (!hasProAccess) { setShowProGate(true); return }
     setActiveTheme(key)
     applyTheme(key)
     localStorage.setItem(STORAGE_THEME, key)
@@ -786,6 +798,7 @@ export function ConfiguracionClient({
   const { isDark: darkMode, toggleDark } = useTheme()
 
   const handleDarkMode = (val: boolean) => {
+    if (!hasProAccess) { setShowProGate(true); return }
     if (val !== darkMode) toggleDark()
   }
 
@@ -885,10 +898,34 @@ export function ConfiguracionClient({
       <Section
         icon={<Palette size={16} />}
         title="Apariencia"
-        description="Colores y modo de visualización"
+        description={hasProAccess ? 'Colores y modo de visualización' : 'Personalizá la app pasándote a Pro'}
       >
+        {!hasProAccess && (
+          <a
+            href="/pro"
+            className="flex items-center gap-3 -mt-2 mb-5 p-3 rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 to-violet-50/70 hover:shadow-sm transition-shadow"
+          >
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+            >
+              <Lock size={14} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                Disponible en Pro
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-900 text-white uppercase tracking-wider">PRO</span>
+              </p>
+              <p className="text-xs text-slate-500">Elegí color de acento y modo claro/oscuro</p>
+            </div>
+            <span className="text-xs font-semibold text-indigo-600 shrink-0 flex items-center gap-1">
+              <Sparkles size={12} /> Activar
+            </span>
+          </a>
+        )}
+
         {/* Theme presets */}
-        <div>
+        <div className={!hasProAccess ? 'opacity-60' : ''}>
           <p className="text-sm font-medium text-slate-600 mb-3">Color de acento</p>
           <div className="flex items-center gap-3 flex-wrap">
             {(Object.entries(THEMES) as [ThemeKey, typeof THEMES[ThemeKey]][]).map(([key, theme]) => (
@@ -923,7 +960,7 @@ export function ConfiguracionClient({
         </div>
 
         {/* Dark mode */}
-        <div className="border-t border-slate-50 pt-5">
+        <div className={`border-t border-slate-50 pt-5 ${!hasProAccess ? 'opacity-60' : ''}`}>
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-slate-600 mb-0.5">Modo de visualización</p>
@@ -956,6 +993,10 @@ export function ConfiguracionClient({
         </div>
       </Section>
 
+      <LimitReachedModal
+        info={showProGate ? { feature: 'personalizacion', limit: -1, used: 0 } : null}
+        onClose={() => setShowProGate(false)}
+      />
     </div>
   )
 }

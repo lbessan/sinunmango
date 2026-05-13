@@ -91,7 +91,7 @@ export function AIDeepReport({
               áreas de oportunidad con ahorro estimado, outlook a 12 meses. Es como tener un asesor financiero leyendo tus datos.
             </p>
             <a
-              href="/configuracion?tab=plan"
+              href="/pro"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white"
               style={{ background: 'linear-gradient(90deg, #6366f1, #8b5cf6)' }}
             >

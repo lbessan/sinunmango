@@ -1,16 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
+import { getUserPlan } from '@/lib/subscription'
+import { enforceMonthlyLimit, usageHeaders } from '@/lib/usage-limits'
 
 // ─── POST /api/parsear-tarjeta-pdf ────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), extrae metadata de la tarjeta
 // (banco, red, variante, terminacion, dias de cierre/vencimiento) y los consumos.
+// Usado durante el onboarding para configurar tarjetas con histórico.
 //
 // Body: { pdf: string (base64) }
 // Response: { ok: true, tarjeta: {...}, transacciones: [...] }
 
 export async function POST(req: NextRequest) {
-  const { user } = await createClientForRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+
+  // Monthly usage gate: comparte el cupo con /api/parsear-resumen (mismo costo IA).
+  // Free: 1 PDF/mes. Pro: ilimitado.
+  const plan  = await getUserPlan(supabase)
+  const usage = await enforceMonthlyLimit(supabase, 'resumen', plan.has_pro_access)
+  if (!usage.allowed) {
+    return NextResponse.json(
+      { error: 'limit_reached', feature: 'resumen', limit: usage.limit, used: usage.used },
+      { status: 429 },
+    )
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -128,7 +142,7 @@ Notas importantes:
         ok:            true,
         tarjeta:       parsed.tarjeta ?? {},
         transacciones: parsed.transacciones ?? [],
-      })
+      }, { headers: usageHeaders(usage) })
     } catch {
       // Fallback: try to recover partial JSON
       const match = clean.match(/"transacciones"\s*:\s*(\[[\s\S]*)/)
@@ -145,7 +159,7 @@ Notas importantes:
             try { tarjeta = JSON.parse(tarjetaMatch[1]) } catch { /* skip */ }
           }
           console.warn('[parsear-tarjeta-pdf] Partial parse recovered', txs.length, 'transactions')
-          return NextResponse.json({ ok: true, tarjeta, transacciones: txs })
+          return NextResponse.json({ ok: true, tarjeta, transacciones: txs }, { headers: usageHeaders(usage) })
         } catch { /* fall through */ }
       }
       console.error('[parsear-tarjeta-pdf] Could not parse Claude response:', rawText.slice(0, 500))

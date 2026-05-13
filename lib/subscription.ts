@@ -50,6 +50,38 @@ export async function getUserPlan(supabase: SupabaseClient<Database>): Promise<U
   }
 }
 
+// ─── Admin: leer plan por userId (para webhooks sin sesión) ──────────────────
+
+/**
+ * Variante de getUserPlan para contextos sin sesión (webhooks Resend, RC, etc).
+ * Requiere adminClient. Filtra por user_id explícito en lugar de depender de RLS.
+ */
+export async function getUserPlanById(
+  admin:  SupabaseClient<Database>,
+  userId: string,
+): Promise<UserPlan> {
+  const { data } = await admin
+    .from('user_profiles')
+    .select('plan, plan_expires_at, google_subscription_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!data) return DEFAULT_PLAN
+
+  const plan    = (data.plan ?? 'free') as Plan
+  const expires = data.plan_expires_at as string | null
+  const has_pro_access =
+    plan === 'grandfathered' ||
+    (plan === 'pro' && (!expires || new Date(expires) > new Date()))
+
+  return {
+    plan,
+    plan_expires_at:        expires,
+    google_subscription_id: data.google_subscription_id as string | null,
+    has_pro_access,
+  }
+}
+
 // ─── Admin: actualizar plan (llamado solo desde webhooks) ────────────────────
 
 /**

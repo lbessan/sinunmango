@@ -14,6 +14,7 @@ import {
   applyTheme, applyDarkMode,
 } from '@/components/theme-provider'
 import { calcularPeriodoCuenta as calcularPeriodo } from '@/lib/tarjeta-periodo'
+import { LimitReachedModal, tryParseLimitReached, type LimitReachedInfo } from '@/components/limit-reached-modal'
 
 // ─── Variantes de tarjeta ─────────────────────────────────────────────────────
 
@@ -245,6 +246,7 @@ export default function OnboardingPage() {
   const [parsedCards,   setParsedCards]   = useState<PdfCard[]>([])
   const [parsingPdfs,   setParsingPdfs]   = useState(false)
   const [parseProgress, setParseProgress] = useState({ done: 0, total: 0 })
+  const [limitInfo,     setLimitInfo]     = useState<LimitReachedInfo | null>(null)
   const [savingImport,  setSavingImport]  = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
@@ -307,7 +309,14 @@ export default function OnboardingPage() {
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ pdf: base64 }),
         })
+        const limitReached = await tryParseLimitReached(res)
+        if (limitReached) {
+          setLimitInfo(limitReached)
+          window.dispatchEvent(new Event('usage:changed'))
+          break  // salimos del loop; los PDFs procesados antes se mantienen en results
+        }
         if (res.ok) {
+          window.dispatchEvent(new Event('usage:changed'))
           const data = await res.json()
           results.push({
             banco:          data.tarjeta?.banco       ?? '',
@@ -1111,6 +1120,8 @@ export default function OnboardingPage() {
           Podés modificar todo esto en cualquier momento desde Configuración
         </p>
       </div>
+
+      <LimitReachedModal info={limitInfo} onClose={() => setLimitInfo(null)} />
     </div>
   )
 }

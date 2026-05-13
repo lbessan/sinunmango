@@ -6,6 +6,7 @@ import { NuevoItemModal }  from '@/components/nuevo-item-modal'
 import { IconoCategoria }  from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodo, addMonths, stripCuotaSuffix } from '@/lib/tarjeta-periodo'
+import { LimitReachedModal, tryParseLimitReached, type LimitReachedInfo } from '@/components/limit-reached-modal'
 
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -462,6 +463,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const [error,   setError]   = useState('')
   const [txs,     setTxs]     = useState<Transaccion[]>([])
   const [saving,  setSaving]  = useState(false)
+  const [limitInfo, setLimitInfo] = useState<LimitReachedInfo | null>(null)
 
   const handleFile = async (file: File) => {
     if (file.type !== 'application/pdf') { setError('Solo se aceptan archivos PDF'); return }
@@ -479,7 +481,14 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
         body: JSON.stringify({ pdf: base64, movimientosExistentes: movsExist }),
       })
       setLoading(false)
+      const limitReached = await tryParseLimitReached(res)
+      if (limitReached) {
+        setLimitInfo(limitReached)
+        window.dispatchEvent(new Event('usage:changed'))
+        return
+      }
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al procesar el PDF'); return }
+      window.dispatchEvent(new Event('usage:changed'))
       const d = await res.json()
       const parsed: Transaccion[] = (d.transacciones ?? []).map((t: any) => ({
         ...t,
@@ -767,6 +776,8 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
           </>
         )}
       </div>
+
+      <LimitReachedModal info={limitInfo} onClose={() => setLimitInfo(null)} />
     </div>
   )
 }

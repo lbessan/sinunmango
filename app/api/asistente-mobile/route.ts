@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { todayAR, todayPartsAR } from '@/lib/timezone'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { getUserPlan } from '@/lib/subscription'
+import { enforceMonthlyLimit, usageHeaders } from '@/lib/usage-limits'
 
 // ─── POST /api/asistente-mobile ───────────────────────────────────────────────
 // Non-streaming version of /api/asistente for the mobile app.
@@ -19,6 +21,16 @@ export async function POST(req: NextRequest) {
   // Rate limit: 20/min — mismo presupuesto que /api/asistente
   const rl = await checkRateLimit(user.id, '/api/asistente-mobile', { max: 20, windowSeconds: 60 })
   if (!rl.allowed) return NextResponse.json({ error: rl.message }, { status: 429 })
+
+  // Monthly usage gate (free tier): 5 mensajes/mes. Pro: ilimitado.
+  const plan  = await getUserPlan(supabase)
+  const usage = await enforceMonthlyLimit(supabase, 'asistente', plan.has_pro_access)
+  if (!usage.allowed) {
+    return NextResponse.json(
+      { error: 'limit_reached', feature: 'asistente', limit: usage.limit, used: usage.used },
+      { status: 429 },
+    )
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -44,7 +56,9 @@ export async function POST(req: NextRequest) {
     { data: cuentasSaldos },
     { data: resumen },
     { data: categorias },
+    { data: subcategorias },
     { data: gastosFijos },
+    { data: inversiones },
     { data: params },
     { data: movHistorico },
     { data: movRecientes },
@@ -65,11 +79,22 @@ export async function POST(req: NextRequest) {
       .eq('user_id', user.id)
       .order('nombre_categoria'),
     supabase
+      .from('subcategorias')
+      .select('id, nombre_subcategoria, categoria_padre')
+      .eq('user_id', user.id)
+      .order('nombre_subcategoria'),
+    supabase
       .from('gastos_fijos')
       .select('nombre_gasto, monto_estimado, moneda, dia_vencimiento, cuentas(nombre_cuenta, tipo_cuenta)')
       .eq('activo', true)
       .eq('user_id', user.id)
       .order('dia_vencimiento'),
+    supabase
+      .from('inversiones')
+      .select('tipo, nombre, fecha_inicio, fecha_vencimiento, moneda, capital_inicial, valor_actual, estado, datos, notas')
+      .eq('user_id', user.id)
+      .neq('estado', 'cancelado')
+      .order('fecha_vencimiento', { ascending: true, nullsFirst: false }),
     supabase
       .from('parametros')
       .select('valor')
@@ -134,6 +159,40 @@ export async function POST(req: NextRequest) {
   }).join('\n')
   const categoriasStr = (categorias ?? []).map(c => `  - ${c.nombre_categoria} (${c.tipo_default}) [id: ${c.id}]`).join('\n')
 
+  // ── Subcategorías ────────────────────────────────────────────────────────
+  const catNameById: Record<string, string> = Object.fromEntries(
+    (categorias ?? []).map(c => [c.id, c.nombre_categoria ?? ''])
+  )
+  const subcategoriasStr = (subcategorias ?? []).map(sc => {
+    const padre = sc.categoria_padre ? (catNameById[sc.categoria_padre] ?? '?') : '—'
+    return `  - ${sc.nombre_subcategoria} (de ${padre}) [id: ${sc.id}]`
+  }).join('\n')
+
+  // ── Inversiones (plazos fijos, FCI, etc.) ────────────────────────────────
+  const TIPO_INV_LABEL: Record<string, string> = {
+    plazo_fijo: 'Plazo Fijo', plazo_fijo_uva: 'Plazo Fijo UVA', fci: 'FCI',
+    dolar: 'Dólar físico', crypto: 'Crypto', cedear: 'CEDEAR', accion: 'Acción',
+    bono: 'Bono', on: 'ON corporativa', otro: 'Otro',
+  }
+  const todayDate = new Date(yAR, mAR - 1, dAR)
+  const inversionesStr = (inversiones ?? []).map(inv => {
+    const tipo    = TIPO_INV_LABEL[inv.tipo ?? ''] ?? inv.tipo ?? '?'
+    const simbolo = inv.moneda === 'USD' ? 'US$' : '$'
+    const nombre  = inv.nombre ? ` "${inv.nombre}"` : ''
+    const vence   = inv.fecha_vencimiento
+      ? (() => {
+          const dias = Math.round((new Date(inv.fecha_vencimiento + 'T12:00:00').getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24))
+          const txt  = dias < 0 ? `vencido hace ${-dias}d` : dias === 0 ? 'vence HOY' : `vence en ${dias}d (${inv.fecha_vencimiento})`
+          return ` · ${txt}`
+        })()
+      : ''
+    const capital = `${simbolo}${fmt(inv.capital_inicial ?? 0)}`
+    const valor   = inv.valor_actual != null ? ` · valor actual ${simbolo}${fmt(inv.valor_actual)}` : ''
+    const datos   = inv.datos && Object.keys(inv.datos as object).length > 0 ? ` · ${JSON.stringify(inv.datos)}` : ''
+    const notas   = inv.notas ? ` · "${inv.notas}"` : ''
+    return `  - ${tipo}${nombre}: capital ${capital}${valor} · inicio ${inv.fecha_inicio}${vence} · estado ${inv.estado}${datos}${notas}`
+  }).join('\n')
+
   // ── System prompt ─────────────────────────────────────────────────────────
   const systemPrompt = `Sos Manguito, el asistente financiero personal de sinunmango — la app de finanzas de ${user.email}.
 Personalidad: amigable, directo, informal (tuteo siempre). Emojis con moderación. Preciso con los números. No inventás datos.
@@ -170,9 +229,19 @@ ${gastosFijosStr || '  (sin gastos fijos)'}
 ${movStr || '  (sin movimientos)'}
 
 ═══════════════════════════════════════
+INVERSIONES ACTIVAS (plazos fijos, FCI, dólar, crypto, bonos, etc.)
+═══════════════════════════════════════
+${inversionesStr || '  (sin inversiones cargadas)'}
+
+═══════════════════════════════════════
 CATEGORÍAS DISPONIBLES (para registrar)
 ═══════════════════════════════════════
 ${categoriasStr || '  (sin categorías)'}
+
+═══════════════════════════════════════
+SUBCATEGORÍAS DISPONIBLES (opcional al registrar)
+═══════════════════════════════════════
+${subcategoriasStr || '  (sin subcategorías)'}
 
 ═══════════════════════════════════════
 CAPACIDADES
@@ -247,5 +316,5 @@ REGLAS CRÍTICAS:
     }
   }
 
-  return NextResponse.json({ text, accion })
+  return NextResponse.json({ text, accion }, { headers: usageHeaders(usage) })
 }

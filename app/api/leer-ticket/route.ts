@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { todayAR } from '@/lib/timezone'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { getUserPlan } from '@/lib/subscription'
+import { enforceMonthlyLimit, usageHeaders } from '@/lib/usage-limits'
 
 // ─── POST /api/leer-ticket ───────────────────────────────────────────────────
 // Receives a base64 image of a receipt/ticket, sends it to Claude Vision,
@@ -10,12 +12,22 @@ import { checkRateLimit } from '@/lib/rate-limit'
 // Body: { image: string (base64), mimeType: "image/jpeg" | "image/png" | "image/webp" }
 
 export async function POST(req: NextRequest) {
-  const { user } = await createClientForRequest(req)
+  const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Rate limit: 10/min — OCR es menos común y más caro que el chat
   const rl = await checkRateLimit(user.id, '/api/leer-ticket', { max: 10, windowSeconds: 60 })
   if (!rl.allowed) return NextResponse.json({ error: rl.message }, { status: 429 })
+
+  // Monthly usage gate (free tier): 3 tickets/mes. Pro: ilimitado.
+  const plan  = await getUserPlan(supabase)
+  const usage = await enforceMonthlyLimit(supabase, 'ticket', plan.has_pro_access)
+  if (!usage.allowed) {
+    return NextResponse.json(
+      { error: 'limit_reached', feature: 'ticket', limit: usage.limit, used: usage.used },
+      { status: 429 },
+    )
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -106,7 +118,7 @@ Notas:
       moneda:  parsed.moneda   ?? 'ARS',
       fecha:   parsed.fecha    ?? todayAR(),
       cuotas:  parsed.cuotas   ?? 1,
-    })
+    }, { headers: usageHeaders(usage) })
   } catch {
     console.error('[leer-ticket] Could not parse Claude response:', rawText)
     return NextResponse.json(
