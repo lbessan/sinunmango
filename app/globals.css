@@ -30,10 +30,11 @@ html.dark {
   --text-primary:   #e2eaf3;
   --text-secondary: #8faabb;
   --text-muted:     #4d6d87;
-  --border:         #1e3448;
-  --border-subtle:  #162738;
+  /* Bordes: rgba con baja opacidad para que se mezclen con cualquier bg */
+  --border:         rgba(255,255,255,0.07);
+  --border-subtle:  rgba(255,255,255,0.04);
   --ring:           rgba(0,0,0,.3);
-  --divider:        #162738;
+  --divider:        rgba(255,255,255,0.04);
 }
 
 /* ── Global base ───────────────────────────────────────────────────────────── */
