@@ -311,13 +311,13 @@ function HowToBuyModal({ plan, onClose }: { plan: 'monthly' | 'annual'; onClose:
           Activá Pro {plan === 'monthly' ? 'mensual' : 'anual'}
         </p>
         <p className="text-sm text-slate-500 mb-5">
-          Por ahora la compra se hace desde la app mobile. Estamos trabajando para habilitar la compra directa desde web.
+          La suscripción se gestiona desde la app Android. Una vez activa, también vas a tener Pro automáticamente acá en la web.
         </p>
         <ol className="space-y-3 mb-5">
           {[
             'Descargá sinunmango desde Google Play',
             'Iniciá sesión con tu mismo email',
-            'Andá a la página Pro y elegí tu plan',
+            'Tocá "Pro" en el menú y elegí tu plan',
             'Activá los 7 días de prueba gratis',
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3 text-sm text-slate-600">
