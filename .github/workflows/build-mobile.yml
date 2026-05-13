@@ -91,10 +91,24 @@ jobs:
           git add sinunmango-mobile/app.json
           if git diff --cached --quiet; then
             echo "Nada para committear (versionCode ya estaba sincronizado)"
-          else
-            git commit -m "ci: bump versionCode to ${{ steps.bump.outputs.new_version }} [skip ci]"
-            git push
+            exit 0
           fi
+          git commit -m "ci: bump versionCode to ${{ steps.bump.outputs.new_version }} [skip ci]"
+          # Retry con rebase si main tuvo commits nuevos mientras corría el build.
+          # Esto pasa cuando el dev pushea código durante los ~15 min del build.
+          # El bump no es crítico (el AAB ya está en artifacts), así que si no
+          # podemos pushear después de 5 intentos, salimos con warning sin fail.
+          for i in 1 2 3 4 5; do
+            if git push; then
+              echo "Push exitoso en intento $i"
+              exit 0
+            fi
+            echo "Push rechazado en intento $i, sincronizando con remote..."
+            git pull --rebase origin "${{ github.ref_name }}" || true
+            sleep 2
+          done
+          echo "::warning::No se pudo pushear el bump de versionCode tras 5 intentos. El AAB se generó OK (artifact); bumpear manualmente el versionCode en app.json o re-correr el workflow para resincronizar."
+          exit 0
 
       - name: Done
         run: |
