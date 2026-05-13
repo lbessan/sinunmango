@@ -17,10 +17,7 @@ export async function GET(req: NextRequest) {
   // Uso del mes actual (solo relevante si NO es Pro)
   let usage: Record<UsageFeature, { used: number; limit: number; remaining: number }> | null = null
   if (!planInfo.has_pro_access) {
-    // Cast: los tipos generados de Supabase no conocen la RPC `get_all_usage`
-    // todavía. Regenerar `lib/database.types.ts` después de correr la migration
-    // `usage-monthly.sql` para eliminar este cast.
-    const { data } = await (supabase.rpc as unknown as (fn: string) => Promise<{ data: Array<{ feature: string; count: number }> | null }>)('get_all_usage')
+    const { data } = await supabase.rpc('get_all_usage')
     const usedByFeature: Record<string, number> = {}
     for (const row of (data ?? [])) {
       usedByFeature[row.feature] = row.count
