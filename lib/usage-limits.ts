@@ -23,6 +23,32 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database }       from '@/lib/database.types'
 
+// ── Cast helper ──────────────────────────────────────────────────────────────
+// `lib/database.types.ts` se generó antes de la migration `usage-monthly`,
+// por lo que TypeScript no conoce todavía:
+//   - Tabla `usage_monthly`
+//   - RPCs `get_usage`, `increment_usage`, `get_all_usage`
+// Casteamos localmente como workaround. Cuando regeneres los tipos vía
+// `supabase gen types` podés eliminar estos casts.
+type UntypedClient = {
+  rpc:  (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>
+  from: (table: string) => {
+    select: (cols: string) => {
+      eq: (col: string, val: unknown) => {
+        eq: (col: string, val: unknown) => {
+          eq: (col: string, val: unknown) => {
+            eq: (col: string, val: unknown) => {
+              maybeSingle: () => Promise<{ data: { count: number } | null; error: unknown }>
+            }
+          }
+        }
+      }
+    }
+    upsert: (row: Record<string, unknown>, opts?: { onConflict: string }) => Promise<{ error: unknown }>
+  }
+}
+const untyped = (c: SupabaseClient<Database>) => c as unknown as UntypedClient
+
 // ── Configuración de límites ─────────────────────────────────────────────────
 export const USAGE_LIMITS_FREE = {
   asistente:    5,
@@ -49,9 +75,10 @@ export async function enforceMonthlyLimit(
   }
 
   const limit = USAGE_LIMITS_FREE[feature]
+  const sb    = untyped(supabase)
 
   // Primero leemos para devolver 429 sin desperdiciar la transacción de increment
-  const { data: currentRaw } = await supabase.rpc('get_usage', { p_feature: feature })
+  const { data: currentRaw } = await sb.rpc('get_usage', { p_feature: feature })
   const current = (currentRaw as number | null) ?? 0
 
   if (current >= limit) {
@@ -59,7 +86,7 @@ export async function enforceMonthlyLimit(
   }
 
   // Incrementamos atómicamente y obtenemos el count nuevo
-  const { data: newCountRaw, error } = await supabase.rpc('increment_usage', { p_feature: feature })
+  const { data: newCountRaw, error } = await sb.rpc('increment_usage', { p_feature: feature })
   if (error) {
     // Fallback conservador: si la RPC falla, permitir pero loggear.
     // No queremos romper UX por un fallo de DB en el contador.
@@ -86,7 +113,7 @@ export async function readMonthlyUsage(
   if (hasProAccess) {
     return { used: 0, limit: -1, remaining: -1, isPro: true }
   }
-  const { data } = await supabase.rpc('get_usage', { p_feature: feature })
+  const { data } = await untyped(supabase).rpc('get_usage', { p_feature: feature })
   const used  = (data as number | null) ?? 0
   const limit = USAGE_LIMITS_FREE[feature]
   return { used, limit, remaining: Math.max(0, limit - used), isPro: false }
@@ -115,7 +142,8 @@ export async function enforceMonthlyLimitAsAdmin(
   const month = ar.getUTCMonth() + 1
 
   // Leer current
-  const { data: row } = await admin
+  const adminUntyped = untyped(admin)
+  const { data: row } = await adminUntyped
     .from('usage_monthly')
     .select('count')
     .eq('user_id', userId)
@@ -131,7 +159,7 @@ export async function enforceMonthlyLimitAsAdmin(
 
   // Upsert con +1
   const newCount = current + 1
-  const { error } = await admin
+  const { error } = await adminUntyped
     .from('usage_monthly')
     .upsert(
       { user_id: userId, year, month, feature, count: newCount },
