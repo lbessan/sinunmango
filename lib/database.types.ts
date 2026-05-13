@@ -478,6 +478,33 @@ export type Database = {
           },
         ]
       }
+      usage_monthly: {
+        Row: {
+          count: number
+          feature: string
+          month: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          count?: number
+          feature: string
+          month: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          count?: number
+          feature?: string
+          month?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           alerta_resumen_mensual: boolean | null
@@ -697,6 +724,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_all_usage: {
+        Args: never
+        Returns: {
+          count: number
+          feature: string
+        }[]
+      }
+      get_usage: { Args: { p_feature: string }; Returns: number }
+      increment_usage: { Args: { p_feature: string }; Returns: number }
       is_authorized: { Args: { uid: string }; Returns: boolean }
       monto_estimado: {
         Args: {
