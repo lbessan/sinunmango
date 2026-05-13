@@ -8,6 +8,8 @@ import { NavGroup }  from './nav-group'
 import { LogoutButton }       from './logout-button'
 import { DarkModeToggle }     from './dark-mode-toggle'
 import { SidebarUsageWidget } from './sidebar-usage-widget'
+import { getAuthedClient }    from '@/lib/supabase/server'
+import { getUserPlan }        from '@/lib/subscription'
 
 async function getDolarBNA(): Promise<number> {
   try {
@@ -24,6 +26,8 @@ async function getDolarBNA(): Promise<number> {
 
 export async function Sidebar() {
   const dolarBna = await getDolarBNA()
+  const { supabase, user } = await getAuthedClient()
+  const hasProAccess = user ? (await getUserPlan(supabase)).has_pro_access : false
   return (
     <aside className="w-64 h-screen sticky top-0 flex flex-col shrink-0 overflow-x-hidden" style={{ background: 'var(--sidebar-bg, #0d2137)' }}>
 
@@ -75,7 +79,7 @@ export async function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-4 border-t border-white/8 space-y-3">
-        <DarkModeToggle />
+        <DarkModeToggle hasProAccess={hasProAccess} />
         <div className="flex items-center justify-between px-1">
           <div>
             <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#4b6a8a' }}>
