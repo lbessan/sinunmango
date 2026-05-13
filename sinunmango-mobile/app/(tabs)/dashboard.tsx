@@ -15,7 +15,9 @@ type Cuenta = { id: string; nombre: string; tipo: string; moneda: string; saldo:
 type DashboardData = {
   mes_label: string; saldo_disponible: number; saldo_usd: number
   proyectado: number; gastos_mes: number; ingresos_mes: number
-  gastos_fijos_pendientes: number; deuda_tarjetas: number; dolar: number
+  gastos_fijos_pendientes: number
+  deuda_tarjetas: number; deuda_tarjetas_ars?: number; deuda_tarjetas_usd?: number
+  dolar: number
   cuentas: Cuenta[]
 }
 
@@ -224,15 +226,20 @@ export default function DashboardScreen() {
                     </Text>
                   </View>
 
-                  {/* Deuda tarjetas */}
+                  {/* Deuda tarjetas — ARS nativo + USD nativo separado */}
                   <View style={[s.resumeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                     <View style={[s.resumeIcon, { backgroundColor: theme.surfaceAlt }]}>
                       <Ionicons name="card-outline" size={16} color="#8b5cf6" />
                     </View>
                     <Text style={[s.resumeLabel, { color: theme.textMuted }]}>Deuda en tarjetas</Text>
-                    <Text style={[s.resumeValue, { color: (data.deuda_tarjetas ?? 0) > 0 ? '#8b5cf6' : theme.text }]}>
-                      {show(data.deuda_tarjetas ?? 0)}
+                    <Text style={[s.resumeValue, { color: (data.deuda_tarjetas_ars ?? data.deuda_tarjetas ?? 0) > 0 ? '#8b5cf6' : theme.text }]}>
+                      {show(data.deuda_tarjetas_ars ?? data.deuda_tarjetas ?? 0)}
                     </Text>
+                    {!hidden && (data.deuda_tarjetas_usd ?? 0) > 0 && (
+                      <Text style={[s.resumeExtra, { color: '#8b5cf6' }]}>
+                        + US$ {fmt(data.deuda_tarjetas_usd ?? 0)}
+                      </Text>
+                    )}
                   </View>
 
                   {/* Dólar BNA */}
@@ -333,6 +340,7 @@ const s = StyleSheet.create({
   },
   resumeLabel: { fontSize: 11, fontWeight: '500', lineHeight: 14 },
   resumeValue: { fontSize: 17, fontWeight: '800' },
+  resumeExtra: { fontSize: 12, fontWeight: '700', marginTop: -2 },
 
   errorBox:  { alignItems: 'center', paddingTop: 60 },
   errorText: { fontSize: 14, textAlign: 'center', marginBottom: 16 },

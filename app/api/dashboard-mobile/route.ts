@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
       { data: cuentas },
       { data: movRecientes },
       { data: movMes },
+      { data: deudaTarjMovs },
     ],
   ] = await Promise.all([
     getUserPlan(supabase),
@@ -87,14 +88,23 @@ export async function GET(req: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(10),
 
-      // Gastos e ingresos del mes seleccionado (hasta hoy si es mes actual)
+      // Movs del mes — para cash flow real (separar gastos no-tarjeta y pagos a tarjeta)
       supabase
-        .from('movimientos')
-        .select('monto, tipo_movimiento')
+        .from('movimientos_completos')
+        .select('monto, monto_estimado, tipo_movimiento, cuenta_origen, cuenta_destino')
         .eq('user_id', user.id)
         .gte('fecha', mesStart)
         .lte('fecha', isMesActual ? today : mesEnd.slice(0, 10))
-        .in('tipo_movimiento', ['Gasto', 'Ingreso']),
+        .in('tipo_movimiento', ['Gasto', 'Ingreso', 'Transferencia']),
+
+      // Movs sobre tarjetas del período actual — para desglose ARS/USD nativo de la deuda
+      supabase
+        .from('movimientos_completos')
+        .select('monto, moneda, tipo_movimiento, cuenta_origen_tipo')
+        .in('tipo_movimiento', ['Gasto', 'Ingreso'])
+        .eq('periodo_tarjeta', mesStart)
+        .eq('cuenta_origen_tipo', 'Tarjeta Credito')
+        .eq('user_id', user.id),
     ]),
   ])
 
@@ -104,14 +114,36 @@ export async function GET(req: NextRequest) {
 
   const dolar = params?.valor ?? 1410
 
-  // Calcular gastos e ingresos del mes seleccionado directamente desde movimientos
-  const gastosMes   = (movMes ?? [])
-    .filter(m => m.tipo_movimiento === 'Gasto')
-    .reduce((acc, m) => acc + Math.abs(Number(m.monto)), 0)
+  // Set de IDs de tarjetas para filtros cash flow
+  const tarjetaIds = new Set(
+    (cuentas ?? []).filter(c => c.tipo_cuenta === 'Tarjeta Credito').map(c => c.id)
+  )
 
+  // Cash flow real: gastos = gastos con cuenta_origen NO tarjeta + transferencias con destino tarjeta (= pagos a tarjeta)
+  // Antes sumábamos TODOS los gastos del mes (incluyendo consumos con tarjeta) y eso doble-contaba
+  // contra deuda_tarjetas_periodo. Ahora "gasto del mes" = lo que SALE del cash real.
+  const gastosMes = (movMes ?? [])
+    .filter(m => {
+      if (m.tipo_movimiento === 'Gasto'         && m.cuenta_origen  && !tarjetaIds.has(m.cuenta_origen))  return true
+      if (m.tipo_movimiento === 'Transferencia' && m.cuenta_destino &&  tarjetaIds.has(m.cuenta_destino)) return true
+      return false
+    })
+    .reduce((acc, m) => acc + Math.abs(Number(m.monto_estimado ?? m.monto)), 0)
+
+  // Ingresos del mes: todos los Ingresos (incluye reintegros a tarjeta, igual que web `ingresos_actuales`)
   const ingresosMes = (movMes ?? [])
     .filter(m => m.tipo_movimiento === 'Ingreso')
-    .reduce((acc, m) => acc + Number(m.monto), 0)
+    .reduce((acc, m) => acc + Number(m.monto_estimado ?? m.monto), 0)
+
+  // Desglose ARS/USD nativo de la deuda tarjetas del período (Ingresos a tarjeta restan)
+  let deudaArs = 0
+  let deudaUsd = 0
+  for (const m of deudaTarjMovs ?? []) {
+    const signo = m.tipo_movimiento === 'Ingreso' ? -1 : 1
+    const raw   = (Number(m.monto) || 0) * signo
+    if (m.moneda === 'USD') deudaUsd += raw
+    else                    deudaArs += raw
+  }
 
   // Calcular proyectado a fin de mes (solo para mes actual)
   const deudaRestante = Math.max(0, (resumen.deuda_tarjetas_periodo ?? 0) - (resumen.pagos_tarjeta_mes ?? 0))
@@ -168,6 +200,8 @@ export async function GET(req: NextRequest) {
     ingresos_mes:            Math.round(ingresosMes),
     gastos_fijos_pendientes: Math.round(resumen.gastos_fijos_pendientes ?? 0),
     deuda_tarjetas:          Math.round(deudaRestante),
+    deuda_tarjetas_ars:      Math.round(deudaArs),
+    deuda_tarjetas_usd:      Math.round(deudaUsd * 100) / 100,
     dolar,
     cuentas:                 cuentasMapped,
     ultimos_movimientos:     movConCuenta,
