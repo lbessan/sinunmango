@@ -8,12 +8,16 @@ import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { supabase } from '@/lib/supabase'
 import { useTheme, ACCENTS, type AccentId, type ModeId } from '@/context/ThemeContext'
+import { useSubscription } from '@/context/SubscriptionContext'
+import { Paywall } from '@/components/Paywall'
 import type { User } from '@supabase/supabase-js'
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function ConfiguracionScreen() {
   const { theme, accentId, mode, setAccent, setMode } = useTheme()
   const [user, setUser] = useState<User | null>(null)
+  const [paywallOpen, setPaywallOpen] = useState(false)
+  const { hasPro, plan } = useSubscription()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -56,6 +60,37 @@ export default function ConfiguracionScreen() {
               <Text style={s.profileEmail} numberOfLines={1}>{email}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
+          </View>
+        </TouchableOpacity>
+
+        {/* ── PLAN ── */}
+        <TouchableOpacity
+          style={[s.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          onPress={() => !hasPro && setPaywallOpen(true)}
+          activeOpacity={hasPro ? 1 : 0.85}
+          disabled={hasPro}
+        >
+          <View style={[s.planRow, { borderBottomWidth: 0 }]}>
+            <View style={[s.planIcon, { backgroundColor: hasPro ? '#10b98122' : theme.surfaceAlt }]}>
+              <Ionicons
+                name={hasPro ? 'star' : 'sparkles-outline'}
+                size={18}
+                color={hasPro ? '#10b981' : theme.primary}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.planTitle, { color: theme.text }]}>
+                {hasPro ? 'Plan Pro activo' : 'Plan Free'}
+              </Text>
+              <Text style={[s.planSub, { color: theme.textMuted }]} numberOfLines={2}>
+                {hasPro
+                  ? plan === 'grandfathered'
+                    ? 'Acceso de por vida — gracias por ser early adopter'
+                    : 'Disfrutás Manguito IA, escáner de tickets, y más sin límites'
+                  : 'Probá Pro 7 días gratis. Manguito IA sin límites + funciones premium'}
+              </Text>
+            </View>
+            {!hasPro && <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />}
           </View>
         </TouchableOpacity>
 
@@ -184,6 +219,9 @@ export default function ConfiguracionScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Paywall modal — disparado desde el card "Plan Free" */}
+      <Paywall visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
     </SafeAreaView>
   )
 }
@@ -218,6 +256,18 @@ const s = StyleSheet.create({
   card: {
     borderRadius: 16, borderWidth: 1, overflow: 'hidden',
   },
+
+  // Plan
+  planRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingHorizontal: 16, paddingVertical: 16,
+  },
+  planIcon: {
+    width: 40, height: 40, borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  planTitle: { fontSize: 15, fontWeight: '700', marginBottom: 3 },
+  planSub:   { fontSize: 12, lineHeight: 16 },
   cardHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1,
