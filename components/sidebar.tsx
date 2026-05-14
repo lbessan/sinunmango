@@ -4,7 +4,7 @@ import {
   Landmark, Tag, Wallet, TrendingUp, Sparkles,
 } from 'lucide-react'
 import { NavItem }   from './nav-item'
-import { NavGroup }  from './nav-group'
+import { NavSection } from './nav-section'
 import { LogoutButton }       from './logout-button'
 import { DarkModeToggle }     from './dark-mode-toggle'
 import { SidebarUsageWidget } from './sidebar-usage-widget'
@@ -41,37 +41,27 @@ export async function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 py-3 overflow-y-auto space-y-0.5">
-        <p className="text-xs uppercase tracking-widest px-5 py-2" style={{ color: '#4b6a8a' }}>
-          Principal
-        </p>
-        <NavItem href="/dashboard"         icon={<LayoutDashboard size={17} />} label="Dashboard"        tourId="tour-dashboard" />
-        <NavItem href="/movimientos"       icon={<ArrowLeftRight size={17} />}  label="Movimientos"      tourId="tour-movimientos" />
-        <NavItem href="/movimientos/nuevo" icon={<PlusCircle size={17} />}      label="Nuevo movimiento" />
-        <NavItem href="/conciliaciones"    icon={<ShieldCheck size={17} />}     label="Conciliaciones" />
-        <NavItem href="/analitica"         icon={<BarChart2 size={17} />}       label="Analítica" />
-        <NavItem href="/pro"               icon={<Sparkles size={17} />}        label="Pro" />
+        <NavSection id="principal" label="Principal">
+          <NavItem href="/dashboard"         icon={<LayoutDashboard size={17} />} label="Dashboard"        tourId="tour-dashboard" />
+          <NavItem href="/movimientos"       icon={<ArrowLeftRight size={17} />}  label="Movimientos"      tourId="tour-movimientos" />
+          <NavItem href="/movimientos/nuevo" icon={<PlusCircle size={17} />}      label="Nuevo movimiento" />
+          <NavItem href="/conciliaciones"    icon={<ShieldCheck size={17} />}     label="Conciliaciones" />
+          <NavItem href="/analitica"         icon={<BarChart2 size={17} />}       label="Analítica" />
+          <NavItem href="/pro"               icon={<Sparkles size={17} />}        label="Pro" />
+        </NavSection>
 
-        <p className="text-xs uppercase tracking-widest px-5 py-2 mt-3" style={{ color: '#4b6a8a' }}>
-          Mis cuentas
-        </p>
-        <NavItem href="/cuentas"      icon={<Wallet size={17} />}      label="Cuentas"      tourId="tour-cuentas" />
-        <NavItem href="/tarjetas"     icon={<CreditCard size={17} />}  label="Tarjetas"     tourId="tour-tarjetas" />
-        <NavItem href="/gastos-fijos" icon={<Receipt size={17} />}     label="Gastos fijos" />
-        <NavItem href="/inversiones"  icon={<TrendingUp size={17} />}  label="Inversiones" />
+        <NavSection id="mis-cuentas" label="Mis cuentas" collapsible>
+          <NavItem href="/cuentas"      icon={<Wallet size={17} />}      label="Cuentas"      tourId="tour-cuentas" />
+          <NavItem href="/tarjetas"     icon={<CreditCard size={17} />}  label="Tarjetas"     tourId="tour-tarjetas" />
+          <NavItem href="/gastos-fijos" icon={<Receipt size={17} />}     label="Gastos fijos" />
+          <NavItem href="/inversiones"  icon={<TrendingUp size={17} />}  label="Inversiones" />
+        </NavSection>
 
-        <p className="text-xs uppercase tracking-widest px-5 py-2 mt-3" style={{ color: '#4b6a8a' }}>
-          Configuración
-        </p>
-        <NavGroup
-          icon={<Settings size={17} />}
-          label="Configuración"
-          paths={['/configuracion', '/categorias']}
-          tourId="tour-configuracion"
-        >
-          <NavItem href="/configuracion"        icon={<Settings  size={15} />} label="General"    exact />
-          <NavItem href="/configuracion/bancos" icon={<Landmark  size={15} />} label="Bancos"     exact />
-          <NavItem href="/categorias"           icon={<Tag       size={15} />} label="Categorías" exact />
-        </NavGroup>
+        <NavSection id="configuracion" label="Configuración" collapsible>
+          <NavItem href="/configuracion"        icon={<Settings  size={17} />} label="General"    exact />
+          <NavItem href="/configuracion/bancos" icon={<Landmark  size={17} />} label="Bancos"     exact />
+          <NavItem href="/categorias"           icon={<Tag       size={17} />} label="Categorías" exact />
+        </NavSection>
       </nav>
 
       {/* Widget de cupos del mes (Free) o badge Pro */}
