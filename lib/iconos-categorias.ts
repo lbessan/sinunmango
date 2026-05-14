@@ -275,8 +275,6 @@ export const ICONOS_CATEGORIAS: IconoDef[] = [
   { name: 'Drum',             label: 'Batería',       tags: ['bateria', 'tambor', 'instrumento', 'musica'],            grupo: 'Entretenimiento' },
   { name: 'PartyPopper',      label: 'Fiesta',        tags: ['fiesta', 'celebracion', 'cumple', 'festejo'],            grupo: 'Entretenimiento' },
   { name: 'BookHeart',        label: 'Libro fav.',    tags: ['libro', 'favorito', 'lectura'],                          grupo: 'Entretenimiento' },
-  { name: 'Clapperboard',     label: 'Filmación',     tags: ['claqueta', 'cine', 'pelicula', 'filmar'],                grupo: 'Entretenimiento' },
-  { name: 'BoomBox',          label: 'Estéreo',       tags: ['estereo', 'radio', 'musica'],                            grupo: 'Entretenimiento' },
 
   // ── Deporte (expandido) ───────────────────────────────────────────────────
   { name: 'Dumbbell',         label: 'Gimnasio',      tags: ['gimnasio', 'pesas', 'gym', 'musculo'],                   grupo: 'Deporte' },
@@ -290,13 +288,8 @@ export const ICONOS_CATEGORIAS: IconoDef[] = [
   { name: 'Goal',             label: 'Gol',           tags: ['gol', 'arco', 'futbol'],                                 grupo: 'Deporte' },
   { name: 'Target',           label: 'Objetivo',      tags: ['objetivo', 'meta', 'tiro', 'arqueria'],                  grupo: 'Deporte' },
   { name: 'BowArrow',         label: 'Arco',          tags: ['arco', 'flecha', 'arqueria'],                            grupo: 'Deporte' },
-  { name: 'Trophy',           label: 'Trofeo 2',      tags: ['trofeo', 'campeonato'],                                  grupo: 'Deporte' },
-  { name: 'Award',            label: 'Premio dep.',   tags: ['premio', 'trofeo', 'reconocimiento'],                    grupo: 'Deporte' },
-  { name: 'Activity',         label: 'Actividad',     tags: ['actividad', 'movimiento', 'ejercicio'],                  grupo: 'Deporte' },
-  { name: 'Bike',             label: 'Ciclismo',      tags: ['bicicleta', 'ciclismo', 'bici'],                         grupo: 'Deporte' },
   { name: 'Hourglass',        label: 'Tiempo',        tags: ['tiempo', 'reloj', 'medida'],                             grupo: 'Deporte' },
   { name: 'Waves',            label: 'Natación',      tags: ['natacion', 'olas', 'agua', 'piscina'],                   grupo: 'Deporte' },
-  { name: 'Flame',            label: 'Energía',       tags: ['energia', 'fuego', 'calorias'],                          grupo: 'Deporte' },
   { name: 'Flag',             label: 'Bandera',       tags: ['bandera', 'campeonato', 'meta'],                         grupo: 'Deporte' },
   { name: 'FlagTriangleRight', label: 'Banderín',     tags: ['banderin', 'esquina', 'corner'],                         grupo: 'Deporte' },
   { name: 'Timer',            label: 'Cronómetro',    tags: ['cronometro', 'tiempo', 'medir'],                         grupo: 'Deporte' },
@@ -330,7 +323,6 @@ export const ICONOS_CATEGORIAS: IconoDef[] = [
   { name: 'Trash2',           label: 'Basura',        tags: ['basura', 'residuos', 'limpieza', 'tacho'],               grupo: 'Servicios' },
   { name: 'Recycle',          label: 'Reciclaje',     tags: ['reciclaje', 'verde', 'eco'],                             grupo: 'Servicios' },
   { name: 'Construction',     label: 'Obra',          tags: ['obra', 'construccion', 'reforma'],                       grupo: 'Servicios' },
-  { name: 'WashingMachine',   label: 'Lavandería',    tags: ['lavanderia', 'lavarropas', 'ropa'],                      grupo: 'Servicios' },
   { name: 'Antenna',          label: 'Antena',        tags: ['antena', 'tv', 'cable'],                                 grupo: 'Servicios' },
   { name: 'SatelliteDish',    label: 'Satélite',      tags: ['satelite', 'cable', 'tv', 'directv'],                    grupo: 'Servicios' },
   { name: 'PhoneCall',        label: 'Llamada',       tags: ['llamada', 'telefono', 'celular'],                        grupo: 'Servicios' },
@@ -347,7 +339,6 @@ export const ICONOS_CATEGORIAS: IconoDef[] = [
   { name: 'Shirt',            label: 'Indumentaria',  tags: ['ropa', 'indumentaria', 'remera', 'camisa'],              grupo: 'Belleza' },
   { name: 'Glasses',          label: 'Anteojos',      tags: ['lentes', 'anteojos', 'oculista', 'gafas'],               grupo: 'Belleza' },
   { name: 'Watch',            label: 'Reloj',         tags: ['reloj', 'accesorio', 'tiempo'],                          grupo: 'Belleza' },
-  { name: 'Footprints',       label: 'Pies',          tags: ['pies', 'pedicura', 'movilidad'],                         grupo: 'Belleza' },
 
   // ── Viajes ────────────────────────────────────────────────────────────────
   { name: 'Globe',            label: 'Mundo',         tags: ['mundo', 'viaje', 'internacional', 'globo'],              grupo: 'Viajes' },
@@ -395,7 +386,6 @@ export const ICONOS_CATEGORIAS: IconoDef[] = [
   { name: 'CalendarHeart',    label: 'Aniversario',   tags: ['aniversario', 'fecha', 'amor'],                          grupo: 'Familia' },
   { name: 'CalendarDays',     label: 'Calendario',    tags: ['calendario', 'fecha', 'mes'],                            grupo: 'Familia' },
   { name: 'Church',           label: 'Iglesia',       tags: ['iglesia', 'religion', 'casamiento'],                     grupo: 'Familia' },
-  { name: 'Cross',            label: 'Religión',      tags: ['cruz', 'religion', 'iglesia'],                           grupo: 'Familia' },
   { name: 'HeartHandshake',   label: 'Pareja',        tags: ['pareja', 'acuerdo', 'amistad', 'amor'],                  grupo: 'Familia' },
   { name: 'HouseHeart',       label: 'Hogar dulce',   tags: ['casa', 'corazon', 'hogar', 'amor'],                      grupo: 'Familia' },
   { name: 'Clover',           label: 'Suerte',        tags: ['trebol', 'suerte', 'fortuna'],                           grupo: 'Familia' },
