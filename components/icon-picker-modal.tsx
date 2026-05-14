@@ -33,9 +33,12 @@ export function IconPickerModal({ open, current, onPick, onClose }: Props) {
     return ICONOS_CATEGORIAS.filter(i => {
       if (grupo && i.grupo !== grupo) return false
       if (!q) return true
+      // El haystack incluye también el nombre del grupo, así "deporte" matchea
+      // todos los iconos de Deporte sin necesidad de tag explícito en cada uno.
       const haystack = [
         norm(i.label),
         norm(i.name),
+        norm(i.grupo),
         ...i.tags.map(norm),
       ].join(' ')
       return haystack.includes(q)

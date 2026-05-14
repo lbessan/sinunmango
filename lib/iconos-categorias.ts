@@ -251,7 +251,6 @@ export const ICONOS_CATEGORIAS: IconoDef[] = [
   { name: 'Award',            label: 'Premio',        tags: ['premio', 'logro', 'medalla'],                            grupo: 'Educación' },
   { name: 'BadgeCheck',       label: 'Certificado',   tags: ['certificado', 'verificado', 'aprobado'],                 grupo: 'Educación' },
   { name: 'Atom',             label: 'Ciencia',       tags: ['atomo', 'ciencia', 'fisica', 'quimica'],                 grupo: 'Educación' },
-  { name: 'Calculator',       label: 'Matemática',    tags: ['matematica', 'calculo', 'numeros'],                      grupo: 'Educación' },
 
   // ── Entretenimiento ───────────────────────────────────────────────────────
   { name: 'Film',             label: 'Cine',          tags: ['cine', 'pelicula', 'film', 'cinema'],                    grupo: 'Entretenimiento' },
@@ -264,7 +263,6 @@ export const ICONOS_CATEGORIAS: IconoDef[] = [
   { name: 'Gamepad2',         label: 'Videojuegos',   tags: ['juego', 'videojuego', 'gaming', 'consola'],              grupo: 'Entretenimiento' },
   { name: 'Joystick',         label: 'Joystick',      tags: ['joystick', 'arcade', 'gaming'],                          grupo: 'Entretenimiento' },
   { name: 'Dices',            label: 'Dados',         tags: ['dados', 'juego', 'azar', 'mesa'],                        grupo: 'Entretenimiento' },
-  { name: 'Tv',               label: 'TV',            tags: ['tv', 'television', 'streaming', 'netflix'],              grupo: 'Entretenimiento' },
   { name: 'Drama',            label: 'Teatro',        tags: ['teatro', 'mascara', 'drama', 'espectaculo'],             grupo: 'Entretenimiento' },
   { name: 'Ticket',           label: 'Entradas',      tags: ['entrada', 'recital', 'evento', 'show', 'ticket'],        grupo: 'Entretenimiento' },
   { name: 'Mic',              label: 'Karaoke',       tags: ['karaoke', 'microfono', 'podcast', 'canto'],              grupo: 'Entretenimiento' },
