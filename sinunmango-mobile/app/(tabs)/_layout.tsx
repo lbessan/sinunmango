@@ -1,4 +1,4 @@
-import { Tabs, router } from 'expo-router'
+import { Tabs, router, usePathname } from 'expo-router'
 import { View, Text, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -114,10 +114,19 @@ const fab = StyleSheet.create({
 // ─── Layout principal ─────────────────────────────────────────────────────────
 export default function TabsLayout() {
   const { theme } = useTheme()
+  const pathname  = usePathname()
+
+  // El FAB de "Nuevo movimiento" solo tiene sentido en pantallas relacionadas
+  // a movimientos. En Manguito tapaba el input del chat, en Configuración no
+  // aporta nada.
+  const showFab =
+    pathname === '/' ||
+    pathname === '/dashboard' ||
+    pathname === '/movimientos'
 
   return (
     <View style={{ flex: 1 }}>
-    <FabOverlay theme={theme} />
+    {showFab && <FabOverlay theme={theme} />}
     <Tabs
       screenOptions={{
         headerShown: false,
