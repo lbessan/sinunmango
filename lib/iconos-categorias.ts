@@ -1,206 +1,180 @@
-// Íconos de Icons8 Stickers — https://icons8.com/icons/stickers
-// Cada entrada tiene 'nombre' principal y 'alt' como fallback si el principal falla
-// URL: https://img.icons8.com/stickers/96/{nombre}.png
+// ─── Iconos de categorías — curados de lucide-react ─────────────────────────
+//
+// Sistema local de iconos (sin URLs externas). Cada entrada tiene:
+//   - name:  PascalCase del icono en lucide-react (el "nombre técnico")
+//   - label: español, lo que el user ve
+//   - tags:  array de palabras clave en español, para el buscador del picker
+//   - grupo: agrupación visual en el picker
+//
+// El componente <IconoCategoria> renderiza el icono Lucide directo. Soporta
+// fallback a emoji si el valor guardado no matchea ningún Lucide (por compat
+// con categorías viejas que tengan un emoji como ícono).
+//
+// Cómo agregar uno nuevo:
+//   1. Buscá el icono en https://lucide.dev/icons/
+//   2. Agregá una entrada al array con su nombre PascalCase
+//   3. Listo — el picker lo levanta automático.
 
-export const ICONOS_CATEGORIAS = [
-  // ── Compras ──────────────────────────────────────────────────────────────
-  { nombre: 'shopping-cart',       alt: 'cart',              label: 'Compras',              grupo: 'Compras' },
-  { nombre: 'shopping-bag',        alt: 'bag',               label: 'Bolsa',                grupo: 'Compras' },
-  { nombre: 'market',              alt: 'grocery-store',     label: 'Tienda',               grupo: 'Compras' },
-  { nombre: 'price-tag-usd',       alt: 'tag',               label: 'Precio',               grupo: 'Compras' },
-  { nombre: 'discount',            alt: 'sale',              label: 'Descuento',            grupo: 'Compras' },
-  { nombre: 'box',                 alt: 'package',           label: 'Paquete',              grupo: 'Compras' },
-  { nombre: 'barcode',             alt: 'scan',              label: 'Código de barras',     grupo: 'Compras' },
-
-  // ── Hogar ─────────────────────────────────────────────────────────────────
-  { nombre: 'home',                alt: 'house',             label: 'Hogar',                grupo: 'Hogar' },
-  { nombre: 'sofa',                alt: 'couch',             label: 'Muebles',              grupo: 'Hogar' },
-  { nombre: 'maintenance',         alt: 'wrench',            label: 'Mantenimiento',        grupo: 'Hogar' },
-  { nombre: 'electricity',         alt: 'light-bulb',        label: 'Electricidad',         grupo: 'Hogar' },
-  { nombre: 'gas',                 alt: 'gas-stove',         label: 'Gas',                  grupo: 'Hogar' },
-  { nombre: 'water',               alt: 'drop',              label: 'Agua',                 grupo: 'Hogar' },
-  { nombre: 'vacuum-cleaner',      alt: 'cleaning',          label: 'Limpieza',             grupo: 'Hogar' },
-  { nombre: 'washing-machine',     alt: 'laundry',           label: 'Lavandería',           grupo: 'Hogar' },
-  { nombre: 'air-conditioner',     alt: 'climate-control',   label: 'Aire acond.',          grupo: 'Hogar' },
-  { nombre: 'tv',                  alt: 'television',        label: 'TV',                   grupo: 'Hogar' },
-  { nombre: 'key',                 alt: 'door-key',          label: 'Alquiler',             grupo: 'Hogar' },
-  { nombre: 'door',                alt: 'entrance',          label: 'Vivienda',             grupo: 'Hogar' },
-  { nombre: 'garden',              alt: 'plant',             label: 'Jardín',               grupo: 'Hogar' },
-
-  // ── Transporte ────────────────────────────────────────────────────────────
-  { nombre: 'car',                 alt: 'vehicle',           label: 'Auto',                 grupo: 'Transporte' },
-  { nombre: 'motorcycle',          alt: 'bike',              label: 'Moto',                 grupo: 'Transporte' },
-  { nombre: 'bus',                 alt: 'public-transport',  label: 'Colectivo',            grupo: 'Transporte' },
-  { nombre: 'taxi',                alt: 'cab',               label: 'Taxi / Uber',          grupo: 'Transporte' },
-  { nombre: 'bicycle',             alt: 'cycling',           label: 'Bicicleta',            grupo: 'Transporte' },
-  { nombre: 'gas-pump',            alt: 'fuel',              label: 'Combustible',          grupo: 'Transporte' },
-  { nombre: 'parking',             alt: 'park',              label: 'Estacionamiento',      grupo: 'Transporte' },
-  { nombre: 'car-service',         alt: 'repair',            label: 'Service auto',         grupo: 'Transporte' },
-  { nombre: 'train',               alt: 'railway',           label: 'Tren',                 grupo: 'Transporte' },
-  { nombre: 'wharf',               alt: 'boat',              label: 'Barco',                grupo: 'Transporte' },
-
-  // ── Salud ─────────────────────────────────────────────────────────────────
-  { nombre: 'like',                alt: 'health',            label: 'Salud general',        grupo: 'Salud' },
-  { nombre: 'pill',                alt: 'medicine',          label: 'Medicamentos',         grupo: 'Salud' },
-  { nombre: 'hospital',            alt: 'clinic',            label: 'Hospital',             grupo: 'Salud' },
-  { nombre: 'stethoscope',         alt: 'doctor',            label: 'Médico',               grupo: 'Salud' },
-  { nombre: 'tooth',               alt: 'dental',            label: 'Dentista',             grupo: 'Salud' },
-  { nombre: 'syringe',             alt: 'injection',         label: 'Vacuna',               grupo: 'Salud' },
-  { nombre: 'band-aid',            alt: 'ambulance',         label: 'Primeros auxilios',    grupo: 'Salud' },
-  { nombre: 'thermometer',         alt: 'temperature',       label: 'Temperatura',          grupo: 'Salud' },
-  { nombre: 'contact-lens',        alt: 'glasses',           label: 'Oftalmólogo',          grupo: 'Salud' },
-  { nombre: 'ambulance',           alt: 'emergency',         label: 'Emergencia',           grupo: 'Salud' },
-
-  // ── Deporte y fitness ─────────────────────────────────────────────────────
-  { nombre: 'gum-',                alt: 'gym',               label: 'Gimnasio',             grupo: 'Deporte' },
-  { nombre: 'exercise',            alt: 'jogging',           label: 'Running',              grupo: 'Deporte' },
-  { nombre: 'lap-pool',            alt: 'pool',              label: 'Natación',             grupo: 'Deporte' },
-  { nombre: 'football2',           alt: 'soccer',            label: 'Fútbol',               grupo: 'Deporte' },
-  { nombre: 'basketball',          alt: 'ball',              label: 'Básquet',              grupo: 'Deporte' },
-  { nombre: 'boxing',              alt: 'punch',             label: 'Boxeo',                grupo: 'Deporte' },
-  { nombre: 'cycling',             alt: 'bicycle',           label: 'Ciclismo',             grupo: 'Deporte' },
-
-  // ── Alimentación ──────────────────────────────────────────────────────────
-  { nombre: 'restaurant',          alt: 'dining',            label: 'Restaurante',          grupo: 'Comida' },
-  { nombre: 'coffee',              alt: 'espresso',          label: 'Café',                 grupo: 'Comida' },
-  { nombre: 'pizza',               alt: 'delivery',          label: 'Delivery',             grupo: 'Comida' },
-  { nombre: 'hamburger',           alt: 'burger',            label: 'Burger',               grupo: 'Comida' },
-  { nombre: 'sushi',               alt: 'japanese',          label: 'Sushi',                grupo: 'Comida' },
-  { nombre: 'ingredients',         alt: 'chef',              label: 'Supermercado',         grupo: 'Comida' },
-  { nombre: 'beer',                alt: 'pub',               label: 'Salidas / Bar',        grupo: 'Comida' },
-  { nombre: 'wine-bottle',         alt: 'wine',              label: 'Vinos',                grupo: 'Comida' },
-  { nombre: 'ice-cream-cone',      alt: 'gelato',            label: 'Helado',               grupo: 'Comida' },
-  { nombre: 'cake',                alt: 'dessert',           label: 'Pastelería',           grupo: 'Comida' },
-  { nombre: 'bread',               alt: 'bakery',            label: 'Panadería',            grupo: 'Comida' },
-  { nombre: 'take-away-food',      alt: 'bakery',            label: 'Pedidos',              grupo: 'Comida' },
-
-  // ── Entretenimiento ───────────────────────────────────────────────────────
-  { nombre: 'movie',               alt: 'streaming',         label: 'Streaming',            grupo: 'Entretenimiento' },
-  { nombre: 'headphones',          alt: 'music',             label: 'Música',               grupo: 'Entretenimiento' },
-  { nombre: 'controller',          alt: 'game-controller',   label: 'Videojuegos',          grupo: 'Entretenimiento' },
-  { nombre: 'clapperboard',        alt: 'film',              label: 'Cine',                 grupo: 'Entretenimiento' },
-  { nombre: 'book',                alt: 'reading',           label: 'Libros',               grupo: 'Entretenimiento' },
-  { nombre: 'guitar',              alt: 'live-music',        label: 'Música en vivo',       grupo: 'Entretenimiento' },
-  { nombre: 'theatre',             alt: 'performance',       label: 'Teatro',               grupo: 'Entretenimiento' },
-  { nombre: 'ticket',              alt: 'coupon',            label: 'Entradas',             grupo: 'Entretenimiento' },
-  { nombre: 'dice',                alt: 'board-game',        label: 'Juegos de mesa',       grupo: 'Entretenimiento' },
-  { nombre: 'cards',               alt: 'poker',             label: 'Casino',               grupo: 'Entretenimiento' },
-  { nombre: 'circus-tent',         alt: 'circus',            label: 'Espectáculos',         grupo: 'Entretenimiento' },
-
-  // ── Tecnología ────────────────────────────────────────────────────────────
-  { nombre: 'iphone',              alt: 'mobile-phone',      label: 'Celular',              grupo: 'Tecnología' },
-  { nombre: 'laptop',              alt: 'notebook',          label: 'Computadora',          grupo: 'Tecnología' },
-  { nombre: 'wifi',                alt: 'wireless',          label: 'Internet',             grupo: 'Tecnología' },
-  { nombre: 'monitor',             alt: 'screen',            label: 'Electrónica',          grupo: 'Tecnología' },
-  { nombre: 'camera',              alt: 'photo',             label: 'Fotografía',           grupo: 'Tecnología' },
-  { nombre: 'print',               alt: 'printing',          label: 'Impresora',            grupo: 'Tecnología' },
-  { nombre: 'headset',             alt: 'earphones',         label: 'Auriculares',          grupo: 'Tecnología' },
-  { nombre: 'usb-logo',            alt: 'drive',             label: 'Accesorios tech',      grupo: 'Tecnología' },
-  { nombre: 'speaker',             alt: 'audio',             label: 'Parlantes',            grupo: 'Tecnología' },
-  { nombre: 'drone',               alt: 'quadcopter',        label: 'Drone',                grupo: 'Tecnología' },
-
-  // ── Finanzas ──────────────────────────────────────────────────────────────
-  { nombre: 'money-bag',           alt: 'cash',              label: 'Dinero',               grupo: 'Finanzas' },
-  { nombre: 'visa',                alt: 'debit-card',        label: 'Tarjeta',              grupo: 'Finanzas' },
-  { nombre: 'wallet',              alt: 'purse',             label: 'Billetera',            grupo: 'Finanzas' },
-  { nombre: 'investment',          alt: 'stocks',            label: 'Inversiones',          grupo: 'Finanzas' },
-  { nombre: 'banknote',            alt: 'money',             label: 'Efectivo',             grupo: 'Finanzas' },
-  { nombre: 'receipt',             alt: 'invoice',           label: 'Factura',              grupo: 'Finanzas' },
-  { nombre: 'money-box',           alt: 'piggy-bank',        label: 'Ahorro',               grupo: 'Finanzas' },
-  { nombre: 'money-transfer',      alt: 'transfer',          label: 'Transferencia',        grupo: 'Finanzas' },
-  { nombre: 'refund',              alt: 'return',            label: 'Devolución',           grupo: 'Finanzas' },
-  { nombre: 'coins',               alt: 'coin',              label: 'Monedas',              grupo: 'Finanzas' },
-  { nombre: 'loan',                alt: 'mortgage',          label: 'Préstamo',             grupo: 'Finanzas' },
-  { nombre: 'bank',                alt: 'banking',           label: 'Banco',                grupo: 'Finanzas' },
-  { nombre: 'bitcoin',             alt: 'crypto',            label: 'Cripto',               grupo: 'Finanzas' },
-
-  // ── Trabajo e ingresos ────────────────────────────────────────────────────
-  { nombre: 'briefcase',           alt: 'work',              label: 'Trabajo',              grupo: 'Trabajo' },
-  { nombre: 'office-building',     alt: 'company',           label: 'Empresa',              grupo: 'Trabajo' },
-  { nombre: 'handshake',           alt: 'agreement',         label: 'Negocio',              grupo: 'Trabajo' },
-  { nombre: 'salary',              alt: 'payroll',           label: 'Sueldo',               grupo: 'Trabajo' },
-  { nombre: 'overtime',            alt: 'extra-time',        label: 'Horas extra',          grupo: 'Trabajo' },
-  { nombre: 'conference-call',     alt: 'meeting',           label: 'Reunión',              grupo: 'Trabajo' },
-  { nombre: 'contract',            alt: 'agreement',         label: 'Contrato',             grupo: 'Trabajo' },
-
-  // ── Educación ─────────────────────────────────────────────────────────────
-  { nombre: 'graduation-cap',      alt: 'degree',            label: 'Educación',            grupo: 'Educación' },
-  { nombre: 'school',              alt: 'classroom',         label: 'Colegio',              grupo: 'Educación' },
-  { nombre: 'university',          alt: 'college',           label: 'Universidad',          grupo: 'Educación' },
-  { nombre: 'e-learning',          alt: 'online-education',  label: 'Cursos online',        grupo: 'Educación' },
-  { nombre: 'pencil',              alt: 'pen',               label: 'Útiles escolares',     grupo: 'Educación' },
-  { nombre: 'tuition',             alt: 'tutor',             label: 'Clases particulares',  grupo: 'Educación' },
-  { nombre: 'microscope',          alt: 'science',           label: 'Investigación',        grupo: 'Educación' },
-
-  // ── Viajes ────────────────────────────────────────────────────────────────
-  { nombre: 'airplane-mode-on',    alt: 'flight',            label: 'Vuelos',               grupo: 'Viajes' },
-  { nombre: 'suitcase',            alt: 'luggage',           label: 'Equipaje',             grupo: 'Viajes' },
-  { nombre: 'beach',               alt: 'vacation',          label: 'Playa / Vacaciones',   grupo: 'Viajes' },
-  { nombre: 'hostel',              alt: 'accommodation',     label: 'Hotel',                grupo: 'Viajes' },
-  { nombre: 'passport',            alt: 'travel-documents',  label: 'Pasaporte / Trámites', grupo: 'Viajes' },
-  { nombre: 'compass',             alt: 'navigation',        label: 'Turismo',              grupo: 'Viajes' },
-  { nombre: 'rucksack',            alt: 'hiking',            label: 'Mochila',              grupo: 'Viajes' },
-  { nombre: 'camping-tent',        alt: 'tent',              label: 'Camping',              grupo: 'Viajes' },
-  { nombre: 'map',                 alt: 'location',          label: 'Mapa',                 grupo: 'Viajes' },
-
-  // ── Ropa y personal ───────────────────────────────────────────────────────
-  { nombre: 't-shirt',             alt: 'clothing',          label: 'Ropa',                 grupo: 'Personal' },
-  { nombre: 'sneakers',            alt: 'shoes',             label: 'Calzado',              grupo: 'Personal' },
-  { nombre: 'scissors',            alt: 'hairdresser',       label: 'Peluquería',           grupo: 'Personal' },
-  { nombre: 'lipstick',            alt: 'makeup',            label: 'Cuidado personal',     grupo: 'Personal' },
-  { nombre: 'perfume',             alt: 'cologne',           label: 'Perfumes',             grupo: 'Personal' },
-  { nombre: 'sun-glasses',         alt: 'eyeglasses',        label: 'Accesorios',           grupo: 'Personal' },
-  { nombre: 'wristwatch',          alt: 'clock',             label: 'Reloj / Joyería',      grupo: 'Personal' },
-  { nombre: 'handbag',             alt: 'purse',             label: 'Cartera / Bolso',      grupo: 'Personal' },
-  { nombre: 'ironing',             alt: 'clothes',           label: 'Lavandería ropa',      grupo: 'Personal' },
-  { nombre: 'trust',               alt: 'clothes',           label: 'Cuidado',              grupo: 'Personal' },
-
-  // ── Mascotas y familia ────────────────────────────────────────────────────
-  { nombre: 'dog-size-small',      alt: 'puppy',             label: 'Perro',                grupo: 'Familia' },
-  { nombre: 'cat',                 alt: 'kitten',            label: 'Gato',                 grupo: 'Familia' },
-  { nombre: 'dog-footprint',       alt: 'animal',            label: 'Veterinaria',          grupo: 'Familia' },
-  { nombre: 'baby',                alt: 'infant',            label: 'Bebé / Pañales',       grupo: 'Familia' },
-  { nombre: 'baby-bottle',         alt: 'feeding-bottle',    label: 'Maternidad',           grupo: 'Familia' },
-  { nombre: 'teddy-bear',          alt: 'toy',               label: 'Juguetes',             grupo: 'Familia' },
-  { nombre: 'stroller',            alt: 'pram',              label: 'Cochecito',            grupo: 'Familia' },
-  { nombre: 'gift',                alt: 'present',           label: 'Regalos',              grupo: 'Familia' },
-  { nombre: 'birthday-cake',       alt: 'celebration',       label: 'Cumpleaños',           grupo: 'Familia' },
-  { nombre: 'party',               alt: 'confetti',          label: 'Fiesta',               grupo: 'Familia' },
-  { nombre: 'wedding-rings',       alt: 'ring',              label: 'Casamiento',           grupo: 'Familia' },
-  { nombre: 'dog-bowl',            alt: 'ring',              label: 'Comida de Perro',      grupo: 'Familia' },
-
-  // ── Seguros e impuestos ───────────────────────────────────────────────────
-  { nombre: 'insurance',           alt: 'shield',            label: 'Seguro',               grupo: 'Seguros' },
-  { nombre: 'tax',                 alt: 'taxation',          label: 'Impuestos / AFIP',     grupo: 'Seguros' },
-  { nombre: 'law',                 alt: 'legal',             label: 'Legal / Escribano',    grupo: 'Seguros' },
-  { nombre: 'umbrella',            alt: 'protection',        label: 'Cobertura',            grupo: 'Seguros' },
-  { nombre: 'checklist',           alt: 'list',              label: 'Trámites',             grupo: 'Seguros' },
-  { nombre: 'bill',                alt: 'clothes',           label: 'Cargos Tarjetas',      grupo: 'Seguros' },
-
-  // ── Suscripciones ─────────────────────────────────────────────────────────
-  { nombre: 'membership-card',     alt: 'subscription',      label: 'Suscripción mensual',  grupo: 'Suscripciones' },
-  { nombre: 'news',                alt: 'magazine',          label: 'Diario / Revista',     grupo: 'Suscripciones' },
-  { nombre: 'cloud',               alt: 'cloud-storage',     label: 'Almacenamiento cloud', grupo: 'Suscripciones' },
-
-  // ── Ingresos especiales ───────────────────────────────────────────────────
-  { nombre: 'get-revenue',         alt: 'income',            label: 'Ingreso',              grupo: 'Ingresos' },
-  { nombre: 'real-estate',         alt: 'rent',              label: 'Alquiler cobrado',     grupo: 'Ingresos' },
-  { nombre: 'economic-improvement',alt: 'dividend',          label: 'Dividendos',           grupo: 'Ingresos' },
-  { nombre: 'billing',             alt: 'rebate',            label: 'Cashback',             grupo: 'Ingresos' },
-  { nombre: 'trophy',              alt: 'award',             label: 'Premio / Bono',        grupo: 'Ingresos' },
-
-  // ── Otros ─────────────────────────────────────────────────────────────────
-  { nombre: 'charity',             alt: 'donation',          label: 'Donaciones',           grupo: 'Otros' },
-  { nombre: 'idea',                alt: 'lightbulb',         label: 'Proyectos',            grupo: 'Otros' },
-  { nombre: 'calendar',            alt: 'event',             label: 'Evento',               grupo: 'Otros' },
-  { nombre: 'star',                alt: 'favorite',          label: 'Favorito',             grupo: 'Otros' },
-  { nombre: 'question-mark',       alt: 'unknown',           label: 'Otros',                grupo: 'Otros' },
-]
-
-export const GRUPOS = [...new Set(ICONOS_CATEGORIAS.map(i => i.grupo))]
-
-export function urlIcono(nombre: string, size = 96): string {
-  return `https://img.icons8.com/stickers/${size}/${nombre}.png`
+export type IconoDef = {
+  name:  string    // PascalCase Lucide
+  label: string    // español
+  tags:  string[]  // palabras clave búsqueda (lowercase)
+  grupo: string    // bucket visual del picker
 }
 
-export type IconoItem = typeof ICONOS_CATEGORIAS[0]
+export const GRUPOS = [
+  'Compras', 'Comida', 'Casa', 'Transporte', 'Salud', 'Trabajo',
+  'Dinero', 'Educación', 'Entretenimiento', 'Deporte', 'Mascotas',
+  'Servicios', 'Belleza', 'Viajes', 'Documentos', 'Familia',
+] as const
+
+export const ICONOS_CATEGORIAS: IconoDef[] = [
+  // ── Compras ───────────────────────────────────────────────────────────────
+  { name: 'ShoppingCart',  label: 'Carrito',       tags: ['carrito', 'super', 'mercado', 'compras', 'almacen'],     grupo: 'Compras' },
+  { name: 'ShoppingBag',   label: 'Bolsa',         tags: ['bolsa', 'compras', 'shopping', 'ropa'],                  grupo: 'Compras' },
+  { name: 'Package',       label: 'Paquete',       tags: ['paquete', 'envio', 'caja', 'delivery'],                  grupo: 'Compras' },
+  { name: 'Receipt',       label: 'Recibo',        tags: ['recibo', 'ticket', 'factura', 'comprobante'],            grupo: 'Compras' },
+  { name: 'Tag',           label: 'Etiqueta',      tags: ['etiqueta', 'precio', 'oferta', 'descuento'],             grupo: 'Compras' },
+  { name: 'Gift',          label: 'Regalo',        tags: ['regalo', 'presente', 'cumple', 'navidad'],               grupo: 'Compras' },
+  { name: 'Store',         label: 'Tienda',        tags: ['tienda', 'comercio', 'negocio', 'local'],                grupo: 'Compras' },
+
+  // ── Comida ────────────────────────────────────────────────────────────────
+  { name: 'UtensilsCrossed', label: 'Restaurante', tags: ['restaurante', 'comida', 'cubiertos', 'cena', 'almuerzo'], grupo: 'Comida' },
+  { name: 'Pizza',         label: 'Pizza',         tags: ['pizza', 'pizzeria', 'italiana', 'comida'],               grupo: 'Comida' },
+  { name: 'Coffee',         label: 'Café',         tags: ['cafe', 'desayuno', 'merienda', 'bar'],                   grupo: 'Comida' },
+  { name: 'Beer',           label: 'Cerveza',      tags: ['cerveza', 'bar', 'salida', 'birra', 'alcohol'],          grupo: 'Comida' },
+  { name: 'Wine',           label: 'Vino',         tags: ['vino', 'bar', 'salida', 'restaurant', 'alcohol'],        grupo: 'Comida' },
+  { name: 'IceCream',       label: 'Helado',       tags: ['helado', 'postre', 'heladeria'],                         grupo: 'Comida' },
+  { name: 'Cookie',         label: 'Galletita',    tags: ['galleta', 'cookie', 'panaderia', 'snack', 'dulce'],      grupo: 'Comida' },
+  { name: 'Sandwich',       label: 'Sandwich',     tags: ['sandwich', 'snack', 'comida', 'rapida'],                 grupo: 'Comida' },
+  { name: 'Soup',           label: 'Sopa',         tags: ['sopa', 'comida', 'caldo'],                               grupo: 'Comida' },
+  { name: 'Cake',           label: 'Torta',        tags: ['torta', 'cumple', 'panaderia', 'postre', 'dulce'],       grupo: 'Comida' },
+  { name: 'Apple',          label: 'Frutas',       tags: ['fruta', 'manzana', 'verduleria', 'sano'],                grupo: 'Comida' },
+  { name: 'ChefHat',        label: 'Cocina',       tags: ['cocina', 'chef', 'cocinar', 'gourmet'],                  grupo: 'Comida' },
+
+  // ── Casa ──────────────────────────────────────────────────────────────────
+  { name: 'Home',           label: 'Hogar',        tags: ['hogar', 'casa', 'vivienda', 'inmueble'],                 grupo: 'Casa' },
+  { name: 'Bed',            label: 'Dormitorio',   tags: ['cama', 'dormitorio', 'mueble', 'cuarto'],                grupo: 'Casa' },
+  { name: 'Sofa',           label: 'Mueble',       tags: ['sofa', 'mueble', 'living', 'comodidad'],                 grupo: 'Casa' },
+  { name: 'Lamp',           label: 'Lámpara',      tags: ['lampara', 'luz', 'iluminacion', 'decoracion'],           grupo: 'Casa' },
+  { name: 'Bath',           label: 'Baño',         tags: ['bano', 'ducha', 'higiene'],                              grupo: 'Casa' },
+  { name: 'Refrigerator',   label: 'Heladera',     tags: ['heladera', 'electrodomestico', 'cocina'],                grupo: 'Casa' },
+  { name: 'Hammer',         label: 'Herramientas', tags: ['martillo', 'reparacion', 'herramienta', 'mantenimiento'],grupo: 'Casa' },
+  { name: 'Key',            label: 'Alquiler',     tags: ['alquiler', 'llave', 'inquilino', 'vivienda'],            grupo: 'Casa' },
+
+  // ── Transporte ────────────────────────────────────────────────────────────
+  { name: 'Car',            label: 'Auto',         tags: ['auto', 'vehiculo', 'carro', 'transporte'],               grupo: 'Transporte' },
+  { name: 'Bus',            label: 'Colectivo',    tags: ['colectivo', 'bondi', 'bus', 'transporte', 'publico'],    grupo: 'Transporte' },
+  { name: 'TrainFront',     label: 'Tren',         tags: ['tren', 'subte', 'ferrocarril', 'transporte'],            grupo: 'Transporte' },
+  { name: 'Bike',           label: 'Bici',         tags: ['bici', 'bicicleta', 'transporte', 'ciclismo'],           grupo: 'Transporte' },
+  { name: 'Plane',          label: 'Avión',        tags: ['avion', 'vuelo', 'viaje', 'aerolinea'],                  grupo: 'Transporte' },
+  { name: 'Fuel',           label: 'Combustible',  tags: ['nafta', 'combustible', 'gasolina', 'estacion', 'ypf'],   grupo: 'Transporte' },
+  { name: 'ParkingCircle',  label: 'Estacionar',   tags: ['estacionamiento', 'parking', 'auto'],                    grupo: 'Transporte' },
+  { name: 'Footprints',     label: 'Caminar',      tags: ['caminata', 'pies', 'movilidad', 'running'],              grupo: 'Transporte' },
+
+  // ── Salud ─────────────────────────────────────────────────────────────────
+  { name: 'Heart',          label: 'Corazón',      tags: ['corazon', 'salud', 'cardio', 'amor'],                    grupo: 'Salud' },
+  { name: 'Pill',           label: 'Medicamento',  tags: ['pastilla', 'medicamento', 'remedio', 'farmacia'],        grupo: 'Salud' },
+  { name: 'Stethoscope',    label: 'Médico',       tags: ['medico', 'doctor', 'consulta', 'estetoscopio'],          grupo: 'Salud' },
+  { name: 'Cross',          label: 'Hospital',     tags: ['hospital', 'emergencia', 'clinica', 'cruz'],             grupo: 'Salud' },
+  { name: 'Syringe',        label: 'Vacuna',       tags: ['vacuna', 'inyeccion', 'jeringa', 'enfermeria'],          grupo: 'Salud' },
+  { name: 'Activity',       label: 'Latido',       tags: ['latido', 'salud', 'cardio', 'pulso'],                    grupo: 'Salud' },
+  { name: 'Brain',          label: 'Mental',       tags: ['cerebro', 'mental', 'psicologia', 'terapia'],            grupo: 'Salud' },
+  { name: 'Smile',          label: 'Dentista',     tags: ['diente', 'dentista', 'odontologo', 'sonrisa'],           grupo: 'Salud' },
+  { name: 'Eye',            label: 'Oculista',     tags: ['ojo', 'oculista', 'oftalmologo', 'vista'],               grupo: 'Salud' },
+
+  // ── Trabajo/Oficina ───────────────────────────────────────────────────────
+  { name: 'Briefcase',      label: 'Trabajo',      tags: ['trabajo', 'oficina', 'maletin', 'freelance'],            grupo: 'Trabajo' },
+  { name: 'Building2',      label: 'Empresa',      tags: ['empresa', 'edificio', 'corporativo', 'oficina'],         grupo: 'Trabajo' },
+  { name: 'Laptop',         label: 'Notebook',     tags: ['notebook', 'computadora', 'laptop', 'trabajo'],          grupo: 'Trabajo' },
+  { name: 'Monitor',        label: 'Pantalla',     tags: ['monitor', 'pantalla', 'computadora', 'oficina'],         grupo: 'Trabajo' },
+  { name: 'Printer',        label: 'Impresora',    tags: ['impresora', 'oficina', 'imprimir'],                      grupo: 'Trabajo' },
+  { name: 'Calculator',     label: 'Calculadora',  tags: ['calculadora', 'contabilidad', 'cuentas', 'matematica'],  grupo: 'Trabajo' },
+
+  // ── Dinero ────────────────────────────────────────────────────────────────
+  { name: 'Banknote',       label: 'Billete',      tags: ['billete', 'dinero', 'efectivo', 'cash', 'pesos'],        grupo: 'Dinero' },
+  { name: 'Coins',          label: 'Monedas',      tags: ['monedas', 'cambio', 'ahorro', 'dinero'],                 grupo: 'Dinero' },
+  { name: 'DollarSign',     label: 'Dólar',        tags: ['dolar', 'dinero', 'cambio', 'cotizacion', 'usd'],        grupo: 'Dinero' },
+  { name: 'PiggyBank',      label: 'Alcancía',     tags: ['alcancia', 'ahorro', 'chancho', 'hucha'],                grupo: 'Dinero' },
+  { name: 'TrendingUp',     label: 'Inversión',    tags: ['inversion', 'crecimiento', 'rentabilidad', 'subida'],    grupo: 'Dinero' },
+  { name: 'TrendingDown',   label: 'Pérdida',      tags: ['perdida', 'caida', 'baja', 'mercado'],                   grupo: 'Dinero' },
+  { name: 'CreditCard',     label: 'Tarjeta',      tags: ['tarjeta', 'credito', 'visa', 'mastercard', 'debito'],    grupo: 'Dinero' },
+  { name: 'Wallet',         label: 'Billetera',    tags: ['billetera', 'wallet', 'dinero'],                         grupo: 'Dinero' },
+
+  // ── Educación ─────────────────────────────────────────────────────────────
+  { name: 'GraduationCap',  label: 'Graduación',   tags: ['graduacion', 'universidad', 'titulo', 'estudios'],       grupo: 'Educación' },
+  { name: 'BookOpen',       label: 'Libro',        tags: ['libro', 'lectura', 'estudio', 'leer'],                   grupo: 'Educación' },
+  { name: 'School',         label: 'Escuela',      tags: ['escuela', 'colegio', 'primaria', 'secundaria'],          grupo: 'Educación' },
+  { name: 'Pencil',         label: 'Lápiz',        tags: ['lapiz', 'escritura', 'utiles', 'dibujo'],                grupo: 'Educación' },
+  { name: 'Backpack',       label: 'Mochila',      tags: ['mochila', 'escuela', 'estudiante'],                      grupo: 'Educación' },
+  { name: 'Languages',      label: 'Idiomas',      tags: ['idioma', 'lenguaje', 'ingles', 'curso'],                 grupo: 'Educación' },
+
+  // ── Entretenimiento ───────────────────────────────────────────────────────
+  { name: 'Film',           label: 'Cine',         tags: ['cine', 'pelicula', 'film', 'cinema'],                    grupo: 'Entretenimiento' },
+  { name: 'Music',          label: 'Música',       tags: ['musica', 'audio', 'spotify', 'cancion'],                 grupo: 'Entretenimiento' },
+  { name: 'Gamepad2',       label: 'Videojuegos',  tags: ['juego', 'videojuego', 'gaming', 'consola'],              grupo: 'Entretenimiento' },
+  { name: 'Tv',             label: 'Streaming',    tags: ['tv', 'television', 'streaming', 'netflix'],              grupo: 'Entretenimiento' },
+  { name: 'Ticket',         label: 'Entradas',     tags: ['entrada', 'recital', 'evento', 'show', 'ticket'],        grupo: 'Entretenimiento' },
+  { name: 'Mic',            label: 'Karaoke',      tags: ['karaoke', 'microfono', 'podcast', 'canto'],              grupo: 'Entretenimiento' },
+  { name: 'Camera',         label: 'Foto',         tags: ['foto', 'camara', 'fotografia'],                          grupo: 'Entretenimiento' },
+  { name: 'Headphones',     label: 'Auriculares',  tags: ['auriculares', 'musica', 'podcast', 'cascos'],            grupo: 'Entretenimiento' },
+
+  // ── Deporte ───────────────────────────────────────────────────────────────
+  { name: 'Dumbbell',       label: 'Gimnasio',     tags: ['gimnasio', 'pesas', 'gym', 'musculo'],                   grupo: 'Deporte' },
+  { name: 'Trophy',         label: 'Trofeo',       tags: ['trofeo', 'premio', 'ganador'],                           grupo: 'Deporte' },
+  { name: 'Volleyball',     label: 'Pelota',       tags: ['pelota', 'voley', 'futbol', 'deporte'],                  grupo: 'Deporte' },
+  { name: 'BicepsFlexed',   label: 'Músculo',      tags: ['musculo', 'fitness', 'fuerza', 'gym'],                   grupo: 'Deporte' },
+  { name: 'Mountain',       label: 'Trekking',     tags: ['montana', 'trekking', 'escalada', 'aventura'],           grupo: 'Deporte' },
+
+  // ── Mascotas ──────────────────────────────────────────────────────────────
+  { name: 'Dog',            label: 'Perro',        tags: ['perro', 'mascota', 'can', 'cachorro'],                   grupo: 'Mascotas' },
+  { name: 'Cat',            label: 'Gato',         tags: ['gato', 'mascota', 'felino'],                             grupo: 'Mascotas' },
+  { name: 'Bird',           label: 'Pájaro',       tags: ['pajaro', 'ave', 'mascota'],                              grupo: 'Mascotas' },
+  { name: 'Fish',           label: 'Pez',          tags: ['pez', 'pescado', 'acuario'],                             grupo: 'Mascotas' },
+  { name: 'Bone',           label: 'Alimento',     tags: ['hueso', 'comida', 'mascota', 'alimento'],                grupo: 'Mascotas' },
+  { name: 'PawPrint',       label: 'Veterinaria',  tags: ['huella', 'mascota', 'veterinaria', 'pata'],              grupo: 'Mascotas' },
+
+  // ── Servicios ─────────────────────────────────────────────────────────────
+  { name: 'Zap',            label: 'Electricidad', tags: ['electricidad', 'energia', 'luz', 'edenor', 'edesur'],    grupo: 'Servicios' },
+  { name: 'Wifi',           label: 'Internet',     tags: ['internet', 'wifi', 'conexion', 'fibra'],                 grupo: 'Servicios' },
+  { name: 'Smartphone',     label: 'Celular',      tags: ['celular', 'telefono', 'movil', 'phone'],                 grupo: 'Servicios' },
+  { name: 'Phone',          label: 'Teléfono',     tags: ['telefono', 'fijo', 'llamada'],                           grupo: 'Servicios' },
+  { name: 'Mail',           label: 'Correo',       tags: ['mail', 'correo', 'email', 'carta'],                      grupo: 'Servicios' },
+  { name: 'Wrench',         label: 'Plomero',      tags: ['plomero', 'reparacion', 'herramienta', 'arreglo'],       grupo: 'Servicios' },
+  { name: 'Droplet',        label: 'Agua',         tags: ['agua', 'plomeria', 'gota', 'aysa'],                      grupo: 'Servicios' },
+  { name: 'Flame',          label: 'Gas',          tags: ['gas', 'fuego', 'metrogas', 'cocina'],                    grupo: 'Servicios' },
+  { name: 'Trash2',         label: 'Basura',       tags: ['basura', 'residuos', 'limpieza', 'tacho'],               grupo: 'Servicios' },
+
+  // ── Belleza/Personal ──────────────────────────────────────────────────────
+  { name: 'Scissors',       label: 'Peluquería',   tags: ['peluqueria', 'corte', 'pelo', 'tijera'],                 grupo: 'Belleza' },
+  { name: 'Sparkles',       label: 'Belleza',      tags: ['belleza', 'brillo', 'estetica', 'spa'],                  grupo: 'Belleza' },
+  { name: 'Shirt',          label: 'Indumentaria', tags: ['ropa', 'indumentaria', 'remera', 'camisa'],              grupo: 'Belleza' },
+  { name: 'Glasses',        label: 'Anteojos',     tags: ['lentes', 'anteojos', 'oculista', 'gafas'],               grupo: 'Belleza' },
+  { name: 'Watch',          label: 'Reloj',        tags: ['reloj', 'accesorio', 'tiempo'],                          grupo: 'Belleza' },
+
+  // ── Viajes ────────────────────────────────────────────────────────────────
+  { name: 'Globe',          label: 'Mundo',        tags: ['mundo', 'viaje', 'internacional', 'globo'],              grupo: 'Viajes' },
+  { name: 'Map',            label: 'Mapa',         tags: ['mapa', 'ubicacion', 'viaje', 'ruta'],                    grupo: 'Viajes' },
+  { name: 'Compass',        label: 'Brújula',      tags: ['brujula', 'navegacion', 'aventura'],                     grupo: 'Viajes' },
+  { name: 'Tent',           label: 'Camping',      tags: ['camping', 'carpa', 'acampar', 'aventura'],               grupo: 'Viajes' },
+  { name: 'Palmtree',       label: 'Playa',        tags: ['playa', 'vacaciones', 'tropical', 'verano'],             grupo: 'Viajes' },
+  { name: 'Hotel',          label: 'Hotel',        tags: ['hotel', 'hospedaje', 'alojamiento', 'turismo'],          grupo: 'Viajes' },
+
+  // ── Documentos/Bancos ─────────────────────────────────────────────────────
+  { name: 'FileText',       label: 'Documento',    tags: ['documento', 'papel', 'archivo'],                         grupo: 'Documentos' },
+  { name: 'Landmark',       label: 'Banco',        tags: ['banco', 'gobierno', 'institucion', 'oficial'],           grupo: 'Documentos' },
+  { name: 'Scale',          label: 'Impuestos',    tags: ['impuestos', 'justicia', 'afip', 'monotributo', 'abogado'],grupo: 'Documentos' },
+  { name: 'ScrollText',     label: 'Contrato',     tags: ['contrato', 'escritura', 'legal', 'acuerdo'],             grupo: 'Documentos' },
+  { name: 'Stamp',          label: 'Sello',        tags: ['sello', 'oficial', 'certificado'],                       grupo: 'Documentos' },
+  { name: 'Newspaper',      label: 'Diario',       tags: ['diario', 'periodico', 'noticia', 'prensa'],              grupo: 'Documentos' },
+
+  // ── Familia/Personas ──────────────────────────────────────────────────────
+  { name: 'Baby',           label: 'Bebé',         tags: ['bebe', 'hijo', 'recien', 'nacido'],                      grupo: 'Familia' },
+  { name: 'Users',          label: 'Grupo',        tags: ['grupo', 'personas', 'equipo', 'familia'],                grupo: 'Familia' },
+  { name: 'User',           label: 'Persona',      tags: ['persona', 'perfil', 'individuo'],                        grupo: 'Familia' },
+  { name: 'Calendar',       label: 'Evento',       tags: ['evento', 'fecha', 'agenda', 'cumple'],                   grupo: 'Familia' },
+  { name: 'PartyPopper',    label: 'Fiesta',       tags: ['fiesta', 'celebracion', 'cumple', 'festejo'],            grupo: 'Familia' },
+]
+
+// Set de nombres válidos para validación rápida
+export const ICONOS_NAMES_SET = new Set(ICONOS_CATEGORIAS.map(i => i.name))

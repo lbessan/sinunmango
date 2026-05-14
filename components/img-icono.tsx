@@ -1,10 +1,14 @@
 'use client'
 
-// Componente de imagen con fallback automático al slug 'alt'
-// Usar en pickers y modales donde no se puede usar IconoCategoria (no tiene acceso al estado)
+// ─── ImgIcono — DEPRECATED ──────────────────────────────────────────────────
+//
+// Mantengo este wrapper como compat para cualquier import legacy que se haya
+// escapado. La implementación nueva delega en <IconoCategoria> que soporta
+// Lucide directamente.
+//
+// Borrar este archivo cuando todos los usos hayan migrado a IconoCategoria.
 
-import { useState } from 'react'
-import { urlIcono, ICONOS_CATEGORIAS } from '@/lib/iconos-categorias'
+import { IconoCategoria } from './icono-categoria'
 
 type Props = {
   nombre: string
@@ -13,32 +17,5 @@ type Props = {
 }
 
 export function ImgIcono({ nombre, size, className = '' }: Props) {
-  const [failedMain, setFailedMain] = useState(false)
-  const [failedAlt,  setFailedAlt]  = useState(false)
-
-  const alt = ICONOS_CATEGORIAS.find(i => i.nombre === nombre)?.alt ?? null
-
-  if (failedAlt || (!alt && failedMain)) {
-    return <span style={{ fontSize: size * 0.8, lineHeight: 1 }}>🏷️</span>
-  }
-
-  if (failedMain && alt) {
-    return (
-      <img src={urlIcono(alt, 64)} alt={nombre}
-        width={size} height={size}
-        className={`object-contain ${className}`}
-        loading="lazy"
-        onError={() => setFailedAlt(true)}
-      />
-    )
-  }
-
-  return (
-    <img src={urlIcono(nombre, 64)} alt={nombre}
-      width={size} height={size}
-      className={`object-contain ${className}`}
-      loading="lazy"
-      onError={() => setFailedMain(true)}
-    />
-  )
+  return <IconoCategoria icono={nombre} size={size} className={className} />
 }
