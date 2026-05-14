@@ -28,10 +28,10 @@ function validateCategoria(raw: unknown): Validated<CategoriaInsert> {
     tipoDefault = v.data
   }
 
-  // icono: emoji u otro símbolo, max 10 chars (caben varios codepoints)
+  // icono: PascalCase Lucide (ej "ShoppingBag") o emoji Unicode (ej "🛒"). Max 60.
   let icono: string | null = null
   if (b.icono !== undefined && b.icono !== null && b.icono !== '') {
-    const v = validateString(b.icono, { min: 1, max: 10, field: 'icono' })
+    const v = validateString(b.icono, { min: 1, max: 60, field: 'icono' })
     if (!v.ok) return v
     icono = v.data
   }
@@ -61,7 +61,7 @@ function validateCategoriaUpdate(raw: unknown): Validated<Record<string, unknown
     if (b.icono === null || b.icono === '') {
       updates.icono = null
     } else {
-      const v = validateString(b.icono, { min: 1, max: 10, field: 'icono' })
+      const v = validateString(b.icono, { min: 1, max: 60, field: 'icono' })
       if (!v.ok) return v
       updates.icono = v.data
     }

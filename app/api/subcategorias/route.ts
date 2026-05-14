@@ -28,7 +28,7 @@ function validateSubcategoria(raw: unknown): Validated<SubcategoriaInsert> {
 
   let icono: string | null = null
   if (b.icono !== undefined && b.icono !== null && b.icono !== '') {
-    const v = validateString(b.icono, { min: 1, max: 10, field: 'icono' })
+    const v = validateString(b.icono, { min: 1, max: 60, field: 'icono' })
     if (!v.ok) return v
     icono = v.data
   }
@@ -59,7 +59,7 @@ function validateSubcategoriaUpdate(raw: unknown): Validated<Record<string, unkn
     if (b.icono === null || b.icono === '') {
       updates.icono = null
     } else {
-      const v = validateString(b.icono, { min: 1, max: 10, field: 'icono' })
+      const v = validateString(b.icono, { min: 1, max: 60, field: 'icono' })
       if (!v.ok) return v
       updates.icono = v.data
     }
