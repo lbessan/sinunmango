@@ -67,7 +67,7 @@ export function IconPickerModal({ open, current, onPick, onClose }: Props) {
         </div>
 
         {/* Filtro por grupo */}
-        <div className="px-5 py-3 border-b border-slate-100 flex gap-1.5 flex-wrap overflow-x-auto">
+        <div className="px-5 py-3 border-b border-slate-100 flex gap-1.5 flex-wrap">
           <button
             onClick={() => setGrupo('')}
             className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap font-medium transition-colors ${!grupo ? 'text-white border-transparent' : 'text-slate-500 border-slate-200 hover:bg-slate-50'}`}
