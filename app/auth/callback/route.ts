@@ -4,12 +4,19 @@ import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
 // ─── GET /auth/callback ──────────────────────────────────────────────────────
-// Se llama después del OAuth de Google. Intercambia el código por sesión,
-// crea el perfil del usuario si es nuevo, y redirige al dashboard u onboarding.
+// Se llama después del OAuth de Google. Intercambia el código por sesión y
+// redirige al dashboard u onboarding.
+//
+// La creación del perfil + seed de categorías default ahora vive en el trigger
+// SQL `handle_new_user` (ver docs/migration-seed-categorias-en-trigger.sql).
+// El trigger es atómico: corre una sola vez por user en la transacción que
+// crea auth.users. Esto elimina la race condition que existía cuando este
+// callback hacía el seed en JavaScript (podía duplicar si se llamaba múltiples
+// veces antes que el trigger terminara).
 //
 // Nota: usa adminClient (service role) porque corre ANTES de que la sesión
-// esté completamente establecida — el primer query a user_profiles tiene que
-// pasar por encima de RLS para crear/leer la fila del usuario que recién entra.
+// esté completamente establecida — el query a cuentas tiene que pasar por
+// encima de RLS para detectar si el user completó el onboarding o no.
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -40,35 +47,9 @@ export async function GET(request: NextRequest) {
 
   const user = session.user
 
-  // ── Buscar perfil existente ──────────────────────────────────────────────
-  const { data: existing } = await adminClient
-    .from('user_profiles')
-    .select('user_id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!existing) {
-    // ── USUARIO NUEVO: crear perfil + sembrar categorías por defecto ───────
-    // plan = 'free' explícito. authorized = true se conserva para mantener
-    // compatibilidad con la columna existente y permitir bans manuales en el
-    // futuro (`UPDATE user_profiles SET authorized = false WHERE ...`).
-    const { error: insertError } = await adminClient
-      .from('user_profiles')
-      .insert({ user_id: user.id, email: user.email ?? '', authorized: true, plan: 'free' })
-
-    if (insertError) {
-      console.error('[auth/callback] Error creando perfil:', insertError.message)
-      return NextResponse.redirect(new URL('/login?error=auth', request.url))
-    }
-
-    await seedDefaultCategories(user.id)
-
-    // Redirigir a onboarding para que configure su primera cuenta
-    return NextResponse.redirect(new URL('/onboarding', request.url))
-  }
-
-  // ── USUARIO EXISTENTE ────────────────────────────────────────────────────
-  // Si nunca completó el onboarding (no tiene cuentas), mandarlo ahí
+  // ── Si el user no tiene cuentas (onboarding incompleto), mandar a onboarding
+  // El user_profiles + categorías default ya fueron creadas por el trigger
+  // handle_new_user cuando se insertó la fila en auth.users.
   const { count } = await adminClient
     .from('cuentas')
     .select('id', { count: 'exact', head: true })
@@ -79,38 +60,4 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.redirect(new URL('/dashboard', request.url))
-}
-
-// ── Categorías por defecto para usuarios nuevos ────────────────────────────
-async function seedDefaultCategories(userId: string) {
-  // Verificar si ya tiene categorías (idempotente: si algo falló y se llama 2 veces)
-  const { count } = await adminClient
-    .from('categorias')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-  if (count && count > 0) return
-
-  const categorias = [
-    // Gastos
-    { nombre_categoria: 'Supermercado',    tipo_default: 'Gasto',   icono: '🛒' },
-    { nombre_categoria: 'Restaurantes',    tipo_default: 'Gasto',   icono: '🍽️' },
-    { nombre_categoria: 'Transporte',      tipo_default: 'Gasto',   icono: '🚗' },
-    { nombre_categoria: 'Salud',           tipo_default: 'Gasto',   icono: '🏥' },
-    { nombre_categoria: 'Indumentaria',    tipo_default: 'Gasto',   icono: '👕' },
-    { nombre_categoria: 'Entretenimiento', tipo_default: 'Gasto',   icono: '🎬' },
-    { nombre_categoria: 'Servicios',       tipo_default: 'Gasto',   icono: '💡' },
-    { nombre_categoria: 'Educación',       tipo_default: 'Gasto',   icono: '📚' },
-    { nombre_categoria: 'Viajes',          tipo_default: 'Gasto',   icono: '✈️' },
-    { nombre_categoria: 'Hogar',           tipo_default: 'Gasto',   icono: '🏠' },
-    { nombre_categoria: 'Tecnología',      tipo_default: 'Gasto',   icono: '💻' },
-    { nombre_categoria: 'Otros gastos',    tipo_default: 'Gasto',   icono: '📦' },
-    // Ingresos
-    { nombre_categoria: 'Sueldo',          tipo_default: 'Ingreso',  icono: '💰' },
-    { nombre_categoria: 'Freelance',       tipo_default: 'Ingreso',  icono: '💼' },
-    { nombre_categoria: 'Inversiones',     tipo_default: 'Ingreso',  icono: '📈' },
-    { nombre_categoria: 'Otros ingresos',  tipo_default: 'Ingreso',  icono: '➕' },
-  ].map(c => ({ ...c, id: crypto.randomUUID(), user_id: userId }))
-
-  const { error } = await adminClient.from('categorias').insert(categorias)
-  if (error) console.error('[seedDefaultCategories] Error:', error.message)
 }
