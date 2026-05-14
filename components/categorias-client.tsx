@@ -2,24 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Pencil, Plus, X, Save, Trash2 } from 'lucide-react'
+import { Pencil, Plus, X, Save } from 'lucide-react'
 import { DeleteButton } from '@/components/delete-button'
 import { IconoCategoria } from '@/components/icono-categoria'
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
-import { ICONOS_CATEGORIAS, GRUPOS, urlIcono } from '@/lib/iconos-categorias'
+import { IconPickerModal } from '@/components/icon-picker-modal'
+import { ICONOS_CATEGORIAS } from '@/lib/iconos-categorias'
 
 type Categoria    = { id: string; nombre_categoria: string; icono: string | null; tipo_default: string | null }
 type Subcategoria = { id: string; categoria_padre: string; nombre_subcategoria: string; icono: string | null }
-
-// ─── Imagen con fallback ──────────────────────────────────────────────────────
-function ImgIcono({ nombre, size }: { nombre: string; size: number }) {
-  const [failedMain, setFailedMain] = useState(false)
-  const [failedAlt,  setFailedAlt]  = useState(false)
-  const alt = ICONOS_CATEGORIAS.find(i => i.nombre === nombre)?.alt ?? null
-  if (failedAlt || (!alt && failedMain)) return <span style={{ fontSize: size * 0.8 }}>🏷️</span>
-  if (failedMain && alt) return <img src={urlIcono(alt, 64)} alt={nombre} width={size} height={size} className="object-contain" loading="lazy" onError={() => setFailedAlt(true)} />
-  return <img src={urlIcono(nombre, 64)} alt={nombre} width={size} height={size} className="object-contain" loading="lazy" onError={() => setFailedMain(true)} />
-}
 
 // ─── Popup editar subcategoría ────────────────────────────────────────────────
 function EditarSubcatModal({ sub, categorias, onGuardado, onClose }: {
@@ -30,17 +21,12 @@ function EditarSubcatModal({ sub, categorias, onGuardado, onClose }: {
 }) {
   const [nombre,   setNombre]   = useState(sub.nombre_subcategoria)
   const [padreId,  setPadreId]  = useState(sub.categoria_padre)
-  const [icono,    setIcono]    = useState(sub.icono ?? 'shopping-cart')
-  const [busqueda, setBusqueda] = useState('')
-  const [grupo,    setGrupo]    = useState('')
+  const [icono,    setIcono]    = useState<string>(sub.icono ?? 'ShoppingCart')
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [saving,   setSaving]   = useState(false)
   const [error,    setError]    = useState('')
 
-  const iconosFiltrados = ICONOS_CATEGORIAS.filter(i => {
-    const matchQ = !busqueda || i.label.toLowerCase().includes(busqueda.toLowerCase()) || i.nombre.toLowerCase().includes(busqueda.toLowerCase())
-    const matchG = !grupo || i.grupo === grupo
-    return matchQ && matchG
-  })
+  const iconoMeta = ICONOS_CATEGORIAS.find(i => i.name === icono)
 
   const handleGuardar = async () => {
     if (!nombre.trim()) { setError('El nombre es obligatorio'); return }
@@ -69,19 +55,27 @@ function EditarSubcatModal({ sub, categorias, onGuardado, onClose }: {
 
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
-            <ImgIcono nombre={icono} size={28} />
+            <IconoCategoria icono={icono} size={24} />
             <h3 className="text-sm font-semibold text-slate-800">Editar subcategoría</h3>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X size={15} /></button>
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-          {/* Preview */}
+          {/* Preview con botón cambiar icono */}
           <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl">
-            <IconoCategoria icono={icono} size={40} />
-            <div>
-              <p className="text-sm font-medium text-slate-700">{nombre || 'Nombre'}</p>
-              <p className="text-xs text-slate-400">{ICONOS_CATEGORIAS.find(i => i.nombre === icono)?.label ?? icono}</p>
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="w-12 h-12 rounded-xl bg-white border-2 border-slate-200 hover:border-indigo-300 hover:shadow-sm transition-all flex items-center justify-center shrink-0 group relative"
+            >
+              <IconoCategoria icono={icono} size={24} color="#475569" />
+              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                <Pencil size={9} />
+              </span>
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-700 truncate">{nombre || 'Nombre'}</p>
+              <p className="text-xs text-slate-400">{iconoMeta ? `${iconoMeta.label} · ${iconoMeta.grupo}` : icono}</p>
             </div>
           </div>
 
@@ -99,44 +93,12 @@ function EditarSubcatModal({ sub, categorias, onGuardado, onClose }: {
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs text-slate-500 mb-2">Ícono</label>
-            <input type="text" value={busqueda}
-              onChange={e => { setBusqueda(e.target.value); setGrupo('') }}
-              placeholder="Buscar ícono..."
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 bg-white mb-2" />
-
-            <div className="flex gap-1.5 flex-wrap mb-2">
-              <button onClick={() => { setGrupo(''); setBusqueda('') }}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${!grupo && !busqueda ? 'text-white border-transparent' : 'text-slate-500 border-slate-200 hover:bg-slate-50'}`}
-                style={!grupo && !busqueda ? { background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' } : {}}>
-                Todos
-              </button>
-              {GRUPOS.map(g => (
-                <button key={g} onClick={() => { setGrupo(g); setBusqueda('') }}
-                  className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${grupo === g ? 'text-white border-transparent' : 'text-slate-500 border-slate-200 hover:bg-slate-50'}`}
-                  style={grupo === g ? { background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' } : {}}>
-                  {g}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-5 gap-2 max-h-48 overflow-y-auto pr-1 border border-slate-100 rounded-xl p-2">
-              {iconosFiltrados.map(item => {
-                const sel = icono === item.nombre
-                return (
-                  <button key={item.nombre} onClick={() => setIcono(item.nombre)} title={item.label}
-                    className={`flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl transition-all ${sel ? 'bg-blue-50 ring-2 ring-blue-400 scale-105' : 'hover:bg-slate-50 hover:scale-105'}`}>
-                    <ImgIcono nombre={item.nombre} size={30} />
-                    <span className="text-[9px] text-slate-400 truncate w-full text-center leading-tight">{item.label}</span>
-                  </button>
-                )
-              })}
-              {iconosFiltrados.length === 0 && (
-                <p className="col-span-5 text-center text-xs text-slate-400 py-4">Sin resultados</p>
-              )}
-            </div>
-          </div>
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="w-full px-3 py-2.5 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <Pencil size={13} /> Cambiar icono
+          </button>
 
           {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
         </div>
@@ -150,6 +112,13 @@ function EditarSubcatModal({ sub, categorias, onGuardado, onClose }: {
           </button>
         </div>
       </div>
+
+      <IconPickerModal
+        open={pickerOpen}
+        current={icono}
+        onPick={(name) => setIcono(name)}
+        onClose={() => setPickerOpen(false)}
+      />
     </div>
   )
 }

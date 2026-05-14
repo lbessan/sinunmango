@@ -2,22 +2,15 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ICONOS_CATEGORIAS, GRUPOS, urlIcono } from '@/lib/iconos-categorias'
+import { Pencil } from 'lucide-react'
+import { ICONOS_CATEGORIAS } from '@/lib/iconos-categorias'
 import { IconoCategoria } from '@/components/icono-categoria'
+import { IconPickerModal } from '@/components/icon-picker-modal'
 
 type Categoria = { id: string; nombre_categoria: string; icono: string | null }
 
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 bg-white'
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
-
-function ImgIcono({ nombre, size }: { nombre: string; size: number }) {
-  const [failedMain, setFailedMain] = useState(false)
-  const [failedAlt,  setFailedAlt]  = useState(false)
-  const alt = ICONOS_CATEGORIAS.find(i => i.nombre === nombre)?.alt ?? null
-  if (failedAlt || (!alt && failedMain)) return <span style={{ fontSize: size * 0.8 }}>🏷️</span>
-  if (failedMain && alt) return <img src={urlIcono(alt, 64)} alt={nombre} width={size} height={size} className="object-contain" loading="lazy" onError={() => setFailedAlt(true)} />
-  return <img src={urlIcono(nombre, 64)} alt={nombre} width={size} height={size} className="object-contain" loading="lazy" onError={() => setFailedMain(true)} />
-}
 
 export function EditarSubcategoriaClient({
   subcategoria,
@@ -29,22 +22,16 @@ export function EditarSubcategoriaClient({
   catIdActual: string
 }) {
   const router   = useRouter()
-  const [nombre,   setNombre]   = useState(subcategoria.nombre_subcategoria ?? '')
-  const [padreId,  setPadreId]  = useState(subcategoria.categoria_padre ?? catIdActual)
-  const [icono,    setIcono]    = useState(subcategoria.icono ?? 'shopping-cart')
-  const [busqueda, setBusqueda] = useState('')
-  const [grupo,    setGrupo]    = useState('')
-  const [saving,   setSaving]   = useState(false)
-  const [saved,    setSaved]    = useState(false)
-  const [error,    setError]    = useState('')
+  const [nombre,  setNombre]  = useState(subcategoria.nombre_subcategoria ?? '')
+  const [padreId, setPadreId] = useState(subcategoria.categoria_padre ?? catIdActual)
+  const [icono,   setIcono]   = useState<string>(subcategoria.icono ?? 'ShoppingCart')
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const [saved,   setSaved]   = useState(false)
+  const [error,   setError]   = useState('')
 
   const isNew = !subcategoria.id
-
-  const iconosFiltrados = ICONOS_CATEGORIAS.filter(i => {
-    const matchQ = !busqueda || i.label.toLowerCase().includes(busqueda.toLowerCase()) || i.nombre.toLowerCase().includes(busqueda.toLowerCase())
-    const matchG = !grupo || i.grupo === grupo
-    return matchQ && matchG
-  })
+  const iconoMeta = ICONOS_CATEGORIAS.find(i => i.name === icono)
 
   const handleGuardar = async () => {
     if (!nombre.trim()) { setError('El nombre es obligatorio'); return }
@@ -71,14 +58,28 @@ export function EditarSubcategoriaClient({
 
       <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
 
-        {/* Preview */}
+        {/* Preview con botón cambiar icono */}
         <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
-          <IconoCategoria icono={icono} size={48} />
-          <div>
-            <p className="text-base font-semibold text-slate-800">{nombre || 'Nombre de la subcategoría'}</p>
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center justify-center shrink-0 group relative"
+          >
+            <IconoCategoria icono={icono} size={28} color="#475569" />
+            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              <Pencil size={10} />
+            </span>
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-semibold text-slate-800 truncate">{nombre || 'Nombre de la subcategoría'}</p>
             <p className="text-xs text-slate-400 mt-0.5">
-              {ICONOS_CATEGORIAS.find(i => i.nombre === icono)?.label ?? icono}
+              {iconoMeta ? `${iconoMeta.label} · ${iconoMeta.grupo}` : icono}
             </p>
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="text-xs text-indigo-600 hover:text-indigo-800 mt-1 font-medium"
+            >
+              Cambiar icono →
+            </button>
           </div>
         </div>
 
@@ -95,45 +96,6 @@ export function EditarSubcategoriaClient({
           </select>
         </div>
 
-        {/* Picker de ícono */}
-        <div>
-          <label className={labelClass}>Ícono</label>
-          <input type="text" value={busqueda} onChange={e => { setBusqueda(e.target.value); setGrupo('') }}
-            placeholder="Buscar ícono..."
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-100 bg-white mb-2" />
-
-          <div className="flex gap-1.5 flex-wrap mb-3">
-            <button onClick={() => { setGrupo(''); setBusqueda('') }}
-              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${!grupo && !busqueda ? 'text-white border-transparent' : 'text-slate-500 border-slate-200 hover:bg-slate-50'}`}
-              style={!grupo && !busqueda ? { background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' } : {}}>
-              Todos
-            </button>
-            {GRUPOS.map(g => (
-              <button key={g} onClick={() => { setGrupo(g); setBusqueda('') }}
-                className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${grupo === g ? 'text-white border-transparent' : 'text-slate-500 border-slate-200 hover:bg-slate-50'}`}
-                style={grupo === g ? { background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' } : {}}>
-                {g}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-6 gap-2 max-h-56 overflow-y-auto pr-1 border border-slate-100 rounded-xl p-3">
-            {iconosFiltrados.map(item => {
-              const sel = icono === item.nombre
-              return (
-                <button key={item.nombre} onClick={() => setIcono(item.nombre)} title={item.label}
-                  className={`flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl transition-all ${sel ? 'bg-blue-50 ring-2 ring-blue-400 scale-105' : 'hover:bg-slate-50 hover:scale-105'}`}>
-                  <ImgIcono nombre={item.nombre} size={32} />
-                  <span className="text-[9px] text-slate-400 truncate w-full text-center leading-tight">{item.label}</span>
-                </button>
-              )
-            })}
-            {iconosFiltrados.length === 0 && (
-              <p className="col-span-6 text-center text-xs text-slate-400 py-4">Sin resultados</p>
-            )}
-          </div>
-        </div>
-
         {error && <p className="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
 
         <div className="flex gap-3">
@@ -148,6 +110,13 @@ export function EditarSubcategoriaClient({
           </button>
         </div>
       </div>
+
+      <IconPickerModal
+        open={pickerOpen}
+        current={icono}
+        onPick={(name) => setIcono(name)}
+        onClose={() => setPickerOpen(false)}
+      />
     </div>
   )
 }
