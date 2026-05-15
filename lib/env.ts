@@ -22,7 +22,8 @@ const OPTIONAL_PROD_VARS = [
 
   // Webhooks de subscripciones (sin estos no se reciben eventos de pago)
   'REVENUECAT_WEBHOOK_SECRET',
-  'PUBSUB_VERIFICATION_TOKEN',
+  'PUBSUB_VERIFICATION_TOKEN',           // legacy: token compartido en query string
+  'GOOGLE_PUBSUB_AUDIENCE',              // nuevo: aud claim del OIDC JWT (URL del endpoint)
   'GOOGLE_SERVICE_ACCOUNT_JSON',
   'GOOGLE_PLAY_PACKAGE_NAME',
 
