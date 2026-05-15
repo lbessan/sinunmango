@@ -1,5 +1,6 @@
 import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import type React from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -60,7 +61,7 @@ function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
       <div className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
         style={{ width: 96, height: 61, background: colorPrim }}>
         {imagenUrl
-          ? <img src={imagenUrl} alt={nombre} className="w-full h-full object-contain" />
+          ? <Image src={imagenUrl} alt={nombre} width={96} height={61} className="w-full h-full object-contain" />
           : <span className="text-lg">💳</span>}
       </div>
     )
@@ -69,7 +70,7 @@ function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
   const src = imagenUrl ?? efectivoSrc
   return (
     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 overflow-hidden" style={{ background: '#f1f5f9' }}>
-      {src ? <img src={src} alt={nombre} className="w-8 h-8 object-contain p-0.5 rounded-lg" /> : <span>🏦</span>}
+      {src ? <Image src={src} alt={nombre} width={32} height={32} className="w-8 h-8 object-contain p-0.5 rounded-lg" /> : <span>🏦</span>}
     </div>
   )
 }

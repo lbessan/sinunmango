@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
@@ -33,7 +34,7 @@ function LoginContent() {
         style={{ background: 'linear-gradient(135deg, var(--accent2, #0d3b6e) 0%, var(--accent, #1a6b5a) 100%)' }}
       >
         <div className="relative z-10 text-center px-12">
-          <img src="/logo.png" alt="Logo sinunmango" className="w-36 h-36 mx-auto mb-8 object-contain" />
+          <Image src="/logo.png" alt="Logo sinunmango" width={144} height={144} className="w-36 h-36 mx-auto mb-8 object-contain" priority />
           <h1 className="text-5xl font-bold mb-3">
             <span className="text-white">sinun</span><span style={{ color: '#f97316' }}>mango</span>
           </h1>
@@ -46,7 +47,7 @@ function LoginContent() {
         <div className="w-full max-w-sm space-y-6">
 
           <div className="lg:hidden text-center">
-            <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto mb-4 object-contain" />
+            <Image src="/logo.png" alt="Logo" width={64} height={64} className="w-16 h-16 mx-auto mb-4 object-contain" priority />
             <p className="text-2xl font-bold">
               <span className="text-slate-800">sinun</span><span style={{ color: '#f97316' }}>mango</span>
             </p>

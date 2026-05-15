@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Send, X, User, CheckCircle, AlertCircle, Loader2, Minimize2, Trash2, Sparkles } from 'lucide-react'
 
@@ -119,7 +120,7 @@ function Avatar({ size = 26 }: { size?: number }) {
   return (
     <div className="rounded-full shrink-0 overflow-hidden flex items-center justify-center"
       style={{ width: size, height: size, background: 'linear-gradient(135deg, var(--sidebar-bg, #07192b) 0%, var(--accent, #1a6b5a) 100%)' }}>
-      <img src="/manguito.png" alt="Manguito" style={{ width: size * 0.78, height: size * 0.78, objectFit: 'contain' }} />
+      <Image src="/manguito.png" alt="Manguito" width={Math.round(size * 0.78)} height={Math.round(size * 0.78)} style={{ objectFit: 'contain' }} />
     </div>
   )
 }
@@ -287,7 +288,7 @@ export function ManguitoFlotante() {
               {/* Avatar grande */}
               <div className="shrink-0 rounded-full overflow-hidden flex items-center justify-center"
                 style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.12)', boxShadow: '0 0 0 2px rgba(255,255,255,0.2)' }}>
-                <img src="/manguito.png" alt="Manguito" style={{ width: 34, height: 34, objectFit: 'contain' }} />
+                <Image src="/manguito.png" alt="Manguito" width={34} height={34} style={{ objectFit: 'contain' }} />
               </div>
 
               <div className="flex-1 min-w-0">
@@ -461,7 +462,7 @@ export function ManguitoFlotante() {
         >
           {open
             ? <X size={24} className="text-white" />
-            : <img src="/manguito.png" alt="Manguito" style={{ width: 48, height: 48, objectFit: 'contain' }} />
+            : <Image src="/manguito.png" alt="Manguito" width={48} height={48} style={{ objectFit: 'contain' }} />
           }
         </button>
       </div>

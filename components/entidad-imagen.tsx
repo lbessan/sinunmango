@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 type Props = {
   imagenUrl?: string | null
   icono?: string | null
@@ -8,9 +10,9 @@ type Props = {
 }
 
 const sizes = {
-  sm: { container: 'w-8 h-8',   text: 'text-base', img: 'w-8 h-8' },
-  md: { container: 'w-10 h-10', text: 'text-xl',   img: 'w-10 h-10' },
-  lg: { container: 'w-16 h-16', text: 'text-3xl',  img: 'w-16 h-16' },
+  sm: { container: 'w-8 h-8',   text: 'text-base', img: 'w-8 h-8',   px: 32  },
+  md: { container: 'w-10 h-10', text: 'text-xl',   img: 'w-10 h-10', px: 40  },
+  lg: { container: 'w-16 h-16', text: 'text-3xl',  img: 'w-16 h-16', px: 64  },
 }
 
 export function EntidadImagen({
@@ -22,9 +24,11 @@ export function EntidadImagen({
 
   if (imagenUrl) {
     return (
-      <img
+      <Image
         src={imagenUrl}
         alt={nombre}
+        width={s.px}
+        height={s.px}
         className={`${s.img} ${radio} object-cover shrink-0`}
       />
     )

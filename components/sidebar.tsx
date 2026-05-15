@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import {
   LayoutDashboard, ArrowLeftRight, PlusCircle, CreditCard,
   Receipt, ShieldCheck, BarChart2, Settings,
@@ -33,7 +34,7 @@ export async function Sidebar() {
 
       {/* Header */}
       <div className="px-5 py-5 flex items-center gap-3 border-b border-white/8">
-        <img src="/logo.png" alt="Logo" className="w-12 h-12 object-contain" />
+        <Image src="/logo.png" alt="Logo" width={48} height={48} className="w-12 h-12 object-contain" priority />
         <p className="font-bold text-base leading-tight">
           <span className="text-white">sinun</span><span style={{ color: '#f97316' }}>mango</span>
         </p>
