@@ -27,7 +27,7 @@ export default async function EditarMovimientoPage({
 
   return (
     <EditarMovimientoClient
-      movimiento={mov}
+      movimiento={mov as Props['movimiento']}
       cuentas={(cuentas ?? []) as Props['cuentas']}
       categorias={(categorias ?? []) as Props['categorias']}
       subcategorias={(subcategorias ?? []) as Props['subcategorias']}

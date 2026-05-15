@@ -10,6 +10,36 @@ import { IconoCategoria } from '@/components/icono-categoria'
 type CuentaJoin    = { tipo_cuenta?: string | null; nombre_cuenta?: string | null } | null
 type CategoriaJoin = { nombre_categoria?: string | null; icono?: string | null } | null
 
+// Shape de un row leído desde la vista `movimientos_completos`.
+type MovRow = {
+  id:                     string
+  fecha:                  string | null
+  detalle:                string | null
+  monto:                  number
+  monto_estimado?:        number | null
+  moneda:                 string | null
+  tipo_movimiento:        string | null
+  cuenta_origen:          string | null
+  cuenta_destino:         string | null
+  cuenta_origen_nombre:   string | null
+  cuenta_destino_nombre:  string | null
+  categoria:              string | null
+  categoria_nombre:       string | null
+  categoria_icono:        string | null
+  conciliado:             boolean | null
+  cuotas_total:           number | null
+  cuota_actual:           number | null
+}
+
+type GastoFijoRow = {
+  id:               string
+  nombre_gasto:     string
+  monto_estimado:   number
+  dia_vencimiento:  number | null
+  cuentas:          CuentaJoin
+  categorias:       CategoriaJoin
+}
+
 const fmt  = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const fmtR = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0,  maximumFractionDigits: 0  })
 
@@ -37,8 +67,8 @@ export default async function ResumenPage({
   const inicioMes     = `${yAR}-${String(mAR).padStart(2, '0')}-01`
   const periodoActual = inicioMes
 
-  let movimientos: any[] = []
-  let resumenData: any   = null
+  let movimientos: MovRow[] = []
+  let resumenData: Record<string, unknown> | null = null
 
   if (tipo === 'ingresos') {
     // Ingresos: periodo del mes actual, fecha <= hoy
@@ -49,7 +79,7 @@ export default async function ResumenPage({
       .eq('user_id', user.id)
       .lte('fecha', todayStr)
       .order('fecha', { ascending: false })
-    movimientos = data ?? []
+    movimientos = (data ?? []) as MovRow[]
 
   } else if (tipo === 'gastos') {
     // Gastos del mes (CASH FLOW REAL):
@@ -74,11 +104,11 @@ export default async function ResumenPage({
     ])
 
     // Gastos no-tarjeta
-    const gastos = (gastosNoTC ?? []).filter(m => m.cuenta_origen != null && !tarjetaIds.has(m.cuenta_origen))
+    const gastos = ((gastosNoTC ?? []) as MovRow[]).filter(m => m.cuenta_origen != null && !tarjetaIds.has(m.cuenta_origen))
 
     // Pagos a tarjeta (transferencias con destino tarjeta)
     // Sintetizamos una "categoría" tipo "Pago tarjeta - XXX" para que entren al breakdown
-    const pagos = (pagosTC ?? [])
+    const pagos = ((pagosTC ?? []) as MovRow[])
       .filter(m => m.cuenta_destino != null && tarjetaIds.has(m.cuenta_destino))
       .map(m => ({
         ...m,
@@ -119,7 +149,7 @@ export default async function ResumenPage({
         .lte('fecha', todayStr),
     ])
 
-    movimientos = (movs ?? []).filter(m => m.cuenta_origen != null && tarjetaIds.has(m.cuenta_origen))
+    movimientos = ((movs ?? []) as MovRow[]).filter(m => m.cuenta_origen != null && tarjetaIds.has(m.cuenta_origen))
 
     // Suma de transferencias ARS por tarjeta (cash efectivamente movido en el mes)
     const pagoRealArsPorTarjeta: Record<string, number> = {}
@@ -145,7 +175,7 @@ export default async function ResumenPage({
   const total = movimientos.reduce((a, m) => a + (m.monto_estimado ?? m.monto), 0)
 
   // Agrupar por categoría
-  const porCategoria = movimientos.reduce<Record<string, { icono: string | null; nombre: string; movs: any[]; subtotal: number }>>((acc, m) => {
+  const porCategoria = movimientos.reduce<Record<string, { icono: string | null; nombre: string; movs: MovRow[]; subtotal: number }>>((acc, m) => {
     const key = m.categoria ?? 'sin-cat'
     if (!acc[key]) acc[key] = { icono: m.categoria_icono, nombre: m.categoria_nombre ?? 'Sin categoría', movs: [], subtotal: 0 }
     acc[key].movs.push(m)
@@ -206,7 +236,7 @@ export default async function ResumenPage({
                       <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{m.fecha}</td>
                       <td className="px-4 py-3">
                         <p className="text-sm font-medium text-slate-700 max-w-xs truncate">{stripCuotaSuffix(m.detalle) || '—'}</p>
-                        {m.cuotas_total > 1 && <p className="text-xs text-slate-400">Cuota {Math.min(m.cuota_actual, m.cuotas_total)}/{Math.max(m.cuota_actual, m.cuotas_total)}</p>}
+                        {(m.cuotas_total ?? 0) > 1 && <p className="text-xs text-slate-400">Cuota {Math.min(m.cuota_actual ?? 1, m.cuotas_total ?? 1)}/{Math.max(m.cuota_actual ?? 1, m.cuotas_total ?? 1)}</p>}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
                       <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{m.cuenta_origen_nombre ?? '—'}</td>
@@ -228,7 +258,7 @@ export default async function ResumenPage({
       )}
 
       {/* ── TARJETAS ── */}
-      {tipo === 'tarjetas' && resumenData && (() => {
+      {tipo === 'tarjetas' && resumenData != null && (() => {
         const { tarjetas, pagoRealArsPorTarjeta } = resumenData as {
           tarjetas: Array<{ id: string; nombre_cuenta: string | null; fecha_cierre_tarjeta: string | null; fecha_vencimiento_tarjeta: string | null }>
           pagoRealArsPorTarjeta: Record<string, number>
@@ -239,7 +269,7 @@ export default async function ResumenPage({
         // ruido (la cotización al momento del pago suele ser distinta de la actual).
         type Bucket = {
           nombre: string
-          movs: any[]
+          movs: MovRow[]
           ars_total: number; ars_pagado: number; ars_pendiente: number
           usd_total: number; usd_pagado: number; usd_pendiente: number
           // sort_value: total estimado en ARS, solo para ordenar
@@ -432,8 +462,18 @@ export default async function ResumenPage({
       })()}
 
       {/* ── PROYECTADO ── */}
-      {tipo === 'proyectado' && resumenData && (() => {
-        const { res, gastosFijos, ingresosFuturos } = resumenData
+      {tipo === 'proyectado' && resumenData != null && (() => {
+        const { res, gastosFijos, ingresosFuturos } = resumenData as {
+          res: {
+            disponible_real:          number
+            ingresos_futuros_mes:     number
+            gastos_fijos_pendientes:  number
+            deuda_tarjetas_periodo:   number
+            pagos_tarjeta_mes:        number
+          } | null
+          gastosFijos:     GastoFijoRow[] | null
+          ingresosFuturos: MovRow[]       | null
+        }
         if (!res) return null
         const deudaRestante = Math.max(0, res.deuda_tarjetas_periodo - res.pagos_tarjeta_mes)
         const proyectado    = res.disponible_real + res.ingresos_futuros_mes - res.gastos_fijos_pendientes - deudaRestante
@@ -473,12 +513,12 @@ export default async function ResumenPage({
               </div>
             </div>
 
-            {(gastosFijos ?? []).filter((g: any) => g.dia_vencimiento >= today.getDate()).length > 0 && (
+            {(gastosFijos ?? []).filter(g => (g.dia_vencimiento ?? 0) >= today.getDate()).length > 0 && (
               <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Gastos fijos pendientes este mes</p>
                 </div>
-                {(gastosFijos ?? []).filter((g: any) => g.dia_vencimiento >= today.getDate()).map((g: any) => (
+                {(gastosFijos ?? []).filter(g => (g.dia_vencimiento ?? 0) >= today.getDate()).map(g => (
                   <div key={g.id} className="flex items-center justify-between px-5 py-3 border-b border-slate-50 last:border-0">
                     <div>
                       <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
@@ -497,7 +537,7 @@ export default async function ResumenPage({
                 <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ingresos futuros del mes</p>
                 </div>
-                {(ingresosFuturos ?? []).map((m: any) => (
+                {(ingresosFuturos ?? []).map(m => (
                   <div key={m.id} className="flex items-center justify-between px-5 py-3 border-b border-slate-50 last:border-0">
                     <div>
                       <p className="text-sm text-slate-700">{m.detalle ?? '—'}</p>

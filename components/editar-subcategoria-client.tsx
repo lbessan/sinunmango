@@ -9,6 +9,13 @@ import { IconPickerModal } from '@/components/icon-picker-modal'
 
 type Categoria = { id: string; nombre_categoria: string; icono: string | null }
 
+type SubcategoriaProp = {
+  id?: string
+  nombre_subcategoria?: string | null
+  categoria_padre?: string | null
+  icono?: string | null
+}
+
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 bg-white'
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
 
@@ -17,7 +24,7 @@ export function EditarSubcategoriaClient({
   categorias,
   catIdActual,
 }: {
-  subcategoria: any
+  subcategoria: SubcategoriaProp
   categorias: Categoria[]
   catIdActual: string
 }) {

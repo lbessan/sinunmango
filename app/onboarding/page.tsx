@@ -92,6 +92,19 @@ function buildDate(day: string): string | null {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+// Shape de una transacción parseada por /api/parsear-tarjeta-pdf.
+type PdfTransaccion = {
+  fecha:        string
+  detalle:      string
+  monto_ars:    number | null
+  monto_usd:    number | null
+  cuotas:       number
+  cuotas_total: number
+  ya_existe?:   boolean
+  es_impuesto?: boolean
+  es_descuento?: boolean
+}
+
 type PdfCard = {
   banco:      string
   red:        string
@@ -100,7 +113,7 @@ type PdfCard = {
   diaCierre:  string
   diaVence:   string
   nombre:     string
-  transacciones: any[]
+  transacciones: PdfTransaccion[]
   importConsumos: boolean
   error?: string
 }
@@ -355,7 +368,7 @@ export default function OnboardingPage() {
     setPdfStep('review')
   }
 
-  const updateCard = (i: number, field: keyof PdfCard, value: any) => {
+  const updateCard = <K extends keyof PdfCard>(i: number, field: K, value: PdfCard[K]) => {
     setParsedCards(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c))
   }
 
@@ -404,8 +417,8 @@ export default function OnboardingPage() {
         }
 
         const movimientos = card.transacciones
-          .filter((tx: any) => !tx.ya_existe)
-          .map((tx: any) => {
+          .filter(tx => !tx.ya_existe)
+          .map(tx => {
             const moneda  = tx.monto_usd !== null && tx.monto_usd !== undefined ? 'USD' : 'ARS'
             const monto   = moneda === 'USD' ? (tx.monto_usd ?? 0) : (tx.monto_ars ?? 0)
             const tipoMov = tx.es_descuento ? 'Ingreso' : 'Gasto'
