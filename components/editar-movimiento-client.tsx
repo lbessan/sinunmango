@@ -5,7 +5,26 @@ import { useRouter } from 'next/navigation'
 import { Link2, AlertTriangle } from 'lucide-react'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodoCuenta as calcularPeriodo } from '@/lib/tarjeta-periodo'
-import type { Movimiento } from '@/lib/types'
+
+// Shape del movimiento que esta página necesita. Local (no se importa
+// Movimiento de @/lib/types) para que el prop refleje qué campos lee
+// el formulario, no la tabla entera.
+type MovimientoProp = {
+  id:               string
+  fecha:            string | null
+  detalle:          string | null
+  monto:            number
+  moneda:           string | null
+  cotizacion:       number | null
+  conciliado:       boolean | null
+  cuenta_origen:    string | null
+  categoria:        string | null
+  subcategoria:     string | null
+  periodo_tarjeta:  string | null
+  cuotas_total:     number | null
+  cuota_actual:     number | null
+  tipo_movimiento:  string | null
+}
 
 type Cuenta = {
   id: string
@@ -39,7 +58,7 @@ export function EditarMovimientoClient({
   categorias,
   subcategorias,
 }: {
-  movimiento: Movimiento
+  movimiento: MovimientoProp
   cuentas: Cuenta[]
   categorias: Categoria[]
   subcategorias: Subcategoria[]
@@ -172,7 +191,7 @@ export function EditarMovimientoClient({
     <div className="max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-slate-800">Editar movimiento</h1>
-        {movimiento.cuotas_total > 1 && (
+        {(movimiento.cuotas_total ?? 0) > 1 && (
           <span className="text-xs bg-amber-50 text-amber-600 px-3 py-1 rounded-full font-medium">
             Cuota {movimiento.cuota_actual}/{movimiento.cuotas_total}
           </span>
@@ -234,7 +253,7 @@ export function EditarMovimientoClient({
             categorias={categorias}
             value={form.categoria}
             onChange={id => { set('categoria', id); set('subcategoria', '') }}
-            filtroTipo={categoriaSeleccionada?.tipo_default ?? movimiento.tipo_movimiento}
+            filtroTipo={categoriaSeleccionada?.tipo_default ?? movimiento.tipo_movimiento ?? undefined}
           />
         </div>
 
