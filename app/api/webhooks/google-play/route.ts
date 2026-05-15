@@ -1,5 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { jwtVerify, createRemoteJWKSet } from 'jose'
 import { updateUserPlan } from '@/lib/subscription'
+
+// ─── OIDC JWT verification ───────────────────────────────────────────────────
+// Pub/Sub puede empujar a este endpoint firmando con un OIDC JWT del
+// service account configurado en la subscription. Es más fuerte que el
+// query-param token porque:
+//   - El JWT es firmado por Google (no falsificable sin acceso al SA)
+//   - Tiene `aud` claim que matchea nuestra URL exacta (anti-replay cruzado)
+//   - El token va en el header Authorization, no en la URL (no aparece en
+//     logs/referers/history del browser)
+//
+// Para activarlo: en la subscription de Pub/Sub configurar push auth con
+// el service account. Hasta entonces, caemos al query-param token (legacy).
+
+const GOOGLE_JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'))
+
+async function verifyPubSubOIDC(req: NextRequest): Promise<boolean> {
+  const auth = req.headers.get('authorization')
+  if (!auth?.startsWith('Bearer ')) return false
+
+  const token    = auth.slice(7)
+  const audience = process.env.GOOGLE_PUBSUB_AUDIENCE  // usualmente la URL completa del endpoint
+
+  if (!audience) {
+    console.warn('[google-play] GOOGLE_PUBSUB_AUDIENCE no configurado — OIDC check skipped')
+    return false
+  }
+
+  try {
+    await jwtVerify(token, GOOGLE_JWKS, {
+      audience,
+      issuer: ['https://accounts.google.com', 'accounts.google.com'],
+    })
+    return true
+  } catch (err) {
+    console.warn('[google-play] OIDC JWT inválido:', (err as Error).message)
+    return false
+  }
+}
 
 // ─── Tipos de notificación de Google Play ─────────────────────────────────────
 // https://developer.android.com/google/play/billing/rtdn-reference
@@ -67,13 +106,19 @@ export async function dispatchSubscriptionNotification(input: {
 // URL configurada en Play Console: https://tu-app.vercel.app/api/webhooks/google-play?token=PUBSUB_TOKEN
 export async function POST(req: NextRequest) {
 
-  // 1. Verificar token secreto (evita que alguien llame al endpoint sin ser Pub/Sub)
-  const token = req.nextUrl.searchParams.get('token')
-  if (token !== process.env.PUBSUB_VERIFICATION_TOKEN) {
-    // No loggear el token recibido en plaintext — si alguien prueba tokens
-    // a fuerza bruta, los logs de Vercel quedarían con la lista completa.
-    console.warn(`[google-play] Token inválido (len=${token?.length ?? 0})`)
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // 1. Verificar autenticidad de Pub/Sub. Aceptamos cualquiera de las dos:
+  //    a) OIDC JWT firmado por Google (preferido — configurar en GCP console)
+  //    b) Query-param token compartido (legacy, hasta migrar a OIDC)
+  const oidcOk = await verifyPubSubOIDC(req)
+  if (!oidcOk) {
+    const expectedToken = process.env.PUBSUB_VERIFICATION_TOKEN
+    const tokenGiven    = req.nextUrl.searchParams.get('token')
+    if (!expectedToken || tokenGiven !== expectedToken) {
+      // No loggear el token recibido en plaintext — si alguien prueba tokens
+      // a fuerza bruta, los logs de Vercel quedarían con la lista completa.
+      console.warn(`[google-play] Auth inválida (oidc=fail, token_len=${tokenGiven?.length ?? 0})`)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
   }
 
   // 2. Parsear el mensaje de Pub/Sub
