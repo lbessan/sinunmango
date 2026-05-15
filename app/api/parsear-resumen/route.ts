@@ -3,6 +3,7 @@ import { createClientForRequest } from '@/lib/supabase/route'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
+import { parseClaudeJSON, recoverPartialArray } from '@/lib/parse-claude-json'
 
 const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario. PDFs típicos < 2 MB.
 const CLAUDE_TIMEOUT_MS    = 55_000             // Vercel Hobby corta a 60s; dejamos margen
@@ -201,46 +202,26 @@ Notas importantes:
   }
 
   const claudeData = await claudeRes.json()
-  const rawText   = claudeData.content?.[0]?.text ?? ''
+  const rawText    = claudeData.content?.[0]?.text ?? ''
 
-  try {
-    const clean = rawText
-      .replace(/```(?:json)?\n?/g, '')
-      .replace(/```/g, '')
-      .trim()
-
-    // Intento de parse normal
-    try {
-      const parsed = JSON.parse(clean)
-      // Operación exitosa → commit del cupo
-      const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
-      return NextResponse.json({ ok: true, transacciones: parsed.transacciones ?? [] }, { headers: usageHeaders(committed) })
-    } catch {
-      // Si el JSON está truncado, intentar rescatar lo que se pudo parsear
-      // buscamos el array de transacciones e intentamos cerrar el JSON manualmente
-      const match = clean.match(/"transacciones"\s*:\s*(\[[\s\S]*)/)
-      if (match) {
-        let arr = match[1]
-        // Cerrar el array si está abierto: encontrar el último } completo
-        const lastBrace = arr.lastIndexOf('},')
-        if (lastBrace !== -1) arr = arr.slice(0, lastBrace + 1) + ']'
-        try {
-          const txs = JSON.parse(arr)
-          console.warn('[parsear-resumen] Partial parse recovered', txs.length, 'transactions')
-          const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
-          return NextResponse.json({ ok: true, transacciones: txs }, { headers: usageHeaders(committed) })
-        } catch { /* fall through */ }
-      }
-      console.error('[parsear-resumen] Could not parse Claude response:', rawText.slice(0, 500))
-      return NextResponse.json(
-        { error: 'No se pudieron extraer los datos del resumen.' },
-        { status: 422 }
-      )
-    }
-  } catch {
-    return NextResponse.json(
-      { error: 'Error inesperado al procesar el resumen.' },
-      { status: 500 }
-    )
+  // Intento de parse normal
+  const parsed = parseClaudeJSON<{ transacciones?: unknown[] }>(rawText)
+  if (parsed) {
+    const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
+    return NextResponse.json({ ok: true, transacciones: parsed.transacciones ?? [] }, { headers: usageHeaders(committed) })
   }
+
+  // Si el JSON está truncado, intentar rescatar el array de transacciones
+  const recovered = recoverPartialArray(rawText, 'transacciones')
+  if (recovered) {
+    console.warn(`[parsear-resumen] Partial parse recovered ${recovered.length} transactions`)
+    const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
+    return NextResponse.json({ ok: true, transacciones: recovered }, { headers: usageHeaders(committed) })
+  }
+
+  console.error('[parsear-resumen] Could not parse Claude response:', rawText.slice(0, 500))
+  return NextResponse.json(
+    { error: 'No se pudieron extraer los datos del resumen.' },
+    { status: 422 }
+  )
 }
