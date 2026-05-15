@@ -521,22 +521,27 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
     const isTarjeta = !!(cierreDay && venceDay)
 
     const nuevosMovs = seleccionadas.flatMap(tx => {
-      const montoBase = tx.monto_ars ?? (tx.monto_usd ?? 0)
-      const cat = categorias.find(c => c.id === tx.catId)
-      const tipoMov = tx.es_descuento ? 'Ingreso' : 'Gasto'
+      // El monto del PDF (línea "C.XX/YY ... $X") es el valor de UNA cuota,
+      // no el total de la compra. Cada cuota hermana se carga con ese mismo monto.
+      const montoCuota = tx.monto_usd ?? Math.abs(tx.monto_ars ?? 0)
+      const tipoMov   = tx.es_descuento ? 'Ingreso' : 'Gasto'
+      // Si la transacción tiene cuotas, generamos un grupo_cuotas común para
+      // linkear las N cuotas hermanas (compra única partida en cuotas).
+      const grupo = tx.cuotas_total > 1 ? crypto.randomUUID() : null
       return Array.from({ length: tx.cuotas_total }, (_, i) => {
         const fechaCuota   = addMonths(tx.fecha, i)
         const periodoCuota = calcularPeriodo(fechaCuota, cierreDay ?? null, venceDay ?? null, isTarjeta)
         return {
           id: crypto.randomUUID(), fecha: fechaCuota,
           detalle: tx.cuotas_total > 1 ? `${tx.detalle} (Cuota ${i + 1}/${tx.cuotas_total})` : tx.detalle,
-          monto: tx.monto_usd ? tx.monto_usd : Math.abs(montoBase) / tx.cuotas_total,
+          monto: montoCuota,
           moneda: tx.monto_usd ? 'USD' : 'ARS',
           tipo_movimiento: tipoMov,
           cuenta_origen: cuentaId, categoria: tx.catId || null, subcategoria: null,
           cotizacion: null, conciliado: true,
           periodo_tarjeta: periodoCuota,
           cuotas_total: tx.cuotas_total, cuota_actual: i + 1, ciclo_actual: 1,
+          grupo_cuotas: grupo,
         }
       })
     })
