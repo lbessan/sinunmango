@@ -1,15 +1,13 @@
 import { adminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireCronAuth } from '@/lib/cron-auth'
 
 // Cron diario: actualiza Dolar_Tarjeta_BNA en la tabla parametros
 // para todos los usuarios, usando la cotización oficial del BNA.
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = requireCronAuth(req)
+  if (unauthorized) return unauthorized
 
   // ── Obtener cotización del BNA ──────────────────────────────────────────────
   let valorNuevo: number

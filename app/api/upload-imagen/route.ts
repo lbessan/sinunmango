@@ -39,11 +39,12 @@ function detectImageMime(bytes: Uint8Array): { mime: string; ext: string } | nul
 
 // NOTA: las operaciones de Storage (.list, .upload, .remove) usan adminClient
 // porque las RLS policies de storage.objects son distintas a las de tablas y
-// no las migré en este round. Para hardening seguimos confiando en:
+// no las migré en este round. El hardening descansa en:
 //  - validación de carpeta/id/MIME/tamaño (acá arriba)
 //  - el path es server-controlled (no dejamos que el cliente elija ruta)
-// Migrar storage a user-scoped es un refactor aparte (requiere policies en
-// storage.objects basadas en `name LIKE 'cuentas/%' AND auth.uid() = ...`).
+//  - el path se prefija con user.id, así un user solo puede leer/escribir/borrar
+//    archivos de su propia carpeta — aunque envíe un id de otro user, opera en
+//    su propio namespace y nunca toca archivos ajenos.
 
 export async function POST(req: NextRequest) {
   const { user } = await createClientForRequest(req)
@@ -90,17 +91,21 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // ── Construir path solo con bytes ya validados (path traversal-safe) ───────
-  const ts   = Date.now()
-  const path = `${carpeta}/${id}_${ts}.${detected.ext}`
+  // ── Construir path scoped por user.id (cross-user isolation en Storage) ────
+  // Cualquier id que mande el cliente cae siempre dentro de `${user.id}/...`,
+  // así que no puede colisionar ni sobreescribir archivos de otro user aunque
+  // adivine un id ajeno.
+  const ts          = Date.now()
+  const userCarpeta = `${user.id}/${carpeta}`
+  const path        = `${userCarpeta}/${id}_${ts}.${detected.ext}`
 
-  // ── Limpiar archivos anteriores del mismo id ────────────────────────────────
+  // ── Limpiar archivos anteriores del mismo id (solo dentro del namespace del user) ──
   const { data: archivosExistentes } = await adminClient.storage
     .from('app-imagenes')
-    .list(carpeta, { search: id })
+    .list(userCarpeta, { search: id })
 
   if (archivosExistentes && archivosExistentes.length > 0) {
-    const aEliminar = archivosExistentes.map(a => `${carpeta}/${a.name}`)
+    const aEliminar = archivosExistentes.map(a => `${userCarpeta}/${a.name}`)
     await adminClient.storage.from('app-imagenes').remove(aEliminar)
   }
 

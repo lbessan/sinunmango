@@ -1,5 +1,6 @@
 import { adminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireCronAuth } from '@/lib/cron-auth'
 
 type CategoriaJoin = { nombre_categoria?: string | null } | null
 
@@ -85,11 +86,8 @@ function buildEmailHtml(
 }
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = requireCronAuth(req)
+  if (unauthorized) return unauthorized
 
   const resendApiKey = process.env.RESEND_API_KEY
   const fromEmail    = process.env.RESEND_FROM       ?? 'alertas@sinunmango.com.ar'

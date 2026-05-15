@@ -233,33 +233,34 @@ export async function POST(req: NextRequest) {
   // ── Verificar firma Svix (solo para webhooks tipo Resend) ────────────────
   if (isResend) {
     const secret = process.env.RESEND_WEBHOOK_SECRET
-    if (secret) {
-      const svixId        = req.headers.get('svix-id')
-      const svixTimestamp = req.headers.get('svix-timestamp')
-      const svixSignature = req.headers.get('svix-signature')
+    if (!secret) {
+      // Sin secret no podemos verificar el origen del webhook → cualquiera
+      // con la URL pública podría inyectar movimientos en cuentas ajenas.
+      // 503 explícito: el endpoint está deshabilitado hasta configurar el secret.
+      console.error('[email-inbound] RESEND_WEBHOOK_SECRET no configurado — endpoint deshabilitado')
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 503 })
+    }
 
-      if (!svixId || !svixTimestamp || !svixSignature) {
-        console.warn('[email-inbound] Faltan headers de Svix (svix-id/timestamp/signature)')
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
+    const svixId        = req.headers.get('svix-id')
+    const svixTimestamp = req.headers.get('svix-timestamp')
+    const svixSignature = req.headers.get('svix-signature')
 
-      const valid = verifySvixSignature({
-        id:        svixId,
-        timestamp: svixTimestamp,
-        signature: svixSignature,
-        body:      rawBody,
-        secret,
-      })
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      console.warn('[email-inbound] Faltan headers de Svix (svix-id/timestamp/signature)')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-      if (!valid) {
-        console.warn('[email-inbound] Firma Svix inválida')
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
-    } else {
-      // Fallback: secret no configurado todavía. Loggear pero no romper para
-      // permitir despliegue gradual (configurás el secret en Resend + Vercel sin
-      // downtime del webhook). Quitar este else cuando el secret esté en prod.
-      console.warn('[email-inbound] RESEND_WEBHOOK_SECRET no configurado — webhook procesado SIN verificar firma')
+    const valid = verifySvixSignature({
+      id:        svixId,
+      timestamp: svixTimestamp,
+      signature: svixSignature,
+      body:      rawBody,
+      secret,
+    })
+
+    if (!valid) {
+      console.warn('[email-inbound] Firma Svix inválida')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
   }
 

@@ -1,12 +1,16 @@
 import { adminClient } from '@/lib/supabase/admin'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { todayPartsAR } from '@/lib/timezone'
+import { requireCronAuth } from '@/lib/cron-auth'
 
-// Este endpoint es llamado por el cron de Vercel diariamente a las 3am
-// Replica la lógica de AppSheet: si HOY = día de vencimiento de la tarjeta,
-// marca como conciliados todos los movimientos no conciliados con periodo <= mes anterior
+// Este endpoint es llamado por el cron de Vercel diariamente.
+// Si HOY = día de vencimiento de una tarjeta, marca como conciliados todos
+// los movimientos no conciliados con periodo <= mes anterior de esa tarjeta.
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const unauthorized = requireCronAuth(req)
+  if (unauthorized) return unauthorized
+
   const { year: yAR, month: mAR, day: dAR } = todayPartsAR()
   const today    = new Date(yAR, mAR - 1, dAR)
   const todayDay = dAR
@@ -35,7 +39,7 @@ export async function GET() {
     if (venceDay !== todayDay) continue
 
     // Conciliar todos los movimientos no conciliados con periodo < mes actual
-    const { data, error } = await adminClient
+    const { error } = await adminClient
       .from('movimientos')
       .update({ conciliado: true })
       .eq('cuenta_origen', tarjeta.id)
