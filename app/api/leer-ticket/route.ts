@@ -3,7 +3,7 @@ import { createClientForRequest } from '@/lib/supabase/route'
 import { todayAR } from '@/lib/timezone'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
-import { enforceMonthlyLimit, usageHeaders } from '@/lib/usage-limits'
+import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
 
 // ─── POST /api/leer-ticket ───────────────────────────────────────────────────
 // Receives a base64 image of a receipt/ticket, sends it to Claude Vision,
@@ -20,8 +20,9 @@ export async function POST(req: NextRequest) {
   if (!rl.allowed) return NextResponse.json({ error: rl.message }, { status: 429 })
 
   // Monthly usage gate (free tier): 3 tickets/mes. Pro: ilimitado.
+  // CHECK sin incrementar — solo consumimos cupo si la operación resulta exitosa.
   const plan  = await getUserPlan(supabase)
-  const usage = await enforceMonthlyLimit(supabase, 'ticket', plan.has_pro_access)
+  const usage = await checkMonthlyLimit(supabase, 'ticket', plan.has_pro_access)
   if (!usage.allowed) {
     return NextResponse.json(
       { error: 'limit_reached', feature: 'ticket', limit: usage.limit, used: usage.used },
@@ -111,6 +112,8 @@ Notas:
     const clean = rawText.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim()
     const parsed = JSON.parse(clean)
 
+    // Operación exitosa → commit del cupo
+    const committed = await commitMonthlyUsage(supabase, 'ticket', plan.has_pro_access)
     return NextResponse.json({
       ok:      true,
       detalle: parsed.detalle  ?? null,
@@ -118,7 +121,7 @@ Notas:
       moneda:  parsed.moneda   ?? 'ARS',
       fecha:   parsed.fecha    ?? todayAR(),
       cuotas:  parsed.cuotas   ?? 1,
-    }, { headers: usageHeaders(usage) })
+    }, { headers: usageHeaders(committed) })
   } catch {
     console.error('[leer-ticket] Could not parse Claude response:', rawText)
     return NextResponse.json(

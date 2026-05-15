@@ -3,7 +3,7 @@ import { createClientForRequest } from '@/lib/supabase/route'
 import { todayAR, todayPartsAR } from '@/lib/timezone'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
-import { enforceMonthlyLimit, usageHeaders } from '@/lib/usage-limits'
+import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
 
 // ─── POST /api/asistente ─────────────────────────────────────────────────────
 // Streaming chat with Claude.
@@ -23,8 +23,9 @@ export async function POST(req: NextRequest) {
   if (!rl.allowed) return NextResponse.json({ error: rl.message }, { status: 429 })
 
   // Monthly usage gate (free tier): 5 mensajes/mes. Pro: ilimitado.
+  // CHECK sin incrementar — solo consumimos cupo si la operación resulta exitosa.
   const plan  = await getUserPlan(supabase)
-  const usage = await enforceMonthlyLimit(supabase, 'asistente', plan.has_pro_access)
+  const usage = await checkMonthlyLimit(supabase, 'asistente', plan.has_pro_access)
   if (!usage.allowed) {
     return NextResponse.json(
       { error: 'limit_reached', feature: 'asistente', limit: usage.limit, used: usage.used },
@@ -339,6 +340,11 @@ REGLAS CRÍTICAS:
     return NextResponse.json({ error: 'Error del asistente de IA.' }, { status: 502 })
   }
 
+  // Operación exitosa (Claude respondió 200) → commit del cupo.
+  // El stream puede romperse después, pero el costo de Claude ya se incurrió,
+  // así que consumimos cupo acá.
+  const committed = await commitMonthlyUsage(supabase, 'asistente', plan.has_pro_access)
+
   // Proxy del SSE stream al cliente
   const stream = new ReadableStream({
     async start(controller) {
@@ -362,7 +368,7 @@ REGLAS CRÍTICAS:
       'Content-Type':  'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       'Connection':    'keep-alive',
-      ...usageHeaders(usage),
+      ...usageHeaders(committed),
     },
   })
 }
