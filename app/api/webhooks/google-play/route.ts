@@ -70,7 +70,9 @@ export async function POST(req: NextRequest) {
   // 1. Verificar token secreto (evita que alguien llame al endpoint sin ser Pub/Sub)
   const token = req.nextUrl.searchParams.get('token')
   if (token !== process.env.PUBSUB_VERIFICATION_TOKEN) {
-    console.warn('[google-play] Token inválido:', token)
+    // No loggear el token recibido en plaintext — si alguien prueba tokens
+    // a fuerza bruta, los logs de Vercel quedarían con la lista completa.
+    console.warn(`[google-play] Token inválido (len=${token?.length ?? 0})`)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -5,6 +5,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
+      // `server-only` tira "no se puede importar desde client" cuando vitest
+      // lo importa fuera del runtime de Next. Lo aliasamos a un noop para
+      // que los tests puedan importar libs marcadas como server-only.
+      'server-only': path.resolve(__dirname, '__tests__/__helpers__/server-only-noop.ts'),
     },
   },
   test: {
