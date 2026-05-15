@@ -176,7 +176,9 @@ export async function enforceMonthlyLimitAsAdmin(
     return { allowed: true, remaining: limit, limit, used: 0 }
   }
 
-  const { allowed, used } = data
+  // La RPC retorna JSONB; database.types lo tipa como Json genérico.
+  // Sabemos el shape porque lo definimos en docs/migration-usage-admin-atomic.sql.
+  const { allowed, used } = data as { allowed: boolean; used: number }
   if (hasProAccess) {
     return { allowed: true, remaining: -1, limit: -1, used: -1 }
   }

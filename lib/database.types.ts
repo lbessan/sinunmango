@@ -734,8 +734,8 @@ export type Database = {
       get_usage: { Args: { p_feature: string }; Returns: number }
       increment_usage: { Args: { p_feature: string }; Returns: number }
       increment_usage_admin: {
-        Args: { p_user_id: string; p_feature: string; p_limit: number }
-        Returns: { allowed: boolean; used: number }
+        Args: { p_feature: string; p_limit: number; p_user_id: string }
+        Returns: Json
       }
       is_authorized: { Args: { uid: string }; Returns: boolean }
       monto_estimado: {
