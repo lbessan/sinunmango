@@ -3,7 +3,7 @@ import { updateUserPlan } from '@/lib/subscription'
 
 // ─── Tipos de notificación de Google Play ─────────────────────────────────────
 // https://developer.android.com/google/play/billing/rtdn-reference
-const NOTIF = {
+export const NOTIF = {
   RECOVERED:              1,  // suscripción recuperada de account hold
   RENEWED:                2,  // renovada exitosamente
   CANCELED:               3,  // cancelada por el usuario (sigue activa hasta expiryTime)
@@ -18,6 +18,49 @@ const NOTIF = {
   REVOKED:                12, // revocada por reembolso
   EXPIRED:                13, // venció definitivamente
 } as const
+
+// ─── Dispatcher: mapea notificationType → updateUserPlan ─────────────────────
+//
+// Exportado para tests unitarios. Es la única parte del webhook con lógica
+// de negocio — el resto del POST handler es plumbing (verificar token,
+// parsear Pub/Sub, llamar al Play API).
+export async function dispatchSubscriptionNotification(input: {
+  notificationType: number
+  userId:           string
+  expiresAt:        string | null
+  purchaseToken:    string
+  subscriptionId:   string
+}): Promise<{ planTo: 'pro' | 'free' | 'ignored' }> {
+  const { notificationType, userId, expiresAt, purchaseToken, subscriptionId } = input
+  const meta = { plan_expires_at: expiresAt, google_purchase_token: purchaseToken, google_subscription_id: subscriptionId }
+
+  switch (notificationType) {
+    // ── Activos: subir a pro ──────────────────────────────────────────
+    case NOTIF.PURCHASED:
+    case NOTIF.RENEWED:
+    case NOTIF.RECOVERED:
+    case NOTIF.RESTARTED:
+    case NOTIF.IN_GRACE_PERIOD:  // pago en gracia: mantener acceso
+      await updateUserPlan(userId, 'pro', meta)
+      return { planTo: 'pro' }
+
+    // ── Cancelado: sigue activo hasta expiresAt ───────────────────────
+    case NOTIF.CANCELED:
+      // No bajamos el plan todavía; cuando venga EXPIRED lo bajamos
+      await updateUserPlan(userId, 'pro', meta)
+      return { planTo: 'pro' }
+
+    // ── Inactivos: bajar a free ───────────────────────────────────────
+    case NOTIF.EXPIRED:
+    case NOTIF.REVOKED:
+    case NOTIF.ON_HOLD:
+      await updateUserPlan(userId, 'free', { plan_expires_at: null, google_purchase_token: purchaseToken, google_subscription_id: subscriptionId })
+      return { planTo: 'free' }
+
+    default:
+      return { planTo: 'ignored' }
+  }
+}
 
 // ─── POST /api/webhooks/google-play ──────────────────────────────────────────
 // Google Cloud Pub/Sub hace push a esta URL cuando hay un evento de suscripción.
@@ -99,47 +142,14 @@ export async function POST(req: NextRequest) {
 
   // 7. Actualizar plan según el tipo de notificación
   try {
-    switch (notificationType) {
-      // ── Activos: subir a pro ──────────────────────────────────────────
-      case NOTIF.PURCHASED:
-      case NOTIF.RENEWED:
-      case NOTIF.RECOVERED:
-      case NOTIF.RESTARTED:
-      case NOTIF.IN_GRACE_PERIOD:  // pago en gracia: mantener acceso
-        await updateUserPlan(userId, 'pro', {
-          plan_expires_at:        expiresAt,
-          google_purchase_token:  purchaseToken,
-          google_subscription_id: subscriptionId,
-        })
-        console.log(`[google-play] Usuario ${userId} → pro (vence: ${expiresAt})`)
-        break
-
-      // ── Cancelado: sigue activo hasta expiresAt ───────────────────────
-      case NOTIF.CANCELED:
-        // No bajamos el plan todavía; cuando venga EXPIRED lo bajamos
-        await updateUserPlan(userId, 'pro', {
-          plan_expires_at:        expiresAt,
-          google_purchase_token:  purchaseToken,
-          google_subscription_id: subscriptionId,
-        })
-        console.log(`[google-play] Usuario ${userId} canceló — sigue activo hasta ${expiresAt}`)
-        break
-
-      // ── Inactivos: bajar a free ───────────────────────────────────────
-      case NOTIF.EXPIRED:
-      case NOTIF.REVOKED:
-      case NOTIF.ON_HOLD:
-        await updateUserPlan(userId, 'free', {
-          plan_expires_at:        null,
-          google_purchase_token:  purchaseToken,
-          google_subscription_id: subscriptionId,
-        })
-        console.log(`[google-play] Usuario ${userId} → free (tipo: ${notificationType})`)
-        break
-
-      default:
-        console.log(`[google-play] Tipo ignorado: ${notificationType}`)
-    }
+    const { planTo } = await dispatchSubscriptionNotification({
+      notificationType,
+      userId,
+      expiresAt,
+      purchaseToken,
+      subscriptionId,
+    })
+    console.log(`[google-play] Usuario ${userId} → ${planTo} (tipo: ${notificationType}, vence: ${expiresAt})`)
   } catch (err) {
     console.error('[google-play] Error actualizando plan:', err)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
