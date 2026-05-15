@@ -3,7 +3,7 @@ import { adminClient } from '@/lib/supabase/admin'
 import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
 import { todayAR } from '@/lib/timezone'
 import { getUserPlanById } from '@/lib/subscription'
-import { enforceMonthlyLimitAsAdmin } from '@/lib/usage-limits'
+import { checkMonthlyUsageAsAdmin, enforceMonthlyLimitAsAdmin } from '@/lib/usage-limits'
 import crypto from 'crypto'
 
 // crypto.createHmac requiere runtime Node (no Edge)
@@ -119,9 +119,16 @@ async function fetchResendEmailBody(emailId: string): Promise<string> {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return ''
 
-  const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  })
+  let res: Response
+  try {
+    res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal:  AbortSignal.timeout(10_000),
+    })
+  } catch (err) {
+    console.warn(`[email-inbound] Could not fetch email ${emailId}:`, err)
+    return ''
+  }
 
   if (!res.ok) {
     console.warn(`[email-inbound] Could not fetch email ${emailId}: ${res.status}`)
@@ -178,19 +185,26 @@ Otras reglas:
 Email:
 ${emailText.slice(0, 3000)}`
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method:  'POST',
-    headers: {
-      'Content-Type':      'application/json',
-      'x-api-key':         process.env.ANTHROPIC_API_KEY ?? '',
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      messages:   [{ role: 'user', content: prompt }],
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:  'POST',
+      signal:  AbortSignal.timeout(20_000),
+      headers: {
+        'Content-Type':      'application/json',
+        'x-api-key':         process.env.ANTHROPIC_API_KEY ?? '',
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        messages:   [{ role: 'user', content: prompt }],
+      }),
+    })
+  } catch (err) {
+    console.error('[email-inbound] Claude fetch error:', err)
+    return []
+  }
 
   if (!res.ok) {
     console.error('[email-inbound] Claude API error:', res.status)
@@ -369,17 +383,30 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ ok: false, skipped: true, reason: 'no userId for token' })
   }
-  const plan  = await getUserPlanById(adminClient, userId)
-  const usage = await enforceMonthlyLimitAsAdmin(adminClient, userId, 'mail_tarjeta', plan.has_pro_access)
-  if (!usage.allowed) {
+  const plan = await getUserPlanById(adminClient, userId)
+
+  // ── CHECK (no consume): rechazamos antes de llamar a Claude si el user ya
+  //    agotó su cupo del mes ──
+  const check = await checkMonthlyUsageAsAdmin(adminClient, userId, 'mail_tarjeta', plan.has_pro_access)
+  if (!check.allowed) {
     console.log(`[email-inbound] limit_reached user=${userId} feature=mail_tarjeta`)
-    return NextResponse.json({ ok: false, skipped: true, reason: 'free_tier_limit_reached', limit: usage.limit })
+    return NextResponse.json({ ok: false, skipped: true, reason: 'free_tier_limit_reached', limit: check.limit })
   }
 
   // ── Parsear con Claude ────────────────────────────────────────────────────
   const parsedList = await parseEmailWithClaude(emailText)
   if (parsedList.length === 0) {
+    // No consumimos cupo: el mail no tenía transacciones reconocibles.
     return NextResponse.json({ ok: false, skipped: true, reason: 'no transactions found' })
+  }
+
+  // ── COMMIT (atomic): incrementamos cupo ahora que sabemos que vale la pena.
+  //    En la pequeña ventana de race entre check y commit otra invocación
+  //    pudo haber consumido el último cupo del user → la RPC nos rechaza acá ──
+  const committed = await enforceMonthlyLimitAsAdmin(adminClient, userId, 'mail_tarjeta', plan.has_pro_access)
+  if (!committed.allowed) {
+    console.log(`[email-inbound] limit_reached_after_parse user=${userId} feature=mail_tarjeta`)
+    return NextResponse.json({ ok: false, skipped: true, reason: 'free_tier_limit_reached_after_parse', limit: committed.limit })
   }
 
   // ── Cargar cuentas del usuario ────────────────────────────────────────────

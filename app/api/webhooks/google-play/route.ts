@@ -156,6 +156,7 @@ async function getSubscriptionPurchase(packageName: string, subscriptionId: stri
     const url = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/purchases/subscriptions/${subscriptionId}/tokens/${purchaseToken}`
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
+      signal:  AbortSignal.timeout(10_000),
     })
     if (!res.ok) {
       console.error('[google-play] API error:', res.status, await res.text())
@@ -186,6 +187,7 @@ async function getGoogleAccessToken(): Promise<string> {
 
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method:  'POST',
+    signal:  AbortSignal.timeout(10_000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body:    new URLSearchParams({
       grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',

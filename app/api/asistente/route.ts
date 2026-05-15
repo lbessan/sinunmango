@@ -312,8 +312,11 @@ REGLAS CRÍTICAS:
 - Contestá en español, de forma concisa y amigable`
 
   // ── Stream desde Claude API ───────────────────────────────────────────────
-  const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+  let claudeRes: Response
+  try {
+    claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: AbortSignal.timeout(55_000),
     headers: {
       'Content-Type':      'application/json',
       'x-api-key':         apiKey,
@@ -333,6 +336,14 @@ REGLAS CRÍTICAS:
       messages,
     }),
   })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      console.error('[asistente] Claude timeout')
+      return NextResponse.json({ error: 'El asistente está tardando demasiado. Probá de nuevo.' }, { status: 504 })
+    }
+    console.error('[asistente] Claude fetch error:', err)
+    return NextResponse.json({ error: 'No pudimos contactar al asistente.' }, { status: 502 })
+  }
 
   if (!claudeRes.ok) {
     const err = await claudeRes.text()

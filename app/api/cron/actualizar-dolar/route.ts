@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   // ── Obtener cotización del BNA ──────────────────────────────────────────────
   let valorNuevo: number
   try {
-    const res = await fetch('https://dolarapi.com/v1/dolares/oficial')
+    const res = await fetch('https://dolarapi.com/v1/dolares/oficial', { signal: AbortSignal.timeout(10_000) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     valorNuevo = Math.round(data.venta ?? data.compra)

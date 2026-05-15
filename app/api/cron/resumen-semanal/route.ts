@@ -149,6 +149,7 @@ export async function GET(req: NextRequest) {
     const html = buildEmailHtml(Math.round(ingresos), Math.round(gastos), resultado, topGastos, semanaLabel, baseUrl)
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
+      signal: AbortSignal.timeout(10_000),
       headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: fromEmail,
