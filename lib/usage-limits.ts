@@ -104,63 +104,50 @@ export async function readMonthlyUsage(
 
 // ── Variante admin (webhooks: email-inbound, RTDN, etc) ─────────────────────
 //
-// Como las RPCs usan auth.uid() y esto se ejecuta con service role (sin
-// sesión de user), hacemos el upsert directo contra la tabla. La service
-// role bypasea RLS y no tiene problema con auth.uid()=NULL.
+// Los webhooks corren con service_role y no tienen sesión de user, así que
+// no pueden usar las RPCs que dependen de auth.uid(). Llamamos a la RPC
+// `increment_usage_admin` que encapsula check + commit en una sola
+// transacción atómica con SELECT FOR UPDATE — previene la race condition
+// que tenía la versión vieja (SELECT + UPSERT desde JS).
 //
-// Acá mantenemos el patrón check+commit en una sola función porque el
-// webhook de email es asíncrono y no tiene sentido separarlo.
+// p_limit < 0 indica Pro (sin tope). La RPC siempre incrementa para Pro y
+// devuelve { allowed: true, used: nuevo_count }.
 export async function enforceMonthlyLimitAsAdmin(
   admin:        SupabaseClient<Database>,
   userId:       string,
   feature:      UsageFeature,
   hasProAccess: boolean,
 ): Promise<UsageResult> {
+  const limit  = USAGE_LIMITS_FREE[feature]
+  const pLimit = hasProAccess ? -1 : limit
+
+  const { data, error } = await admin.rpc('increment_usage_admin', {
+    p_user_id: userId,
+    p_feature: feature,
+    p_limit:   pLimit,
+  })
+
+  if (error || !data) {
+    console.error('[enforceMonthlyLimitAsAdmin] RPC error:', error)
+    // Fallback fail-open: no consumimos cupo y permitimos. Los webhooks
+    // suelen reintentar; preferimos cobrar un mail de más antes que
+    // rechazarlo silenciosamente por un error transitorio de la RPC.
+    if (hasProAccess) return { allowed: true, remaining: -1, limit: -1, used: -1 }
+    return { allowed: true, remaining: limit, limit, used: 0 }
+  }
+
+  const { allowed, used } = data
   if (hasProAccess) {
     return { allowed: true, remaining: -1, limit: -1, used: -1 }
   }
-
-  const limit = USAGE_LIMITS_FREE[feature]
-  const now   = new Date()
-  // today_ar(): Argentina no tiene DST, UTC-3 fijo
-  const ar    = new Date(now.getTime() - 3 * 60 * 60 * 1000)
-  const year  = ar.getUTCFullYear()
-  const month = ar.getUTCMonth() + 1
-
-  // Leer current
-  const { data: row } = await admin
-    .from('usage_monthly')
-    .select('count')
-    .eq('user_id', userId)
-    .eq('year',    year)
-    .eq('month',   month)
-    .eq('feature', feature)
-    .maybeSingle()
-
-  const current = row?.count ?? 0
-  if (current >= limit) {
-    return { allowed: false, remaining: 0, limit, used: current }
+  if (!allowed) {
+    return { allowed: false, remaining: 0, limit, used }
   }
-
-  // Upsert con +1
-  const newCount = current + 1
-  const { error } = await admin
-    .from('usage_monthly')
-    .upsert(
-      { user_id: userId, year, month, feature, count: newCount },
-      { onConflict: 'user_id,year,month,feature' },
-    )
-
-  if (error) {
-    console.error('[enforceMonthlyLimitAsAdmin] upsert error:', error)
-    return { allowed: true, remaining: limit - newCount, limit, used: newCount }
-  }
-
   return {
     allowed:   true,
-    remaining: Math.max(0, limit - newCount),
+    remaining: Math.max(0, limit - used),
     limit,
-    used:      newCount,
+    used,
   }
 }
 

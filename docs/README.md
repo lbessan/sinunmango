@@ -11,6 +11,7 @@ Documentos del proyecto. Mayoritariamente migraciones SQL que se corren manualme
 | `migration-billetera-banco-split.sql` | Migra cuentas viejas con `tipo_cuenta = 'Billetera/Banco'` a los tipos nuevos (`Banco CA`/`Banco CC`/`Billetera`). | ✅ Aplicada |
 | `migration-rls-policies.sql` | Crea las policies RLS `<tabla>_<op>_own` basadas en `auth.uid() = user_id` para todas las tablas. | ✅ Aplicada |
 | `migration-grupo-cuotas.sql` | Agrega columna `grupo_cuotas UUID` a `movimientos` para linkear cuotas hermanas, con backfill por regex del detalle. | ✅ Aplicada |
+| `migration-usage-admin-atomic.sql` | RPC `increment_usage_admin(user_id, feature, limit)` con check+commit atómico para webhooks (service_role). Elimina race condition que tenía el SELECT+UPSERT desde JS. | ✅ Aplicada |
 
 ## Reglas
 
