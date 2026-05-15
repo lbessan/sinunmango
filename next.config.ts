@@ -2,7 +2,15 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    // Permitir cargar imágenes desde Supabase Storage (cuenta.imagen_url,
+    // cuenta.imagen_banner_url, etc. que el user sube via /api/upload-imagen).
+    // Las imágenes en /public (logo.png, manguito.png, /banks/*, /cards/*)
+    // funcionan por defecto sin esta config.
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
+    ],
+  },
 };
 
 export default withSentryConfig(nextConfig, {
