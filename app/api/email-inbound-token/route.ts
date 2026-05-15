@@ -11,8 +11,18 @@ function randomSuffix(n = 4): string {
 }
 
 /**
- * Genera un token legible basado en el email del usuario.
- * Si hay colisión con otro user, agrega un sufijo random.
+ * Genera un token para el email-inbound del usuario.
+ *
+ * El token tiene formato `${prefijo}-${random}`:
+ *  - `prefijo`: parte legible derivada del email (max 18 chars), o "user" si vacío.
+ *  - `random`:  8 hex chars (4 bytes ≈ 4.3 mil millones de combinaciones).
+ *
+ * El sufijo random es SIEMPRE obligatorio — no solo en colisión. Si fuera
+ * derivable del email, un atacante con la dirección del user podría predecir
+ * el token y mandar emails falsos al webhook para inyectar movimientos.
+ *
+ * Tokens preexistentes (de antes de este cambio) siguen siendo válidos hasta
+ * que el user los rote manualmente desde Configuración (POST a este endpoint).
  *
  * IMPORTANTE: la verificación de unicidad necesita leer tokens de OTROS users,
  * cosa que RLS no permite con el cliente del user. Por eso usamos adminClient
@@ -23,20 +33,24 @@ async function generateTokenForUser(email: string): Promise<string> {
     .split('@')[0]
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '')   // quita puntos, +, guiones
-    .slice(0, 24)
+    .slice(0, 18)
 
-  const candidate = base || randomSuffix(8)
+  const prefix = base || 'user'
 
-  const { data: existing } = await adminClient
-    .from('user_preferences')
-    .select('user_id')
-    .eq('email_inbound_token', candidate)
-    .maybeSingle()
+  // Reintentar ante una colisión improbable (4.3B combinaciones).
+  for (let i = 0; i < 5; i++) {
+    const candidate = `${prefix}-${randomSuffix(4)}`
+    const { data: existing } = await adminClient
+      .from('user_preferences')
+      .select('user_id')
+      .eq('email_inbound_token', candidate)
+      .maybeSingle()
 
-  if (!existing) return candidate
+    if (!existing) return candidate
+  }
 
-  // Colisión: agregar sufijo corto
-  return `${candidate.slice(0, 18)}-${randomSuffix(2)}`
+  // Caso degenerado (5 colisiones seguidas): token completamente random.
+  return randomSuffix(16)
 }
 
 // ─── GET /api/email-inbound-token ─────────────────────────────────────────────

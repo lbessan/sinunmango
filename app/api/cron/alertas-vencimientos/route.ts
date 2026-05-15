@@ -1,5 +1,6 @@
 import { adminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireCronAuth } from '@/lib/cron-auth'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type GastoFijo = {
@@ -92,12 +93,8 @@ function buildEmailHtml(gastos: { gasto: GastoFijo; alerta: string; diasRestante
 
 // ─── Route handler ─────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
-  // Verify cron secret in production
-  const authHeader = req.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = requireCronAuth(req)
+  if (unauthorized) return unauthorized
 
   const resendApiKey = process.env.RESEND_API_KEY
   const fromEmail    = process.env.RESEND_FROM  ?? 'alertas@sinunmango.com.ar'
