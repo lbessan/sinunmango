@@ -11,7 +11,14 @@ import { DeleteButton } from '@/components/delete-button'
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 bg-white'
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
 
-export function EditarCategoriaClient({ categoria }: { categoria: any }) {
+type CategoriaProp = {
+  id?: string
+  nombre_categoria?: string | null
+  icono?: string | null
+  tipo_default?: string | null
+}
+
+export function EditarCategoriaClient({ categoria }: { categoria: CategoriaProp }) {
   const router  = useRouter()
   const [nombre, setNombre] = useState(categoria.nombre_categoria ?? '')
   const [icono,  setIcono]  = useState<string>(categoria.icono ?? 'ShoppingCart')

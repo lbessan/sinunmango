@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Link2, AlertTriangle } from 'lucide-react'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodoCuenta as calcularPeriodo } from '@/lib/tarjeta-periodo'
+import type { Movimiento } from '@/lib/types'
 
 type Cuenta = {
   id: string
@@ -38,7 +39,7 @@ export function EditarMovimientoClient({
   categorias,
   subcategorias,
 }: {
-  movimiento: any
+  movimiento: Movimiento
   cuentas: Cuenta[]
   categorias: Categoria[]
   subcategorias: Subcategoria[]
