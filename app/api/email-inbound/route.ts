@@ -4,6 +4,7 @@ import { calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
 import { todayAR } from '@/lib/timezone'
 import { getUserPlanById } from '@/lib/subscription'
 import { checkMonthlyUsageAsAdmin, enforceMonthlyLimitAsAdmin } from '@/lib/usage-limits'
+import { isGmailVerificationEmail, extractGmailConfirmUrl } from '@/lib/gmail-verification'
 import crypto from 'crypto'
 
 // crypto.createHmac requiere runtime Node (no Edge)
@@ -64,31 +65,6 @@ function verifySvixSignature({ id, timestamp, signature, body, secret }: {
       return false
     }
   })
-}
-
-// ─── Gmail forwarding verification detector ───────────────────────────────────
-function isGmailVerificationEmail(subject: string, from: string): boolean {
-  const s = subject.toLowerCase()
-  const f = from.toLowerCase()
-  return (
-    f.includes('forwarding-noreply@google.com') ||
-    f.includes('mail-settings.google.com') ||
-    s.includes('forwarding confirmation') ||
-    s.includes('confirmación de reenvío') ||
-    s.includes('confirmacion de reenvio') ||
-    s.includes('gmail forwarding') ||
-    (s.includes('reenviar') && s.includes('gmail')) ||
-    (s.includes('confirmaci') && s.includes('gmail'))
-  )
-}
-
-/** Extrae la URL de confirmación de reenvío de Gmail del cuerpo del email */
-function extractGmailConfirmUrl(text: string): string | null {
-  // Gmail usa mail.google.com o mail-settings.google.com según el idioma/región
-  const m = text.match(/https:\/\/mail(?:-settings)?\.google\.com\/mail\/vf-[^\s<>"]+/)
-  if (!m) return null
-  // Limpiar posible puntuación trailing
-  return m[0].replace(/[.,;)>\]'"]+$/, '')
 }
 
 // ─── Strip HTML to plain text ────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { createClientForRequest } from '@/lib/supabase/route'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
+import { parseClaudeJSON, recoverPartialArray, recoverObject } from '@/lib/parse-claude-json'
 
 const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario
 const CLAUDE_TIMEOUT_MS    = 55_000
@@ -153,53 +154,31 @@ Notas importantes:
   }
 
   const claudeData = await claudeRes.json()
-  const rawText   = claudeData.content?.[0]?.text ?? ''
+  const rawText    = claudeData.content?.[0]?.text ?? ''
 
-  try {
-    const clean = rawText
-      .replace(/```(?:json)?\n?/g, '')
-      .replace(/```/g, '')
-      .trim()
-
-    try {
-      const parsed = JSON.parse(clean)
-      // Operación exitosa → commit del cupo
-      const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
-      return NextResponse.json({
-        ok:            true,
-        tarjeta:       parsed.tarjeta ?? {},
-        transacciones: parsed.transacciones ?? [],
-      }, { headers: usageHeaders(committed) })
-    } catch {
-      // Fallback: try to recover partial JSON
-      const match = clean.match(/"transacciones"\s*:\s*(\[[\s\S]*)/)
-      if (match) {
-        let arr = match[1]
-        const lastBrace = arr.lastIndexOf('},')
-        if (lastBrace !== -1) arr = arr.slice(0, lastBrace + 1) + ']'
-        try {
-          const txs = JSON.parse(arr)
-          // Try to get tarjeta block separately
-          const tarjetaMatch = clean.match(/"tarjeta"\s*:\s*(\{[^}]+\})/)
-          let tarjeta = {}
-          if (tarjetaMatch) {
-            try { tarjeta = JSON.parse(tarjetaMatch[1]) } catch { /* skip */ }
-          }
-          console.warn('[parsear-tarjeta-pdf] Partial parse recovered', txs.length, 'transactions')
-          const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
-          return NextResponse.json({ ok: true, tarjeta, transacciones: txs }, { headers: usageHeaders(committed) })
-        } catch { /* fall through */ }
-      }
-      console.error('[parsear-tarjeta-pdf] Could not parse Claude response:', rawText.slice(0, 500))
-      return NextResponse.json(
-        { error: 'No se pudieron extraer los datos del resumen.' },
-        { status: 422 }
-      )
-    }
-  } catch {
-    return NextResponse.json(
-      { error: 'Error inesperado al procesar el resumen.' },
-      { status: 500 }
-    )
+  // Intento de parse normal
+  const parsed = parseClaudeJSON<{ tarjeta?: unknown; transacciones?: unknown[] }>(rawText)
+  if (parsed) {
+    const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
+    return NextResponse.json({
+      ok:            true,
+      tarjeta:       parsed.tarjeta ?? {},
+      transacciones: parsed.transacciones ?? [],
+    }, { headers: usageHeaders(committed) })
   }
+
+  // Truncado: rescatar transacciones parciales + bloque de tarjeta por separado
+  const recovered = recoverPartialArray(rawText, 'transacciones')
+  if (recovered) {
+    const tarjeta = recoverObject(rawText, 'tarjeta') ?? {}
+    console.warn(`[parsear-tarjeta-pdf] Partial parse recovered ${recovered.length} transactions`)
+    const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
+    return NextResponse.json({ ok: true, tarjeta, transacciones: recovered }, { headers: usageHeaders(committed) })
+  }
+
+  console.error('[parsear-tarjeta-pdf] Could not parse Claude response:', rawText.slice(0, 500))
+  return NextResponse.json(
+    { error: 'No se pudieron extraer los datos del resumen.' },
+    { status: 422 }
+  )
 }
