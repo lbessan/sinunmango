@@ -38,34 +38,44 @@ const EMOJI_OPTS = [
 ]
 
 // ─── Categorías por defecto ───────────────────────────────────────────────────
+//
+// IMPORTANTE: los iconos de las primeras 21 categorías DEBEN matchear a las
+// del trigger handle_new_user (ver docs/migration-seed-categorias-en-trigger.sql).
+// El trigger crea esas filas atómicamente al sign-up con un icono. El onboarding
+// dedupea por tipo+nombre, así que si los iconos no matchean el del trigger
+// "gana" y el user termina con un emoji distinto al que vio en la UI.
+//
+// Las 3 últimas de Gasto (Alquiler/Expensas, Educación, Belleza) NO están en
+// el trigger seed — solo se crean si el user las elige en este onboarding.
 
 const DEFAULT_CATS = [
-  // Gastos
+  // Gastos — primeros 16 alineados con el seed del trigger
   { nombre: 'Supermercado',          icono: '🛒', tipo: 'Gasto'   },
-  { nombre: 'Restaurantes',          icono: '🍔', tipo: 'Gasto'   },
+  { nombre: 'Restaurantes',          icono: '🍽️', tipo: 'Gasto'   },
   { nombre: 'Transporte',            icono: '🚗', tipo: 'Gasto'   },
-  { nombre: 'Alquiler / Expensas',   icono: '🏠', tipo: 'Gasto'   },
-  { nombre: 'Servicios',             icono: '⚡', tipo: 'Gasto'   },
-  { nombre: 'Salud',                 icono: '💊', tipo: 'Gasto'   },
-  { nombre: 'Farmacia',              icono: '💉', tipo: 'Gasto'   },
+  { nombre: 'Servicios',             icono: '💡', tipo: 'Gasto'   },
+  { nombre: 'Salud',                 icono: '🏥', tipo: 'Gasto'   },
+  { nombre: 'Farmacia',              icono: '💊', tipo: 'Gasto'   },
   { nombre: 'Entretenimiento',       icono: '🎬', tipo: 'Gasto'   },
-  { nombre: 'Ropa',                  icono: '👔', tipo: 'Gasto'   },
+  { nombre: 'Ropa',                  icono: '👕', tipo: 'Gasto'   },
   { nombre: 'Telecomunicaciones',    icono: '📱', tipo: 'Gasto'   },
-  { nombre: 'Educación',             icono: '🎓', tipo: 'Gasto'   },
   { nombre: 'Viajes',                icono: '✈️', tipo: 'Gasto'   },
-  { nombre: 'Mascotas',              icono: '🐾', tipo: 'Gasto'   },
+  { nombre: 'Mascotas',              icono: '🐶', tipo: 'Gasto'   },
   { nombre: 'Gym / Deporte',         icono: '🏋️', tipo: 'Gasto'   },
-  { nombre: 'Belleza',               icono: '💄', tipo: 'Gasto'   },
   { nombre: 'Regalos',               icono: '🎁', tipo: 'Gasto'   },
-  { nombre: 'Hogar',                 icono: '🔧', tipo: 'Gasto'   },
-  { nombre: 'Impuestos',             icono: '📝', tipo: 'Gasto'   },
+  { nombre: 'Hogar',                 icono: '🏠', tipo: 'Gasto'   },
+  { nombre: 'Impuestos',             icono: '📑', tipo: 'Gasto'   },
   { nombre: 'Suscripciones',         icono: '📺', tipo: 'Gasto'   },
-  // Ingresos
-  { nombre: 'Sueldo',                icono: '💼', tipo: 'Ingreso'  },
-  { nombre: 'Freelance',             icono: '💻', tipo: 'Ingreso'  },
-  { nombre: 'Inversiones',           icono: '📈', tipo: 'Ingreso'  },
+  // Gastos extra — no están en el trigger seed (opt-in del onboarding)
+  { nombre: 'Alquiler / Expensas',   icono: '🏘️', tipo: 'Gasto'   },
+  { nombre: 'Educación',             icono: '🎓', tipo: 'Gasto'   },
+  { nombre: 'Belleza',               icono: '💄', tipo: 'Gasto'   },
+  // Ingresos — alineados con el seed del trigger
+  { nombre: 'Sueldo',                icono: '💰', tipo: 'Ingreso'  },
+  { nombre: 'Freelance',             icono: '💼', tipo: 'Ingreso'  },
   { nombre: 'Alquiler cobrado',      icono: '🏘️', tipo: 'Ingreso'  },
-  { nombre: 'Transferencia recibida',icono: '💸', tipo: 'Ingreso'  },
+  { nombre: 'Inversiones',           icono: '📈', tipo: 'Ingreso'  },
+  { nombre: 'Transferencia recibida',icono: '↗️', tipo: 'Ingreso'  },
 ] as const
 
 const TOTAL_STEPS = 4
