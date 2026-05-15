@@ -3,7 +3,7 @@ import { createClientForRequest } from '@/lib/supabase/route'
 import { todayAR, todayPartsAR } from '@/lib/timezone'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
-import { enforceMonthlyLimit, usageHeaders } from '@/lib/usage-limits'
+import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
 
 // ─── POST /api/asistente-mobile ───────────────────────────────────────────────
 // Non-streaming version of /api/asistente for the mobile app.
@@ -23,8 +23,9 @@ export async function POST(req: NextRequest) {
   if (!rl.allowed) return NextResponse.json({ error: rl.message }, { status: 429 })
 
   // Monthly usage gate (free tier): 5 mensajes/mes. Pro: ilimitado.
+  // CHECK sin incrementar — solo consumimos cupo si la operación resulta exitosa.
   const plan  = await getUserPlan(supabase)
-  const usage = await enforceMonthlyLimit(supabase, 'asistente', plan.has_pro_access)
+  const usage = await checkMonthlyLimit(supabase, 'asistente', plan.has_pro_access)
   if (!usage.allowed) {
     return NextResponse.json(
       { error: 'limit_reached', feature: 'asistente', limit: usage.limit, used: usage.used },
@@ -316,5 +317,7 @@ REGLAS CRÍTICAS:
     }
   }
 
-  return NextResponse.json({ text, accion }, { headers: usageHeaders(usage) })
+  // Operación exitosa → commit del cupo
+  const committed = await commitMonthlyUsage(supabase, 'asistente', plan.has_pro_access)
+  return NextResponse.json({ text, accion }, { headers: usageHeaders(committed) })
 }

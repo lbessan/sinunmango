@@ -1,24 +1,20 @@
 // ─── Rate-limits mensuales para features Pro en Free tier ──────────────────
 //
-// Estrategia: cada endpoint Pro consulta `enforceMonthlyLimit`. La función:
-//   1. Si el user es Pro → permite y devuelve { allowed: true, remaining: -1 }
-//      (-1 indica "ilimitado", para que el cliente no muestre contador)
-//   2. Si es Free → consulta `get_usage` y compara contra el límite.
-//      - Si excede → { allowed: false, remaining: 0, limit }
-//      - Si no excede → llama `increment_usage` y devuelve remaining post-incr.
-//
-// Atomicidad: el increment_usage usa UPSERT con `+1` en la misma sentencia,
-// no hay race condition entre verificación y escritura. El check previo solo
-// existe para devolver el error de "limit_reached" sin ejecutar el endpoint.
+// Patrón check + commit: el cupo se consume SOLO si la operación fue exitosa.
 //
 // Uso típico en un route handler:
-//   const plan = await getUserPlan(supabase)
-//   const usage = await enforceMonthlyLimit(supabase, 'asistente', plan.has_pro_access)
+//   const plan  = await getUserPlan(supabase)
+//   const usage = await checkMonthlyLimit(supabase, 'asistente', plan.has_pro_access)
 //   if (!usage.allowed) {
 //     return NextResponse.json({ error: 'limit_reached', ...usage }, { status: 429 })
 //   }
 //   // ... lógica del endpoint ...
-//   return NextResponse.json({ ... }, { headers: usageHeaders(usage) })
+//   const res = await fetch('https://api.anthropic.com/...')
+//   if (!res.ok) return NextResponse.json({ error: '...' }, { status: 502 })
+//
+//   // SOLO acá, después de saber que la operación fue exitosa, consumimos cupo
+//   const committed = await commitMonthlyUsage(supabase, 'asistente', plan.has_pro_access)
+//   return NextResponse.json({ ... }, { headers: usageHeaders(committed) })
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database }       from '@/lib/database.types'
@@ -38,8 +34,10 @@ export type UsageResult =
   | { allowed: true;  remaining: -1;     limit: -1;     used: -1 }       // Pro
   | { allowed: false; remaining: 0;      limit: number; used: number }   // Free agotado
 
-// ── Verifica + incrementa atómicamente ──────────────────────────────────────
-export async function enforceMonthlyLimit(
+// ── Solo CHEQUEA (no incrementa) ────────────────────────────────────────────
+// Devuelve si el user puede ejecutar la operación. NO consume cupo.
+// Si la operación falla después, no hay que rollback porque nada se consumió.
+export async function checkMonthlyLimit(
   supabase:     SupabaseClient<Database>,
   feature:      UsageFeature,
   hasProAccess: boolean,
@@ -49,25 +47,37 @@ export async function enforceMonthlyLimit(
   }
 
   const limit = USAGE_LIMITS_FREE[feature]
-
-  // Primero leemos para devolver 429 sin desperdiciar la transacción de increment
   const { data: currentRaw } = await supabase.rpc('get_usage', { p_feature: feature })
   const current = currentRaw ?? 0
 
   if (current >= limit) {
     return { allowed: false, remaining: 0, limit, used: current }
   }
+  return { allowed: true, remaining: limit - current, limit, used: current }
+}
 
-  // Incrementamos atómicamente y obtenemos el count nuevo
-  const { data: newCountRaw, error } = await supabase.rpc('increment_usage', { p_feature: feature })
-  if (error) {
-    // Fallback conservador: si la RPC falla, permitir pero loggear.
-    // No queremos romper UX por un fallo de DB en el contador.
-    console.error('[enforceMonthlyLimit] increment_usage error:', error)
-    return { allowed: true, remaining: limit - current - 1, limit, used: current + 1 }
+// ── COMMIT: incrementa el contador (operación exitosa) ─────────────────────
+// Se llama DESPUÉS de que la operación principal fue exitosa. Si esto falla,
+// la operación ya está hecha — solo log y seguir (preferimos no romper UX).
+export async function commitMonthlyUsage(
+  supabase:     SupabaseClient<Database>,
+  feature:      UsageFeature,
+  hasProAccess: boolean,
+): Promise<UsageResult> {
+  if (hasProAccess) {
+    return { allowed: true, remaining: -1, limit: -1, used: -1 }
   }
 
-  const newCount = newCountRaw ?? current + 1
+  const limit = USAGE_LIMITS_FREE[feature]
+  const { data: newCountRaw, error } = await supabase.rpc('increment_usage', { p_feature: feature })
+
+  if (error) {
+    console.error('[commitMonthlyUsage] increment_usage error:', error)
+    // Devolvemos algo razonable aunque el counter no se haya incrementado
+    return { allowed: true, remaining: limit - 1, limit, used: 1 }
+  }
+
+  const newCount = newCountRaw ?? 1
   return {
     allowed:   true,
     remaining: Math.max(0, limit - newCount),
@@ -97,6 +107,9 @@ export async function readMonthlyUsage(
 // Como las RPCs usan auth.uid() y esto se ejecuta con service role (sin
 // sesión de user), hacemos el upsert directo contra la tabla. La service
 // role bypasea RLS y no tiene problema con auth.uid()=NULL.
+//
+// Acá mantenemos el patrón check+commit en una sola función porque el
+// webhook de email es asíncrono y no tiene sentido separarlo.
 export async function enforceMonthlyLimitAsAdmin(
   admin:        SupabaseClient<Database>,
   userId:       string,
@@ -155,7 +168,6 @@ export async function enforceMonthlyLimitAsAdmin(
 export function usageHeaders(usage: UsageResult): Record<string, string> {
   if (usage.limit === -1) return {}  // Pro: no mandamos headers
   return {
-    'X-Usage-Feature':   '',  // se sobreescribe abajo si querés trackear cuál fue
     'X-Usage-Used':      String(usage.used),
     'X-Usage-Limit':     String(usage.limit),
     'X-Usage-Remaining': String(usage.remaining),

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { getUserPlan } from '@/lib/subscription'
-import { enforceMonthlyLimit, usageHeaders } from '@/lib/usage-limits'
+import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
 
 // ─── POST /api/parsear-tarjeta-pdf ────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), extrae metadata de la tarjeta
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   // Monthly usage gate: comparte el cupo con /api/parsear-resumen (mismo costo IA).
   // Free: 1 PDF/mes. Pro: ilimitado.
   const plan  = await getUserPlan(supabase)
-  const usage = await enforceMonthlyLimit(supabase, 'resumen', plan.has_pro_access)
+  const usage = await checkMonthlyLimit(supabase, 'resumen', plan.has_pro_access)
   if (!usage.allowed) {
     return NextResponse.json(
       { error: 'limit_reached', feature: 'resumen', limit: usage.limit, used: usage.used },
@@ -138,11 +138,13 @@ Notas importantes:
 
     try {
       const parsed = JSON.parse(clean)
+      // Operación exitosa → commit del cupo
+      const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
       return NextResponse.json({
         ok:            true,
         tarjeta:       parsed.tarjeta ?? {},
         transacciones: parsed.transacciones ?? [],
-      }, { headers: usageHeaders(usage) })
+      }, { headers: usageHeaders(committed) })
     } catch {
       // Fallback: try to recover partial JSON
       const match = clean.match(/"transacciones"\s*:\s*(\[[\s\S]*)/)
@@ -159,7 +161,8 @@ Notas importantes:
             try { tarjeta = JSON.parse(tarjetaMatch[1]) } catch { /* skip */ }
           }
           console.warn('[parsear-tarjeta-pdf] Partial parse recovered', txs.length, 'transactions')
-          return NextResponse.json({ ok: true, tarjeta, transacciones: txs }, { headers: usageHeaders(usage) })
+          const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
+          return NextResponse.json({ ok: true, tarjeta, transacciones: txs }, { headers: usageHeaders(committed) })
         } catch { /* fall through */ }
       }
       console.error('[parsear-tarjeta-pdf] Could not parse Claude response:', rawText.slice(0, 500))

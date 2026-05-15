@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { getUserPlan } from '@/lib/subscription'
-import { enforceMonthlyLimit, usageHeaders } from '@/lib/usage-limits'
+import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
 
 // ─── POST /api/parsear-resumen ────────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), lo procesa con Claude y
@@ -14,8 +14,9 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   // Monthly usage gate (free tier): 1 resumen/mes. Pro: ilimitado.
+  // CHECK sin incrementar — solo consumimos cupo si la operación resulta exitosa.
   const plan  = await getUserPlan(supabase)
-  const usage = await enforceMonthlyLimit(supabase, 'resumen', plan.has_pro_access)
+  const usage = await checkMonthlyLimit(supabase, 'resumen', plan.has_pro_access)
   if (!usage.allowed) {
     return NextResponse.json(
       { error: 'limit_reached', feature: 'resumen', limit: usage.limit, used: usage.used },
@@ -186,7 +187,9 @@ Notas importantes:
     // Intento de parse normal
     try {
       const parsed = JSON.parse(clean)
-      return NextResponse.json({ ok: true, transacciones: parsed.transacciones ?? [] }, { headers: usageHeaders(usage) })
+      // Operación exitosa → commit del cupo
+      const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
+      return NextResponse.json({ ok: true, transacciones: parsed.transacciones ?? [] }, { headers: usageHeaders(committed) })
     } catch {
       // Si el JSON está truncado, intentar rescatar lo que se pudo parsear
       // buscamos el array de transacciones e intentamos cerrar el JSON manualmente
@@ -199,7 +202,8 @@ Notas importantes:
         try {
           const txs = JSON.parse(arr)
           console.warn('[parsear-resumen] Partial parse recovered', txs.length, 'transactions')
-          return NextResponse.json({ ok: true, transacciones: txs }, { headers: usageHeaders(usage) })
+          const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
+          return NextResponse.json({ ok: true, transacciones: txs }, { headers: usageHeaders(committed) })
         } catch { /* fall through */ }
       }
       console.error('[parsear-resumen] Could not parse Claude response:', rawText.slice(0, 500))
