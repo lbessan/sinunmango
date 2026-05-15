@@ -433,6 +433,7 @@ type Transaccion = {
   fecha: string; detalle: string; monto_ars: number | null; monto_usd: number | null
   cuotas: number; cuotas_total: number; ya_existe: boolean; seleccionada: boolean
   es_impuesto: boolean; es_descuento: boolean; catId: string
+  subcatId: string  // opcional, vacío si la categoría no tiene subcategorías
 }
 
 // Selector de categoría compacto, inline (sin label exterior)
@@ -446,6 +447,21 @@ function CatSelect({ categorias, value, onChange }: { categorias: Categoria[]; v
     >
       <option value="">— sin categoría —</option>
       {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre_categoria}</option>)}
+    </select>
+  )
+}
+
+// Selector de subcategoría — solo se renderiza si la cat elegida tiene subcategorías
+function SubCatSelect({ subcategorias, value, onChange }: { subcategorias: Subcategoria[]; value: string; onChange: (id: string) => void }) {
+  return (
+    <select
+      value={value}
+      onChange={e => { e.stopPropagation(); onChange(e.target.value) }}
+      onClick={e => e.stopPropagation()}
+      className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-500 outline-none focus:ring-1 focus:ring-blue-200"
+    >
+      <option value="">— sin subcategoría —</option>
+      {subcategorias.map(sc => <option key={sc.id} value={sc.id}>{sc.nombre_subcategoria}</option>)}
     </select>
   )
 }
@@ -464,6 +480,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const [txs,     setTxs]     = useState<Transaccion[]>([])
   const [saving,  setSaving]  = useState(false)
   const [limitInfo, setLimitInfo] = useState<LimitReachedInfo | null>(null)
+  const [editingIdx, setEditingIdx] = useState<number | null>(null)  // fila con detalle en edición inline
 
   const handleFile = async (file: File) => {
     if (file.type !== 'application/pdf') { setError('Solo se aceptan archivos PDF'); return }
@@ -495,6 +512,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
         es_descuento: t.es_descuento ?? false,
         seleccionada: !t.ya_existe,
         catId: '',
+        subcatId: '',
       }))
       setTxs(parsed)
       setStep('review')
@@ -505,8 +523,15 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const toggleTx = (i: number) =>
     setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, seleccionada: !t.seleccionada } : t))
 
+  // Cambiar categoría resetea la subcategoría (subcat queda colgada sino).
   const setCatForTx = (i: number, catId: string) =>
-    setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, catId } : t))
+    setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, catId, subcatId: '' } : t))
+
+  const setSubcatForTx = (i: number, subcatId: string) =>
+    setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, subcatId } : t))
+
+  const setDetalleForTx = (i: number, detalle: string) =>
+    setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, detalle } : t))
 
   const toggleAll = () => {
     const allSel = txs.filter(t => !t.ya_existe).every(t => t.seleccionada)
@@ -537,7 +562,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
           monto: montoCuota,
           moneda: tx.monto_usd ? 'USD' : 'ARS',
           tipo_movimiento: tipoMov,
-          cuenta_origen: cuentaId, categoria: tx.catId || null, subcategoria: null,
+          cuenta_origen: cuentaId, categoria: tx.catId || null, subcategoria: tx.subcatId || null,
           cotizacion: null, conciliado: true,
           periodo_tarjeta: periodoCuota,
           cuotas_total: tx.cuotas_total, cuota_actual: i + 1, ciclo_actual: 1,
@@ -600,17 +625,42 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       ? `${esDescuento ? '+' : ''}$${Math.abs(montoArs).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
       : `${esDescuento ? '+' : ''}U$S ${Math.abs(montoUsd ?? 0).toFixed(2)}`
     const selBg = esDescuento ? 'bg-emerald-50' : 'bg-blue-50'
+    // Subcategorías de la categoría elegida (vacío si la cat no tiene)
+    const subsDeCat = tx.catId ? subcategorias.filter(sc => sc.categoria_padre === tx.catId) : []
+    const isEditing = editingIdx === idx
     return (
       <div className={`px-4 py-3 border-b border-slate-50 last:border-0 transition-colors ${tx.seleccionada ? selBg : 'hover:bg-slate-50'}`}>
-        <div className="flex items-start gap-3 cursor-pointer" onClick={() => toggleTx(idx)}>
-          <div className="mt-0.5 shrink-0">
+        <div className="flex items-start gap-3">
+          <button
+            onClick={() => toggleTx(idx)}
+            className="mt-0.5 shrink-0"
+            aria-label={tx.seleccionada ? 'Deseleccionar' : 'Seleccionar'}
+          >
             {tx.seleccionada
               ? <CheckSquare size={17} className={esDescuento ? 'text-emerald-500' : 'text-blue-500'} />
               : <Square size={17} className="text-slate-300" />}
-          </div>
+          </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium text-slate-700 truncate">{tx.detalle}</p>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={tx.detalle}
+                  autoFocus
+                  onChange={e => setDetalleForTx(idx, e.target.value)}
+                  onBlur={() => setEditingIdx(null)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setEditingIdx(null) }}
+                  className="flex-1 text-sm font-medium text-slate-700 bg-white border border-blue-200 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-blue-300"
+                />
+              ) : (
+                <p
+                  className="text-sm font-medium text-slate-700 truncate cursor-text hover:bg-slate-100 rounded px-1 -mx-1"
+                  onClick={() => setEditingIdx(idx)}
+                  title="Click para editar"
+                >
+                  {tx.detalle}
+                </p>
+              )}
               {esDescuento && <span className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-1.5 py-0.5 rounded-full shrink-0">DESCUENTO</span>}
             </div>
             <p className="text-xs text-slate-400">
@@ -620,12 +670,19 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
           <span className={`text-sm font-semibold whitespace-nowrap mt-0.5 ${esDescuento ? 'text-emerald-600' : 'text-slate-700'}`}>{montoLabel}</span>
         </div>
         {tx.seleccionada && (
-          <div className="ml-8">
+          <div className="ml-8 space-y-1.5">
             <CatSelect
               categorias={tx.es_descuento ? categoriasIngreso : categoriasGasto}
               value={tx.catId}
               onChange={id => setCatForTx(idx, id)}
             />
+            {subsDeCat.length > 0 && (
+              <SubCatSelect
+                subcategorias={subsDeCat}
+                value={tx.subcatId}
+                onChange={id => setSubcatForTx(idx, id)}
+              />
+            )}
           </div>
         )}
       </div>
