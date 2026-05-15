@@ -17,34 +17,29 @@ export async function GET(req: NextRequest) {
     const data = await res.json()
     valorNuevo = Math.round(data.venta ?? data.compra)
     if (!valorNuevo || isNaN(valorNuevo)) throw new Error('Valor inválido')
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: `No se pudo obtener cotización: ${err.message}` }, { status: 500 })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ ok: false, error: `No se pudo obtener cotización: ${message}` }, { status: 500 })
   }
 
-  // ── Actualizar para todos los usuarios en parametros ────────────────────────
-  const { data: usuarios } = await adminClient
+  // ── Actualizar para todos los usuarios en una sola query ───────────────────
+  // Antes hacíamos un UPDATE por user (N+1). Con muchos users es costoso.
+  // Ahora un solo UPDATE matchea todas las filas con id=Dolar_Tarjeta_BNA;
+  // el filtro por user_id se aplica como parte del where global, no por loop.
+  const { count, error } = await adminClient
     .from('parametros')
-    .select('user_id')
+    .update({ valor: valorNuevo }, { count: 'exact' })
     .eq('id', 'Dolar_Tarjeta_BNA')
 
-  const userIds = [...new Set((usuarios ?? []).map(u => u.user_id).filter((v): v is string => !!v))]
-
-  let actualizados = 0
-  for (const userId of userIds) {
-    const { error } = await adminClient
-      .from('parametros')
-      .update({ valor: valorNuevo })
-      .eq('id', 'Dolar_Tarjeta_BNA')
-      .eq('user_id', userId)
-
-    if (!error) actualizados++
+  if (error) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
   }
 
-  console.log(`[actualizar-dolar] BNA = $${valorNuevo} | actualizados: ${actualizados} usuario(s)`)
+  console.log(`[actualizar-dolar] BNA = $${valorNuevo} | filas actualizadas: ${count ?? 0}`)
 
   return NextResponse.json({
-    ok: true,
-    valor: valorNuevo,
-        usuarios_actualizados: actualizados,
+    ok:                    true,
+    valor:                 valorNuevo,
+    usuarios_actualizados: count ?? 0,
   })
 }
