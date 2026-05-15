@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
+
+const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario. PDFs típicos < 2 MB.
+const CLAUDE_TIMEOUT_MS    = 55_000             // Vercel Hobby corta a 60s; dejamos margen
 
 // ─── POST /api/parsear-resumen ────────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), lo procesa con Claude y
@@ -12,6 +16,10 @@ import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage
 export async function POST(req: NextRequest) {
   const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+
+  // Rate limit por minuto — PDFs son llamadas caras (max_tokens 16k).
+  const rl = await checkRateLimit(user.id, '/api/parsear-resumen', { max: 3, windowSeconds: 60 })
+  if (!rl.allowed) return NextResponse.json({ error: rl.message }, { status: 429 })
 
   // Monthly usage gate (free tier): 1 resumen/mes. Pro: ilimitado.
   // CHECK sin incrementar — solo consumimos cupo si la operación resulta exitosa.
@@ -38,6 +46,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (!pdf) return NextResponse.json({ error: 'No se recibió el PDF.' }, { status: 400 })
+  if (pdf.length > MAX_PDF_BASE64_BYTES) {
+    return NextResponse.json(
+      { error: `El PDF supera el máximo de ${MAX_PDF_BASE64_BYTES / 1024 / 1024} MB.` },
+      { status: 413 }
+    )
+  }
 
   const movsResumen = movimientosExistentes.length > 0
     ? `\nMovimientos ya cargados en el sistema (para comparar y NO duplicar):\n${
@@ -47,8 +61,11 @@ export async function POST(req: NextRequest) {
       }\n`
     : ''
 
-  const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+  let claudeRes: Response
+  try {
+    claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: AbortSignal.timeout(CLAUDE_TIMEOUT_MS),
     headers: {
       'Content-Type':      'application/json',
       'x-api-key':         apiKey,
@@ -168,6 +185,14 @@ Notas importantes:
       ],
     }),
   })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      console.error('[parsear-resumen] Claude timeout')
+      return NextResponse.json({ error: 'El PDF tardó demasiado en procesarse. Probá con un archivo más chico.' }, { status: 504 })
+    }
+    console.error('[parsear-resumen] Claude fetch error:', err)
+    return NextResponse.json({ error: 'No pudimos contactar al servicio de IA.' }, { status: 502 })
+  }
 
   if (!claudeRes.ok) {
     const err = await claudeRes.text()

@@ -102,6 +102,46 @@ export async function readMonthlyUsage(
   return { used, limit, remaining: Math.max(0, limit - used), isPro: false }
 }
 
+// ── Solo CHECK con service_role (no incrementa) ──────────────────────────────
+// Para webhooks que quieren chequear cupo ANTES de hacer trabajo caro (ej:
+// llamar a Claude) sin consumir todavía. Después, si el trabajo fue exitoso,
+// usar enforceMonthlyLimitAsAdmin (atomic check+commit) para incrementar.
+//
+// Hay una pequeña ventana de race entre este check y el commit: dos webhooks
+// concurrentes pueden ambos pasar el check y llamar a Claude, pero solo uno
+// consigue commitear (el otro será rechazado por la RPC atómica). Costo:
+// 1 llamada a Claude desperdiciada. Aceptable.
+export async function checkMonthlyUsageAsAdmin(
+  admin:        SupabaseClient<Database>,
+  userId:       string,
+  feature:      UsageFeature,
+  hasProAccess: boolean,
+): Promise<UsageResult> {
+  if (hasProAccess) {
+    return { allowed: true, remaining: -1, limit: -1, used: -1 }
+  }
+
+  const limit = USAGE_LIMITS_FREE[feature]
+  const ar    = new Date(Date.now() - 3 * 60 * 60 * 1000)   // AR fija UTC-3
+  const year  = ar.getUTCFullYear()
+  const month = ar.getUTCMonth() + 1
+
+  const { data: row } = await admin
+    .from('usage_monthly')
+    .select('count')
+    .eq('user_id', userId)
+    .eq('year',    year)
+    .eq('month',   month)
+    .eq('feature', feature)
+    .maybeSingle()
+
+  const used = row?.count ?? 0
+  if (used >= limit) {
+    return { allowed: false, remaining: 0, limit, used }
+  }
+  return { allowed: true, remaining: limit - used, limit, used }
+}
+
 // ── Variante admin (webhooks: email-inbound, RTDN, etc) ─────────────────────
 //
 // Los webhooks corren con service_role y no tienen sesión de user, así que

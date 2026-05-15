@@ -48,8 +48,11 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Call Claude Vision API ─────────────────────────────────────────────────
-  const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+  let claudeRes: Response
+  try {
+    claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: AbortSignal.timeout(30_000),
     headers: {
       'Content-Type':      'application/json',
       'x-api-key':         apiKey,
@@ -96,6 +99,14 @@ Notas:
       ],
     }),
   })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      console.error('[leer-ticket] Claude timeout')
+      return NextResponse.json({ error: 'La imagen tardó demasiado en procesarse. Probá de nuevo.' }, { status: 504 })
+    }
+    console.error('[leer-ticket] Claude fetch error:', err)
+    return NextResponse.json({ error: 'No pudimos contactar al servicio de IA.' }, { status: 502 })
+  }
 
   if (!claudeRes.ok) {
     const err = await claudeRes.text()

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
+
+const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario
+const CLAUDE_TIMEOUT_MS    = 55_000
 
 // ─── POST /api/parsear-tarjeta-pdf ────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), extrae metadata de la tarjeta
@@ -14,6 +18,10 @@ import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage
 export async function POST(req: NextRequest) {
   const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+
+  // Rate limit por minuto — mismo costo Anthropic que parsear-resumen.
+  const rl = await checkRateLimit(user.id, '/api/parsear-tarjeta-pdf', { max: 3, windowSeconds: 60 })
+  if (!rl.allowed) return NextResponse.json({ error: rl.message }, { status: 429 })
 
   // Monthly usage gate: comparte el cupo con /api/parsear-resumen (mismo costo IA).
   // Free: 1 PDF/mes. Pro: ilimitado.
@@ -33,9 +41,18 @@ export async function POST(req: NextRequest) {
 
   const { pdf } = (await req.json()) as { pdf: string }
   if (!pdf) return NextResponse.json({ error: 'No se recibió el PDF.' }, { status: 400 })
+  if (pdf.length > MAX_PDF_BASE64_BYTES) {
+    return NextResponse.json(
+      { error: `El PDF supera el máximo de ${MAX_PDF_BASE64_BYTES / 1024 / 1024} MB.` },
+      { status: 413 }
+    )
+  }
 
-  const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+  let claudeRes: Response
+  try {
+    claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: AbortSignal.timeout(CLAUDE_TIMEOUT_MS),
     headers: {
       'Content-Type':      'application/json',
       'x-api-key':         apiKey,
@@ -120,6 +137,14 @@ Notas importantes:
       ],
     }),
   })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      console.error('[parsear-tarjeta-pdf] Claude timeout')
+      return NextResponse.json({ error: 'El PDF tardó demasiado en procesarse. Probá con un archivo más chico.' }, { status: 504 })
+    }
+    console.error('[parsear-tarjeta-pdf] Claude fetch error:', err)
+    return NextResponse.json({ error: 'No pudimos contactar al servicio de IA.' }, { status: 502 })
+  }
 
   if (!claudeRes.ok) {
     const err = await claudeRes.text()

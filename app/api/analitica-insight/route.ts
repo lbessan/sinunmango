@@ -98,8 +98,11 @@ export async function POST(req: NextRequest) {
   const systemPrompt = isProfundo ? SYSTEM_PROFUNDO : SYSTEM_NARRATIVA
   const userPrompt   = `Hoy es ${todayAR()}. Estos son los datos del período (${body.periodo.desde} → ${body.periodo.hasta}):\n\n${body.contexto}\n\nGenerá el JSON pedido.`
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  let res: Response
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: AbortSignal.timeout(45_000),
     headers: {
       'x-api-key':         apiKey,
       'anthropic-version': '2023-06-01',
@@ -117,6 +120,14 @@ export async function POST(req: NextRequest) {
       ],
     }),
   })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      console.error('[analitica-insight] Claude timeout')
+      return NextResponse.json({ error: 'El análisis tardó demasiado. Probá de nuevo.' }, { status: 504 })
+    }
+    console.error('[analitica-insight] Claude fetch error:', err)
+    return NextResponse.json({ error: 'No pudimos contactar al servicio AI.' }, { status: 502 })
+  }
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
