@@ -107,6 +107,7 @@ export default async function GastosFijosPage() {
               moneda:    g.moneda ?? 'ARS',
               cuenta:    cuenta?.id ?? '',
               categoria: g.categorias?.id ?? '',
+              returnTo:  '/gastos-fijos',  // volver acá tras guardar (no a /movimientos)
             })
             return (
               <div key={g.id} className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50 last:border-0">

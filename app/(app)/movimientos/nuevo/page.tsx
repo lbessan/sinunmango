@@ -168,8 +168,18 @@ function NuevoMovimientoContent() {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(records),
     })
     setSaving(false)
-    if (res.ok) { setSaved(true); setTimeout(() => router.push('/movimientos'), 1000) }
-    else { const { error } = await res.json(); alert('Error: ' + error) }
+    if (res.ok) {
+      setSaved(true)
+      // Si vino con ?returnTo=/algo (ej: /gastos-fijos), volvemos ahí.
+      // Validamos que empiece con "/" para evitar redirecciones a dominios externos.
+      const returnToRaw = searchParams.get('returnTo')
+      const destino = returnToRaw && returnToRaw.startsWith('/') && !returnToRaw.startsWith('//')
+        ? returnToRaw
+        : '/movimientos'
+      setTimeout(() => router.push(destino), 1000)
+    } else {
+      const { error } = await res.json(); alert('Error: ' + error)
+    }
   }
 
   if (!cargado) {
