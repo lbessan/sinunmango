@@ -14,9 +14,19 @@ export default async function AnaliticaPage() {
   // Plan del usuario — feature AI gateada por Pro
   const plan = await getUserPlan(supabase)
 
-  // Traemos TODO el histórico de movimientos. La pestaña Resumen usa rangos
-  // chicos pero necesita el universo completo para calcular comparativas vs
-  // período anterior y "tu mejor mes" en fases siguientes.
+  // Traemos historia de los últimos 36 meses + límite duro de 20k filas.
+  // Antes traíamos TODO el histórico sin filtro → para users con muchos años
+  // la página se volvía pesada de cargar (RSC payload grande + procesamiento
+  // client-side). 36 meses cubre las comparativas estándar (este mes vs hace
+  // 1 año, trends 2-3 años). Para users con > 36 meses, históricos viejos
+  // siguen accesibles desde /movimientos.
+  //
+  // TODO: largo plazo, una vista materializada con agregados mensuales por
+  // categoría es más eficiente que filtrar movimientos crudos.
+  const desdeHace36Meses = new Date()
+  desdeHace36Meses.setMonth(desdeHace36Meses.getMonth() - 36)
+  const desdeISO = desdeHace36Meses.toISOString().slice(0, 10)
+
   const [
     { data: movimientos },
     { data: subcategorias },
@@ -28,7 +38,9 @@ export default async function AnaliticaPage() {
       .select('id, fecha, tipo_movimiento, monto, monto_estimado, detalle, categoria_nombre, categoria_icono, subcategoria, cuotas_total, grupo_cuotas, cuenta_origen_nombre, cuenta_origen_tipo')
       .eq('user_id', user.id)
       .in('tipo_movimiento', ['Ingreso', 'Gasto'])
-      .order('fecha', { ascending: true }),
+      .gte('fecha', desdeISO)
+      .order('fecha', { ascending: true })
+      .limit(20_000),
     supabase
       .from('subcategorias')
       .select('id, nombre_subcategoria, categoria_padre')
