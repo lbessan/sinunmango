@@ -37,11 +37,22 @@ export default function RootLayout() {
       navigate(null)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Siempre actualizamos session-store y ref — el access token rotado en
+      // TOKEN_REFRESHED tiene que llegar a api.ts para que las próximas
+      // requests usen el token fresco.
       storeSession(session)
       sessionRef.current = session
-      navigated.current = false
-      navigate(session)
+
+      // Pero solo renavegamos en cambios reales del estado de auth. Antes
+      // navegábamos en CADA evento (TOKEN_REFRESHED, USER_UPDATED, etc.),
+      // así que cada hora — cuando Supabase refresca el token — el user
+      // era teleportado al dashboard aunque estuviera escribiendo en
+      // Manguito o en nuevo-modal.
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        navigated.current = false
+        navigate(session)
+      }
     })
 
     return () => subscription.unsubscribe()

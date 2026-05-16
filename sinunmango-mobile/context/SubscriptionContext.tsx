@@ -66,20 +66,34 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   // El crash original por apiKey vacío era una IllegalArgumentException tirada
   // en el thread nativo `mqt_v_native`, que un try/catch en JS no puede atrapar
   // — por eso el guard de la key ANTES de la llamada es la defensa principal.
-  const safeConfigureRC = useCallback(async (userId: string) => {
+  // Reintentos: hasta 3 attempts con backoff exponencial. Si los 3 fallan,
+  // el user queda en Free para esta sesión. Antes con 1 solo intento, si RC
+  // tenía un blip de red al boot, el user quedaba como Free hasta hacer
+  // kill+abrir de la app — algunos users pagaron y aparecían como Free.
+  const safeConfigureRC = useCallback(async (userId: string): Promise<void> => {
     if (!RC_ANDROID_KEY || !RC_ANDROID_KEY.startsWith('goog_')) {
       console.warn('[SubscriptionContext] RC_ANDROID_KEY ausente o inválida — skip configure')
       setState(s => ({ ...s, loading: false }))
       return
     }
-    try {
-      if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG)
-      await Purchases.configure({ apiKey: RC_ANDROID_KEY, appUserID: userId })
-      await loadData()
-    } catch (err) {
-      console.error('[SubscriptionContext] configure error:', err)
-      configuredRef.current = false
-      setState(s => ({ ...s, loading: false, hasPro: false, plan: 'free' }))
+
+    const MAX_ATTEMPTS = 3
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        if (__DEV__ && attempt === 1) Purchases.setLogLevel(LOG_LEVEL.DEBUG)
+        await Purchases.configure({ apiKey: RC_ANDROID_KEY, appUserID: userId })
+        await loadData()
+        return // éxito
+      } catch (err) {
+        console.error(`[SubscriptionContext] configure attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err)
+        if (attempt === MAX_ATTEMPTS) {
+          configuredRef.current = false
+          setState(s => ({ ...s, loading: false, hasPro: false, plan: 'free' }))
+          return
+        }
+        // Backoff: 2s, 4s entre attempts (total ~6s worst case)
+        await new Promise(resolve => setTimeout(resolve, attempt * 2000))
+      }
     }
   }, [])
 
@@ -95,7 +109,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       }
 
       if (!session?.user) {
-        // Al cerrar sesión, resetear RC
+        // Al cerrar sesión, logout de RC para que el próximo user en este
+        // device no herede las compras del anterior. Si nunca se configuró,
+        // skipeamos el logOut() (tira si se llama antes de configure).
+        if (configuredRef.current) {
+          Purchases.logOut().catch(err => {
+            console.error('[SubscriptionContext] Purchases.logOut error:', err)
+          })
+        }
         configuredRef.current = false
         setState(s => ({ ...s, hasPro: false, plan: 'free', offering: null, loading: false }))
       }
