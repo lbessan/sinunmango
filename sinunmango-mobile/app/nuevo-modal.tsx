@@ -311,8 +311,14 @@ export default function NuevoModalScreen() {
       {/* Backdrop */}
       <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={() => router.back()} />
 
-      {/* Sheet */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.kav}>
+      {/* Sheet — KeyboardAvoidingView solo para iOS (Android usa adjustResize
+          del sistema; behavior=undefined deja el wrapper transparente para
+          que no se duplique el padding del teclado). */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={s.kav}
+        keyboardVerticalOffset={0}
+      >
         <View style={[s.sheet, { backgroundColor: theme.surface }]}>
           {/* Handle */}
           <View style={[s.handle, { backgroundColor: theme.border }]} />
@@ -332,11 +338,10 @@ export default function NuevoModalScreen() {
           </View>
 
           <ScrollView
-            style={{ flexGrow: 0 }}
             contentContainerStyle={s.content}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
-            bounces={false}
           >
             {/* ── TIPO SEGMENTED ── */}
             <View style={[s.segmented, { backgroundColor: theme.bg, borderColor: theme.border }]}>
@@ -502,9 +507,13 @@ export default function NuevoModalScreen() {
 const s = StyleSheet.create({
   overlay:  { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1 },
-  kav:      {},
+  kav:      { width: '100%' },
 
   sheet: {
+    // maxHeight evita que el sheet se expanda más de la pantalla. Sin esto
+    // el ScrollView no tiene altura definida y no scrollea cuando entra el
+    // teclado — los inputs de abajo quedan tapados.
+    maxHeight: '90%',
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 20,
