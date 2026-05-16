@@ -42,28 +42,38 @@ async function apiFetch<T>(
   const { method, body, timeoutMs = DEFAULT_TIMEOUT_MS } = init
   const authHeaders = await getAuthHeader()
 
+  // Timeout manual con AbortController. `AbortSignal.timeout()` es API de 2022
+  // y en Hermes/Android prod no está disponible (tiraba "TypeError: undefined
+  // is not a function" rompiendo TODOS los fetches, incluido el dashboard).
+  // AbortController + setTimeout funciona en todos los runtimes.
+  const controller = new AbortController()
+  let didTimeout   = false
+  const timeoutId  = setTimeout(() => { didTimeout = true; controller.abort() }, timeoutMs)
+
   let res: Response
   try {
     res = await fetch(`${API_BASE}${path}`, {
       method,
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body:    body !== undefined ? JSON.stringify(body) : undefined,
-      signal:  AbortSignal.timeout(timeoutMs),
+      signal:  controller.signal,
     })
   } catch (err) {
     // Capturamos antes de re-throw: el caller solo ve el mensaje friendly
     // ("No pudimos conectar..."), pero Sentry necesita el error original
-    // (TypeError de network, TimeoutError, etc.) para diagnosticar.
+    // (TypeError de network, AbortError de timeout, etc.) para diagnosticar.
     // Nivel "warning" porque errores de red son comunes y no siempre indican
     // un bug — pero nos sirve ver el volumen y patrones por endpoint.
     Sentry.captureException(err, {
       level: 'warning',
-      tags:  { source: 'apiFetch', endpoint: path, method },
+      tags:  { source: 'apiFetch', endpoint: path, method, timedOut: String(didTimeout) },
     })
-    if (err instanceof Error && err.name === 'TimeoutError') {
+    if (didTimeout) {
       throw new Error('La conexión tardó demasiado. Probá de nuevo.', { cause: err })
     }
     throw new Error('No pudimos conectar con el servidor. Verificá tu conexión.', { cause: err })
+  } finally {
+    clearTimeout(timeoutId)
   }
 
   // Leemos como texto primero. Si el server respondió con HTML (Cloudflare
