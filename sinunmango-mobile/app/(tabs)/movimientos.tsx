@@ -62,17 +62,77 @@ function buildDateFilter(key: FechaKey): { gte?: string; lt?: string } {
   return {}
 }
 
-// Detecta emoji real: caracteres fuera del rango ASCII 0x00-0x7F
-function resolveIcon(icon: string | null, tipo: string) {
+// Mapeo de nombres lucide-react (ej. "ShoppingCart") → emoji equivalente.
+// El picker de la web guarda nombres lucide; las categorías del seed inicial
+// guardan emojis directos. La mobile renderiza solo emojis (no usa lucide), así
+// que normalizamos a emoji acá. Iconos desconocidos caen al default (billete).
+const LUCIDE_TO_EMOJI: Record<string, string> = {
+  // Compras / shopping
+  ShoppingCart: '🛒', ShoppingBag: '🛍️', ShoppingBasket: '🧺',
+  Package: '📦', PackageOpen: '📦', Truck: '🚚', Receipt: '🧾',
+  ReceiptText: '🧾', Tag: '🏷️', Tags: '🏷️', BadgePercent: '🏷️',
+  TicketPercent: '🎟️', Gift: '🎁', Store: '🏪', Handbag: '👜',
+  Box: '📦', Boxes: '📦',
+  // Comida
+  UtensilsCrossed: '🍽️', Utensils: '🍴', Pizza: '🍕', Coffee: '☕',
+  Beer: '🍺', Wine: '🍷', Martini: '🍸', IceCreamCone: '🍦',
+  Cookie: '🍪', Sandwich: '🥪', Soup: '🍲', Salad: '🥗',
+  Cake: '🎂', CakeSlice: '🍰', Donut: '🍩', Popcorn: '🍿',
+  Lollipop: '🍭', Apple: '🍎', Banana: '🍌', Cherry: '🍒',
+  Grape: '🍇', Carrot: '🥕', Egg: '🥚', EggFried: '🍳',
+  Milk: '🥛', Croissant: '🥐', Drumstick: '🍗', Fish: '🐟',
+  Beef: '🥩',
+  // Transporte
+  Car: '🚗', CarFront: '🚗', Bike: '🚲', Bus: '🚌', Train: '🚆',
+  Plane: '✈️', Fuel: '⛽', ParkingMeter: '🅿️',
+  // Casa / hogar
+  Home: '🏠', House: '🏠', Building: '🏢', Lamp: '💡',
+  Hammer: '🔨', Wrench: '🔧', Wallpaper: '🖼️',
+  // Salud
+  Heart: '❤️', HeartPulse: '💓', Pill: '💊', Stethoscope: '🩺',
+  Cross: '🏥', Syringe: '💉', Activity: '📈',
+  // Trabajo / oficina
+  Briefcase: '💼', Laptop: '💻', Computer: '🖥️', Building2: '🏢',
+  // Dinero
+  Wallet: '👛', PiggyBank: '🐷', CreditCard: '💳', Banknote: '💵',
+  DollarSign: '💵', Coins: '🪙', TrendingUp: '📈', TrendingDown: '📉',
+  Landmark: '🏛️',
+  // Educación
+  BookOpen: '📖', Book: '📚', GraduationCap: '🎓', Pencil: '✏️',
+  // Entretenimiento
+  Film: '🎬', Music: '🎵', Headphones: '🎧', Gamepad: '🎮',
+  Gamepad2: '🎮', Tv: '📺', PartyPopper: '🎉', Ticket: '🎫',
+  // Deporte
+  Dumbbell: '🏋️', Bike2: '🚴', Trophy: '🏆',
+  // Mascotas
+  Dog: '🐶', Cat: '🐱', Bird: '🐦', PawPrint: '🐾',
+  // Servicios
+  Wifi: '📶', Phone: '📱', Smartphone: '📱', Plug: '🔌',
+  Zap: '⚡', Droplet: '💧', Flame: '🔥',
+  // Belleza
+  Scissors: '✂️', Sparkles: '✨',
+  // Viajes
+  MapPin: '📍', Compass: '🧭', Camera: '📷', Luggage: '🧳',
+  // Documentos
+  FileText: '📄', File: '📄', FileSpreadsheet: '📊',
+  ClipboardList: '📋',
+  // Familia
+  Baby: '👶', Users: '👥', User: '👤',
+}
+
+// Resuelve el icono a renderizar como emoji.
+// Prioridad: emoji directo > lucide-name conocido > default billete (💵).
+function resolveIcon(icon: string | null) {
   if (icon && /[^\x00-\x7F]/.test(icon)) return icon
-  return tipo === 'Ingreso' ? '\u{1F4B0}' : tipo === 'Gasto' ? '\u{1F4B8}' : '\u{21C6}'
+  if (icon && LUCIDE_TO_EMOJI[icon]) return LUCIDE_TO_EMOJI[icon]
+  return '💵'
 }
 
 // ─── Movimiento row ───────────────────────────────────────────────────────────
 function MovRow({ mov, theme }: { mov: Movimiento; theme: ReturnType<typeof useTheme>['theme'] }) {
   const isGasto   = mov.tipo_movimiento === 'Gasto'
   const isIngreso = mov.tipo_movimiento === 'Ingreso'
-  const icon      = resolveIcon(mov.categoria_icono, mov.tipo_movimiento)
+  const icon      = resolveIcon(mov.categoria_icono)
   const sign      = isGasto ? '-' : isIngreso ? '+' : ''
   const montoColor = isGasto ? theme.expense : isIngreso ? theme.income : theme.textSec
   const symbol    = mov.moneda === 'USD' ? 'USD ' : '$'
@@ -133,6 +193,7 @@ export default function MovimientosScreen() {
       .from('movimientos')
       .select('id, fecha, detalle, monto, moneda, tipo_movimiento, cuenta_origen, categorias(nombre_categoria, icono), cuentas!cuenta_origen(nombre_cuenta)')
       .eq('user_id', session.user.id)
+      .lte('fecha', todayAR())     // mobile = complemento: solo movs pasados/hoy
       .order('fecha', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(150)
