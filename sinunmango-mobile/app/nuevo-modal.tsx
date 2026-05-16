@@ -513,10 +513,13 @@ const s = StyleSheet.create({
   kav:      { width: '100%' },
 
   sheet: {
-    // maxHeight evita que el sheet se expanda más de la pantalla. Sin esto
-    // el ScrollView no tiene altura definida y no scrollea cuando entra el
-    // teclado — los inputs de abajo quedan tapados.
-    maxHeight: '90%',
+    // height fijo (no maxHeight) — así el sheet siempre ocupa el 90% del
+    // alto de la pantalla, sin importar si el form es corto. Con maxHeight
+    // el sheet se contraía al alto del contenido y mostraba un gap blanco
+    // entre el form y la barra de tabs. Además fija la altura para el
+    // ScrollView, que necesita altura definida para scrollear cuando sube
+    // el teclado.
+    height: '90%',
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 20,
