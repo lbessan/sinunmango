@@ -38,11 +38,24 @@ export function calcularPeriodo(
   return `${anio}-${String(mes + 1).padStart(2, '0')}-01`
 }
 
-/** Suma N meses a una fecha en formato YYYY-MM-DD. */
+/**
+ * Suma N meses a una fecha en formato YYYY-MM-DD.
+ *
+ * Clampea al último día del mes destino cuando el día original no existe
+ * (ej. 31 ene + 1 mes → 28 feb, no 3 mar como tirría `setMonth` directo).
+ */
 export function addMonths(fecha: string, n: number): string {
   const d = new Date(fecha + 'T12:00:00')
+  const originalDay = d.getDate()
+  // setDate(1) ANTES de cambiar mes evita el overflow nativo de JS:
+  // new Date('2026-01-31').setMonth(1) → 3 mar (porque feb no tiene 31 y JS
+  // suma los días sobrantes). Con día=1 setMonth cae limpio, después
+  // clampeamos al día original (o al último del mes si no existe).
+  d.setDate(1)
   d.setMonth(d.getMonth() + n)
-  return d.toISOString().slice(0, 10)
+  const lastDayOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+  d.setDate(Math.min(originalDay, lastDayOfMonth))
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 /** Remueve el sufijo "(Cuota N/T)" del final de un detalle. */
