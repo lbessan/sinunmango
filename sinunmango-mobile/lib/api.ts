@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native'
 import { supabase } from './supabase'
 import { getStoredSession } from './session-store'
 
@@ -50,10 +51,19 @@ async function apiFetch<T>(
       signal:  AbortSignal.timeout(timeoutMs),
     })
   } catch (err) {
+    // Capturamos antes de re-throw: el caller solo ve el mensaje friendly
+    // ("No pudimos conectar..."), pero Sentry necesita el error original
+    // (TypeError de network, TimeoutError, etc.) para diagnosticar.
+    // Nivel "warning" porque errores de red son comunes y no siempre indican
+    // un bug — pero nos sirve ver el volumen y patrones por endpoint.
+    Sentry.captureException(err, {
+      level: 'warning',
+      tags:  { source: 'apiFetch', endpoint: path, method },
+    })
     if (err instanceof Error && err.name === 'TimeoutError') {
-      throw new Error('La conexión tardó demasiado. Probá de nuevo.')
+      throw new Error('La conexión tardó demasiado. Probá de nuevo.', { cause: err })
     }
-    throw new Error('No pudimos conectar con el servidor. Verificá tu conexión.')
+    throw new Error('No pudimos conectar con el servidor. Verificá tu conexión.', { cause: err })
   }
 
   // Leemos como texto primero. Si el server respondió con HTML (Cloudflare
@@ -64,7 +74,12 @@ async function apiFetch<T>(
   if (text) {
     try {
       data = JSON.parse(text)
-    } catch {
+    } catch (parseErr) {
+      Sentry.captureException(parseErr, {
+        level: 'error',
+        tags:  { source: 'apiFetch', endpoint: path, method, status: String(res.status) },
+        extra: { bodySnippet: text.slice(0, 200) },
+      })
       if (!res.ok) throw new Error(`Error del servidor (${res.status})`)
       throw new Error('El servidor respondió con un formato inesperado.')
     }
@@ -72,6 +87,14 @@ async function apiFetch<T>(
 
   if (!res.ok) {
     const errMsg = (data as { error?: string } | null)?.error ?? `Error ${res.status}`
+    // 4xx/5xx con JSON parseable — capturamos solo los 5xx (los 4xx pueden
+    // ser limites de plan u otros que el caller debe manejar via UI).
+    if (res.status >= 500) {
+      Sentry.captureMessage(`API ${res.status} ${method} ${path}: ${errMsg}`, {
+        level: 'error',
+        tags:  { source: 'apiFetch', endpoint: path, method, status: String(res.status) },
+      })
+    }
     throw new Error(errMsg)
   }
   return data as T

@@ -139,19 +139,45 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [safeConfigureRC])
 
-  // ── Cargar customer info + offerings ─────────────────────────────────────
+  // ── Cargar customer info + offerings + plan del user_profile ─────────────
+  // RC y user_profiles son dos fuentes de verdad:
+  //  - RC: entitlement activo en este device para subs reales con Play Billing.
+  //  - user_profiles.plan: lo escribe el webhook de RC pero también soporta
+  //    estados que RC no maneja (grandfathered, manual override).
+  //
+  // Antes mobile leía SOLO RC: si user_profile decía pro/grandfathered pero
+  // RC no tenía entitlement activo en este device (sub que vence el día,
+  // grandfathered, o SDK que no sincronizó), mobile mostraba Free mientras
+  // la web mostraba Pro. Ahora tomamos el OR de ambas fuentes.
   const loadData = useCallback(async () => {
     setState(s => ({ ...s, loading: true, errorMsg: null }))
     try {
-      const [customerInfo, offerings] = await Promise.all([
-        Purchases.getCustomerInfo(),
-        Purchases.getOfferings(),
+      const { data: { session } } = await supabase.auth.getSession()
+      const userId = session?.user?.id
+
+      const [customerInfo, offerings, profileRes] = await Promise.all([
+        Purchases.getCustomerInfo().catch(() => null),
+        Purchases.getOfferings().catch(() => null),
+        userId
+          ? supabase.from('user_profiles')
+              .select('plan, plan_expires_at')
+              .eq('user_id', userId)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
       ])
 
-      const hasPro = resolveHasPro(customerInfo)
-      const offering = offerings.current ?? null
+      const rcHasPro      = customerInfo ? resolveHasPro(customerInfo) : false
+      const offering      = offerings?.current ?? null
+      const profile       = profileRes.data as { plan: string | null; plan_expires_at: string | null } | null
+      const profilePlan   = profile?.plan ?? 'free'
+      const profileHasPro =
+        profilePlan === 'grandfathered' ||
+        (profilePlan === 'pro' && (!profile?.plan_expires_at || new Date(profile.plan_expires_at) > new Date()))
 
-      setState(s => ({ ...s, hasPro, plan: hasPro ? 'pro' : 'free', offering, loading: false }))
+      const hasPro = rcHasPro || profileHasPro
+      const plan   = profilePlan !== 'free' ? profilePlan : (rcHasPro ? 'pro' : 'free')
+
+      setState(s => ({ ...s, hasPro, plan, offering, loading: false }))
     } catch (err) {
       console.error('[SubscriptionContext] loadData error:', err)
       setState(s => ({ ...s, loading: false }))
