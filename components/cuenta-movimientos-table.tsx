@@ -7,6 +7,7 @@ import { NuevoItemModal } from '@/components/nuevo-item-modal'
 import { IconoCategoria } from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodo, addMonths, stripCuotaSuffix } from '@/lib/tarjeta-periodo'
+import { todayAR } from '@/lib/timezone'
 
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -41,7 +42,7 @@ function AddMovModal({ cuentaId, isTarjeta, cierreDay, venceDay, categorias: cat
   onAdd: (movs: Mov[]) => void
   onClose: () => void
 }) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayAR()
   const [fecha,         setFecha]         = useState(today)
   const [detalle,       setDetalle]       = useState('')
   const [monto,         setMonto]         = useState('')

@@ -6,6 +6,7 @@ import { Plus, Camera, Loader2 } from 'lucide-react'
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodoCuenta as calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
+import { todayAR } from '@/lib/timezone'
 import { LimitReachedModal, tryParseLimitReached, type LimitReachedInfo } from '@/components/limit-reached-modal'
 
 type Cuenta = {
@@ -34,7 +35,9 @@ function NuevoMovimientoContent() {
   const [limitInfo, setLimitInfo]       = useState<LimitReachedInfo | null>(null)
   const fileInputRef                    = useRef<HTMLInputElement>(null)
 
-  const today = new Date().toISOString().slice(0, 10)
+  // todayAR() en vez de toISOString — UTC adelanta al día siguiente después
+  // de las 21:00 AR, lo que hacía que se guardaran movs con fecha de mañana.
+  const today = todayAR()
 
   const [form, setForm] = useState({
     fecha: today, detalle: '', monto: '', moneda: 'ARS',
