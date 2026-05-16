@@ -20,12 +20,10 @@ const OPTIONAL_PROD_VARS = [
   // Crons (todos los endpoints en /api/cron/* devuelven 503 sin esta)
   'CRON_SECRET',
 
-  // Webhooks de subscripciones (sin estos no se reciben eventos de pago)
+  // Webhooks de subscripciones (sin esto no se reciben eventos de pago).
+  // Solo RevenueCat — Google Play va via RC (Pub/Sub → api.revenuecat.com),
+  // así que no necesitamos manejar Pub/Sub directamente en este server.
   'REVENUECAT_WEBHOOK_SECRET',
-  'PUBSUB_VERIFICATION_TOKEN',           // legacy: token compartido en query string
-  'GOOGLE_PUBSUB_AUDIENCE',              // nuevo: aud claim del OIDC JWT (URL del endpoint)
-  'GOOGLE_SERVICE_ACCOUNT_JSON',
-  'GOOGLE_PLAY_PACKAGE_NAME',
 
   // Email inbound (sin esto el endpoint devuelve 503)
   'RESEND_WEBHOOK_SECRET',
