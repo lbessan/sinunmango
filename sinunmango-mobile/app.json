@@ -22,7 +22,7 @@
         "backgroundColor": "#0d2137"
       },
       "package": "com.sinunmango.mobile",
-      "versionCode": 24,
+      "versionCode": 25,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "com.android.vending.BILLING"
@@ -46,8 +46,8 @@
         "@sentry/react-native",
         {
           "organization": "lb-devs",
-          "project":      "sinunmango-mobile",
-          "url":          "https://sentry.io/"
+          "project": "sinunmango-mobile",
+          "url": "https://sentry.io/"
         }
       ]
     ],
