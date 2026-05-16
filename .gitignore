@@ -43,3 +43,6 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# Claude Code per-user config (no debería estar en el repo)
+.claude/
