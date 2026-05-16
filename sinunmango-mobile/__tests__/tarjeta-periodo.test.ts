@@ -70,6 +70,32 @@ describe('addMonths', () => {
     expect(addMonths('2026-04-15', -1)).toBe('2026-03-15')
     expect(addMonths('2026-01-15', -2)).toBe('2025-11-15')
   })
+
+  // Edge cases: días que no existen en el mes destino. Antes el código tenía
+  // un bug latente: setMonth nativo de JS hace overflow al mes siguiente.
+  // new Date('2026-01-31').setMonth(1) → 3-mar (porque feb no tiene 31).
+  // El fix clampea al último día del mes destino — convención de tarjetas
+  // argentinas para cuotas que caen a fin de mes.
+  describe('clamp al último día del mes destino', () => {
+    it('enero 31 + 1 mes → 28 feb (no salta a marzo)', () => {
+      expect(addMonths('2026-01-31', 1)).toBe('2026-02-28')
+    })
+
+    it('marzo 31 + 1 mes → 30 abr', () => {
+      expect(addMonths('2026-03-31', 1)).toBe('2026-04-30')
+    })
+
+    it('año bisiesto: enero 31 + 1 mes → 29 feb en 2028', () => {
+      expect(addMonths('2028-01-31', 1)).toBe('2028-02-29')
+    })
+
+    it('cuota a fin de mes: 31-ene en 6 cuotas propaga bien', () => {
+      expect(addMonths('2026-01-31', 1)).toBe('2026-02-28')
+      expect(addMonths('2026-01-31', 2)).toBe('2026-03-31')
+      expect(addMonths('2026-01-31', 3)).toBe('2026-04-30')
+      expect(addMonths('2026-01-31', 5)).toBe('2026-06-30')
+    })
+  })
 })
 
 describe('stripCuotaSuffix', () => {
