@@ -180,11 +180,13 @@ export default function MovimientosScreen() {
   const [fechaKey, setFechaKey]       = useState<FechaKey>('este_mes')
   const [loading, setLoading]         = useState(true)
   const [refreshing, setRefreshing]   = useState(false)
+  const [errorMsg, setErrorMsg]       = useState<string | null>(null)
   const [showFechaMenu, setShowFechaMenu] = useState(false)
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
+    setErrorMsg(null)
 
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) { setLoading(false); setRefreshing(false); return }
@@ -205,7 +207,18 @@ export default function MovimientosScreen() {
     if (dateFilter.gte) query = query.gte('fecha', dateFilter.gte)
     if (dateFilter.lt)  query = query.lt('fecha', dateFilter.lt)
 
-    const { data } = await query
+    const { data, error } = await query
+
+    if (error) {
+      // Antes ignorábamos el error y mostrábamos lista vacía sin contexto, lo
+      // que hacía indistinguible "no hay movs en este filtro" de "DB caída".
+      console.error('[movimientos] query error:', error.message)
+      setErrorMsg('No pudimos cargar tus movimientos. Probá refrescar.')
+      setMovimientos([])
+      setLoading(false)
+      setRefreshing(false)
+      return
+    }
 
     const mapped: Movimiento[] = (data ?? []).map((m: any) => ({
       id:               m.id,
@@ -303,8 +316,8 @@ export default function MovimientosScreen() {
           }
           ListEmptyComponent={
             <View style={s.center}>
-              <Text style={[s.emptyText, { color: theme.textMuted }]}>
-                No hay movimientos para este período
+              <Text style={[s.emptyText, { color: errorMsg ? theme.expense : theme.textMuted }]}>
+                {errorMsg ?? 'No hay movimientos para este período'}
               </Text>
             </View>
           }
