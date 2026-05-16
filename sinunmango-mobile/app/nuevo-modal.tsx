@@ -311,11 +311,14 @@ export default function NuevoModalScreen() {
       {/* Backdrop */}
       <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={() => router.back()} />
 
-      {/* Sheet — KeyboardAvoidingView solo para iOS (Android usa adjustResize
-          del sistema; behavior=undefined deja el wrapper transparente para
-          que no se duplique el padding del teclado). */}
+      {/* Sheet — KeyboardAvoidingView con behavior="padding" en AMBOS OS.
+          En transparentModal de Android, el adjustResize del sistema no
+          aplica al contenido del modal (la window del modal es separada
+          y no recibe el resize). Sin esto el teclado tapa el form.
+          padding agrega padding al wrapper igual a la altura del teclado,
+          empujando el sheet hacia arriba con la animación. */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         style={s.kav}
         keyboardVerticalOffset={0}
       >
