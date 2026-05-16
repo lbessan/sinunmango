@@ -34,7 +34,8 @@
         "EXPO_PUBLIC_SUPABASE_URL": "https://zlxoqzyabbzwfmpngusk.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpseG9xenlhYmJ6d2ZtcG5ndXNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3NTg2NDIsImV4cCI6MjA5MTMzNDY0Mn0.lMr99UMO8YazUx3qQA0rAFqxDeQ44hWLjneyTg4GgvM",
         "EXPO_PUBLIC_API_URL": "https://app.sinunmango.com.ar",
-        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_MtwRKbwztjmkncQGyZDzCOuwVjq"
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_MtwRKbwztjmkncQGyZDzCOuwVjq",
+        "EXPO_PUBLIC_SENTRY_DSN": ""
       }
     }
   },

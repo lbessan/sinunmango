@@ -1,3 +1,8 @@
+// IMPORTANTE: este import debe ir ANTES de cualquier otro para que Sentry
+// pueda capturar errores tempranos durante el boot (el init corre como
+// side-effect al cargar el módulo).
+import { Sentry } from '@/lib/sentry'
+
 import { useEffect, useRef } from 'react'
 import { Stack, router } from 'expo-router'
 import { Session } from '@supabase/supabase-js'
@@ -8,7 +13,7 @@ import * as Linking from 'expo-linking'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { SubscriptionProvider } from '@/context/SubscriptionContext'
 
-export default function RootLayout() {
+function RootLayout() {
   const sessionRef = useRef<Session | null>(null)
   const navigated = useRef(false)
 
@@ -111,3 +116,8 @@ export default function RootLayout() {
     </ThemeProvider>
   )
 }
+
+// Sentry.wrap() es no-op si Sentry no se inicializó (DSN vacío o en dev),
+// así que dejarlo siempre es seguro y nos da capturing automático de errores
+// de renderizado en el árbol cuando está activo.
+export default Sentry.wrap(RootLayout)
