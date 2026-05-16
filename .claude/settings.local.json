@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Force -Directory | ForEach-Object { $_.Name })",
+      "Bash(npx eslint *)",
+      "Bash(git commit -m ' *)",
+      "Bash(npm test *)",
+      "Bash(git add *)"
+    ]
+  }
+}
