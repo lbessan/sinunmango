@@ -42,7 +42,14 @@
       ],
       "expo-font",
       "expo-web-browser",
-      "@sentry/react-native"
+      [
+        "@sentry/react-native",
+        {
+          "organization": "lb-devs",
+          "project":      "sinunmango-mobile",
+          "url":          "https://sentry.io/"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

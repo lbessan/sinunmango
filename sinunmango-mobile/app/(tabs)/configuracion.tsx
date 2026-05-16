@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import Constants from 'expo-constants'
+import { Sentry } from '@/lib/sentry'
 import { supabase } from '@/lib/supabase'
 import { useTheme, ACCENTS, type AccentId, type ModeId } from '@/context/ThemeContext'
 import { useSubscription } from '@/context/SubscriptionContext'
@@ -192,12 +193,27 @@ export default function ConfiguracionScreen() {
             <Text style={[s.appRowValue, { color: theme.textMuted }]}>{APP_VERSION}</Text>
           </View>
           <TouchableOpacity
-            style={s.appRow}
+            style={[s.appRow, { borderBottomColor: theme.border, borderBottomWidth: 1 }]}
             onPress={() => Linking.openURL('https://app.sinunmango.com.ar')}
             activeOpacity={0.7}
           >
             <Text style={[s.appRowLabel, { color: theme.primary }]}>app.sinunmango.com.ar</Text>
             <Ionicons name="open-outline" size={14} color={theme.primary} />
+          </TouchableOpacity>
+          {/* TEMPORAL: botón para verificar que Sentry está capturando eventos.
+              Borrar después de confirmar que aparece la issue en el feed.
+              Solo en builds donde el DSN está configurado (Sentry queda no-op
+              en dev sin DSN). */}
+          <TouchableOpacity
+            style={s.appRow}
+            onPress={() => {
+              Sentry.captureException(new Error('[mobile] Sentry test from configuración — borrar el botón cuando aparezca'))
+              Alert.alert('Sentry test', 'Evento enviado. Verificá en sentry.io → Issues.')
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[s.appRowLabel, { color: theme.textMuted }]}>Test Sentry</Text>
+            <Ionicons name="bug-outline" size={14} color={theme.textMuted} />
           </TouchableOpacity>
         </View>
 
