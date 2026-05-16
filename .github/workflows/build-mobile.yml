@@ -74,6 +74,14 @@ jobs:
 
       - name: Build Android AAB (local)
         working-directory: sinunmango-mobile
+        env:
+          # El plugin @sentry/react-native lee este token al build para subir
+          # source maps a Sentry y asociarlas a la release. Sin el token, el
+          # build igual funciona pero los stack traces en Sentry quedan
+          # minificados. Crear el token en Sentry → Settings → Auth Tokens
+          # con scope project:releases. Si el secret está vacío, el plugin
+          # skipea el upload sin romper.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: eas build --platform android --profile production --local --non-interactive --output ./app-release.aab
 
       - name: Upload AAB artifact
