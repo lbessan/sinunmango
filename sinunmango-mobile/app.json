@@ -22,7 +22,7 @@
         "backgroundColor": "#0d2137"
       },
       "package": "com.sinunmango.mobile",
-      "versionCode": 26,
+      "versionCode": 27,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "com.android.vending.BILLING"
