@@ -6,6 +6,7 @@ import { NuevoItemModal }  from '@/components/nuevo-item-modal'
 import { IconoCategoria }  from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodo, addMonths, stripCuotaSuffix } from '@/lib/tarjeta-periodo'
+import { todayAR } from '@/lib/timezone'
 import { LimitReachedModal, tryParseLimitReached, type LimitReachedInfo } from '@/components/limit-reached-modal'
 
 const fmt = (n: number) =>
@@ -235,7 +236,7 @@ function AddModal({ cuentaId, periodo: periodoBase, cierreDay, venceDay, categor
   categorias: Categoria[]; subcategorias: Subcategoria[]
   onAdd: (movs: Mov[]) => void; onClose: () => void
 }) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayAR()
   const [fecha,      setFecha]      = useState(today)
   const [detalle,    setDetalle]    = useState('')
   const [monto,      setMonto]      = useState('')

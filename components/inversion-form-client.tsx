@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { todayAR } from '@/lib/timezone'
 
 type Cuenta = { id: string; nombre_cuenta: string; tipo_cuenta: string }
 type Categoria = { id: string; nombre_categoria: string; tipo_default: string }
@@ -60,7 +61,7 @@ export function InversionFormClient({
   const router = useRouter()
   const [tipo, setTipo]           = useState<TipoInversion>('plazo_fijo')
   const [nombre, setNombre]       = useState('')
-  const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().slice(0, 10))
+  const [fechaInicio, setFechaInicio] = useState(todayAR())
   const [fechaVence, setFechaVence]   = useState('')
   const [moneda, setMoneda]       = useState<'ARS' | 'USD'>('ARS')
   const [capital, setCapital]     = useState('')
