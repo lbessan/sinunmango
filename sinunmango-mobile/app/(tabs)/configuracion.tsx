@@ -6,11 +6,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
+import Constants from 'expo-constants'
 import { supabase } from '@/lib/supabase'
 import { useTheme, ACCENTS, type AccentId, type ModeId } from '@/context/ThemeContext'
 import { useSubscription } from '@/context/SubscriptionContext'
 import { Paywall } from '@/components/Paywall'
 import type { User } from '@supabase/supabase-js'
+
+// Versión del bundle, leída desde app.json al build time
+const APP_VERSION = Constants.expoConfig?.version ?? '?'
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function ConfiguracionScreen() {
@@ -185,7 +189,7 @@ export default function ConfiguracionScreen() {
         <View style={[s.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={[s.appRow, { borderBottomColor: theme.border }]}>
             <Text style={[s.appRowLabel, { color: theme.text }]}>Versión</Text>
-            <Text style={[s.appRowValue, { color: theme.textMuted }]}>1.0.0</Text>
+            <Text style={[s.appRowValue, { color: theme.textMuted }]}>{APP_VERSION}</Text>
           </View>
           <TouchableOpacity
             style={s.appRow}

@@ -29,8 +29,13 @@ export default function LoginScreen() {
       )
       const redirectUrl = `https://app.sinunmango.com.ar/auth-callback?app=${encodeURIComponent(appUrl)}`
 
-      console.log('[OAuth] App URL:', appUrl)
-      console.log('[OAuth] Redirect URL (web bridge):', redirectUrl)
+      // Logs solo en dev: en release Android estos quedan en logcat y son
+      // legibles por otras apps con permisos antiguos. Las URLs contienen
+      // identificadores del bundle / scheme privado del proyecto.
+      if (__DEV__) {
+        console.log('[OAuth] App URL:', appUrl)
+        console.log('[OAuth] Redirect URL (web bridge):', redirectUrl)
+      }
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
