@@ -23,17 +23,17 @@ export default function RootLayout() {
   }
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      navigate(sessionRef.current)
-    }, 4000)
-
+    // getSession() lee de AsyncStorage, no hace network — debería resolver
+    // en ms. Antes había un timeout de 4s que navegaba a /login si getSession
+    // demoraba — pero eso enmascaraba bugs y, peor, mandaba al user a login
+    // aunque tuviera sesión persistida si el storage estaba lento. Ahora
+    // dejamos que Expo muestre el splash hasta que getSession resuelva.
     supabase.auth.getSession().then(({ data: { session } }) => {
-      clearTimeout(timeout)
       sessionRef.current = session
       storeSession(session)
       navigate(session)
-    }).catch(() => {
-      clearTimeout(timeout)
+    }).catch(err => {
+      console.error('[auth] getSession failed:', err)
       navigate(null)
     })
 
