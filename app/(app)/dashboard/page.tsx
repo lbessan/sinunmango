@@ -674,22 +674,25 @@ export default async function DashboardPage({
             <div className="flex-1 min-w-0 space-y-6">
 
               {/* ── Fila 1: Ingresos · Gastos · Ahorro del mes ── */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5">
+              {/* En mobile (360-640px) 3 columnas de ~110px con montos AR de
+                  7-8 dígitos se desbordan. Colapsamos a 1 columna debajo de
+                  sm. tabular-nums alinea los dígitos verticalmente. */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 sm:p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Ingresos del mes</p>
-                  <p className="text-2xl font-bold leading-none text-emerald-700">${fmt(past.ingresos)}</p>
+                  <p className="text-2xl font-bold leading-none text-emerald-700 tabular-nums">${fmt(past.ingresos)}</p>
                   <p className="text-xs text-slate-400 mt-1.5">Acreditado en el mes</p>
                 </div>
-                <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 sm:p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Gastos del mes</p>
-                  <p className="text-2xl font-bold leading-none text-red-700">${fmt(past.gastos)}</p>
+                  <p className="text-2xl font-bold leading-none text-red-700 tabular-nums">${fmt(past.gastos)}</p>
                   <p className="text-xs text-slate-400 mt-1.5" title="Cash flow: gastos efectivo/banco + pagos a tarjeta">
                     ${fmt(past.gastosCash)} cash {past.pagosTarjeta > 0 && `+ $${fmt(past.pagosTarjeta)} a tarjetas`}
                   </p>
                 </div>
-                <div className={`rounded-2xl border p-5 ${past.resultado >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
+                <div className={`rounded-2xl border p-4 sm:p-5 ${past.resultado >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Ahorro del mes</p>
-                  <p className={`text-2xl font-bold leading-none ${past.resultado >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+                  <p className={`text-2xl font-bold leading-none tabular-nums ${past.resultado >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
                     {past.resultado >= 0 ? '+' : '-'}${fmt(Math.abs(past.resultado))}
                   </p>
                   <p className="text-xs text-slate-400 mt-1.5">Ingresos − Gastos</p>
@@ -697,17 +700,20 @@ export default async function DashboardPage({
               </div>
 
               {/* ── Fila 2: Empezó con · Terminó con (grandes) ── */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+              {/* text-3xl en 360px ≈ 30px → 8 dígitos (~$1.234.567) entran
+                  apenas. Bajamos a text-2xl mobile (24px) que da margen y
+                  mantiene jerarquía visual frente a la fila 1. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Empezó el mes con</p>
-                  <p className={`text-3xl lg:text-4xl font-black leading-none ${past.saldoInicioMes >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
+                  <p className={`text-2xl sm:text-3xl lg:text-4xl font-black leading-none tabular-nums ${past.saldoInicioMes >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
                     {past.saldoInicioMes < 0 ? '-' : ''}${fmt(Math.abs(past.saldoInicioMes))}
                   </p>
                   <p className="text-xs text-slate-400 mt-2">Saldo disponible al 1º del mes</p>
                 </div>
-                <div className={`rounded-2xl border p-6 shadow-sm ${past.saldoFinMes >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                <div className={`rounded-2xl border p-5 sm:p-6 shadow-sm ${past.saldoFinMes >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Terminó el mes con</p>
-                  <p className={`text-3xl lg:text-4xl font-black leading-none ${past.saldoFinMes >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                  <p className={`text-2xl sm:text-3xl lg:text-4xl font-black leading-none tabular-nums ${past.saldoFinMes >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                     {past.saldoFinMes < 0 ? '-' : ''}${fmt(Math.abs(past.saldoFinMes))}
                   </p>
                   <p className="text-xs text-slate-400 mt-2">Pasa al mes siguiente</p>
@@ -766,12 +772,15 @@ export default async function DashboardPage({
           <NavArrow mes={mes} dir="prev" />
           <div className="flex-1 min-w-0 space-y-6">
 
-            {/* Liquidez estimada */}
-            <div className={`rounded-2xl border p-7 ${saldoMes >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+            {/* Liquidez estimada — el text-5xl original (48px) desborda en
+                mobile con montos de 8 dígitos. Bajamos a text-3xl mobile y
+                escalamos progresivamente. tabular-nums + min-w-0 evitan
+                que el padre flex empuje el container hacia overflow. */}
+            <div className={`rounded-2xl border p-5 sm:p-7 ${saldoMes >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">
                 Liquidez estimada al cierre de {mesLabel(mes)}
               </p>
-              <p className={`text-5xl font-black leading-none ${saldoMes >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+              <p className={`text-3xl sm:text-4xl lg:text-5xl font-black leading-none tabular-nums ${saldoMes >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                 {saldoMes < 0 ? '-' : ''}${fmt(Math.abs(saldoMes))}
               </p>
             </div>

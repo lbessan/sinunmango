@@ -207,9 +207,15 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
                     }`}>
                       {isIngreso ? '+' : isTransf ? '' : '-'}${fmt(mov.monto_estimado ?? mov.monto ?? 0)}
                     </td>
-                    <td className="px-4 py-3">
-                      <Link href={`/movimientos/${mov.id}/editar`} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors inline-flex">
-                        <Pencil size={13} />
+                    <td className="px-2 py-2">
+                      {/* p-2.5 + icon 16 = ~36px touch target. La fila completa
+                          también es alta gracias al py-3 del td vecino. */}
+                      <Link
+                        href={`/movimientos/${mov.id}/editar`}
+                        className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil size={16} />
                       </Link>
                     </td>
                   </tr>
@@ -220,14 +226,24 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
         </div>
 
         {totalPages > 1 && (
-          <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-            <p className="text-xs text-slate-400">Página {page} de {totalPages} · {count} registros</p>
-            <div className="flex gap-2">
+          <div className="px-4 sm:px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-2">
+            <p className="text-xs text-slate-400 truncate">Página {page} de {totalPages} · <span className="hidden sm:inline">{count} registros</span><span className="sm:hidden">{count} regs</span></p>
+            <div className="flex gap-2 shrink-0">
               {page > 1 && (
-                <Link href={buildUrl({ page: String(page - 1) })} className="text-xs px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-white text-slate-600">Anterior</Link>
+                <Link
+                  href={buildUrl({ page: String(page - 1) })}
+                  className="text-sm px-4 py-2 border border-slate-200 rounded-lg hover:bg-white text-slate-600 transition-colors"
+                >
+                  Anterior
+                </Link>
               )}
               {page < totalPages && (
-                <Link href={buildUrl({ page: String(page + 1) })} className="text-xs px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-white text-slate-600">Siguiente</Link>
+                <Link
+                  href={buildUrl({ page: String(page + 1) })}
+                  className="text-sm px-4 py-2 border border-slate-200 rounded-lg hover:bg-white text-slate-600 transition-colors"
+                >
+                  Siguiente
+                </Link>
               )}
             </div>
           </div>

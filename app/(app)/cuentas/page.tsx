@@ -1,7 +1,7 @@
 import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Pencil, ChevronRight } from 'lucide-react'
+import { Plus, Pencil } from 'lucide-react'
 import { DeleteButton } from '@/components/delete-button'
 
 const fmt = (n: number) =>
@@ -146,15 +146,19 @@ export default async function CuentasPage() {
                         <p className="text-xs text-slate-400">{labelTipo(c.tipo_cuenta)} · {c.moneda}</p>
                       </div>
                     </Link>
-                    <div className="flex items-center gap-3 shrink-0 px-4 py-3">
-                      <p className="text-sm font-semibold text-slate-800">
+                    {/* Saqué el ChevronRight: el <Link> de la izquierda ya
+                        navega al detalle (toda la zona del nombre es tocable).
+                        Botones pencil/delete suben a p-2.5 (40px touch target). */}
+                    <div className="flex items-center gap-1 sm:gap-2 shrink-0 pr-2 sm:pr-3 py-2">
+                      <p className="text-sm font-semibold text-slate-800 tabular-nums mr-1 sm:mr-2">
                         {c.moneda === 'USD' ? 'US$' : '$'}{fmt(c.saldo_actual ?? 0)}
                       </p>
-                      <Link href={`/cuentas/${c.id}`} className="text-slate-300 hover:text-slate-500">
-                        <ChevronRight size={16} />
-                      </Link>
-                      <Link href={`/cuentas/${c.id}/editar`} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors">
-                        <Pencil size={15} />
+                      <Link
+                        href={`/cuentas/${c.id}/editar`}
+                        className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil size={16} />
                       </Link>
                       <DeleteButton
                         endpoint={`/api/cuentas/${c.id}`}

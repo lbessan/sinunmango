@@ -55,12 +55,15 @@ export function DeleteButton({ endpoint, redirectTo, onSuccess, label = 'este el
     <>
       {/* Trigger */}
       {variant === 'icon' ? (
+        // p-2.5 + icon 16 = 36px desktop. En mobile (sm:-down) usamos p-3
+        // (44px touch target) — sirve al guideline Apple/Material de 44px
+        // mínimo. inline-flex centra el icono dentro del padding mayor.
         <button
           onClick={() => setOpen(true)}
-          className="p-1.5 rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+          className="inline-flex items-center justify-center p-3 sm:p-2.5 rounded-lg text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors"
           title="Eliminar"
         >
-          <Trash2 size={15} />
+          <Trash2 size={16} />
         </button>
       ) : (
         <button
