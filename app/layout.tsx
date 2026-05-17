@@ -22,9 +22,10 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "sinunmango",
   },
+  // `apple` lo maneja Next 16 automáticamente vía app/apple-icon.png (180×180
+  // con fondo de marca). NO declararlo acá — duplica el link tag.
   icons: {
     icon: "/logo.png",
-    apple: "/logo.png",
   },
 };
 
@@ -34,6 +35,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // viewport-fit=cover: en iOS standalone permite usar todo el ancho/alto
+  // de la pantalla, incluyendo notch y home indicator. Las páginas deben
+  // compensar con env(safe-area-inset-*) — ver globals.css.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

@@ -44,6 +44,22 @@ body {
   transition: background-color .15s, color .15s;
 }
 
+/* ── Safe-area utilities (PWA en iPhone con notch/home indicator) ───────────
+ *
+ * Con viewport-fit=cover el viewport se extiende al área del notch y home
+ * indicator. Sin esto, el contenido queda tapado. Usar:
+ *   - pt-safe en headers/topbars fijos
+ *   - pb-safe en bottom navs / FABs / contenido al fondo
+ *   - pl-safe / pr-safe en landscape (notch lateral)
+ *
+ * Se aplican como utilities adicionales sumadas al padding existente (en
+ * lugar de reemplazarlo). En navegadores sin soporte env() son no-op.
+ */
+.pt-safe { padding-top:    max(env(safe-area-inset-top),    0px); }
+.pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+.pl-safe { padding-left:   max(env(safe-area-inset-left),   0px); }
+.pr-safe { padding-right:  max(env(safe-area-inset-right),  0px); }
+
 /* ── Dark mode: Tailwind utility overrides ─────────────────────────────────── */
 
 /* --- Backgrounds --- */
