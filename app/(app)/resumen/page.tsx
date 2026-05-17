@@ -205,15 +205,19 @@ export default async function ResumenPage({
         <>
           <div className={`rounded-2xl p-5 ${meta.bg}`}>
             <p className="text-xs uppercase tracking-wide mb-1" style={{ color: meta.color }}>Total</p>
-            <p className="text-3xl font-bold" style={{ color: meta.color }}>${fmtR(total)}</p>
+            {/* text-3xl mobile borderline con montos AR de 8 dígitos en pantallas
+                de 360px. text-2xl mobile da margen; text-3xl en sm+. */}
+            <p className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: meta.color }}>${fmtR(total)}</p>
             <p className="text-xs text-slate-400 mt-1">{movimientos.length} movimientos</p>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          {/* grid-cols-2 mobile con cards de categoría + montos AR de 6-7
+              dígitos era apretado; grid-cols-1 mobile da espacio al ojo. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {gruposOrdenados.map(g => (
               <div key={g.nombre} className="bg-white rounded-xl border border-slate-100 p-4">
                 <p className="text-sm font-medium text-slate-700 mb-1 truncate flex items-center gap-1.5"><IconoCategoria icono={g.icono} size={16} /> {g.nombre}</p>
-                <p className="text-lg font-bold" style={{ color: meta.color }}>${fmtR(g.subtotal)}</p>
+                <p className="text-lg font-bold tabular-nums" style={{ color: meta.color }}>${fmtR(g.subtotal)}</p>
                 <p className="text-xs text-slate-400">{g.movs.length} movimiento{g.movs.length !== 1 ? 's' : ''}</p>
               </div>
             ))}
@@ -481,11 +485,13 @@ export default async function ResumenPage({
 
         return (
           <div className="space-y-4">
-            <div className={`rounded-2xl p-6 ${esPositivo ? 'bg-emerald-50' : 'bg-red-50'}`}>
+            <div className={`rounded-2xl p-5 sm:p-6 ${esPositivo ? 'bg-emerald-50' : 'bg-red-50'}`}>
               <p className="text-xs uppercase tracking-wide mb-1" style={{ color: esPositivo ? '#1a6b5a' : '#dc2626' }}>
                 Liquidez estimada a fin de mes
               </p>
-              <p className="text-4xl font-bold" style={{ color: esPositivo ? '#1a6b5a' : '#dc2626' }}>
+              {/* text-4xl fijo desbordaba con montos AR de 8 dígitos en mobile.
+                  Escalamos text-3xl sm:text-4xl + tabular-nums. */}
+              <p className="text-3xl sm:text-4xl font-bold tabular-nums" style={{ color: esPositivo ? '#1a6b5a' : '#dc2626' }}>
                 {proyectado < 0 ? '-' : ''}${fmtR(Math.abs(proyectado))}
               </p>
             </div>

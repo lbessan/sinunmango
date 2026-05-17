@@ -131,18 +131,19 @@ export default async function InversionesPage() {
     <div className="max-w-4xl mx-auto space-y-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-semibold text-slate-800">Inversiones</h1>
           <p className="text-xs text-slate-400 mt-0.5">{inv.length} posición{inv.length !== 1 ? 'es' : ''} activa{inv.length !== 1 ? 's' : ''}</p>
         </div>
         <Link
           href="/inversiones/nueva"
-          className="flex items-center gap-2 text-sm text-white px-4 py-2.5 rounded-xl font-medium"
+          className="inline-flex items-center gap-2 text-sm text-white px-3 sm:px-4 py-2.5 rounded-xl font-medium shrink-0 whitespace-nowrap"
           style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
         >
           <Plus size={16} />
-          Nueva inversión
+          <span className="hidden sm:inline">Nueva inversión</span>
+          <span className="sm:hidden">Nueva</span>
         </Link>
       </div>
 
@@ -163,20 +164,23 @@ export default async function InversionesPage() {
       ) : (
         <>
           {/* ── Resumen global ─────────────────────────────────────────────── */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white border border-slate-100 rounded-2xl p-5">
+          {/* grid-cols-3 fijo desbordaba con montos AR de 8 dígitos en mobile.
+              Colapsa a 1 columna debajo de sm. tabular-nums + min-w-0 evitan
+              jitter al cambiar saldo. */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-5">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Capital invertido</p>
-              <p className="text-2xl font-bold text-slate-800">${fmt(Math.round(totalCapital))}</p>
+              <p className="text-2xl font-bold text-slate-800 tabular-nums">${fmt(Math.round(totalCapital))}</p>
               <p className="text-xs text-slate-400 mt-1">ARS equivalente</p>
             </div>
-            <div className="bg-white border border-slate-100 rounded-2xl p-5">
+            <div className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-5">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Valor actual</p>
-              <p className="text-2xl font-bold text-slate-800">${fmt(Math.round(totalActual))}</p>
+              <p className="text-2xl font-bold text-slate-800 tabular-nums">${fmt(Math.round(totalActual))}</p>
               <p className="text-xs text-slate-400 mt-1">ARS equivalente</p>
             </div>
-            <div className={`border rounded-2xl p-5 ${totalGanancia >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+            <div className={`border rounded-2xl p-4 sm:p-5 ${totalGanancia >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Resultado total</p>
-              <p className={`text-2xl font-bold ${totalGanancia >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+              <p className={`text-2xl font-bold tabular-nums ${totalGanancia >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                 {totalGanancia >= 0 ? '+' : ''}${fmt(Math.round(Math.abs(totalGanancia)))}
               </p>
               <p className={`text-xs mt-1 font-semibold ${totalGanancia >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -279,8 +283,11 @@ export default async function InversionesPage() {
                             )}
                           </div>
 
-                          {/* Acciones rápidas */}
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Acciones rápidas. En mobile siempre visibles:
+                              sin hover el opacity-0 dejaba al user sin forma
+                              de borrar. En sm+ sigue oculto hasta hover (UI
+                              menos cargada). */}
+                          <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             <DeleteButton
                               endpoint={`/api/inversiones/${i.id}`}
                               label="esta inversión"

@@ -167,15 +167,20 @@ export function ProClient({ plan, planExpiresAt, hasProAccess }: Props) {
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">
           Free vs Pro
         </p>
+        {/* En mobile las features largas no entraban: las columnas Free/Pro
+            ocupaban ~112px cada una (min-w-[80px] + px-4), dejando solo
+            ~136px para el texto del feature. Reducimos padding lateral del
+            container, min-w de las celdas, y bajamos texto del feature a
+            text-xs sm:text-sm. */}
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="grid grid-cols-[1fr_auto_auto] items-center px-5 py-3 border-b border-slate-100 bg-slate-50">
+          <div className="grid grid-cols-[1fr_auto_auto] items-center px-3 sm:px-5 py-3 border-b border-slate-100 bg-slate-50">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Feature</p>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 text-center">Free</p>
-            <p className="text-xs font-semibold uppercase tracking-wider px-4 text-center" style={{ color: '#6366f1' }}>Pro</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-2 sm:px-4 text-center">Free</p>
+            <p className="text-xs font-semibold uppercase tracking-wider px-2 sm:px-4 text-center" style={{ color: '#6366f1' }}>Pro</p>
           </div>
           {COMPARADOR.map(row => (
-            <div key={row.feature} className="grid grid-cols-[1fr_auto_auto] items-center px-5 py-3 border-b border-slate-50 last:border-0">
-              <p className="text-sm text-slate-700">{row.feature}</p>
+            <div key={row.feature} className="grid grid-cols-[1fr_auto_auto] items-center px-3 sm:px-5 py-3 border-b border-slate-50 last:border-0">
+              <p className="text-xs sm:text-sm text-slate-700">{row.feature}</p>
               <ComparadorCell value={row.free} className="text-slate-400" />
               <ComparadorCell value={row.pro}  className="font-semibold" colorOverride="#6366f1" />
             </div>
@@ -260,20 +265,21 @@ function ComparadorCell({
 }) {
   if (value === true) {
     return (
-      <div className="px-4 py-2 flex justify-center">
+      <div className="px-2 sm:px-4 py-2 flex justify-center">
         <Check size={16} className={className} style={colorOverride ? { color: colorOverride } : undefined} />
       </div>
     )
   }
   if (value === false) {
     return (
-      <div className="px-4 py-2 flex justify-center">
+      <div className="px-2 sm:px-4 py-2 flex justify-center">
         <X size={16} className="text-slate-300" />
       </div>
     )
   }
   return (
-    <div className="px-4 py-2 text-xs text-center min-w-[80px]">
+    // min-w bajó de 80 a 56 en mobile (sm+ vuelve a 80). px-2 mobile / px-4 sm+.
+    <div className="px-2 sm:px-4 py-2 text-[11px] sm:text-xs text-center min-w-[56px] sm:min-w-[80px]">
       <span className={className} style={colorOverride ? { color: colorOverride } : undefined}>
         {value}
       </span>
