@@ -198,9 +198,11 @@ export function EditarMovimientoClient({
         )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6 space-y-5">
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* Fecha + Detalle: stack en mobile (cada uno full-width). En sm+
+            grid-cols-2 mantiene el layout horizontal original. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Fecha</label>
             <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)} className={inputClass} />
@@ -211,7 +213,11 @@ export function EditarMovimientoClient({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        {/* Moneda + Monto: grid-cols-3 sigue funcionando OK en mobile porque
+            la moneda son 3 chars (ARS/USD) que entran en 1/3 del ancho.
+            Pero para 320px (iPhone SE 1st gen) el monto queda muy chico.
+            Mantenemos grid-cols-3 desde 380px (sm). */}
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           <div>
             <label className={labelClass}>Moneda</label>
             <select value={form.moneda} onChange={e => set('moneda', e.target.value)} className={inputClass}>
@@ -221,17 +227,20 @@ export function EditarMovimientoClient({
           </div>
           <div className="col-span-2">
             <label className={labelClass}>Monto</label>
-            <input type="number" step="0.01" value={form.monto} onChange={e => set('monto', e.target.value)} className={`${inputClass} font-mono text-lg`} />
+            <input type="number" step="0.01" inputMode="decimal" value={form.monto} onChange={e => set('monto', e.target.value)} className={`${inputClass} font-mono text-lg`} />
           </div>
         </div>
 
         {isUSD && (
-          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex gap-4 items-center">
+          // En mobile el bloque USD se apretaba (cotización + checkbox al lado).
+          // Stack vertical da más respiro y la checkbox queda con touch target
+          // generoso.
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex flex-col sm:flex-row sm:gap-4 sm:items-center gap-3">
             <div className="flex-1">
               <label className="block text-xs font-medium text-amber-700 mb-1.5">Cotización histórica</label>
-              <input type="number" step="0.01" value={form.cotizacion} onChange={e => set('cotizacion', e.target.value)} placeholder="Ej: 1410" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm outline-none bg-white" />
+              <input type="number" step="0.01" inputMode="decimal" value={form.cotizacion} onChange={e => set('cotizacion', e.target.value)} placeholder="Ej: 1410" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm outline-none bg-white" />
             </div>
-            <label className="flex items-center gap-2 cursor-pointer mt-5">
+            <label className="flex items-center gap-2 cursor-pointer sm:mt-5 py-1">
               <input type="checkbox" checked={form.conciliado} onChange={e => set('conciliado', e.target.checked)} className="w-4 h-4" />
               <span className="text-sm text-amber-700">Conciliado</span>
             </label>
@@ -345,14 +354,16 @@ export function EditarMovimientoClient({
 
         {error && <p className="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
 
+        {/* Botones Cancelar/Guardar — py-3 para touch target ~44px (Apple
+            HIG / Material) en mobile. */}
         <div className="flex gap-3">
-          <button onClick={() => router.back()} className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
+          <button onClick={() => router.back()} className="flex-1 py-3 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
             Cancelar
           </button>
           <button
             onClick={handleGuardar}
             disabled={saving || saved}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-colors"
+            className="flex-1 py-3 rounded-lg text-sm font-medium text-white transition-colors"
             style={{ background: saved ? '#16a34a' : 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))', opacity: saving ? 0.7 : 1 }}
           >
             {saved

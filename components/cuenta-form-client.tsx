@@ -125,7 +125,7 @@ export function CuentaFormClient({
         {title ?? (isEditing ? 'Editar cuenta' : 'Nueva cuenta')}
       </h1>
 
-      <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6 space-y-5">
 
         {/* ── Selector de banco / billetera ── */}
         {tipoPrincipal !== 'Efectivo' && (
@@ -171,8 +171,9 @@ export function CuentaFormClient({
           </div>
         </div>
 
-        {/* Imágenes */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Imágenes — stack en mobile da más ancho a cada uploader para
+            mejor preview. En sm+ vuelve a 2 columnas. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <ImagenUploader
             valor={form.imagen_url}
             onChange={url => set('imagen_url', url)}
@@ -267,13 +268,14 @@ export function CuentaFormClient({
 
         {error && <p className="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
 
+        {/* py-3 = ~44px touch target en mobile. */}
         <div className="flex gap-3">
           <button onClick={() => router.back()}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50">
+            className="flex-1 py-3 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50">
             Cancelar
           </button>
           <button onClick={handleGuardar} disabled={saving || saved}
-            className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white"
+            className="flex-1 py-3 rounded-lg text-sm font-medium text-white"
             style={{ background: saved ? '#16a34a' : 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))', opacity: saving ? 0.7 : 1 }}
           >
             {saved ? '✓ Guardado' : saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear cuenta'}
