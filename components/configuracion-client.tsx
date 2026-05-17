@@ -493,8 +493,10 @@ function NotificacionesSection() {
 // ─── Email Inbound section ────────────────────────────────────────────────────
 const INBOUND_DOMAIN = 'sinunmango.com.ar'
 
-// URL del video tutorial — dejá en null hasta que esté grabado
-const TUTORIAL_VIDEO_URL: string | null = null
+// URL del video tutorial. Archivo en public/ — se sirve con CDN de Vercel
+// y el browser lo cachea. Si en el futuro lo movés a YouTube/Vimeo, cambiá
+// también el <video> de abajo por <iframe>.
+const TUTORIAL_VIDEO_URL: string | null = '/tutorial-mail.mp4'
 
 function EmailInboundSection() {
   const [token, setToken]           = useState<string | null>(null)
@@ -634,14 +636,18 @@ function EmailInboundSection() {
         </div>
       )}
 
-      {/* Video tutorial o placeholder */}
+      {/* Video tutorial o placeholder.
+          preload="metadata" carga solo el primer frame + duración (~few KB),
+          el resto se baja cuando el user da play. playsInline evita que iOS
+          abra fullscreen automático. */}
       {TUTORIAL_VIDEO_URL ? (
-        <div className="rounded-xl overflow-hidden border border-slate-200 aspect-video">
-          <iframe
+        <div className="rounded-xl overflow-hidden border border-slate-200 aspect-video bg-slate-900">
+          <video
             src={TUTORIAL_VIDEO_URL}
+            controls
+            preload="metadata"
+            playsInline
             className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
           />
         </div>
       ) : (
@@ -670,15 +676,36 @@ function EmailInboundSection() {
 
           {showSteps && (
             <div className="border-t border-slate-100 px-4 py-4 space-y-3 bg-slate-50">
+              {/* Aviso: Gmail web obligatorio para este flow. La app móvil
+                  de Gmail no permite agregar direcciones de reenvío. */}
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 leading-relaxed">
+                ⚠ Tenés que hacer esto desde <strong>Gmail en la computadora</strong> (gmail.com en el navegador). La app del celular no tiene la opción de agregar direcciones de reenvío.
+              </p>
+              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide pt-1">
+                Parte 1 — Autorizar la dirección en Gmail
+              </p>
               {[
-                { n: 1, text: <>Abrí un email de notificación de tu banco en Gmail.</> },
-                { n: 2, text: <>Hacé clic en los tres puntos <strong>(⋮)</strong> y elegí <strong>"Filtrar mensajes así"</strong>.</> },
-                { n: 3, text: <>En el campo <strong>De</strong>, escribí el dominio de tu banco (ej: <code className="bg-white px-1 rounded text-xs">@infomistarjetas.com</code>). Hacé clic en <strong>"Crear filtro"</strong>.</> },
-                { n: 4, text: <>Tildá <strong>"Reenviar a"</strong>, agregá tu dirección de arriba y confirmá. Gmail te va a mandar un email de verificación.</> },
-                { n: 5, text: <>Volvé acá y hacé clic en el botón de abajo. Vamos a confirmar el reenvío automáticamente. ¡Listo! 🎉</> },
+                { n: 1, text: <>Copiá la dirección de arriba con el botón <strong>Copiar</strong>.</> },
+                { n: 2, text: <>En Gmail, tocá el engranaje ⚙️ arriba a la derecha y elegí <strong>"Ver toda la configuración"</strong>.</> },
+                { n: 3, text: <>Andá a la pestaña <strong>"Reenvío y correo POP/IMAP"</strong> y hacé clic en <strong>"Añadir una dirección de reenvío"</strong>.</> },
+                { n: 4, text: <>Pegá la dirección que copiaste, dale <strong>Siguiente</strong> y después <strong>Continuar</strong>. Gmail manda un código de verificación a sinunmango.</> },
+                { n: 5, text: <>Volvé acá y tocá el botón de abajo. En unos segundos va a aparecer <strong>"Abrir link de confirmación de Gmail"</strong> — tocalo, se abre una pestaña que confirma la dirección y la cerrás.</> },
               ].map(({ n, text }) => (
                 <div key={n} className="flex gap-3 text-xs text-slate-700 leading-relaxed">
                   <span className="shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold mt-0.5">{n}</span>
+                  <p>{text}</p>
+                </div>
+              ))}
+              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide pt-3">
+                Parte 2 — Decirle a Gmail qué mails reenviar
+              </p>
+              {[
+                { n: 6, text: <>En Gmail, abrí un email que te haya mandado tu banco. Tocá los tres puntos <strong>(⋮)</strong> arriba del mensaje y elegí <strong>"Filtrar mensajes parecidos"</strong>. Gmail va a precargar el remitente.</> },
+                { n: 7, text: <>Hacé clic en <strong>"Crear filtro"</strong> abajo a la derecha del cuadro de búsqueda.</> },
+                { n: 8, text: <>Marcá <strong>"Reenviarlo a:"</strong> y elegí la dirección de sinunmango del menú. Hacé clic en <strong>"Crear filtro"</strong>. ¡Listo! 🎉 De ahora en adelante, cada mail del banco se va a registrar solo.</> },
+              ].map(({ n, text }) => (
+                <div key={n} className="flex gap-3 text-xs text-slate-700 leading-relaxed">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px] font-bold mt-0.5">{n}</span>
                   <p>{text}</p>
                 </div>
               ))}
@@ -761,7 +788,7 @@ function EmailInboundSection() {
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
               >
                 <Mail size={14} />
-                Ya configuré el filtro en Gmail
+                Ya pegué la dirección en Gmail
               </button>
             )}
           </div>
