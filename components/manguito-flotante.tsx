@@ -270,10 +270,16 @@ export function ManguitoFlotante() {
             ref={panelRef}
             className="fixed z-50 flex flex-col overflow-hidden"
             style={{
+              // bottom: 112px desde el FAB (que ya respeta safe-area-bottom),
+              // sumamos otra vez safe-area-bottom para que el panel quede
+              // por encima del FAB que también está desplazado.
               right:        24,
-              bottom:       112,
+              bottom:       'calc(112px + env(safe-area-inset-bottom))',
               width:        'min(520px, calc(100vw - 48px))',
-              height:       'min(680px, calc(100dvh - 140px))',
+              // height: 100dvh menos los offsets para FAB (140px) y safe-area
+              // top+bottom. Sin restar el safe-area-top, en iPhone con notch
+              // el header del chat queda parcialmente cubierto por el notch.
+              height:       'min(680px, calc(100dvh - 140px - env(safe-area-inset-top) - env(safe-area-inset-bottom)))',
               borderRadius: 20,
               background:   'var(--bg-card, #f8fafc)',
               boxShadow:    '0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.12)',
