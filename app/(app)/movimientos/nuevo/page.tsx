@@ -197,10 +197,10 @@ function NuevoMovimientoContent() {
 
   return (
     <div className="max-w-xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-slate-800">Nuevo movimiento</h1>
-        {/* Escanear ticket con IA */}
-        <div>
+      <div className="flex items-center justify-between mb-6 gap-3">
+        <h1 className="text-xl font-semibold text-slate-800 min-w-0 truncate">Nuevo movimiento</h1>
+        {/* Escanear ticket con IA — en mobile texto corto "Escanear", icono full text en sm+ */}
+        <div className="shrink-0">
           <input
             ref={fileInputRef}
             type="file"
@@ -213,18 +213,18 @@ function NuevoMovimientoContent() {
             onClick={() => fileInputRef.current?.click()}
             disabled={scanningTicket}
             title="Fotografiar ticket"
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap"
             style={{ borderColor: 'var(--accent)', color: 'var(--accent)', background: 'transparent' }}
           >
             {scanningTicket
               ? <><Loader2 size={15} className="animate-spin" /> Leyendo...</>
-              : <><Camera size={15} /> Escanear ticket</>
+              : <><Camera size={15} /><span className="hidden sm:inline"> Escanear ticket</span><span className="sm:hidden"> Escanear</span></>
             }
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6 space-y-5">
 
         {/* Mensaje de escaneo */}
         {scanMsg && (
@@ -255,8 +255,8 @@ function NuevoMovimientoContent() {
           ))}
         </div>
 
-        {/* Fecha + Detalle */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Fecha + Detalle — stack en mobile (cada input full-width) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Fecha</label>
             <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)} className={inputClass} />
@@ -267,8 +267,10 @@ function NuevoMovimientoContent() {
           </div>
         </div>
 
-        {/* Moneda + Monto */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* Moneda + Monto — grid-cols-3 (Moneda 1col, Monto 2col) funciona OK
+            mobile: ARS/USD entra en 1/3 del ancho y el Monto tiene 2/3 con
+            text-lg font-mono. Mantenemos grid-cols-3 desde el principio. */}
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           <div>
             <label className={labelClass}>Moneda</label>
             <select value={form.moneda} onChange={e => set('moneda', e.target.value)} className={inputClass}>
@@ -278,18 +280,18 @@ function NuevoMovimientoContent() {
           </div>
           <div className="col-span-2">
             <label className={labelClass}>Monto</label>
-            <input type="number" step="0.01" value={form.monto} onChange={e => set('monto', e.target.value)} placeholder="0.00" className={`${inputClass} text-lg font-mono`} />
+            <input type="number" step="0.01" inputMode="decimal" value={form.monto} onChange={e => set('monto', e.target.value)} placeholder="0.00" className={`${inputClass} text-lg font-mono`} />
           </div>
         </div>
 
-        {/* USD */}
+        {/* USD — stack en mobile (cotización arriba, checkbox abajo). */}
         {isUSD && (
-          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex gap-4 items-center">
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex flex-col sm:flex-row sm:gap-4 sm:items-center gap-3">
             <div className="flex-1">
               <label className="block text-xs font-medium text-amber-700 mb-1.5">Cotización histórica (opcional)</label>
-              <input type="number" step="0.01" value={form.cotizacion} onChange={e => set('cotizacion', e.target.value)} placeholder="Ej: 1410" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm outline-none bg-white" />
+              <input type="number" step="0.01" inputMode="decimal" value={form.cotizacion} onChange={e => set('cotizacion', e.target.value)} placeholder="Ej: 1410" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm outline-none bg-white" />
             </div>
-            <label className="flex items-center gap-2 cursor-pointer mt-5">
+            <label className="flex items-center gap-2 cursor-pointer sm:mt-5 py-1">
               <input type="checkbox" checked={form.conciliado} onChange={e => set('conciliado', e.target.checked)} className="w-4 h-4" />
               <span className="text-sm text-amber-700">Conciliado</span>
             </label>

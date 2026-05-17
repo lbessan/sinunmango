@@ -87,7 +87,7 @@ export function GastoFijoFormClient({
           {isEditing ? 'Editar gasto fijo' : 'Nuevo gasto fijo'}
         </h1>
 
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6 space-y-5">
 
           <div>
             <label className={labelClass}>Nombre *</label>
@@ -95,7 +95,9 @@ export function GastoFijoFormClient({
               placeholder="Ej: Alquiler" className={inputClass} />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          {/* Moneda 1col + Monto 2col funciona OK en mobile (ARS/USD entra en
+              1/3 del ancho). Reducimos gap mobile para más espacio al monto. */}
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
             <div>
               <label className={labelClass}>Moneda</label>
               <select value={form.moneda} onChange={e => set('moneda', e.target.value)} className={inputClass}>
@@ -105,7 +107,7 @@ export function GastoFijoFormClient({
             </div>
             <div className="col-span-2">
               <label className={labelClass}>Monto estimado *</label>
-              <input type="number" step="0.01" value={form.monto_estimado} onChange={e => set('monto_estimado', e.target.value)}
+              <input type="number" step="0.01" inputMode="decimal" value={form.monto_estimado} onChange={e => set('monto_estimado', e.target.value)}
                 placeholder="0.00" className={`${inputClass} font-mono`} />
             </div>
           </div>

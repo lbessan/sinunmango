@@ -143,10 +143,12 @@ export function InversionFormClient({
   return (
     <div className="max-w-2xl mx-auto space-y-6">
 
-      {/* Selector de tipo */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5">
+      {/* Selector de tipo — en mobile 2 columnas para que los emojis +
+          sublabel ("Money Market, Renta Fija...") no se corten en chips
+          de ~95px de ancho. En sm+ vuelve a 3 columnas. */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5">
         <p className={labelClass}>Tipo de inversión</p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {TIPOS.map(t => (
             <button
               key={t.value}
@@ -165,10 +167,10 @@ export function InversionFormClient({
       </div>
 
       {/* Datos comunes */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 space-y-4">
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Datos generales</p>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Nombre / Etiqueta <span className="text-slate-400">(opcional)</span></label>
             <input
@@ -185,7 +187,7 @@ export function InversionFormClient({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className={labelClass}>Moneda</label>
             <select value={moneda} onChange={e => setMoneda(e.target.value as 'ARS' | 'USD')} className={inputClass}>
@@ -206,7 +208,7 @@ export function InversionFormClient({
         </div>
 
         {/* Cuenta origen */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Cuenta de origen <span className="text-slate-400">(opcional)</span></label>
             <select value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
@@ -233,10 +235,10 @@ export function InversionFormClient({
 
       {/* PLAZO FIJO */}
       {tipo === 'plazo_fijo' && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 space-y-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Datos del Plazo Fijo</p>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Subtipo</label>
               <select value={datos.tipo_pf ?? 'tradicional'} onChange={e => setDato('tipo_pf', e.target.value)} className={inputClass}>
@@ -250,7 +252,7 @@ export function InversionFormClient({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className={labelClass}>TNA {datos.tipo_pf === 'uva' ? '(spread sobre UVA)' : ''} (%)</label>
               <input type="number" step="0.01" value={datos.tna ?? ''} onChange={e => setDato('tna', e.target.value)} placeholder="Ej: 18.5" className={inputClass} />
@@ -287,10 +289,10 @@ export function InversionFormClient({
 
       {/* FCI */}
       {tipo === 'fci' && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 space-y-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Datos del FCI</p>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Nombre del fondo</label>
               <input type="text" value={datos.nombre_fondo ?? ''} onChange={e => setDato('nombre_fondo', e.target.value)} placeholder="Ej: Pellegrini Pesos" className={inputClass} />
@@ -301,7 +303,7 @@ export function InversionFormClient({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Tipo de FCI</label>
               <select value={datos.tipo_fci ?? 'money_market'} onChange={e => setDato('tipo_fci', e.target.value)} className={inputClass}>
@@ -327,7 +329,7 @@ export function InversionFormClient({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Cuotapartes</label>
               <input type="number" step="0.000001" value={datos.cuotapartes ?? ''} onChange={e => setDato('cuotapartes', e.target.value)} placeholder="Auto-calculado" className={`${inputClass} bg-slate-50`} />
@@ -342,10 +344,10 @@ export function InversionFormClient({
 
       {/* DÓLAR FÍSICO */}
       {tipo === 'dolar' && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 space-y-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Datos del Dólar</p>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className={labelClass}>Cantidad (USD)</label>
               <input type="number" step="1" value={datos.cantidad_usd ?? ''} onChange={e => {
@@ -374,7 +376,7 @@ export function InversionFormClient({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Cotización actual (para rendimiento)</label>
               <input type="number" step="0.01" value={datos.cotizacion_actual ?? ''} onChange={e => setDato('cotizacion_actual', e.target.value)} placeholder={`Ej: ${fmt(dolar)}`} className={inputClass} />
@@ -400,9 +402,9 @@ export function InversionFormClient({
 
       {/* CRYPTO */}
       {tipo === 'crypto' && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 space-y-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Datos de Crypto</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className={labelClass}>Moneda</label>
               <input type="text" value={datos.moneda_cripto ?? ''} onChange={e => setDato('moneda_cripto', e.target.value.toUpperCase())} placeholder="BTC, ETH, USDT..." className={inputClass} />
@@ -420,7 +422,7 @@ export function InversionFormClient({
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className={labelClass}>Cantidad</label>
               <input type="number" step="any" value={datos.cantidad ?? ''} onChange={e => setDato('cantidad', e.target.value)} placeholder="Ej: 0.00234" className={inputClass} />
@@ -445,9 +447,9 @@ export function InversionFormClient({
 
       {/* CEDEAR / ACCIÓN */}
       {(tipo === 'cedear' || tipo === 'accion') && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 space-y-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{tipo === 'cedear' ? 'Datos del CEDEAR' : 'Datos de la Acción'}</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className={labelClass}>Ticker</label>
               <input type="text" value={datos.ticker ?? ''} onChange={e => setDato('ticker', e.target.value.toUpperCase())} placeholder={tipo === 'cedear' ? 'AAPL, MSFT...' : 'YPFD, GGAL...'} className={inputClass} />
@@ -463,7 +465,7 @@ export function InversionFormClient({
               <input type="number" step="1" value={datos.cantidad ?? ''} onChange={e => setDato('cantidad', e.target.value)} className={inputClass} />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className={labelClass}>Precio compra (ARS)</label>
               <input type="number" step="0.01" value={datos.precio_compra_ars ?? ''} onChange={e => setDato('precio_compra_ars', e.target.value)} className={inputClass} />
@@ -482,9 +484,9 @@ export function InversionFormClient({
 
       {/* BONO / ON */}
       {(tipo === 'bono' || tipo === 'on') && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 space-y-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{tipo === 'bono' ? 'Datos del Bono Soberano' : 'Datos de la ON'}</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className={labelClass}>Ticker</label>
               <input type="text" value={datos.ticker ?? ''} onChange={e => setDato('ticker', e.target.value.toUpperCase())} placeholder={tipo === 'bono' ? 'GD30, AL30...' : 'YCA6O...'} className={inputClass} />
@@ -500,7 +502,7 @@ export function InversionFormClient({
               <input type="number" step="1" value={datos.cantidad_vn ?? ''} onChange={e => setDato('cantidad_vn', e.target.value)} placeholder="Ej: 1000" className={inputClass} />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className={labelClass}>Precio compra (% VN)</label>
               <input type="number" step="0.01" value={datos.precio_compra_pct ?? ''} onChange={e => setDato('precio_compra_pct', e.target.value)} placeholder="Ej: 65.5" className={inputClass} />
@@ -528,7 +530,7 @@ export function InversionFormClient({
 
       {/* OTRO */}
       {tipo === 'otro' && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 space-y-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Datos adicionales</p>
           <div>
             <label className={labelClass}>Fecha de vencimiento / cierre <span className="text-slate-400">(opcional)</span></label>
