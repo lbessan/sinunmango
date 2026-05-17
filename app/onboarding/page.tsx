@@ -729,12 +729,12 @@ export default function OnboardingPage() {
                                 <CompactVariantSelect networkId={card.red} value={card.variante} onChange={v => updateCard(i, 'variante', v)} />
                               </div>
 
-                              {/* Terminacion + dias */}
+                              {/* Terminación + días — labels text-[10px] mobile evita wrap feo */}
                               <div className="grid grid-cols-3 gap-2">
                                 <div>
-                                  <label className="block text-xs font-medium text-slate-400 mb-1">Terminación</label>
+                                  <label className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-1">Terminación</label>
                                   <input
-                                    type="text" maxLength={4}
+                                    type="text" maxLength={4} inputMode="numeric"
                                     value={card.terminacion}
                                     onChange={e => updateCard(i, 'terminacion', e.target.value.replace(/\D/g, ''))}
                                     placeholder="1234"
@@ -742,9 +742,9 @@ export default function OnboardingPage() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-medium text-slate-400 mb-1">Día cierre</label>
+                                  <label className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-1">Día cierre</label>
                                   <input
-                                    type="number" min={1} max={31}
+                                    type="number" min={1} max={31} inputMode="numeric"
                                     value={card.diaCierre}
                                     onChange={e => updateCard(i, 'diaCierre', e.target.value)}
                                     placeholder="25"
@@ -752,9 +752,9 @@ export default function OnboardingPage() {
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-medium text-slate-400 mb-1">Día vence</label>
+                                  <label className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-1">Día vence</label>
                                   <input
-                                    type="number" min={1} max={31}
+                                    type="number" min={1} max={31} inputMode="numeric"
                                     value={card.diaVence}
                                     onChange={e => updateCard(i, 'diaVence', e.target.value)}
                                     placeholder="5"
@@ -863,23 +863,26 @@ export default function OnboardingPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
+                  {/* Labels uppercase + tracking-wide se cortaban en mobile
+                      (columna ~95px en 360px). Texto más chico mobile +
+                      tracking normal evita el wrap feo. */}
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">4 últimos</label>
-                      <input type="text" maxLength={4} value={terminacion}
+                      <label className="block text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-normal sm:tracking-wide mb-1.5">4 últimos</label>
+                      <input type="text" maxLength={4} value={terminacion} inputMode="numeric"
                         onChange={e => setTerminacion(e.target.value.replace(/\D/g, ''))}
                         placeholder="1234"
                         className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none text-center tracking-widest" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Día cierre</label>
-                      <input type="number" min={1} max={31} value={fechaCierre}
+                      <label className="block text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-normal sm:tracking-wide mb-1.5">Día cierre</label>
+                      <input type="number" min={1} max={31} value={fechaCierre} inputMode="numeric"
                         onChange={e => setFechaCierre(e.target.value)} placeholder="25"
                         className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none text-center" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Día vence</label>
-                      <input type="number" min={1} max={31} value={fechaVence}
+                      <label className="block text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-normal sm:tracking-wide mb-1.5">Día vence</label>
+                      <input type="number" min={1} max={31} value={fechaVence} inputMode="numeric"
                         onChange={e => setFechaVence(e.target.value)} placeholder="5"
                         className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none text-center" />
                     </div>

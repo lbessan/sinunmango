@@ -220,7 +220,9 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
         {/* ── Datos de la tarjeta ── */}
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-4">
           <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Datos de la tarjeta</p>
-          <div className="grid grid-cols-2 gap-4">
+          {/* En mobile <320px los dos <input type="date"> quedaban apretados.
+              Stack 1col mobile / 2col sm+ da espacio al picker nativo. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-blue-700 mb-1.5">Fecha de cierre</label>
               <input
