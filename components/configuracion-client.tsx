@@ -43,11 +43,15 @@ function Section({
 }
 
 // ─── Row inside a section ─────────────────────────────────────────────────────
+// En mobile (< sm) stack label-arriba/control-abajo: si el children es un
+// container (email truncate, botón con texto largo, input largo), tener el
+// label al lado le robaba demasiado ancho. En sm+ vuelve al horizontal con
+// label izq + control der.
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <p className="text-sm font-medium text-slate-600 shrink-0">{label}</p>
-      <div className="flex-1 min-w-0">{children}</div>
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <p className="text-sm font-medium text-slate-600 sm:shrink-0">{label}</p>
+      <div className="w-full sm:flex-1 sm:min-w-0">{children}</div>
     </div>
   )
 }
@@ -586,26 +590,31 @@ function EmailInboundSection() {
         </p>
 
         {address ? (
-          <div className="flex items-center gap-2">
+          // En mobile la dirección queda en su propia fila full-width
+          // (mejor para ver la dirección larga completa al copy-paste manual)
+          // y los 2 botones bajan a una fila debajo. En sm+ horizontal.
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 min-w-0 overflow-hidden">
               <AtSign size={14} className="text-slate-400 shrink-0" />
               <span className="truncate font-mono text-sm text-slate-700">{address}</span>
             </div>
-            <button
-              onClick={handleCopy}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-              <span className="hidden sm:inline">{copied ? 'Copiado' : 'Copiar'}</span>
-            </button>
-            <button
-              onClick={handleRegenerate}
-              disabled={regenerating}
-              className="shrink-0 p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
-              title="Regenerar dirección"
-            >
-              <RefreshCw size={14} className={regenerating ? 'animate-spin' : ''} />
-            </button>
+            <div className="flex items-center gap-2 sm:shrink-0">
+              <button
+                onClick={handleCopy}
+                className="flex items-center justify-center gap-1.5 flex-1 sm:flex-initial px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                <span>{copied ? 'Copiado' : 'Copiar'}</span>
+              </button>
+              <button
+                onClick={handleRegenerate}
+                disabled={regenerating}
+                className="shrink-0 p-2.5 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                title="Regenerar dirección"
+              >
+                <RefreshCw size={14} className={regenerating ? 'animate-spin' : ''} />
+              </button>
+            </div>
           </div>
         ) : (
           <p className="text-sm text-red-500">No se pudo generar la dirección. Recargá la página.</p>
