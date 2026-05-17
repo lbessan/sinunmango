@@ -965,6 +965,74 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
     </th>
   )
 
+  // ─── MovCard: card mobile que muestra los mismos datos que MovRow pero
+  //     en layout vertical para que entren en 360px sin scroll horizontal.
+  //     Toda la card es clickeable para editar; el círculo izquierdo
+  //     mantiene el toggle de conciliar/desconciliar como en desktop.
+  const MovCard = ({ mov }: { mov: Mov }) => {
+    const isUSD       = mov.moneda === 'USD'
+    const esDescuento = mov.tipo_movimiento === 'Ingreso'
+    return (
+      <div className={`flex items-start gap-3 px-4 py-3 transition-colors ${esDescuento ? 'bg-emerald-50/30' : ''}`}>
+        <button
+          onClick={() => toggle(mov.id, mov.conciliado)}
+          disabled={loading === mov.id}
+          className="shrink-0 mt-0.5 p-1 -m-1"
+          aria-label={mov.conciliado ? 'Desconciliar' : 'Conciliar'}
+        >
+          {loading === mov.id
+            ? <span className="text-slate-300 text-xs">···</span>
+            : mov.conciliado
+              ? <CheckCircle size={20} className="text-emerald-500" />
+              : <Circle size={20} className="text-slate-300" />
+          }
+        </button>
+        <button
+          onClick={() => setEditando(mov)}
+          className="min-w-0 flex-1 text-left active:bg-slate-100 -mx-2 px-2 py-0.5 rounded"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className={`text-sm font-medium break-words ${mov.conciliado ? 'text-slate-400 line-through' : esDescuento ? 'text-emerald-700' : 'text-slate-700'}`}>
+                  {stripCuotaSuffix(mov.detalle) || '—'}
+                </p>
+                {esDescuento && (
+                  <span className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-1.5 py-0.5 rounded-full">DESCUENTO</span>
+                )}
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              {isUSD ? (
+                <>
+                  <p className={`text-sm font-semibold tabular-nums whitespace-nowrap ${esDescuento ? 'text-emerald-600' : 'text-blue-700'}`}>
+                    {esDescuento ? '−' : ''}U$S {fmt(mov.monto)}
+                  </p>
+                  {mov.cotizacion
+                    ? <p className="text-[11px] text-slate-400 tabular-nums">≈ ${fmt(mov.monto * mov.cotizacion)}</p>
+                    : <p className="text-[11px] text-amber-500">sin cotización</p>
+                  }
+                </>
+              ) : (
+                <p className={`text-sm font-semibold tabular-nums whitespace-nowrap ${esDescuento ? 'text-emerald-600' : 'text-slate-800'}`}>
+                  {esDescuento ? '−' : ''}${fmt(mov.monto_estimado ?? mov.monto)}
+                </p>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 truncate">
+            <IconoCategoria icono={mov.categoria_icono} size={14} />
+            {mov.categoria_nombre ?? '—'}
+          </p>
+          <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-1 text-xs text-slate-400">
+            <span className="tabular-nums">{mov.fecha}</span>
+            {mov.cuotas_total > 1 && <span>· Cuota {mov.cuota_actual}/{mov.cuotas_total}</span>}
+          </div>
+        </button>
+      </div>
+    )
+  }
+
   const MovRow = ({ mov }: { mov: Mov }) => {
     const isUSD       = mov.moneda === 'USD'
     const esDescuento = mov.tipo_movimiento === 'Ingreso'
@@ -1020,41 +1088,44 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
 
   return (
     <div className="space-y-4">
-      {/* ── Tarjetas ARS ── */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* ── Tarjetas ARS ──
+          grid-cols-3 fijo desbordaba con montos AR de 8 dígitos en mobile
+          (cada card ~110px). Colapsa a 1 columna debajo de sm. tabular-nums
+          alinea dígitos. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="bg-slate-50 rounded-xl p-4">
           <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Total periodo</p>
-          <p className="text-xl font-bold text-slate-800">${fmt(totalPeriodoPesos)}</p>
+          <p className="text-xl font-bold text-slate-800 tabular-nums">${fmt(totalPeriodoPesos)}</p>
           <p className="text-xs text-slate-400 mt-1">{movsARS.length} movimientos</p>
         </div>
         <div className="bg-emerald-50 rounded-xl p-4">
           <p className="text-xs text-emerald-600 uppercase tracking-wide mb-1">Conciliados</p>
-          <p className="text-xl font-bold text-emerald-700">${fmt(totalConciliadoPesos)}</p>
+          <p className="text-xl font-bold text-emerald-700 tabular-nums">${fmt(totalConciliadoPesos)}</p>
           <p className="text-xs text-emerald-500 mt-1">{conciliadosARS.length} movimientos</p>
         </div>
         <div className={`rounded-xl p-4 ${noConciliadosARS.length > 0 ? 'bg-amber-50' : 'bg-slate-50'}`}>
           <p className={`text-xs uppercase tracking-wide mb-1 ${noConciliadosARS.length > 0 ? 'text-amber-600' : 'text-slate-400'}`}>Pendientes</p>
-          <p className={`text-xl font-bold ${noConciliadosARS.length > 0 ? 'text-amber-700' : 'text-slate-400'}`}>${fmt(totalPendientePesos)}</p>
+          <p className={`text-xl font-bold tabular-nums ${noConciliadosARS.length > 0 ? 'text-amber-700' : 'text-slate-400'}`}>${fmt(totalPendientePesos)}</p>
           <p className={`text-xs mt-1 ${noConciliadosARS.length > 0 ? 'text-amber-500' : 'text-slate-400'}`}>{noConciliadosARS.length} movimientos</p>
         </div>
       </div>
 
       {/* ── Tarjetas USD (solo si hay movimientos en dólares) ── */}
       {hasUSD && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
             <p className="text-xs text-blue-500 uppercase tracking-wide mb-1">Total U$S periodo</p>
-            <p className="text-xl font-bold text-blue-800">U$S {fmt(totalUSDPeriodo)}</p>
+            <p className="text-xl font-bold text-blue-800 tabular-nums">U$S {fmt(totalUSDPeriodo)}</p>
             <p className="text-xs text-blue-400 mt-1">{movsUSD.length} movimientos</p>
           </div>
           <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
             <p className="text-xs text-emerald-600 uppercase tracking-wide mb-1">Conciliados U$S</p>
-            <p className="text-xl font-bold text-emerald-700">U$S {fmt(totalUSDConciliado)}</p>
+            <p className="text-xl font-bold text-emerald-700 tabular-nums">U$S {fmt(totalUSDConciliado)}</p>
             <p className="text-xs text-emerald-500 mt-1">{conciliadosUSD.length} movimientos</p>
           </div>
           <div className={`rounded-xl p-4 border ${noConciliadosUSD.length > 0 ? 'bg-amber-50 border-amber-100' : 'bg-slate-50 border-slate-100'}`}>
             <p className={`text-xs uppercase tracking-wide mb-1 ${noConciliadosUSD.length > 0 ? 'text-amber-600' : 'text-slate-400'}`}>Pendientes U$S</p>
-            <p className={`text-xl font-bold ${noConciliadosUSD.length > 0 ? 'text-amber-700' : 'text-slate-400'}`}>U$S {fmt(totalUSDPendiente)}</p>
+            <p className={`text-xl font-bold tabular-nums ${noConciliadosUSD.length > 0 ? 'text-amber-700' : 'text-slate-400'}`}>U$S {fmt(totalUSDPendiente)}</p>
             <p className={`text-xs mt-1 ${noConciliadosUSD.length > 0 ? 'text-amber-500' : 'text-slate-400'}`}>{noConciliadosUSD.length} movimientos</p>
           </div>
         </div>
@@ -1118,22 +1189,30 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
         <button onClick={() => setAgregando(true)} className="flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium" style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}><Plus size={15} />Agregar movimiento</button>
       </div>
 
-      {/* ── Pendientes (ARS + USD juntos) ──────────────────────── */}
+      {/* ── Pendientes (ARS + USD juntos) ────────────────────────
+          Mobile: card-list que muestra detalle + categoría + fecha + monto.
+          Desktop (sm+): tabla original. */}
       {noConciliados.length > 0 && (
         <div className="bg-white rounded-2xl border border-amber-100 overflow-hidden">
-          <div className="px-5 py-3 border-b border-amber-50 bg-amber-50 flex items-center justify-between">
+          <div className="px-4 sm:px-5 py-3 border-b border-amber-50 bg-amber-50 flex items-center justify-between gap-2">
             <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Pendientes ({noConciliados.length})</p>
-            <button onClick={conciliarTodos} disabled={bulkLoad} className="text-xs px-3 py-1.5 rounded-lg font-medium text-white" style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))', opacity: bulkLoad ? 0.7 : 1 }}>{bulkLoad ? 'Conciliando...' : 'Conciliar todos'}</button>
+            <button onClick={conciliarTodos} disabled={bulkLoad} className="text-xs px-3 py-1.5 rounded-lg font-medium text-white whitespace-nowrap" style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))', opacity: bulkLoad ? 0.7 : 1 }}>{bulkLoad ? 'Conciliando...' : 'Conciliar todos'}</button>
           </div>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(noConciliados).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
+          <div className="sm:hidden divide-y divide-slate-50">
+            {sortMovs(noConciliados).map(m => <MovCard key={m.id} mov={m} />)}
+          </div>
+          <div className="hidden sm:block overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(noConciliados).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
         </div>
       )}
 
       {/* ── Conciliados (ARS + USD juntos) ─────────────────────── */}
       {conciliados.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50"><p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Conciliados ({conciliados.length})</p></div>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(conciliados).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
+          <div className="px-4 sm:px-5 py-3 border-b border-slate-100 bg-slate-50"><p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Conciliados ({conciliados.length})</p></div>
+          <div className="sm:hidden divide-y divide-slate-50">
+            {sortMovs(conciliados).map(m => <MovCard key={m.id} mov={m} />)}
+          </div>
+          <div className="hidden sm:block overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-slate-50"><th className="px-4 py-3 w-10" /><Th col="fecha" label="Fecha" /><Th col="detalle" label="Detalle" /><Th col="categoria_nombre" label="Categoría" /><Th col="monto" label="Monto" right /><th className="px-4 py-3" /></tr></thead><tbody>{sortMovs(conciliados).map(m => <MovRow key={m.id} mov={m} />)}</tbody></table></div>
         </div>
       )}
 

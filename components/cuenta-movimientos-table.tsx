@@ -393,32 +393,36 @@ export function CuentaMovimientosTable({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      {/* Toolbar: en mobile stack vertical (search full-width, luego pills de
+          tipo, luego botón Agregar). En sm+ inline original. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:flex-wrap">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 sm:flex-wrap">
+          <div className="relative w-full sm:w-44">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input type="text" value={busqueda} onChange={e => setBusqueda(e.target.value)}
-              placeholder="Buscar..." className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 bg-white w-44" />
+              placeholder="Buscar..." className="w-full pl-9 pr-3 py-2 text-sm sm:text-xs sm:py-1.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 bg-white" />
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             {['', 'Gasto', 'Ingreso', 'Transferencia'].map(t => (
               <button key={t || 'all'} onClick={() => setTipoBadge(t)}
-                className={`text-xs px-2.5 py-1.5 rounded-lg border font-medium transition-colors ${tipoBadge === t ? 'text-white border-transparent' : 'text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                className={`text-xs px-3 py-2 sm:py-1.5 rounded-lg border font-medium transition-colors whitespace-nowrap ${tipoBadge === t ? 'text-white border-transparent' : 'text-slate-500 border-slate-200 hover:bg-slate-50'}`}
                 style={tipoBadge === t ? { background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' } : {}}>
                 {t || 'Todos'}
               </button>
             ))}
           </div>
-          {(busqueda || tipoBadge) && (
-            <button onClick={() => { setBusqueda(''); setTipoBadge('') }} className="text-xs text-slate-400 hover:text-slate-600 underline">Limpiar</button>
-          )}
-          <span className="text-xs text-slate-400">{filtrados.length} resultado{filtrados.length !== 1 ? 's' : ''}</span>
+          <div className="flex items-center gap-3">
+            {(busqueda || tipoBadge) && (
+              <button onClick={() => { setBusqueda(''); setTipoBadge('') }} className="text-xs text-slate-400 hover:text-slate-600 underline">Limpiar</button>
+            )}
+            <span className="text-xs text-slate-400">{filtrados.length} resultado{filtrados.length !== 1 ? 's' : ''}</span>
+          </div>
         </div>
         {!futuro && (
           <button onClick={() => setAgregando(true)}
-            className="flex items-center gap-1.5 text-xs text-white px-3 py-1.5 rounded-lg font-medium whitespace-nowrap"
+            className="inline-flex items-center justify-center gap-1.5 text-sm sm:text-xs text-white px-4 py-2.5 sm:px-3 sm:py-1.5 rounded-lg font-medium whitespace-nowrap"
             style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}>
-            <Plus size={13} />Agregar movimiento
+            <Plus size={14} />Agregar movimiento
           </button>
         )}
       </div>
@@ -428,66 +432,116 @@ export function CuentaMovimientosTable({
           {busqueda || tipoBadge ? 'Sin resultados para este filtro' : 'Sin movimientos'}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100">
-                <Th col="fecha" label="Fecha" />
-                <Th col="detalle" label="Detalle" />
-                <Th col="categoria_nombre" label="Categoría" />
-                {!futuro && <Th col="periodo_tarjeta" label="Periodo" />}
-                <Th col="monto_estimado" label="Monto" right />
-                <th className="px-4 py-2.5" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtrados.map(mov => {
-                const isIngreso = mov.tipo_movimiento === 'Ingreso'
-                const isTransf  = mov.tipo_movimiento === 'Transferencia'
-                const esDestino = mov.cuenta_destino === cuentaId
-                let signo = '-'; let colorClass = 'text-slate-800'
-                if (isTransf) { if (esDestino) { signo = '+'; colorClass = 'text-emerald-600' } }
-                else if (isIngreso) { signo = '+'; colorClass = 'text-emerald-600' }
-                const periodo = mov.periodo_tarjeta
-                  ? new Date(mov.periodo_tarjeta + 'T12:00:00').toLocaleDateString('es-AR', { month: '2-digit', year: 'numeric' })
-                  : '—'
-                return (
-                  <tr key={mov.id} className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${futuro ? 'opacity-75' : ''}`}>
-                    <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{mov.fecha}</td>
-                    <td className="px-4 py-3">
-                      <p className="text-sm font-medium text-slate-700 max-w-xs truncate">{stripCuotaSuffix(mov.detalle) || '—'}</p>
-                      {mov.cuotas_total > 1 && (() => {
-                        // Normaliza datos viejos donde actual/total pudieran estar invertidos
-                        const ca = Math.min(mov.cuota_actual, mov.cuotas_total)
-                        const ct = Math.max(mov.cuota_actual, mov.cuotas_total)
-                        return <p className="text-xs text-slate-400">Cuota {ca}/{ct}</p>
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap">
-                      <span className="flex items-center gap-1.5">
-                        <IconoCategoria icono={mov.categoria_icono} size={16} />
+        <>
+          {/* Mobile: card-list (mismo patrón que /movimientos). Toda la card
+              es Link a editar. Muestra categoría + período sin esconder. */}
+          <ul className="sm:hidden divide-y divide-slate-100 -mx-5">
+            {filtrados.map(mov => {
+              const isIngreso = mov.tipo_movimiento === 'Ingreso'
+              const isTransf  = mov.tipo_movimiento === 'Transferencia'
+              const esDestino = mov.cuenta_destino === cuentaId
+              let signo = '-'; let colorClass = 'text-slate-800'
+              if (isTransf) { if (esDestino) { signo = '+'; colorClass = 'text-emerald-600' } }
+              else if (isIngreso) { signo = '+'; colorClass = 'text-emerald-600' }
+              const periodo = mov.periodo_tarjeta
+                ? new Date(mov.periodo_tarjeta + 'T12:00:00').toLocaleDateString('es-AR', { month: '2-digit', year: 'numeric' })
+                : null
+              const ca = Math.min(mov.cuota_actual, mov.cuotas_total)
+              const ct = Math.max(mov.cuota_actual, mov.cuotas_total)
+              return (
+                <li key={mov.id} className={futuro ? 'opacity-75' : ''}>
+                  <Link
+                    href={`/movimientos/${mov.id}/editar`}
+                    className="flex items-start gap-3 px-5 py-3 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                  >
+                    <div className="shrink-0 mt-0.5">
+                      <IconoCategoria icono={mov.categoria_icono} size={22} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="font-medium text-slate-700 text-sm leading-snug min-w-0 break-words">
+                          {stripCuotaSuffix(mov.detalle) || '—'}
+                        </p>
+                        <p className={`shrink-0 text-sm font-semibold tabular-nums whitespace-nowrap ${colorClass}`}>
+                          {signo}${fmt(mov.monto_estimado ?? mov.monto)}
+                        </p>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1 truncate">
                         {mov.categoria_nombre ?? '—'}
-                      </span>
-                    </td>
-                    {!futuro && (
+                      </p>
+                      <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-1 text-xs text-slate-400">
+                        <span className="tabular-nums">{mov.fecha}</span>
+                        {mov.cuotas_total > 1 && <span>· Cuota {ca}/{ct}</span>}
+                        {!futuro && periodo && <span>· Per. <span className="font-mono">{periodo}</span></span>}
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+
+          {/* Desktop / tablet (sm+): tabla original */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <Th col="fecha" label="Fecha" />
+                  <Th col="detalle" label="Detalle" />
+                  <Th col="categoria_nombre" label="Categoría" />
+                  {!futuro && <Th col="periodo_tarjeta" label="Periodo" />}
+                  <Th col="monto_estimado" label="Monto" right />
+                  <th className="px-4 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtrados.map(mov => {
+                  const isIngreso = mov.tipo_movimiento === 'Ingreso'
+                  const isTransf  = mov.tipo_movimiento === 'Transferencia'
+                  const esDestino = mov.cuenta_destino === cuentaId
+                  let signo = '-'; let colorClass = 'text-slate-800'
+                  if (isTransf) { if (esDestino) { signo = '+'; colorClass = 'text-emerald-600' } }
+                  else if (isIngreso) { signo = '+'; colorClass = 'text-emerald-600' }
+                  const periodo = mov.periodo_tarjeta
+                    ? new Date(mov.periodo_tarjeta + 'T12:00:00').toLocaleDateString('es-AR', { month: '2-digit', year: 'numeric' })
+                    : '—'
+                  return (
+                    <tr key={mov.id} className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${futuro ? 'opacity-75' : ''}`}>
+                      <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{mov.fecha}</td>
                       <td className="px-4 py-3">
-                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-mono">{periodo}</span>
+                        <p className="text-sm font-medium text-slate-700 max-w-xs truncate">{stripCuotaSuffix(mov.detalle) || '—'}</p>
+                        {mov.cuotas_total > 1 && (() => {
+                          const ca = Math.min(mov.cuota_actual, mov.cuotas_total)
+                          const ct = Math.max(mov.cuota_actual, mov.cuotas_total)
+                          return <p className="text-xs text-slate-400">Cuota {ca}/{ct}</p>
+                        })()}
                       </td>
-                    )}
-                    <td className={`px-4 py-3 font-semibold whitespace-nowrap text-right ${colorClass}`}>
-                      {signo}${fmt(mov.monto_estimado ?? mov.monto)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link href={`/movimientos/${mov.id}/editar`} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors inline-flex">
-                        <Pencil size={13} />
-                      </Link>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                      <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap">
+                        <span className="flex items-center gap-1.5">
+                          <IconoCategoria icono={mov.categoria_icono} size={16} />
+                          {mov.categoria_nombre ?? '—'}
+                        </span>
+                      </td>
+                      {!futuro && (
+                        <td className="px-4 py-3">
+                          <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-mono">{periodo}</span>
+                        </td>
+                      )}
+                      <td className={`px-4 py-3 font-semibold whitespace-nowrap text-right tabular-nums ${colorClass}`}>
+                        {signo}${fmt(mov.monto_estimado ?? mov.monto)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link href={`/movimientos/${mov.id}/editar`} className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors" title="Editar">
+                          <Pencil size={16} />
+                        </Link>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {agregando && (
