@@ -192,22 +192,27 @@ function ProyeccionesStrip({ proyecciones, saldoBase, label }: {
             const esPos = p.proyeccion >= 0
             return (
               <Link key={p.periodo} href={`/dashboard?mes=${p.periodo.slice(0, 7)}`}
-                className="bg-white rounded-xl border border-slate-100 p-4 hover:border-slate-200 hover:shadow-sm transition-all group block relative overflow-hidden">
+                className="bg-white rounded-xl border border-slate-100 p-3 sm:p-4 hover:border-slate-200 hover:shadow-sm transition-all group block relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-14 h-14 rounded-bl-full opacity-20"
                   style={{ background: esPos ? '#dcfce7' : '#fee2e2' }} />
                 <p className="text-xs font-medium text-slate-500 mb-2 relative z-10">{p.label}</p>
-                <p className="text-xl font-bold relative z-10" style={{ color: esPos ? '#1a6b5a' : '#dc2626' }}>
+                <p className="text-lg sm:text-xl font-bold relative z-10 tabular-nums break-words" style={{ color: esPos ? '#1a6b5a' : '#dc2626' }}>
                   {p.proyeccion < 0 ? '-' : ''}${fmt(Math.abs(p.proyeccion))}
                 </p>
-                <div className="flex items-center gap-1 mt-1 relative z-10">
-                  <span className={`text-xs font-medium ${p.diferencia >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                {/* Antes era flex+gap-1: el span "vs anterior" wrappeaba a una
+                    línea separada cuando el monto era largo, dejando "vs
+                    anterior" huérfano. Como párrafo único el texto fluye
+                    natural — wrap inline limpio con espacio entre tokens. */}
+                <p className="mt-1 text-xs relative z-10">
+                  <span className={`font-medium tabular-nums ${p.diferencia >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
                     {p.diferencia >= 0 ? '▲' : '▼'} ${fmt(Math.abs(p.diferencia))}
                   </span>
-                  <span className="text-xs text-slate-400">vs anterior</span>
-                </div>
+                  {' '}
+                  <span className="text-slate-400">vs anterior</span>
+                </p>
                 <div className="mt-2 space-y-0.5 relative z-10">
-                  {p.ingresos > 0 && <p className="text-xs text-slate-400">+${fmt(p.ingresos)} ingresos</p>}
-                  <p className="text-xs text-slate-400">-${fmt(p.gastos_fijos + p.gastos_tarjeta)} gastos</p>
+                  {p.ingresos > 0 && <p className="text-xs text-slate-400 tabular-nums">+${fmt(p.ingresos)} ingresos</p>}
+                  <p className="text-xs text-slate-400 tabular-nums">-${fmt(p.gastos_fijos + p.gastos_tarjeta)} gastos</p>
                 </div>
                 <p className="text-xs text-slate-300 mt-2 group-hover:text-slate-400 transition-colors relative z-10">Ver mes →</p>
               </Link>

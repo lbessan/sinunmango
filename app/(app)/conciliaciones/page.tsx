@@ -147,15 +147,17 @@ export default async function ConciliacionesPage({
     <div>
 
       {/* ── BANNER FULL-BLEED ────────────────────────────────────────────────
-          -mx-8 -mt-8 escapa el p-8 del <main> para cubrir todo el ancho     */}
+          -mx-4 -mt-4 lg:-mx-8 lg:-mt-8: escapamos el p-4 del <main> en mobile
+          y p-8 en desktop. Antes era -mx-8 fijo → overflow en mobile. */}
       <div
-        className="-mx-8 -mt-8 mb-8 text-white"
+        className="-mx-4 -mt-4 mb-6 lg:-mx-8 lg:-mt-8 lg:mb-8 text-white"
         style={{ background: 'linear-gradient(135deg, var(--sidebar-bg, #07192b) 0%, var(--accent2, #0b2d55) 50%, var(--accent, #0f4d3a) 100%)' }}
       >
-        <div className="px-10 pt-10 pb-9">
+        <div className="px-5 pt-6 pb-7 lg:px-10 lg:pt-10 lg:pb-9">
 
-          {/* Fila superior: label + mes grande */}
-          <div className="flex items-start justify-between mb-10">
+          {/* Fila superior: label + mes grande. En mobile el mes va debajo
+              para no apretarse contra el label. */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6 lg:mb-10">
             <div>
               <p className="text-xs font-semibold text-white/70 uppercase tracking-widest mb-1.5">
                 Control de conciliaciones
@@ -164,17 +166,18 @@ export default async function ConciliacionesPage({
                 Revisá los movimientos de cada tarjeta
               </p>
             </div>
-            <h1 className="text-5xl lg:text-6xl font-black tracking-tight text-white leading-none text-right">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-none sm:text-right">
               {mesLabel}
             </h1>
           </div>
 
-          {/* Total del período — centrado */}
-          <div className="text-center mb-10">
+          {/* Total del período — centrado. text-3xl mobile evita overflow
+              con montos AR de 8+ dígitos (text-5xl original = 48px). */}
+          <div className="text-center mb-6 lg:mb-10">
             <p className="text-xs font-semibold text-white/55 uppercase tracking-widest mb-3">
               Total del período
             </p>
-            <p className="text-5xl font-bold text-white mb-1">
+            <p className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-1 tabular-nums break-words">
               ${fmt(totalMes)}
             </p>
             {totalMesUSD > 0 && (
@@ -232,12 +235,34 @@ export default async function ConciliacionesPage({
       </div>
 
       {/* ── NAVEGACIÓN + TARJETAS ────────────────────────────────────────────
-          Las flechas están a los costados de la lista de tarjetas             */}
+          Las flechas laterales están ocultas en mobile (roban ~80px de ancho).
+          En mobile usamos una nav compacta arriba de la lista. */}
+
+      {/* Nav mobile: anterior + siguiente como botones chicos arriba */}
+      <div className="max-w-4xl mx-auto mb-3 flex items-center justify-between sm:hidden">
+        {prevPeriodo ? (
+          <Link
+            href={`/conciliaciones?periodo=${prevPeriodo}`}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            <ChevronLeft size={16} /> {formatMesCorto(prevPeriodo)}
+          </Link>
+        ) : <span />}
+        {nextPeriodo ? (
+          <Link
+            href={`/conciliaciones?periodo=${nextPeriodo}`}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            {formatMesCorto(nextPeriodo)} <ChevronRight size={16} />
+          </Link>
+        ) : <span />}
+      </div>
+
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4">
 
-          {/* ← Mes anterior */}
-          <div className="shrink-0 w-16 flex justify-center">
+          {/* ← Mes anterior (solo desktop/tablet) */}
+          <div className="hidden sm:flex shrink-0 w-16 justify-center">
             {prevPeriodo ? (
               <Link
                 href={`/conciliaciones?periodo=${prevPeriodo}`}
@@ -264,7 +289,7 @@ export default async function ConciliacionesPage({
               <Link
                 key={tarjeta.id}
                 href={`/conciliaciones/${tarjeta.id}/${periodoActual}`}
-                className={`flex items-center justify-between px-5 py-4 bg-white rounded-2xl border transition-all group
+                className={`block px-4 py-3 sm:px-5 sm:py-4 bg-white rounded-2xl border transition-all group
                   ${!tieneMovimientos
                     ? 'border-slate-100 opacity-55'
                     : noConciliados > 0
@@ -272,75 +297,117 @@ export default async function ConciliacionesPage({
                     : 'border-slate-100 hover:border-emerald-100 hover:shadow-sm'
                   }`}
               >
-                {/* Izquierda: mini card + info */}
-                <div className="flex items-center gap-4">
+                {/* Layout: en mobile (< sm) el monto va debajo del nombre.
+                    En sm+ vuelve al horizontal con stats + monto + badge. */}
+                <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+
+                  {/* Mini card */}
                   <div
                     className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
-                    style={{ background: colorPrim, width: 80, height: 50 }}
+                    style={{ background: colorPrim, width: 64, height: 40 }}
                   >
                     {imagenUrl
                       ? <img src={imagenUrl} alt={tarjeta.nombre_cuenta} className="w-full h-full object-contain" />
-                      : <CreditCard size={18} className="text-white/60" />
+                      : <CreditCard size={16} className="text-white/60" />
                     }
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800">{tarjeta.nombre_cuenta}</p>
-                    <p className="text-xs text-slate-400">
-                      Cierre día {cierreDay ?? '—'} · Vence día {venceDay ?? '—'}
-                    </p>
-                  </div>
-                </div>
 
-                {/* Derecha: stats + total + badge */}
-                <div className="flex items-center gap-6">
-                  {tieneMovimientos ? (
-                    <div className="text-right hidden sm:block">
-                      <p className="text-xs text-slate-400">
-                        {conciliados} conciliados · {noConciliados} pendientes
-                      </p>
-                      {noConciliados > 0 && (
-                        <p className="text-xs text-amber-500 font-medium">${fmt(totalPendiente)} sin conciliar</p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-300 hidden sm:block">Sin movimientos</p>
-                  )}
-
-                  <div className="text-right min-w-[130px]">
-                    {tieneMovimientos ? (
-                      <>
-                        <p className="text-base font-bold text-slate-800">${fmt(totalARS)}</p>
-                        {totalUSD !== 0 && (
-                          <p className="text-xs font-semibold text-blue-600">
-                            + U$S {fmt(Math.abs(totalUSD))}
-                          </p>
+                  {/* Nombre + cierre/vence + monto (en mobile el monto va acá) */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{tarjeta.nombre_cuenta}</p>
+                        <p className="text-xs text-slate-400">
+                          Cierre día {cierreDay ?? '—'} · Vence día {venceDay ?? '—'}
+                        </p>
+                      </div>
+                      {/* Monto inline en mobile — sin min-width fijo */}
+                      <div className="text-right shrink-0 sm:hidden">
+                        {tieneMovimientos ? (
+                          <>
+                            <p className="text-sm font-bold text-slate-800 tabular-nums">${fmt(totalARS)}</p>
+                            {totalUSD !== 0 && (
+                              <p className="text-[11px] font-semibold text-blue-600 tabular-nums">
+                                + U$S {fmt(Math.abs(totalUSD))}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-sm font-bold text-slate-300">—</p>
                         )}
-                      </>
-                    ) : (
-                      <p className="text-base font-bold text-slate-300">—</p>
+                      </div>
+                    </div>
+
+                    {/* Badge en mobile — debajo del nombre */}
+                    {tieneMovimientos && (
+                      <div className="mt-2 sm:hidden">
+                        {todoConciliado ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-semibold">
+                            <CheckCircle size={10} /> Al día
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] bg-amber-50 text-amber-600 px-2.5 py-1 rounded-full font-semibold">
+                            <AlertCircle size={10} /> {noConciliados} pendiente{noConciliados !== 1 ? 's' : ''}
+                            {noConciliados > 0 && totalPendiente > 0 && (
+                              <span className="text-amber-500/80 tabular-nums">· ${fmt(totalPendiente)}</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
 
-                  {tieneMovimientos && (
-                    todoConciliado ? (
-                      <span className="flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full font-semibold whitespace-nowrap">
-                        <CheckCircle size={11} /> Al día
-                      </span>
+                  {/* Derecha — solo sm+: stats + total + badge + chevron */}
+                  <div className="hidden sm:flex items-center gap-6 shrink-0">
+                    {tieneMovimientos ? (
+                      <div className="text-right">
+                        <p className="text-xs text-slate-400">
+                          {conciliados} conciliados · {noConciliados} pendientes
+                        </p>
+                        {noConciliados > 0 && (
+                          <p className="text-xs text-amber-500 font-medium tabular-nums">${fmt(totalPendiente)} sin conciliar</p>
+                        )}
+                      </div>
                     ) : (
-                      <span className="flex items-center gap-1.5 text-xs bg-amber-50 text-amber-600 px-3 py-1.5 rounded-full font-semibold whitespace-nowrap">
-                        <AlertCircle size={11} /> {noConciliados} pendiente{noConciliados !== 1 ? 's' : ''}
-                      </span>
-                    )
-                  )}
+                      <p className="text-xs text-slate-300">Sin movimientos</p>
+                    )}
 
-                  <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+                    <div className="text-right min-w-[130px]">
+                      {tieneMovimientos ? (
+                        <>
+                          <p className="text-base font-bold text-slate-800 tabular-nums">${fmt(totalARS)}</p>
+                          {totalUSD !== 0 && (
+                            <p className="text-xs font-semibold text-blue-600 tabular-nums">
+                              + U$S {fmt(Math.abs(totalUSD))}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-base font-bold text-slate-300">—</p>
+                      )}
+                    </div>
+
+                    {tieneMovimientos && (
+                      todoConciliado ? (
+                        <span className="flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full font-semibold whitespace-nowrap">
+                          <CheckCircle size={11} /> Al día
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-xs bg-amber-50 text-amber-600 px-3 py-1.5 rounded-full font-semibold whitespace-nowrap">
+                          <AlertCircle size={11} /> {noConciliados} pendiente{noConciliados !== 1 ? 's' : ''}
+                        </span>
+                      )
+                    )}
+
+                    <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+                  </div>
                 </div>
               </Link>
             ))}
           </div>
 
-          {/* → Mes siguiente */}
-          <div className="shrink-0 w-16 flex justify-center">
+          {/* → Mes siguiente (solo desktop/tablet) */}
+          <div className="hidden sm:flex shrink-0 w-16 justify-center">
             {nextPeriodo ? (
               <Link
                 href={`/conciliaciones?periodo=${nextPeriodo}`}
