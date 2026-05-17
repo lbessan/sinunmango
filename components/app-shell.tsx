@@ -84,9 +84,17 @@ export function AppShell({ sidebar, children }: AppShellProps) {
             </p>
           </header>
 
-          {/* pb-safe agrega padding-bottom: env(safe-area-inset-bottom) para
-              que el home indicator del iPhone no tape contenido al fondo. */}
-          <main className="flex-1 p-4 lg:p-8 pb-safe overflow-y-auto">
+          {/* paddingBottom: el FAB del ManguitoFlotante (fixed bottom:24, alto
+              72px) tapa contenido al final de la página. Dejamos ~6rem de
+              padding para que los botones/CTA del final no queden cubiertos.
+              Sumamos safe-area-inset-bottom para que en iPhone PWA standalone
+              el home indicator tampoco tape. En lg+ el FAB sigue presente
+              pero el contenido es de columna más ancha y queda menos crítico
+              — igual mantenemos 4rem por consistencia. */}
+          <main
+            className="flex-1 p-4 lg:p-8 overflow-y-auto"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 6rem)' }}
+          >
             {children}
           </main>
 

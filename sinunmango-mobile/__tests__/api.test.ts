@@ -2,6 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Mock de los módulos que api.ts importa, ANTES de importar api.ts
 // (vi.mock es hoisted por vitest).
+//
+// IMPORTANTE: @sentry/react-native tira de react-native que tiene código Flow
+// y Vitest (rolldown) no lo puede parsear. Sin este mock el suite ENTERO
+// falla a importar (no es que tira un test, es que no se carga). Solo
+// mockeamos los métodos que api.ts usa.
+vi.mock('@sentry/react-native', () => ({
+  captureException: vi.fn(),
+  captureMessage:   vi.fn(),
+}))
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
@@ -163,12 +172,47 @@ describe('apiGet/apiPost — errores', () => {
     await expect(apiGet('/api/test')).rejects.toThrow('No pudimos conectar con el servidor. Verificá tu conexión.')
   })
 
-  it('timeout (AbortError → TimeoutError) → mensaje friendly', async () => {
-    const err = new Error('Aborted')
-    err.name = 'TimeoutError'
-    global.fetch = vi.fn().mockRejectedValue(err)
+  it('timeout (controller.abort por setTimeout interno) → mensaje friendly', async () => {
+    // El api.ts arma un AbortController + setTimeout(timeoutMs). Cuando el
+    // timer dispara, set didTimeout=true y aborta el controller. fetch tira
+    // AbortError. La rama de timeout se elige por el flag didTimeout, no por
+    // el name del error (antes era TimeoutError pero AbortSignal.timeout()
+    // no existe en Hermes — ver commit a97803e3).
+    //
+    // Simulamos esto: fetch nunca resuelve, dejamos correr el timer real.
+    // El test usa un timeoutMs corto (pasado vía el wrapper) para no esperar
+    // 20s. Como apiGet hardcodea DEFAULT_TIMEOUT_MS, hackeamos así:
+    // hacemos que fetch escuche al AbortSignal y tire AbortError cuando se
+    // cancele — replicando el comportamiento real del runtime.
+    global.fetch = vi.fn().mockImplementation((_url, init?: RequestInit) => {
+      const p = new Promise((_, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          const err = new Error('The operation was aborted')
+          err.name = 'AbortError'
+          reject(err)
+        })
+      })
+      // El api.ts ya agarra el AbortError en su try/catch interno, pero el
+      // double-await pattern de Vitest reporta "unhandled rejection" igual.
+      // Agregar un handler dummy a la promesa la marca como "manejada" sin
+      // afectar la propagación al primer await (las promesas soportan
+      // múltiples handlers).
+      p.catch(() => { /* dummy handler para silenciar el unhandled warning */ })
+      return p
+    })
 
-    await expect(apiGet('/api/test')).rejects.toThrow('La conexión tardó demasiado. Probá de nuevo.')
+    // Aceleramos los timers para que el setTimeout(timeoutMs) dispare ya.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const p = apiGet('/api/test')
+    // Handler dummy ANTES de avanzar el timer: cuando el timer dispara, p
+    // rejecta sincrónicamente y Node reportaría como unhandled. El handler
+    // dummy marca la promesa como manejada; el expect(p).rejects abajo
+    // sigue funcionando porque las promesas soportan múltiples handlers.
+    p.catch(() => { /* prevent unhandled-rejection warning */ })
+    await vi.advanceTimersByTimeAsync(25_000) // > DEFAULT_TIMEOUT_MS de 20s
+
+    await expect(p).rejects.toThrow('La conexión tardó demasiado. Probá de nuevo.')
+    vi.useRealTimers()
   })
 
   it('4xx sin body → fallback "Error <status>"', async () => {

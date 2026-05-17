@@ -19,21 +19,26 @@ export function PeriodSelector({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 overflow-x-auto">
-        {(Object.keys(PRESET_LABELS) as Preset[]).map(p => (
-          <button
-            key={p}
-            onClick={() => onPresetChange(p)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-              preset === p
-                ? 'text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-            }`}
-            style={preset === p ? { background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' } : {}}
-          >
-            {PRESET_LABELS[p]}
-          </button>
-        ))}
+      {/* Padding mobile px-2.5 (vs px-3 desktop) deja entrar las 5 opciones
+          en pantallas chicas justo en el borde — sin overflow para la mayoría
+          de los devices (>= 380px). En anchos menores hay scroll horizontal. */}
+      <div className="max-w-full bg-white border border-slate-200 rounded-xl p-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex items-center gap-1">
+          {(Object.keys(PRESET_LABELS) as Preset[]).map(p => (
+            <button
+              key={p}
+              onClick={() => onPresetChange(p)}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                preset === p
+                  ? 'text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+              style={preset === p ? { background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' } : {}}
+            >
+              {PRESET_LABELS[p]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {preset === 'custom' && (
