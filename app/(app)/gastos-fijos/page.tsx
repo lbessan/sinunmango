@@ -67,15 +67,21 @@ export default async function GastosFijosPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-slate-800">Gastos fijos</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-slate-500">
-            Total mensual: <span className="font-semibold text-slate-800">${fmt(totalMensual)}</span>
+      {/* Header — en mobile el total queda como subtítulo debajo del h1 y
+          los 3 elementos no se apretujan en una sola línea. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-800">Gastos fijos</h1>
+          <p className="text-sm text-slate-500 mt-0.5 sm:hidden">
+            Total mensual: <span className="font-semibold text-slate-800 tabular-nums">${fmt(totalMensual)}</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-3 justify-between sm:justify-end">
+          <span className="text-sm text-slate-500 hidden sm:inline">
+            Total mensual: <span className="font-semibold text-slate-800 tabular-nums">${fmt(totalMensual)}</span>
           </span>
           <Link href="/gastos-fijos/nuevo"
-            className="flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium"
+            className="inline-flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium whitespace-nowrap"
             style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}>
             <Plus size={15} />Nuevo
           </Link>
@@ -110,36 +116,51 @@ export default async function GastosFijosPage() {
               returnTo:  '/gastos-fijos',  // volver acá tras guardar (no a /movimientos)
             })
             return (
-              <div key={g.id} className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50 last:border-0">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${hoy ? 'bg-amber-400' : vencido ? 'bg-slate-300' : 'bg-emerald-400'}`} />
-                  <div>
+              // En mobile las acciones (Registrar pago + lápiz + delete) van
+              // en una segunda fila debajo del nombre/monto — antes 6 elementos
+              // en horizontal apretaban el nombre. En sm+ vuelve al horizontal.
+              <div key={g.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-5 py-3.5 border-b border-slate-50 last:border-0">
+                <div className="flex items-start sm:items-center gap-3 min-w-0">
+                  <div className={`w-2 h-2 rounded-full shrink-0 mt-2 sm:mt-0 ${hoy ? 'bg-amber-400' : vencido ? 'bg-slate-300' : 'bg-emerald-400'}`} />
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-slate-700">{g.nombre_gasto}</p>
+                      <p className="text-sm font-medium text-slate-700 truncate">{g.nombre_gasto}</p>
                       {g.moneda === 'USD' && (
-                        <span className="text-xs bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-medium">USD</span>
+                        <span className="text-xs bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-medium shrink-0">USD</span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-400 truncate">
                       {g.dia_vencimiento ? `Día ${g.dia_vencimiento}` : '—'}
                       {cuenta?.nombre_cuenta ? ` · ${cuenta.nombre_cuenta}` : ''}
                     </p>
                   </div>
+                  {/* Monto inline en mobile (al lado del nombre) */}
+                  <div className="text-right shrink-0 sm:hidden">
+                    <p className="text-sm font-semibold text-slate-800 tabular-nums">${fmt(monto)}</p>
+                    {g.moneda === 'USD' && <p className="text-xs text-slate-400 tabular-nums">US${g.monto_estimado}</p>}
+                    <p className={`text-xs ${hoy ? 'text-amber-500' : vencido ? 'text-slate-300' : 'text-emerald-500'}`}>
+                      {hoy ? 'vence hoy' : vencido ? 'vencido' : 'pendiente'}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 ml-4">
-                  <div className="text-right mr-1">
-                    <p className="text-sm font-semibold text-slate-800">${fmt(monto)}</p>
-                    {g.moneda === 'USD' && <p className="text-xs text-slate-400">US${g.monto_estimado}</p>}
+                {/* Bloque derecho — en mobile es una fila debajo; en sm+ inline. */}
+                <div className="flex items-center gap-2 shrink-0 sm:ml-4 justify-end">
+                  {/* Monto solo desktop */}
+                  <div className="text-right mr-1 hidden sm:block">
+                    <p className="text-sm font-semibold text-slate-800 tabular-nums">${fmt(monto)}</p>
+                    {g.moneda === 'USD' && <p className="text-xs text-slate-400 tabular-nums">US${g.monto_estimado}</p>}
                     <p className={`text-xs ${hoy ? 'text-amber-500' : vencido ? 'text-slate-300' : 'text-emerald-500'}`}>
                       {hoy ? 'vence hoy' : vencido ? 'vencido' : 'pendiente'}
                     </p>
                   </div>
                   <Link href={`/movimientos/nuevo?${pagoParams.toString()}`}
-                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-medium border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors whitespace-nowrap">
-                    <ArrowDownCircle size={12} />Registrar pago
+                    className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg font-medium border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors whitespace-nowrap">
+                    <ArrowDownCircle size={14} />Registrar pago
                   </Link>
                   <Link href={`/gastos-fijos/${g.id}/editar`}
-                    className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors">
+                    className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+                    title="Editar"
+                  >
                     <Pencil size={14} />
                   </Link>
                   <DeleteButton

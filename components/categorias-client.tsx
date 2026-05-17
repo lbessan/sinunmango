@@ -224,11 +224,17 @@ export function CategoriasClient({ categorias: catInicial, subcategorias: subIni
                               {sub.nombre_subcategoria}
                             </span>
                           </div>
-                          {/* Lápiz → abre popup en vez de navegar */}
+                          {/* Lápiz → abre popup en vez de navegar.
+                              En mobile (sm:-down) está siempre visible: sin
+                              hover el opacity-0 dejaba al user sin forma de
+                              editar subcats. En sm+ sigue oculto hasta hover.
+                              Touch target p-2.5 = 36px mobile, p-1 = 24px sm+. */}
                           <button
                             onClick={() => setEditandoSub(sub)}
-                            className="p-1 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-200 transition-colors opacity-0 group-hover:opacity-100">
-                            <Pencil size={11} />
+                            className="p-2.5 sm:p-1 rounded-lg text-slate-400 sm:text-slate-300 hover:text-slate-500 hover:bg-slate-200 transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+                            title="Editar subcategoría"
+                          >
+                            <Pencil size={14} className="sm:w-[11px] sm:h-[11px]" />
                           </button>
                         </div>
                       ))}
