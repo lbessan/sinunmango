@@ -2,6 +2,7 @@ import { Sidebar } from '@/components/sidebar'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AppShell } from '@/components/app-shell'
 import { ManguitoFlotante } from '@/components/manguito-flotante'
+import { IOSInstallBanner } from '@/components/ios-install-banner'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
@@ -29,6 +30,7 @@ export default async function AppLayout({
         {children}
       </AppShell>
       <ManguitoFlotante />
+      <IOSInstallBanner />
     </ThemeProvider>
   )
 }

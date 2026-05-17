@@ -428,7 +428,12 @@ export function ManguitoFlotante() {
       )}
 
       {/* ── Botón flotante ─────────────────────────────────────────────────── */}
-      <div className="fixed z-50 flex items-center gap-3" style={{ right: 24, bottom: 24 }}>
+      {/* bottom usa calc + env(safe-area-inset-bottom) para que el home
+          indicator del iPhone en PWA standalone no se solape con el FAB. */}
+      <div
+        className="fixed z-50 flex items-center gap-3"
+        style={{ right: 24, bottom: 'calc(24px + env(safe-area-inset-bottom))' }}
+      >
         {/* Label siempre visible cuando el panel está cerrado */}
         {!open && (
           <span

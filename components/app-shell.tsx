@@ -64,9 +64,12 @@ export function AppShell({ sidebar, children }: AppShellProps) {
         {/* ── Main content ────────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col min-w-0">
 
-          {/* Mobile top bar */}
+          {/* Mobile top bar — pt-safe agrega padding-top: env(safe-area-inset-top)
+              para que el notch del iPhone en PWA standalone no tape el botón ☰.
+              Como el header tiene background azul de marca, el área del notch
+              queda coloreada (visual continuo con la status bar translúcida). */}
           <header
-            className="lg:hidden flex items-center gap-3 px-4 py-3 shrink-0"
+            className="lg:hidden flex items-center gap-3 px-4 py-3 pt-safe shrink-0"
             style={{ background: 'var(--sidebar-bg, #0d2137)' }}
           >
             <button
@@ -81,7 +84,9 @@ export function AppShell({ sidebar, children }: AppShellProps) {
             </p>
           </header>
 
-          <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
+          {/* pb-safe agrega padding-bottom: env(safe-area-inset-bottom) para
+              que el home indicator del iPhone no tape contenido al fondo. */}
+          <main className="flex-1 p-4 lg:p-8 pb-safe overflow-y-auto">
             {children}
           </main>
 
