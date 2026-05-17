@@ -97,15 +97,18 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
   return (
     <div className="max-w-6xl mx-auto">
 
-      <div className="flex items-center justify-between mb-5">
+      {/* Header: en mobile stack vertical (título full-width arriba + botones
+          abajo en fila); en sm+ vuelve a single-row con título a la izq y
+          botones a la der. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
         <h1 className="text-xl font-semibold text-slate-800">
           Movimientos
           {count != null && <span className="text-sm font-normal text-slate-400 ml-2">({count} total)</span>}
         </h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href={buildUrl({ futuros: mostrarFuturos ? '' : '1', page: '1' })}
-            className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+            className={`text-xs px-3 py-2 rounded-lg border font-medium transition-colors whitespace-nowrap ${
               mostrarFuturos
                 ? 'text-white border-transparent'
                 : 'text-slate-500 border-slate-200 hover:bg-slate-50'
@@ -118,10 +121,11 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
           </Link>
           <Link
             href="/movimientos/nuevo"
-            className="text-sm text-white px-4 py-2 rounded-lg font-medium"
+            className="text-sm text-white px-4 py-2 rounded-lg font-medium whitespace-nowrap ml-auto sm:ml-0"
             style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
           >
-            Nuevo movimiento
+            <span className="sm:hidden">+ Nuevo</span>
+            <span className="hidden sm:inline">Nuevo movimiento</span>
           </Link>
         </div>
       </div>
@@ -135,7 +139,94 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
       </Suspense>
 
       <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
+
+        {/* ── Mobile: card-list ───────────────────────────────────────────────
+            En mobile (< sm) la tabla está oculta y mostramos cada movimiento
+            como card. La card entera es <Link> a editar (el botón Pencil
+            de la tabla desktop deja de ser necesario). Mostramos TODOS los
+            datos importantes que la tabla escondía (categoría, período,
+            cuenta) sin truncar nada crítico. */}
+        <div className="sm:hidden">
+          {(movimientos ?? []).length === 0 ? (
+            <p className="text-center py-16 text-slate-400 text-sm">
+              No hay movimientos con estos filtros
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-50">
+              {(movimientos ?? []).map(mov => {
+                const isIngreso = mov.tipo_movimiento === 'Ingreso'
+                const isTransf  = mov.tipo_movimiento === 'Transferencia'
+                const isFuturo  = (mov.fecha ?? '') > today
+                const periodo   = mov.periodo_tarjeta
+                  ? new Date(mov.periodo_tarjeta + 'T12:00:00')
+                      .toLocaleDateString('es-AR', { month: '2-digit', year: 'numeric' })
+                  : null
+
+                return (
+                  <li key={mov.id} className={isFuturo ? 'opacity-60' : ''}>
+                    <Link
+                      href={`/movimientos/${mov.id}/editar`}
+                      className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                    >
+                      {/* Icono de categoría a la izquierda */}
+                      <div className="shrink-0 mt-0.5">
+                        <IconoCategoria icono={mov.categoria_icono} size={22} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        {/* Fila 1: detalle + monto */}
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="font-medium text-slate-700 text-sm leading-snug min-w-0 break-words">
+                            {stripCuotaSuffix(mov.detalle) || '—'}
+                          </p>
+                          <p className={`shrink-0 text-sm font-semibold tabular-nums whitespace-nowrap ${
+                            isIngreso ? 'text-emerald-600' : isTransf ? 'text-blue-500' : 'text-slate-800'
+                          }`}>
+                            {isIngreso ? '+' : isTransf ? '' : '-'}${fmt(mov.monto_estimado ?? mov.monto ?? 0)}
+                          </p>
+                        </div>
+
+                        {/* Fila 2: categoría · cuenta */}
+                        <p className="text-xs text-slate-500 mt-1 truncate">
+                          {mov.categoria_nombre ?? '—'}
+                          {mov.cuenta_origen_nombre && (
+                            <>
+                              <span className="text-slate-300"> · </span>
+                              <span className="text-slate-400">{mov.cuenta_origen_nombre}</span>
+                            </>
+                          )}
+                        </p>
+
+                        {/* Fila 3: fecha + cuota + período + badge futuro */}
+                        <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-1 text-xs">
+                          <span className={isFuturo ? 'text-blue-400 font-medium tabular-nums' : 'text-slate-400 tabular-nums'}>
+                            {mov.fecha}
+                          </span>
+                          {(mov.cuotas_total ?? 0) > 1 && (
+                            <span className="text-slate-400">
+                              · Cuota {Math.min(mov.cuota_actual ?? 0, mov.cuotas_total ?? 0)}/{Math.max(mov.cuota_actual ?? 0, mov.cuotas_total ?? 0)}
+                            </span>
+                          )}
+                          {periodo && (
+                            <span className="text-slate-400">
+                              · Per. <span className="font-mono">{periodo}</span>
+                            </span>
+                          )}
+                          {isFuturo && (
+                            <span className="bg-blue-50 text-blue-400 px-1.5 py-0.5 rounded">futuro</span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* ── Desktop / tablet: tabla (sm+) ──────────────────────────────── */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
@@ -202,14 +293,12 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
                       <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-mono">{periodo}</span>
                     </td>
                     <td className="hidden md:table-cell px-4 py-3 text-slate-400 whitespace-nowrap text-xs">{mov.cuenta_origen_nombre ?? '—'}</td>
-                    <td className={`px-4 py-3 font-semibold whitespace-nowrap ${
+                    <td className={`px-4 py-3 font-semibold whitespace-nowrap tabular-nums ${
                       isIngreso ? 'text-emerald-600' : isTransf ? 'text-blue-500' : 'text-slate-800'
                     }`}>
                       {isIngreso ? '+' : isTransf ? '' : '-'}${fmt(mov.monto_estimado ?? mov.monto ?? 0)}
                     </td>
                     <td className="px-2 py-2">
-                      {/* p-2.5 + icon 16 = ~36px touch target. La fila completa
-                          también es alta gracias al py-3 del td vecino. */}
                       <Link
                         href={`/movimientos/${mov.id}/editar`}
                         className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
