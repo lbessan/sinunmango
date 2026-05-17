@@ -121,12 +121,13 @@ export default async function ProyeccionMesPage({
         </div>
       </div>
 
-      {/* Resultado */}
-      <div className={`rounded-2xl p-6 ${esPositivo ? 'bg-emerald-50' : 'bg-red-50'}`}>
+      {/* Resultado — text-4xl mobile desbordaba con montos AR de 8 dígitos.
+          Escala progresiva + tabular-nums. */}
+      <div className={`rounded-2xl p-5 sm:p-6 ${esPositivo ? 'bg-emerald-50' : 'bg-red-50'}`}>
         <p className="text-xs uppercase tracking-wide mb-1" style={{ color: esPositivo ? '#1a6b5a' : '#dc2626' }}>
           Liquidez estimada al cierre de {label}
         </p>
-        <p className="text-4xl font-bold" style={{ color: esPositivo ? '#1a6b5a' : '#dc2626' }}>
+        <p className="text-3xl sm:text-4xl font-bold tabular-nums" style={{ color: esPositivo ? '#1a6b5a' : '#dc2626' }}>
           {proyeccion < 0 ? '-' : ''}${fmtR(Math.abs(proyeccion))}
         </p>
       </div>
@@ -162,9 +163,35 @@ export default async function ProyeccionMesPage({
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 bg-emerald-50 flex items-center justify-between">
             <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Ingresos del periodo</p>
-            <p className="text-sm font-bold text-emerald-700">${fmtR(totalIngresos)}</p>
+            <p className="text-sm font-bold text-emerald-700 tabular-nums">${fmtR(totalIngresos)}</p>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile cards (mismo patrón que /movimientos y /resumen) */}
+          <ul className="sm:hidden divide-y divide-slate-50">
+            {(ingresosMes ?? []).map(m => (
+              <li key={m.id} className="flex items-start gap-3 px-4 py-3">
+                <div className="shrink-0 mt-0.5">
+                  <IconoCategoria icono={m.categoria_icono} size={22} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-medium text-slate-700 text-sm leading-snug min-w-0 break-words">{m.detalle ?? '—'}</p>
+                    <p className="shrink-0 text-sm font-semibold text-emerald-600 tabular-nums whitespace-nowrap">
+                      ${fmt(m.monto_estimado ?? m.monto ?? 0)}
+                    </p>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 truncate">
+                    {m.categoria_nombre ?? '—'}
+                    {m.cuenta_origen_nombre && <><span className="text-slate-300"> · </span><span className="text-slate-400">{m.cuenta_origen_nombre}</span></>}
+                  </p>
+                  <p className="text-xs text-slate-400 tabular-nums mt-1">{m.fecha}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {/* Desktop / tablet table (sm+) */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-slate-50">
                 <th className={thClass}>Fecha</th><th className={thClass}>Detalle</th>
@@ -178,7 +205,7 @@ export default async function ProyeccionMesPage({
                     <td className="px-4 py-3 text-sm text-slate-700">{m.detalle ?? '—'}</td>
                     <td className="px-4 py-3 text-sm text-slate-500"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
                     <td className="px-4 py-3 text-xs text-slate-400">{m.cuenta_origen_nombre ?? '—'}</td>
-                    <td className="px-4 py-3 font-semibold text-right text-emerald-600">${fmt(m.monto_estimado ?? m.monto ?? 0)}</td>
+                    <td className="px-4 py-3 font-semibold text-right text-emerald-600 tabular-nums">${fmt(m.monto_estimado ?? m.monto ?? 0)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -232,12 +259,13 @@ export default async function ProyeccionMesPage({
             return Object.values(porTarjeta).sort((a, b) => b.subtotal - a.subtotal).map(t => (
               <div key={t.nombre}>
                 <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                  <p className="text-xs text-slate-500 font-medium">💳 {t.nombre}</p>
-                  <p className="text-xs font-semibold text-amber-600">${fmtR(t.subtotal)}</p>
+                  <p className="text-xs text-slate-500 font-medium truncate">💳 {t.nombre}</p>
+                  <p className="text-xs font-semibold text-amber-600 tabular-nums shrink-0 ml-2">${fmtR(t.subtotal)}</p>
                 </div>
 
-                {/* Breakdown por categoría */}
-                <div className="px-5 py-3 grid grid-cols-2 lg:grid-cols-3 gap-2 border-b border-slate-50">
+                {/* Breakdown por categoría — grid-cols-2 en mobile era apretado;
+                    1col stack mobile mejora legibilidad de cifras AR. */}
+                <div className="px-4 sm:px-5 py-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 border-b border-slate-50">
                   {Object.values(
                     t.movs.reduce<Record<string, { icono: string | null; nombre: string; subtotal: number }>>((acc, m) => {
                       const k = m.categoria ?? 'x'
@@ -246,14 +274,41 @@ export default async function ProyeccionMesPage({
                       return acc
                     }, {})
                   ).sort((a, b) => b.subtotal - a.subtotal).map(cat => (
-                    <div key={cat.nombre} className="bg-slate-50 rounded-lg px-3 py-2">
-                      <p className="text-xs text-slate-500 truncate flex items-center gap-1"><IconoCategoria icono={cat.icono} size={14} /> {cat.nombre}</p>
-                      <p className="text-sm font-semibold text-slate-800">${fmtR(cat.subtotal)}</p>
+                    <div key={cat.nombre} className="bg-slate-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2 sm:block">
+                      <p className="text-xs text-slate-500 truncate flex items-center gap-1 min-w-0"><IconoCategoria icono={cat.icono} size={14} /> {cat.nombre}</p>
+                      <p className="text-sm font-semibold text-slate-800 tabular-nums shrink-0">${fmtR(cat.subtotal)}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="overflow-x-auto">
+                {/* Mobile cards de movimientos TC */}
+                <ul className="sm:hidden divide-y divide-slate-50">
+                  {t.movs.map(m => (
+                    <li key={m.id} className="flex items-start gap-3 px-4 py-3">
+                      <div className="shrink-0 mt-0.5">
+                        <IconoCategoria icono={m.categoria_icono} size={22} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="font-medium text-slate-700 text-sm leading-snug min-w-0 break-words">{stripCuotaSuffix(m.detalle) || '—'}</p>
+                          <p className="shrink-0 text-sm font-semibold text-amber-700 tabular-nums whitespace-nowrap">
+                            ${fmt(m.monto_estimado ?? m.monto ?? 0)}
+                          </p>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1 truncate">{m.categoria_nombre ?? '—'}</p>
+                        <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-1 text-xs">
+                          <span className="text-slate-400 tabular-nums">{m.fecha}</span>
+                          {(m.cuotas_total ?? 0) > 1 && (
+                            <span className="text-slate-400">· Cuota {Math.min(m.cuota_actual ?? 0, m.cuotas_total ?? 0)}/{Math.max(m.cuota_actual ?? 0, m.cuotas_total ?? 0)}</span>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Desktop / tablet table */}
+                <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-sm">
                     <tbody>
                       {t.movs.map(m => (
@@ -264,7 +319,7 @@ export default async function ProyeccionMesPage({
                             {(m.cuotas_total ?? 0) > 1 && <p className="text-xs text-slate-400">Cuota {Math.min(m.cuota_actual ?? 0, m.cuotas_total ?? 0)}/{Math.max(m.cuota_actual ?? 0, m.cuotas_total ?? 0)}</p>}
                           </td>
                           <td className="px-4 py-2.5 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
-                          <td className="px-4 py-2.5 font-semibold text-right text-amber-700 whitespace-nowrap">${fmt(m.monto_estimado ?? m.monto ?? 0)}</td>
+                          <td className="px-4 py-2.5 font-semibold text-right text-amber-700 whitespace-nowrap tabular-nums">${fmt(m.monto_estimado ?? m.monto ?? 0)}</td>
                         </tr>
                       ))}
                     </tbody>

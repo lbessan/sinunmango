@@ -227,7 +227,61 @@ export default async function ResumenPage({
             <div className="px-5 py-3 border-b border-slate-100 bg-slate-50">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Detalle de movimientos</p>
             </div>
-            <div className="overflow-x-auto">
+
+            {/* ── Mobile: cards (mismo patrón que /movimientos) ─────────────
+                Cada card es Link a editar — toda la fila tocable, sin botón
+                Pencil chico. Muestra fecha + detalle + categoría + cuenta
+                + monto (color por tipo de movimiento). */}
+            <div className="sm:hidden">
+              {movimientos.length === 0 ? (
+                <p className="text-center py-12 text-slate-400 text-sm">Sin movimientos</p>
+              ) : (
+                <ul className="divide-y divide-slate-50">
+                  {movimientos.map(m => (
+                    <li key={m.id}>
+                      <Link
+                        href={`/movimientos/${m.id}/editar`}
+                        className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                      >
+                        <div className="shrink-0 mt-0.5">
+                          <IconoCategoria icono={m.categoria_icono} size={22} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="font-medium text-slate-700 text-sm leading-snug min-w-0 break-words">
+                              {stripCuotaSuffix(m.detalle) || '—'}
+                            </p>
+                            <p className="shrink-0 text-sm font-semibold tabular-nums whitespace-nowrap" style={{ color: meta.color }}>
+                              ${fmt(m.monto_estimado ?? m.monto)}
+                            </p>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1 truncate">
+                            {m.categoria_nombre ?? '—'}
+                            {m.cuenta_origen_nombre && (
+                              <>
+                                <span className="text-slate-300"> · </span>
+                                <span className="text-slate-400">{m.cuenta_origen_nombre}</span>
+                              </>
+                            )}
+                          </p>
+                          <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-1 text-xs">
+                            <span className="text-slate-400 tabular-nums">{m.fecha}</span>
+                            {(m.cuotas_total ?? 0) > 1 && (
+                              <span className="text-slate-400">
+                                · Cuota {Math.min(m.cuota_actual ?? 1, m.cuotas_total ?? 1)}/{Math.max(m.cuota_actual ?? 1, m.cuotas_total ?? 1)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* ── Desktop / tablet: tabla (sm+) ───────────────────────────── */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-slate-50">
                   <th className={thClass}>Fecha</th><th className={thClass}>Detalle</th>
@@ -244,12 +298,12 @@ export default async function ResumenPage({
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
                       <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{m.cuenta_origen_nombre ?? '—'}</td>
-                      <td className="px-4 py-3 font-semibold text-right whitespace-nowrap" style={{ color: meta.color }}>
+                      <td className="px-4 py-3 font-semibold text-right whitespace-nowrap tabular-nums" style={{ color: meta.color }}>
                         ${fmt(m.monto_estimado ?? m.monto)}
                       </td>
                       <td className="px-4 py-3">
-                        <Link href={`/movimientos/${m.id}/editar`} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 inline-flex">
-                          <Pencil size={13} />
+                        <Link href={`/movimientos/${m.id}/editar`} className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors" title="Editar">
+                          <Pencil size={16} />
                         </Link>
                       </td>
                     </tr>
