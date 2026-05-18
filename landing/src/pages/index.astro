@@ -8,9 +8,10 @@ import Screenshots from "../components/Screenshots.astro";
 import Pricing from "../components/Pricing.astro";
 import FAQ from "../components/FAQ.astro";
 import Footer from "../components/Footer.astro";
+import { faqJsonLd } from "../data/faqs";
 ---
 
-<Layout>
+<Layout preloadHero={true} jsonLd={faqJsonLd()}>
   <Nav />
   <main>
     <Hero />

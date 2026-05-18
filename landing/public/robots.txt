@@ -1,0 +1,8 @@
+# sinunmango — robots.txt
+# Permitimos todo el crawling público. El sitemap se genera automático
+# vía @astrojs/sitemap en build, queda en /sitemap-index.xml.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://sinunmango.com.ar/sitemap-index.xml

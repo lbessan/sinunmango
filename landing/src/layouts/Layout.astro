@@ -5,15 +5,61 @@ interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
+  /** Override preload del hero shot (solo home). Otras páginas no precargan. */
+  preloadHero?: boolean;
+  /** JSON-LD adicional (ej. FAQPage). Stringify-able. */
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
 const {
   title = "sinunmango — tus finanzas personales, sin un mango menos",
   description = "App argentina para llevar tus cuentas, gastos, tarjetas e inversiones. Conciliá el resumen, proyectá las cuotas y preguntale a Manguito.",
   ogImage = "/logo_completo.png",
+  preloadHero = false,
+  jsonLd,
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site).toString();
+
+// JSON-LD SoftwareApplication — Google lo usa para rich snippets de la
+// landing en resultados de búsqueda (estrellas, precio, categoría).
+// Va en TODAS las páginas porque describe la app, no el contenido específico.
+const softwareApp = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "sinunmango",
+  description,
+  url: canonical,
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Android, Web",
+  inLanguage: "es-AR",
+  offers: [
+    {
+      "@type": "Offer",
+      name: "Free",
+      price: "0",
+      priceCurrency: "ARS",
+      description: "Plan Free para siempre con todas las features esenciales.",
+    },
+    {
+      "@type": "Offer",
+      name: "Pro mensual",
+      price: "3499",
+      priceCurrency: "ARS",
+      description: "Pro con todas las features de IA sin límites mensuales. 7 días de prueba gratis.",
+    },
+  ],
+  publisher: {
+    "@type": "Organization",
+    name: "sinunmango",
+    url: "https://sinunmango.com.ar",
+  },
+};
+
+// Si la página pasó jsonLd extra (ej. FAQPage), lo combinamos en un array.
+const allJsonLd = jsonLd
+  ? [softwareApp, ...(Array.isArray(jsonLd) ? jsonLd : [jsonLd])]
+  : softwareApp;
 ---
 
 <!doctype html>
@@ -25,9 +71,12 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString();
 
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -36,6 +85,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString();
     <meta property="og:description" content={description} />
     <meta property="og:image" content={new URL(ogImage, Astro.site).toString()} />
     <meta property="og:locale" content="es_AR" />
+    <meta property="og:site_name" content="sinunmango" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -46,6 +96,32 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString();
     <!-- Color del browser chrome en mobile: azul oscuro del sidebar
          de la app real (consistente con el app shell). -->
     <meta name="theme-color" content="#0d2137" />
+
+    <!-- Font Inter (Google Fonts). preconnect minimiza el handshake TLS;
+         display=swap evita FOIT (texto invisible mientras carga el font). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    />
+
+    {/* Preload del hero shot — mejora LCP (Largest Contentful Paint) en la
+        home. fetchpriority=high empuja el browser a bajarlo primero. */}
+    {preloadHero && (
+      <link
+        rel="preload"
+        as="image"
+        href="/screenshots/dashboard.jpg"
+        fetchpriority="high"
+      />
+    )}
+
+    <!-- JSON-LD para rich snippets en Google. Se renderiza inline en <head>. -->
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify(allJsonLd)}
+    />
   </head>
   <body class="min-h-screen antialiased">
     <slot />
