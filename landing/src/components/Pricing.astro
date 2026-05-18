@@ -1,0 +1,232 @@
+---
+// ─── Pricing — Free vs Pro ────────────────────────────────────────────────────
+// Fuente de verdad: components/pro-client.tsx en la app principal.
+// Si cambian los precios o el COMPARADOR ahí, actualizar acá también.
+// Hoy la compra solo se hace via Google Play (no hay web billing).
+
+type ComparadorRow = {
+  feature: string;
+  free: string | boolean;
+  pro: string | boolean;
+};
+
+// Mismo array de pro-client.tsx (COMPARADOR), traducido a los tokens
+// de display que necesitamos en la landing.
+const FILAS: ComparadorRow[] = [
+  { feature: "Dashboard, proyecciones y analítica", free: true, pro: true },
+  { feature: "Cargar movimientos manualmente", free: true, pro: true },
+  { feature: "Gastos fijos, parámetros y conciliaciones", free: true, pro: true },
+  { feature: "Asistente Manguito (chat con IA)", free: "5 / mes", pro: "ilimitado" },
+  { feature: "Cargar por foto de ticket", free: "3 / mes", pro: "ilimitado" },
+  { feature: "Importación automática por mail", free: "1 / mes", pro: "ilimitado" },
+  { feature: "Importar resumen PDF de tarjeta", free: "1 / mes", pro: "ilimitado" },
+  { feature: "Insights con IA en Analítica", free: false, pro: true },
+  { feature: "Informe completo con IA", free: false, pro: true },
+  { feature: "Temas y modo claro/oscuro", free: false, pro: true },
+];
+
+const PLAY_URL =
+  "https://play.google.com/store/apps/details?id=com.sinunmango.mobile";
+---
+
+<section id="pricing" class="relative py-24 sm:py-32">
+  <div class="mx-auto max-w-5xl px-6">
+    <div class="text-center">
+      <span
+        class="inline-flex items-center gap-2 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-soft)]"
+      >
+        Planes
+      </span>
+      <h2
+        class="mt-4 text-3xl font-bold tracking-tight text-[var(--color-ink)] sm:text-4xl"
+      >
+        Empezás gratis. Pagás solo si necesitás más IA.
+      </h2>
+      <p class="mt-4 text-lg text-[var(--color-ink-soft)]">
+        Todo lo importante de cargar y revisar tu plata es gratis para
+        siempre. Pro suma los flows con inteligencia artificial sin
+        límites mensuales.
+      </p>
+    </div>
+
+    <!-- ── Cards de planes ─────────────────────────────────────────────── -->
+    <div class="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <!-- FREE -->
+      <div
+        class="card relative flex flex-col p-8 sm:p-10"
+        style="border: 1px solid var(--color-border);"
+      >
+        <div class="flex items-center gap-3">
+          <h3 class="text-xl font-bold text-[var(--color-ink)]">Free</h3>
+          <span
+            class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500"
+          >
+            Para siempre
+          </span>
+        </div>
+        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+          Sin tarjeta, sin trial, sin reloj. Pensado para que la app sea
+          útil aunque nunca pagues nada.
+        </p>
+
+        <div class="mt-6">
+          <span class="text-4xl font-bold tracking-tight text-[var(--color-ink)]">
+            $0
+          </span>
+          <span class="ml-2 text-sm text-[var(--color-ink-muted)]">para siempre</span>
+        </div>
+
+        <ul class="mt-6 space-y-2.5 text-sm text-[var(--color-ink-soft)]">
+          <li class="flex items-start gap-2.5">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span>Dashboard, proyecciones, analítica básica</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span>Cuentas, tarjetas, gastos fijos, inversiones</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span>Cargar movimientos manualmente (sin límite)</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span>5 mensajes/mes a Manguito + 3 tickets + 1 PDF + 1 mail bancario al mes</span>
+          </li>
+        </ul>
+
+        <a
+          href="https://app.sinunmango.com.ar"
+          class="mt-8 inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] px-6 py-3 text-sm font-semibold text-[var(--color-ink)] transition-colors hover:bg-slate-50"
+        >
+          Empezar gratis
+          <span aria-hidden="true">→</span>
+        </a>
+      </div>
+
+      <!-- PRO -->
+      <div
+        class="card relative flex flex-col p-8 sm:p-10 ring-2"
+        style="border: 1px solid var(--color-accent); --tw-ring-color: color-mix(in srgb, var(--color-accent) 30%, transparent);"
+      >
+        <!-- Badge -->
+        <span
+          class="absolute -top-3 left-8 inline-flex items-center gap-1.5 rounded-full bg-brand-gradient px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-md"
+        >
+          ✨ Recomendado
+        </span>
+
+        <div class="flex items-center gap-3">
+          <h3 class="text-xl font-bold text-[var(--color-ink)]">Pro</h3>
+          <span
+            class="rounded-md bg-[color:var(--color-accent)]/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-accent)]"
+          >
+            7 días gratis
+          </span>
+        </div>
+        <p class="mt-2 text-sm text-[var(--color-ink-soft)]">
+          Sin límites en lo que tiene IA: Manguito ilimitado, importaciones
+          ilimitadas, insights y personalización.
+        </p>
+
+        <!-- Switch mensual / anual -->
+        <div class="mt-6 flex items-baseline gap-3">
+          <span class="text-4xl font-bold tracking-tight text-[var(--color-ink)]">
+            $3.499
+          </span>
+          <span class="text-sm text-[var(--color-ink-muted)]">/ mes</span>
+        </div>
+        <p class="mt-1 text-xs text-[var(--color-ink-muted)]">
+          o <strong class="text-[var(--color-ink-soft)]">$26.999/año</strong> (equivale a $2.250/mes, ahorrás 36%)
+        </p>
+
+        <ul class="mt-6 space-y-2.5 text-sm text-[var(--color-ink-soft)]">
+          <li class="flex items-start gap-2.5">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span><strong class="text-[var(--color-ink)]">Todo lo de Free</strong>, sin tope</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span>Manguito + foto ticket + mail + PDF <strong class="text-[var(--color-ink)]">ilimitados</strong></span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span>Insights con IA en Analítica (qué cambió este mes y por qué)</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span>Informe completo con IA (análisis mes a mes)</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span>Temas de color y modo claro/oscuro</span>
+          </li>
+        </ul>
+
+        <a
+          href={PLAY_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="bg-brand-gradient mt-8 inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-md transition-transform hover:-translate-y-0.5"
+        >
+          Probá Pro 7 días gratis
+          <span aria-hidden="true">→</span>
+        </a>
+        <p class="mt-3 text-center text-[11px] text-[var(--color-ink-muted)]">
+          Cancelás cuando quieras desde Google Play.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Comparador detallado (collapse mobile, abierto desktop) ─────── -->
+    <details class="mt-12 group" open>
+      <summary class="cursor-pointer list-none flex items-center justify-center gap-2 text-sm font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] transition-colors">
+        <span>Comparación detallada</span>
+        <svg class="h-4 w-4 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd"/>
+        </svg>
+      </summary>
+
+      <div class="mt-8 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white">
+        <div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 px-4 sm:px-6 py-3 border-b border-[var(--color-border)] bg-slate-50">
+          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">Feature</p>
+          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)] text-center min-w-[60px] sm:min-w-[80px]">Free</p>
+          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-accent)] text-center min-w-[60px] sm:min-w-[80px]">Pro</p>
+        </div>
+        {
+          FILAS.map((row) => (
+            <div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 px-4 sm:px-6 py-3 border-b border-[var(--color-border)] last:border-0">
+              <p class="text-xs sm:text-sm text-[var(--color-ink)]">{row.feature}</p>
+              <div class="text-center min-w-[60px] sm:min-w-[80px]">
+                {row.free === true && (
+                  <svg class="inline h-4 w-4 text-[var(--color-accent)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+                )}
+                {row.free === false && (
+                  <span class="inline-block h-1 w-3 rounded bg-slate-200" aria-label="No incluido" />
+                )}
+                {typeof row.free === "string" && (
+                  <span class="text-[11px] sm:text-xs text-[var(--color-ink-soft)]">{row.free}</span>
+                )}
+              </div>
+              <div class="text-center min-w-[60px] sm:min-w-[80px]">
+                {row.pro === true && (
+                  <svg class="inline h-4 w-4 text-[var(--color-accent)]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+                )}
+                {typeof row.pro === "string" && (
+                  <span class="text-[11px] sm:text-xs font-semibold text-[var(--color-accent)]">{row.pro}</span>
+                )}
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </details>
+
+    <!-- ── Nota final ──────────────────────────────────────────────────── -->
+    <p class="mt-10 text-center text-sm text-[var(--color-ink-muted)]">
+      La suscripción Pro hoy se compra desde la app de Google Play.
+      Si pagás y no te sirve, la cancelás desde Play y no tenés cargos
+      después del trial.
+    </p>
+  </div>
+</section>
