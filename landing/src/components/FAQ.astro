@@ -1,5 +1,6 @@
 ---
-import ManguitoPresenter from "./ManguitoPresenter.astro";
+// Nota: el ManguitoPresenter se removió de esta sección — vive solo en
+// Onboarding para que no se repita en cada sección y pierda impacto.
 
 type QA = { q: string; a: string };
 
@@ -49,14 +50,14 @@ const faqs: QA[] = [
 
 <section id="faq" class="relative py-24 sm:py-32">
   <div class="mx-auto max-w-3xl px-6">
-    <ManguitoPresenter
-      align="right"
-      text="¿Tenés preguntas? Yo también, y casi todas tienen respuesta. Mirá las que más se repiten."
-    />
-
     <div class="text-center">
+      <span
+        class="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-soft)]"
+      >
+        Dudas
+      </span>
       <h2
-        class="text-3xl font-bold tracking-tight text-[var(--color-ink)] sm:text-4xl"
+        class="mt-4 text-3xl font-bold tracking-tight text-[var(--color-ink)] sm:text-4xl"
       >
         Preguntas frecuentes
       </h2>
