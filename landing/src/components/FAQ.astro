@@ -30,7 +30,12 @@ import { FAQS as faqs } from "../data/faqs";
     <div class="mt-12 space-y-3">
       {
         faqs.map((f, i) => (
+          // name="faq-accordion" agrupa todos los <details> como exclusive:
+          // al abrir uno, los demás se colapsan automáticamente. HTML
+          // nativo desde Chrome 120 / Safari 17.2 / Firefox 109 (2024+).
+          // Cero JS, accessibility OK (sigue siendo <details>/<summary>).
           <details
+            name="faq-accordion"
             class="card group p-0 [&_summary::-webkit-details-marker]:hidden"
             open={i === 0}
           >
