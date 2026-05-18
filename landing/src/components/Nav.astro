@@ -1,5 +1,6 @@
 ---
-// Nav superior fijo. Minimalista: logo + link a la app.
+// Nav superior fijo. Links principales + CTA a la app web.
+// El botón de Google Play vive en Hero/Footer/Pricing (más espacio).
 ---
 
 <header class="absolute inset-x-0 top-0 z-20">
@@ -17,12 +18,18 @@
       </span>
     </a>
 
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-1 sm:gap-3">
       <a
         href="#features"
         class="hidden rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-block"
       >
         Qué hace
+      </a>
+      <a
+        href="#pricing"
+        class="hidden rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-block"
+      >
+        Planes
       </a>
       <a
         href="#faq"
