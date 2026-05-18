@@ -1,21 +1,27 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
- * Paleta de marca sinunmango — tema "Violeta" del DESIGN_BRIEF.md.
- * Tailwind 4 expone estos tokens como utilidades (bg-accent, text-accent2, ...).
- * Si más adelante querés cambiar de tema, alcanza con tocar las 3 vars
- * --color-accent, --color-accent2 y --color-sidebar.
+ * Paleta de marca sinunmango — matchea con la app real:
+ *   - Sidebar / header oscuro:  #0d2137 (azul oscuro, var(--sidebar-bg) en app)
+ *   - Acento primario:          #1a6b5a (verde, var(--accent) en app)
+ *   - Acento secundario:        #1B3A6B (azul medio, var(--accent2) en app)
+ *   - Naranja del "mango":      #f97316
+ *
+ * El gradiente de marca va de azul medio a verde (los mismos colores que
+ * usamos en los botones primarios del dashboard). Los tonos "ink" se
+ * derivan del azul oscuro pero con menos saturación para texto cuerpo.
  * ------------------------------------------------------------------------- */
 @theme {
-  --color-accent: #7c3aed;       /* violeta principal */
-  --color-accent2: #4c1d95;      /* violeta oscuro (gradiente) */
-  --color-sidebar: #160d2b;      /* casi negro con tinte violeta */
-  --color-ink: #1a1326;          /* texto principal con un dejo del tinte de marca */
-  --color-ink-soft: #524765;     /* texto secundario */
-  --color-ink-muted: #948aaa;    /* texto muted */
-  --color-bg: #faf8fd;           /* fondo general apenas violeta */
+  --color-accent: #1a6b5a;       /* verde principal (acento) */
+  --color-accent2: #1B3A6B;      /* azul medio (gradiente con acento) */
+  --color-sidebar: #0d2137;      /* azul oscuro (header/banners full-bleed) */
+  --color-mango: #f97316;        /* naranja del "mango" del logo */
+  --color-ink: #0f172a;          /* texto principal — slate-900 */
+  --color-ink-soft: #475569;     /* texto secundario — slate-600 */
+  --color-ink-muted: #94a3b8;    /* texto muted — slate-400 */
+  --color-bg: #f1f5f9;           /* fondo general — slate-100 (mismo que app) */
   --color-card: #ffffff;
-  --color-border: #ebe5f4;
+  --color-border: #e2e8f0;       /* slate-200 (mismo que app) */
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
@@ -49,11 +55,13 @@ body {
   color: transparent;
 }
 
-/* Fondo decorativo del hero — manchas radiales suaves violeta */
+/* Fondo decorativo del hero — manchas radiales suaves verde + azul.
+   Mismos tonos que el gradiente de marca, transparentadas para hacer
+   "glow" suave detrás de las tarjetas del hero. */
 .bg-hero-glow {
   background:
-    radial-gradient(60% 60% at 80% 10%, rgba(124, 58, 237, 0.18) 0%, transparent 60%),
-    radial-gradient(60% 60% at 10% 90%, rgba(76, 29, 149, 0.18) 0%, transparent 60%),
+    radial-gradient(60% 60% at 80% 10%, rgba(26, 107, 90, 0.18) 0%, transparent 60%),
+    radial-gradient(60% 60% at 10% 90%, rgba(27, 58, 107, 0.18) 0%, transparent 60%),
     var(--color-bg);
 }
 
@@ -68,7 +76,8 @@ body {
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 30px -15px rgb(22 13 43 / 0.18);
+  /* Tinte azul del sidebar (#0d2137) para la sombra hover */
+  box-shadow: 0 10px 30px -15px rgb(13 33 55 / 0.22);
 }
 
 /* Selección de texto con color de marca */
