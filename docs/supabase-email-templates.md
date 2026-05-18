@@ -372,20 +372,105 @@ y ajustar los textos.
 
 ---
 
-## Limitaciones del SMTP por default de Supabase
+## Configurar SMTP custom con Resend
 
-Por default Supabase usa un SMTP shared con **límites estrictos** (algo así
-como 3-4 emails/hora por proyecto en free tier). Si abrís a público y se
-registra mucha gente al mismo tiempo, algunos signups van a fallar con
-"rate limit exceeded".
+El proyecto ya usa Resend para el inbound de emails de banco y para los
+crons de alertas (`alertas@sinunmango.com.ar`). El dominio
+`sinunmango.com.ar` ya está verificado en Resend, así que podemos usarlo
+también como SMTP saliente de Supabase Auth — sin configuración extra de
+DNS.
 
-**Solución:** configurar un SMTP custom en
-**Authentication → Email Templates → SMTP Settings**. Opciones decentes:
+### Por qué hace falta
 
-- **Resend** — 3000 emails/mes gratis. Setup ~5 min. Lo más recomendable
-  para empezar.
-- **Postmark** — pago desde el primer email pero deliverability top.
-- **SendGrid / Mailgun** — los clásicos. Free tier modesto.
+Por default Supabase usa un SMTP shared con **límites estrictos** (~3-4
+emails/hora por proyecto en free tier). Al abrir a público, si se
+registran varios users en la misma hora, los últimos fallan con
+"rate limit exceeded" y se pierden.
 
-Lo dejo como nota para cuando el volumen lo justifique. Hasta tu primera
-docena de users, el SMTP default alcanza.
+### 1. En Resend Dashboard
+
+Verificá tu API key actual en
+[resend.com/api-keys](https://resend.com/api-keys):
+
+- Si es **Full access** o **Sending access** → sirve, usá esa.
+- Si es **Receiving access only** → tenés que crear una nueva con
+  Permission: **Sending access** y Domain: `sinunmango.com.ar`.
+
+Anotá el valor (`re_...`); lo vas a usar como password en Supabase.
+
+### 2. En Supabase Dashboard
+
+`Authentication → Emails → SMTP Settings`
+
+| Campo | Valor |
+|---|---|
+| **Enable Custom SMTP** | ✅ ON |
+| **Sender email** | `cuenta@sinunmango.com.ar` |
+| **Sender name** | `sinunmango` |
+| **Host** | `smtp.resend.com` |
+| **Port number** | `465` |
+| **Username** | `resend` (literal — no es un email) |
+| **Password** | Tu `RESEND_API_KEY` (`re_...`) |
+| **Minimum interval between emails** | `60` (segundos) |
+
+Después de **Save**, usá el botón **Send test email** con un email
+tuyo para verificar antes de probar el flow real.
+
+### ¿Por qué `cuenta@` y no `alertas@`?
+
+Hoy `alertas@sinunmango.com.ar` se usa para los crons (resumen semanal,
+alertas de vencimiento). Auth y alertas tienen propósito distinto:
+
+- **Auth** → emails transaccionales 1:1 que el user espera de inmediato.
+  Tienen que llegar al inbox principal.
+- **Alertas** → emails periódicos en lote. Algunos clients de email los
+  filtran a "promociones" / "notificaciones".
+
+Separar los aliases evita que la reputación de un tipo arrastre al otro.
+Si el deliverability de las alertas empeora (porque algún user las marca
+como spam), no afecta los emails de confirmación de cuenta.
+
+Otros aliases válidos si preferís otro tono:
+- `noreply@sinunmango.com.ar` — más frío pero estándar
+- `hola@sinunmango.com.ar` — más cálido, pero pueden responder esperando
+  un humano del otro lado
+- `auth@sinunmango.com.ar` — técnico pero claro
+
+### 3. Subir el rate limit de Supabase
+
+Al activar SMTP custom Supabase a veces NO sube los límites
+automáticamente. En `Authentication → Rate Limits`:
+
+| Setting | Free default | Recomendado con Resend |
+|---|---|---|
+| Token verifications / hour | 30 | 100 |
+| Email signups / hour | 2 | 30 |
+| Magic Links/OTP / hour | 30 | 100 |
+
+Estos valores son por proyecto Supabase. Si tenés un pico al lanzar
+campaña, podés subir más temporariamente.
+
+### 4. Límites de Resend a tener en cuenta
+
+| Plan | Emails/mes | Emails/día |
+|---|---|---|
+| Free | 3.000 | 100 |
+| Pro (USD 20/mes) | 50.000 | sin límite diario |
+
+3000/mes alcanza para ~100 signups + reset passwords + cambios de email
+por mes — suficiente para arrancar. Cuando pasés esos volúmenes,
+considerar Pro o agregar fallback.
+
+### 5. Domain reputation tip
+
+Como `sinunmango.com.ar` ya manda emails de alertas, Gmail/Outlook ya
+tienen un historial del dominio. Si en algún momento el deliverability
+empeora (emails caen a spam masivamente):
+
+1. Verificá en Resend Dashboard → Domains → tu dominio que **SPF + DKIM
+   + DMARC** estén todos en verde.
+2. Postmaster Tools de Google ([postmaster.google.com](https://postmaster.google.com))
+   te da métricas de reputación de tu dominio.
+3. Si DMARC está fallando, podés tightening en
+   `_dmarc.sinunmango.com.ar` con `p=quarantine` o `p=reject` para
+   forzar mejor reputación.
