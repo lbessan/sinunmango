@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Send, X, User, CheckCircle, AlertCircle, Loader2, Minimize2, Trash2, Sparkles } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -127,6 +128,8 @@ function Avatar({ size = 26 }: { size?: number }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function ManguitoFlotante() {
+  // Todos los hooks PRIMERO — Rules of Hooks (orden estable entre renders).
+  const pathname                = usePathname()
   const [open, setOpen]         = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput]       = useState('')
@@ -134,6 +137,11 @@ export function ManguitoFlotante() {
   const bottomRef               = useRef<HTMLDivElement>(null)
   const textareaRef             = useRef<HTMLTextAreaElement>(null)
   const panelRef                = useRef<HTMLDivElement>(null)
+
+  // No renderear el FAB cuando ya estamos en /asistente — ese es el chat
+  // completo del Manguito; tener el FAB encima es redundante y tapaba el
+  // input bar de la página. /asistente es el "modo grande" del mismo chat.
+  const hideFab = pathname === '/asistente'
 
   // Auto-scroll
   useEffect(() => {
@@ -253,6 +261,9 @@ export function ManguitoFlotante() {
   }
 
   const limpiarChat = () => setMessages([])
+
+  // Early return DESPUÉS de todos los hooks (Rules of Hooks compliant).
+  if (hideFab) return null
 
   return (
     <>

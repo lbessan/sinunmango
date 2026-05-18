@@ -1,7 +1,7 @@
 import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Pencil, ChevronRight, CreditCard } from 'lucide-react'
+import { Plus, Pencil, CreditCard } from 'lucide-react'
 import { DeleteButton } from '@/components/delete-button'
 
 const fmt = (n: number) =>
@@ -12,10 +12,12 @@ function CardThumbnailServer({ imagenUrl, color, nombre }: {
   color: string
   nombre: string
 }) {
+  // En mobile el thumbnail era 128x81 → con nombre + monto + 3 acciones
+  // desbordaba en pantallas de 360px. Bajamos a 80x52 mobile / 128x81 sm+.
   return (
     <div
-      className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
-      style={{ width: 128, height: 81, background: color }}
+      className="shrink-0 rounded-xl overflow-hidden flex items-center justify-center w-20 h-[52px] sm:w-32 sm:h-[81px]"
+      style={{ background: color }}
     >
       {imagenUrl ? (
         <img
@@ -25,7 +27,7 @@ function CardThumbnailServer({ imagenUrl, color, nombre }: {
           style={{ imageRendering: 'auto' }}
         />
       ) : (
-        <CreditCard size={26} className="text-white/60" />
+        <CreditCard size={22} className="text-white/60" />
       )}
     </div>
   )
@@ -53,15 +55,16 @@ export default async function TarjetasPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-slate-800">Tarjetas de crédito</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-slate-800 min-w-0 truncate">Tarjetas de crédito</h1>
         <Link
           href="/tarjetas/nueva"
-          className="flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium"
+          className="inline-flex items-center gap-2 text-sm text-white px-3 sm:px-4 py-2 rounded-lg font-medium shrink-0 whitespace-nowrap"
           style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
         >
           <Plus size={15} />
-          Nueva tarjeta
+          <span className="hidden sm:inline">Nueva tarjeta</span>
+          <span className="sm:hidden">Nueva</span>
         </Link>
       </div>
 
@@ -83,7 +86,7 @@ export default async function TarjetasPage() {
                 key={t.id}
                 className="bg-white rounded-xl border border-slate-100 flex items-center justify-between hover:border-slate-200 transition-colors overflow-hidden"
               >
-                <Link href={`/tarjetas/${t.id}`} className="flex items-center gap-4 flex-1 min-w-0 px-4 py-3">
+                <Link href={`/tarjetas/${t.id}`} className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 px-3 sm:px-4 py-3">
                   <CardThumbnailServer imagenUrl={imgUrl} color={color} nombre={t.nombre_cuenta} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-700 truncate">{t.nombre_cuenta}</p>
@@ -94,21 +97,22 @@ export default async function TarjetasPage() {
                     )}
                   </div>
                 </Link>
-                <div className="flex items-center gap-3 shrink-0 px-4 py-3">
-                  <div className="text-right">
-                    <p className={`text-sm font-semibold ${saldo < 0 ? 'text-red-500' : 'text-slate-800'}`}>
+                {/* Saqué el ChevronRight: el <Link> del thumb/nombre ya
+                    navega al detalle (es toda la zona izquierda tocable).
+                    Botones edit/delete suben a p-2.5 (~36px touch target). */}
+                <div className="flex items-center gap-1 sm:gap-2 shrink-0 pr-2 sm:pr-3 py-2">
+                  <div className="text-right mr-1 sm:mr-2">
+                    <p className={`text-sm font-semibold tabular-nums ${saldo < 0 ? 'text-red-500' : 'text-slate-800'}`}>
                       ${fmt(saldo)}
                     </p>
-                    <p className="text-xs text-slate-400">acumulado</p>
+                    <p className="text-xs text-slate-400 hidden sm:block">acumulado</p>
                   </div>
-                  <Link href={`/tarjetas/${t.id}`} className="text-slate-300 hover:text-slate-500">
-                    <ChevronRight size={16} />
-                  </Link>
                   <Link
                     href={`/tarjetas/${t.id}/editar`}
-                    className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+                    className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+                    title="Editar"
                   >
-                    <Pencil size={15} />
+                    <Pencil size={16} />
                   </Link>
                   <DeleteButton
                     endpoint={`/api/tarjetas/${t.id}`}
