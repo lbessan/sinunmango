@@ -182,9 +182,12 @@ const small: Shot[] = [
               <button
                 type="button"
                 data-theme="verde"
-                aria-label="Tema verde"
-                class="theme-swatch h-9 w-9 rounded-full bg-[#1a6b5a] ring-2 ring-white/10 transition-all hover:scale-110"
-              ></button>
+                aria-label="Tema verde (activo)"
+                aria-pressed="true"
+                class="theme-swatch is-active relative h-9 w-9 rounded-full bg-[#1a6b5a] ring-2 ring-white transition-all hover:scale-110"
+              >
+                <span class="absolute inset-0 flex items-center justify-center text-xs font-bold leading-none text-white">✓</span>
+              </button>
               <button
                 type="button"
                 data-theme="azul"
@@ -194,12 +197,9 @@ const small: Shot[] = [
               <button
                 type="button"
                 data-theme="violeta"
-                aria-label="Tema violeta (activo)"
-                aria-pressed="true"
-                class="theme-swatch is-active relative h-9 w-9 rounded-full bg-[#7c3aed] ring-2 ring-white transition-all hover:scale-110"
-              >
-                <span class="absolute inset-0 flex items-center justify-center text-xs font-bold leading-none text-white">✓</span>
-              </button>
+                aria-label="Tema violeta"
+                class="theme-swatch h-9 w-9 rounded-full bg-[#7c3aed] ring-2 ring-white/10 transition-all hover:scale-110"
+              ></button>
               <button
                 type="button"
                 data-theme="naranja"
@@ -214,24 +214,26 @@ const small: Shot[] = [
               ></button>
             </div>
             <p class="mt-3 text-xs text-white/50">
-              Tocá un color para ver cómo cambia. La paleta violeta es la
-              que ves en esta web.
+              Tocá un color para ver cómo cambia. El verde es el tema por
+              defecto y el que ves en esta web; los otros se desbloquean
+              con Pro.
             </p>
           </div>
         </div>
 
         <!-- Imagen interactiva: cambia con los swatches -->
         <div class="relative mx-auto w-full max-w-xl">
-          <!-- Halo decorativo que también cambia de color -->
+          <!-- Halo decorativo que también cambia de color. Default verde
+               (color de marca + tema default de la app). -->
           <div
             data-theme-glow
-            class="pointer-events-none absolute left-1/2 top-1/2 h-[80%] w-[80%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7c3aed] opacity-30 blur-3xl transition-colors duration-500"
+            class="pointer-events-none absolute left-1/2 top-1/2 h-[80%] w-[80%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1a6b5a] opacity-30 blur-3xl transition-colors duration-500"
             aria-hidden="true"
           ></div>
           <div class="relative overflow-hidden rounded-xl border border-white/10 bg-white shadow-2xl">
             <img
               data-theme-image
-              src="/screenshots/dashboard-tema-violeta.png"
+              src="/screenshots/dashboard-tema-verde.png"
               alt="Dashboard del mes que viene en el tema seleccionado"
               width="2130"
               height="1440"
@@ -270,9 +272,9 @@ const small: Shot[] = [
             img.style.opacity = "1";
           }, 200);
 
-          // Actualizar halo
+          // Actualizar halo (fallback verde = color del tema default)
           if (glow) {
-            glow.style.backgroundColor = themeColors[theme] ?? "#7c3aed";
+            glow.style.backgroundColor = themeColors[theme] ?? "#1a6b5a";
           }
 
           // Actualizar swatches: quitar activo de todos, marcar el seleccionado

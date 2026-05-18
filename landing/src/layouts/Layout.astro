@@ -43,7 +43,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString();
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={new URL(ogImage, Astro.site).toString()} />
 
-    <meta name="theme-color" content="#160d2b" />
+    <!-- Color del browser chrome en mobile: azul oscuro del sidebar
+         de la app real (consistente con el app shell). -->
+    <meta name="theme-color" content="#0d2137" />
   </head>
   <body class="min-h-screen antialiased">
     <slot />
