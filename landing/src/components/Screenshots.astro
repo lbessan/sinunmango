@@ -1,7 +1,7 @@
 ---
-import ManguitoPresenter from "./ManguitoPresenter.astro";
-
 // Showcase con capturas reales de la app (datos demo, sin info personal).
+// Nota: el ManguitoPresenter se removió de esta sección — vive solo en
+// Onboarding para que no se repita en cada sección y pierda impacto.
 // Cada slot reusa el browser frame para coherencia visual. Mezcla pantallas
 // principales 2x2 y miniaturas 3-col, y al final una banda especial sobre
 // la proyección del mes que viene (un diferenciador fuerte).
@@ -68,14 +68,14 @@ const small: Shot[] = [
 
 <section id="vistas" class="relative py-24 sm:py-32">
   <div class="mx-auto max-w-6xl px-6">
-    <ManguitoPresenter
-      align="left"
-      text="Pasá. Te muestro cómo se ve por dentro. Hacé click en cualquier captura para verla en grande."
-    />
-
     <div class="mx-auto max-w-2xl text-center">
+      <span
+        class="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-soft)]"
+      >
+        Vistas
+      </span>
       <h2
-        class="text-3xl font-bold tracking-tight text-[var(--color-ink)] sm:text-4xl"
+        class="mt-4 text-3xl font-bold tracking-tight text-[var(--color-ink)] sm:text-4xl"
       >
         Así se ve cuando entrás.
       </h2>

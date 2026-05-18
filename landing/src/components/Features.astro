@@ -1,39 +1,53 @@
 ---
 import { Fragment } from "astro/jsx-runtime";
-import ManguitoPresenter from "./ManguitoPresenter.astro";
 
-// Features destacadas. Las 3 primeras son los diferenciadores fuertes
-// (carga automática), después vienen las capabilities clásicas.
+// ─── Features ────────────────────────────────────────────────────────────────
+//
+// Estructura en dos niveles para reducir el scroll y dar jerarquía visual:
+//
+//   1) "Diferenciales" — 3 cards GRANDES con los flows de carga automática
+//      (mail / PDF / Manguito). Son los que justifican que sinunmango es
+//      distinto a Excel u otras apps de finanzas.
+//
+//   2) "Lo demás" — 6 cards compactas con las capabilities tradicionales
+//      de cualquier app de finanzas (conciliación, monedas, tarjetas,
+//      gastos fijos, inversiones, analítica).
+//
+// El ManguitoPresenter se removió de acá porque ya aparece en Onboarding,
+// que es donde tiene sentido contextual ("te llevo de la mano"). Repetirlo
+// en 4 secciones (Features, Screenshots, Onboarding, FAQ) anulaba su
+// impacto — ahora es un saludo y desaparece hasta el siguiente paso natural.
 
 type Feature = {
   title: string;
   blurb: string;
   icon: string;
-  highlight?: boolean; // tarjetas destacadas con tinte de marca
 };
 
-const features: Feature[] = [
+// Los 3 diferenciales — los flows de carga automática.
+const highlights: Feature[] = [
   {
     title: "Reenviá los mails del banco",
     blurb:
       "Tenés tu propia dirección @sinunmango.com.ar. Reenviás las notificaciones de tu banco a esa dirección y los movimientos se cargan solos. Sin tocar nada.",
     icon: `<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>`,
-    highlight: true,
   },
   {
     title: "Subí el resumen, lo lee la IA",
     blurb:
       "Arrastrás el PDF de tu tarjeta de crédito y la IA detecta banco, red, variante, fechas y todos los consumos. En segundos.",
     icon: `<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 14l2 2 4-4"/>`,
-    highlight: true,
   },
   {
     title: "Decile a Manguito",
     blurb:
       "“Gasté $4.500 en el súper”. El asistente entiende, anota, te muestra los datos y vos confirmás. También responde lo que sea sobre tu plata.",
     icon: `<path d="M21 12a8 8 0 1 1-3.2-6.4L21 4v5h-5"/><circle cx="9" cy="12" r="0.8" fill="currentColor"/><circle cx="13" cy="12" r="0.8" fill="currentColor"/><circle cx="17" cy="12" r="0.8" fill="currentColor"/>`,
-    highlight: true,
   },
+];
+
+// Las 6 features clásicas.
+const features: Feature[] = [
   {
     title: "Conciliaciones que cierran",
     blurb:
@@ -49,7 +63,7 @@ const features: Feature[] = [
   {
     title: "Sabé cuándo paga cada tarjeta",
     blurb:
-      "Cargás la fecha de cierre y la de vencimiento de cada tarjeta. La app te muestra cuánto consumiste en el período actual y cuándo te toca pagar. Con la imagen del plástico para reconocerla a la primera.",
+      "Cargás cierre y vencimiento de cada tarjeta. La app te muestra cuánto consumiste en el período actual y cuándo te toca pagar.",
     icon: `<rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19"/><path d="M6 15h4"/><path d="M14 15h4"/>`,
   },
   {
@@ -65,9 +79,9 @@ const features: Feature[] = [
     icon: `<path d="M3 17l5-5 4 4 8-8"/><path d="M14 8h6v6"/>`,
   },
   {
-    title: "Analítica que te cuenta algo",
+    title: "Analítica que cuenta algo",
     blurb:
-      "Ingresos vs gastos mes a mes, top 10 individuales, variación entre meses. Si gastás de más en delivery, te enterás antes de que sea costumbre.",
+      "Ingresos vs gastos mes a mes, top 10 individuales, variación entre meses. Si gastás de más en delivery, te enterás.",
     icon: `<path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="3" height="6" rx="0.5"/><rect x="12" y="7" width="3" height="10" rx="0.5"/><rect x="17" y="13" width="3" height="4" rx="0.5"/>`,
   },
 ];
@@ -75,14 +89,15 @@ const features: Feature[] = [
 
 <section id="features" class="relative py-24 sm:py-32">
   <div class="mx-auto max-w-6xl px-6">
-    <ManguitoPresenter
-      align="left"
-      text="¡Hola! Soy Manguito. Vivo adentro de la app y te ayudo con tu plata. Esto es todo lo que sé hacer."
-    />
-
+    <!-- Header de la sección -->
     <div class="mx-auto max-w-2xl text-center">
+      <span
+        class="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-soft)]"
+      >
+        Qué hace
+      </span>
       <h2
-        class="text-3xl font-bold tracking-tight text-[var(--color-ink)] sm:text-4xl"
+        class="mt-4 text-3xl font-bold tracking-tight text-[var(--color-ink)] sm:text-4xl"
       >
         Lo más tedioso es
         <span class="text-brand-gradient">cargar los gastos</span>.
@@ -94,27 +109,67 @@ const features: Feature[] = [
       </p>
     </div>
 
-    <ul class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <!-- ── Diferenciales: 3 cards grandes ─────────────────────────────── -->
+    <ul class="mt-12 grid gap-5 sm:gap-6 lg:grid-cols-3">
+      {
+        highlights.map((f) => (
+          <li class="card relative overflow-hidden p-7 sm:p-8 ring-1 ring-[color:var(--color-accent)]/15">
+            {/* Halo decorativo arriba a la derecha — sutil */}
+            <div
+              class="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-25 blur-2xl"
+              style="background: linear-gradient(135deg, var(--color-accent2), var(--color-accent));"
+              aria-hidden="true"
+            />
+            <div class="relative">
+              <div
+                class="bg-brand-gradient mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-md shadow-[color:var(--color-accent)]/25"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <Fragment set:html={f.icon} />
+                </svg>
+              </div>
+              <h3 class="text-xl font-bold text-[var(--color-ink)]">
+                {f.title}
+              </h3>
+              <p class="mt-3 text-sm leading-relaxed text-[var(--color-ink-soft)]">
+                {f.blurb}
+              </p>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+
+    <!-- ── Divisor sutil ────────────────────────────────────────────────── -->
+    <div class="mt-20 mb-10 flex items-center gap-4">
+      <div class="h-px flex-1 bg-[var(--color-border)]"></div>
+      <p class="text-xs font-semibold uppercase tracking-widest text-[var(--color-ink-muted)]">
+        Y lo de siempre, pero bien hecho
+      </p>
+      <div class="h-px flex-1 bg-[var(--color-border)]"></div>
+    </div>
+
+    <!-- ── 6 features clásicas en grid compacto ─────────────────────────── -->
+    <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {
         features.map((f) => (
-          <li
-            class:list={[
-              "card p-6",
-              f.highlight && "ring-1 ring-[color:var(--color-accent)]/15",
-            ]}
-          >
-            <div
-              class:list={[
-                "mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl",
-                f.highlight
-                  ? "bg-brand-gradient text-white shadow-md shadow-[color:var(--color-accent)]/25"
-                  : "bg-[var(--color-bg)] text-[var(--color-accent2)]",
-              ]}
-            >
+          <li class="card p-5">
+            <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-bg)] text-[var(--color-accent)]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="22"
-                height="22"
+                width="20"
+                height="20"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -126,10 +181,10 @@ const features: Feature[] = [
                 <Fragment set:html={f.icon} />
               </svg>
             </div>
-            <h3 class="text-lg font-semibold text-[var(--color-ink)]">
+            <h3 class="text-base font-semibold text-[var(--color-ink)]">
               {f.title}
             </h3>
-            <p class="mt-2 text-sm leading-relaxed text-[var(--color-ink-soft)]">
+            <p class="mt-1.5 text-sm leading-relaxed text-[var(--color-ink-soft)]">
               {f.blurb}
             </p>
           </li>
