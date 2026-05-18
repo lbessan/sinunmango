@@ -65,7 +65,9 @@ export function EditarCategoriaClient({ categoria }: { categoria: CategoriaProp 
             className="w-16 h-16 rounded-2xl bg-white border-2 border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center justify-center shrink-0 group relative"
           >
             <IconoCategoria icono={icono} size={32} color="#475569" />
-            <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Badge "editar": visible siempre en mobile (no hay hover en touch);
+                en sm+ aparece solo en hover para UI más limpia. */}
+            <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-sm sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               <Pencil size={11} />
             </span>
           </button>

@@ -312,8 +312,14 @@ export default function AsistentePage() {
           <div ref={bottomRef} />
         </div>
 
-        {/* ── INPUT BAR — siempre visible al fondo ──────────────────────────── */}
-        <div className="shrink-0 pb-3 pt-2">
+        {/* ── INPUT BAR — siempre visible al fondo.
+            pb usa safe-area-inset-bottom para iPhone PWA (home indicator).
+            El FAB Manguito está escondido en esta página (ver
+            ManguitoFlotante), así que no hay que dejar espacio para él. */}
+        <div
+          className="shrink-0 pt-2"
+          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+        >
           <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 flex gap-2.5 items-center shadow-sm">
             {/* Avatar de Manguito a la izquierda */}
             <ManguitoAvatar size={30} />

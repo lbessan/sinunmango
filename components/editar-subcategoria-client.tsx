@@ -72,7 +72,8 @@ export function EditarSubcategoriaClient({
             className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center justify-center shrink-0 group relative"
           >
             <IconoCategoria icono={icono} size={28} color="#475569" />
-            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Badge "editar": visible siempre en mobile, hover-only en sm+. */}
+            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-sm sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               <Pencil size={10} />
             </span>
           </button>
