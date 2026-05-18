@@ -1,11 +1,27 @@
 ---
-// Nav superior fijo. Links principales + CTA a la app web.
-// El botón de Google Play vive en Hero/Footer/Pricing (más espacio).
+// Nav superior fijo.
+//
+// Comportamiento:
+//   - `fixed top-0` siempre visible (antes era absolute → se perdía al
+//     scrollear y el CTA "Ir a la app" desaparecía, perdiendo conversión).
+//   - Transparente al cargar (sobre el hero glow); al scrollear pasa a
+//     blanco con backdrop-blur + border sutil. La transición es smooth.
+//   - Shrink: padding vertical 20px → 12px cuando hay scroll.
+//   - Mobile (<sm): hamburguesa que abre drawer con los links + CTA.
+//
+// El padding-top que necesita el primer section ya está cubierto por el
+// pt-32 sm:pt-44 lg:pt-48 del Hero.
 ---
 
-<header class="absolute inset-x-0 top-0 z-20">
-  <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-    <a href="/" class="flex items-center gap-2 group">
+<header
+  class="fixed inset-x-0 top-0 z-50 transition-colors duration-200"
+  data-nav
+>
+  <nav
+    class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5 transition-[padding] duration-200 [&[data-scrolled='true']]:py-3"
+    data-nav-inner
+  >
+    <a href="/" class="flex items-center gap-2 group shrink-0">
       <img
         src="/logo.png"
         alt="sinunmango"
@@ -18,32 +34,190 @@
       </span>
     </a>
 
-    <div class="flex items-center gap-1 sm:gap-3">
+    <!-- Links desktop -->
+    <div class="hidden items-center gap-1 sm:flex">
       <a
         href="#features"
-        class="hidden rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-block"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
       >
         Qué hace
       </a>
       <a
         href="#pricing"
-        class="hidden rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-block"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
       >
         Planes
       </a>
       <a
         href="#faq"
-        class="hidden rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-block"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
       >
         Preguntas
       </a>
       <a
         href="https://app.sinunmango.com.ar"
-        class="bg-brand-gradient inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5"
+        class="bg-brand-gradient ml-2 inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5"
       >
         Ir a la app
         <span aria-hidden="true">→</span>
       </a>
     </div>
+
+    <!-- Mobile: CTA compacto + hamburguesa -->
+    <div class="flex items-center gap-2 sm:hidden">
+      <a
+        href="https://app.sinunmango.com.ar"
+        class="bg-brand-gradient inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white shadow-sm"
+      >
+        Ir a la app
+      </a>
+      <button
+        type="button"
+        data-mobile-toggle
+        aria-expanded="false"
+        aria-controls="mobile-menu"
+        aria-label="Abrir menú"
+        class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white text-[var(--color-ink)] transition-colors hover:bg-slate-50"
+      >
+        <!-- Hamburguesa — visible cuando el menú está cerrado -->
+        <svg
+          data-icon="open"
+          class="h-5 w-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+        <!-- X — visible cuando el menú está abierto -->
+        <svg
+          data-icon="close"
+          class="hidden h-5 w-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <path d="M6 6l12 12M18 6l-12 12" />
+        </svg>
+      </button>
+    </div>
   </nav>
+
+  <!-- Mobile drawer — se abre debajo del nav. Cuando data-open=true se
+       expande con max-height transition. -->
+  <div
+    id="mobile-menu"
+    data-mobile-menu
+    data-open="false"
+    class="overflow-hidden border-b border-[var(--color-border)] bg-white transition-[max-height,opacity] duration-300 ease-out sm:hidden max-h-0 opacity-0 data-[open='true']:max-h-[480px] data-[open='true']:opacity-100"
+  >
+    <div class="mx-auto flex max-w-6xl flex-col gap-1 px-6 py-4">
+      <a
+        href="#features"
+        class="block rounded-lg px-3 py-3 text-base font-medium text-[var(--color-ink)] hover:bg-slate-50"
+      >
+        Qué hace
+      </a>
+      <a
+        href="#pricing"
+        class="block rounded-lg px-3 py-3 text-base font-medium text-[var(--color-ink)] hover:bg-slate-50"
+      >
+        Planes
+      </a>
+      <a
+        href="#faq"
+        class="block rounded-lg px-3 py-3 text-base font-medium text-[var(--color-ink)] hover:bg-slate-50"
+      >
+        Preguntas
+      </a>
+      <a
+        href="https://play.google.com/store/apps/details?id=com.sinunmango.mobile"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="mt-2 flex items-center justify-center gap-2 rounded-lg bg-[#0f172a] px-4 py-3 text-sm font-semibold text-white"
+      >
+        <svg width="18" height="20" viewBox="0 0 22 24" fill="none" aria-hidden="true">
+          <path d="M.84 1.2A2 2 0 0 0 .5 2.31v19.38c0 .4.12.77.34 1.11l10.49-11.4L.84 1.2Z" fill="#5BC8F3"/>
+          <path d="m15.5 7.86-3.43 3.73 3.43 3.74 5.04-2.86c1.27-.72 1.27-2.57 0-3.29L15.5 7.86Z" fill="#FFCE3D"/>
+          <path d="m12.07 11.59 3.43-3.73L1.5.95 12.07 11.59Z" fill="#EE4647"/>
+          <path d="m12.07 11.6L1.5 22.24l14-6.91-3.43-3.73Z" fill="#3BCC70"/>
+        </svg>
+        Descargar de Google Play
+      </a>
+    </div>
+  </div>
 </header>
+
+<script>
+  // Sticky nav: aplica fondo + shrink cuando hay scroll. Listener pasivo
+  // por performance; threshold 24px (después del scroll inicial).
+  const nav = document.querySelector<HTMLElement>("[data-nav]");
+  const navInner = document.querySelector<HTMLElement>("[data-nav-inner]");
+  const toggle = document.querySelector<HTMLButtonElement>("[data-mobile-toggle]");
+  const menu = document.querySelector<HTMLElement>("[data-mobile-menu]");
+
+  if (nav && navInner) {
+    const SCROLL_THRESHOLD = 24;
+
+    function updateNavStyle() {
+      const scrolled = window.scrollY > SCROLL_THRESHOLD;
+      // Clase + atributo: tailwind no expone variantes para scrollY, así que
+      // toggleamos clases manualmente para el background + border.
+      nav!.classList.toggle("is-scrolled", scrolled);
+      navInner!.dataset.scrolled = String(scrolled);
+    }
+
+    updateNavStyle();
+    window.addEventListener("scroll", updateNavStyle, { passive: true });
+  }
+
+  // Mobile menu toggle.
+  if (toggle && menu) {
+    const openIcon = toggle.querySelector<SVGElement>("[data-icon='open']");
+    const closeIcon = toggle.querySelector<SVGElement>("[data-icon='close']");
+
+    function setOpen(open: boolean) {
+      toggle!.setAttribute("aria-expanded", String(open));
+      toggle!.setAttribute(
+        "aria-label",
+        open ? "Cerrar menú" : "Abrir menú",
+      );
+      menu!.dataset.open = String(open);
+      openIcon?.classList.toggle("hidden", open);
+      closeIcon?.classList.toggle("hidden", !open);
+    }
+
+    toggle.addEventListener("click", () => {
+      const isOpen = toggle.getAttribute("aria-expanded") === "true";
+      setOpen(!isOpen);
+    });
+
+    // Cerrar al hacer click en un link interno
+    menu.querySelectorAll<HTMLAnchorElement>("a[href^='#']").forEach((a) => {
+      a.addEventListener("click", () => setOpen(false));
+    });
+
+    // Cerrar con Escape
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") setOpen(false);
+    });
+  }
+</script>
+
+<style>
+  /* Estados scroll: background blanco con blur + border sutil.
+     Se aplica vía clase JS porque depende de scrollY y no de viewport. */
+  [data-nav].is-scrolled {
+    background-color: rgb(255 255 255 / 0.85);
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: 0 1px 3px rgb(13 33 55 / 0.04);
+  }
+</style>
