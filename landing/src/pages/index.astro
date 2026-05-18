@@ -4,12 +4,15 @@ import Nav from "../components/Nav.astro";
 import Hero from "../components/Hero.astro";
 import ParaQuien from "../components/ParaQuien.astro";
 import Features from "../components/Features.astro";
-import Onboarding from "../components/Onboarding.astro";
-import Screenshots from "../components/Screenshots.astro";
 import Pricing from "../components/Pricing.astro";
 import FAQ from "../components/FAQ.astro";
 import Footer from "../components/Footer.astro";
 import { faqJsonLd } from "../data/faqs";
+
+// Screenshots y Onboarding componentes existen en disco pero ya no se
+// renderean. La home se simplificó alrededor del video del Hero como
+// principal forma de "mostrar la app". Si en el futuro queremos volver
+// a alguno, basta reimportarlo e insertarlo en el orden adecuado.
 ---
 
 <Layout preloadHero={true} jsonLd={faqJsonLd()}>
@@ -17,9 +20,7 @@ import { faqJsonLd } from "../data/faqs";
   <main>
     <Hero />
     <ParaQuien />
-    <Screenshots />
     <Features />
-    <Onboarding />
     <Pricing />
     <FAQ />
 

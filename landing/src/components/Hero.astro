@@ -66,7 +66,8 @@
       </p>
     </div>
 
-    <!-- Hero shot: dashboard real con halo decorativo -->
+    <!-- Hero shot: video demo de la app dentro del browser frame.
+         Halo decorativo + frame estilo macOS por coherencia visual. -->
     <div class="relative mx-auto w-full max-w-3xl lg:max-w-none">
       <!-- Halo decorativo más amplio para que se sienta aireado -->
       <div
@@ -74,7 +75,7 @@
         aria-hidden="true"
       ></div>
 
-      <!-- Browser frame con dashboard -->
+      <!-- Browser frame con video / placeholder -->
       <div
         class="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-2xl shadow-[color:var(--color-accent2)]/20"
       >
@@ -90,15 +91,89 @@
             app.sinunmango.com.ar
           </div>
         </div>
-        <img
-          src="/screenshots/dashboard.jpg"
-          alt="Dashboard de sinunmango: saldo total, indicadores del mes, proyecciones y estado de cuentas"
-          width="1570"
-          height="950"
-          fetchpriority="high"
-          decoding="async"
-          class="block h-auto w-full"
-        />
+
+        {/*
+          ═══════════════════════════════════════════════════════════════════
+          CUANDO TENGAS EL VIDEO DEMO grabado, reemplazá este placeholder por:
+
+          Opción A — mp4 self-hosted en /public/ (RECOMENDADO):
+            <video
+              controls
+              poster="/screenshots/dashboard.jpg"
+              preload="metadata"
+              class="block aspect-[1570/950] w-full bg-[var(--color-sidebar)]"
+            >
+              <source src="/demo.mp4" type="video/mp4" />
+              <source src="/demo.webm" type="video/webm" />
+            </video>
+
+          Opción B — YouTube embed:
+            <div class="aspect-[1570/950] w-full bg-black">
+              <iframe
+                src="https://www.youtube.com/embed/VIDEO_ID?rel=0&modestbranding=1"
+                title="Demo de sinunmango"
+                class="h-full w-full"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+              ></iframe>
+            </div>
+
+          Recomendado: self-hosted mp4 — sin tracking de YouTube, sin overlay
+          de "videos recomendados" al final, y se ve más prolijo dentro del
+          browser frame. Ver docs/landing-video-guion.md para tips de grabación.
+          ═══════════════════════════════════════════════════════════════════
+        */}
+
+        {/* Placeholder de video: dashboard.jpg como poster + play overlay.
+            Mantiene el aspect ratio del dashboard original (1570/950) para
+            que cuando llegue el video real (que asumimos misma ratio) no
+            haya layout shift. */}
+        <div class="relative aspect-[1570/950] w-full overflow-hidden bg-[var(--color-sidebar)]">
+          <img
+            src="/screenshots/dashboard.jpg"
+            alt="Dashboard de sinunmango: saldo total, indicadores del mes, proyecciones y estado de cuentas"
+            width="1570"
+            height="950"
+            fetchpriority="high"
+            decoding="async"
+            class="absolute inset-0 h-full w-full object-cover opacity-70"
+          />
+          {/* Overlay oscuro + play button gigante */}
+          <div class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-black/20 via-black/30 to-black/50">
+            <button
+              type="button"
+              disabled
+              class="group relative flex h-20 w-20 items-center justify-center rounded-full bg-white/95 shadow-xl ring-4 ring-white/30 transition-transform hover:scale-105 sm:h-24 sm:w-24"
+              aria-label="Demo en video (próximamente)"
+            >
+              {/* Play triangle, sutil shift a la derecha para balance óptico */}
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="ml-1 text-[var(--color-accent2)] sm:h-10 sm:w-10"
+                aria-hidden="true"
+              >
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+            <div class="text-center text-white">
+              <p class="text-sm font-semibold sm:text-base">
+                Demo en video — próximamente
+              </p>
+              <p class="mt-1 text-xs text-white/70 sm:text-sm">
+                Mientras tanto, probala directo en{" "}
+                <a
+                  href="https://app.sinunmango.com.ar"
+                  class="font-medium underline hover:text-white"
+                >
+                  app.sinunmango.com.ar
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
