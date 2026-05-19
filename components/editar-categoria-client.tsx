@@ -3,9 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Pencil } from 'lucide-react'
-import { ICONOS_CATEGORIAS } from '@/lib/iconos-categorias'
 import { IconoCategoria } from '@/components/icono-categoria'
-import { IconPickerModal } from '@/components/icon-picker-modal'
+import { EmojiPickerModal } from '@/components/emoji-picker-modal'
 import { DeleteButton } from '@/components/delete-button'
 
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 bg-white'
@@ -21,7 +20,9 @@ type CategoriaProp = {
 export function EditarCategoriaClient({ categoria }: { categoria: CategoriaProp }) {
   const router  = useRouter()
   const [nombre, setNombre] = useState(categoria.nombre_categoria ?? '')
-  const [icono,  setIcono]  = useState<string>(categoria.icono ?? 'ShoppingCart')
+  // Default emoji para categorías sin icono — coherente con el seed SQL
+  // que también guarda emojis (no nombres Lucide).
+  const [icono,  setIcono]  = useState<string>(categoria.icono ?? '🏷️')
   const [tipo,   setTipo]   = useState(categoria.tipo_default ?? 'Gasto')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -29,9 +30,6 @@ export function EditarCategoriaClient({ categoria }: { categoria: CategoriaProp 
   const [error,  setError]  = useState('')
 
   const isNew = !categoria.id
-
-  // Label legible del icono actual (si está en la lib) — solo informativo
-  const iconoMeta = ICONOS_CATEGORIAS.find(i => i.name === icono)
 
   const handleGuardar = async () => {
     if (!nombre.trim()) { setError('El nombre es obligatorio'); return }
@@ -62,23 +60,28 @@ export function EditarCategoriaClient({ categoria }: { categoria: CategoriaProp 
         <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
           <button
             onClick={() => setPickerOpen(true)}
-            className="w-16 h-16 rounded-2xl bg-white border-2 border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center justify-center shrink-0 group relative"
+            className="w-16 h-16 rounded-2xl bg-white border-2 border-slate-200 hover:border-[color:var(--accent)] hover:shadow-md transition-all flex items-center justify-center shrink-0 group relative"
           >
             <IconoCategoria icono={icono} size={32} color="#475569" />
             {/* Badge "editar": visible siempre en mobile (no hay hover en touch);
-                en sm+ aparece solo en hover para UI más limpia. */}
-            <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-sm sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                en sm+ aparece solo en hover para UI más limpia.
+                Color de marca (accent) en lugar del indigo legacy. */}
+            <span
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full text-white flex items-center justify-center shadow-sm sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+              style={{ background: 'var(--accent)' }}
+            >
               <Pencil size={11} />
             </span>
           </button>
           <div className="flex-1 min-w-0">
             <p className="text-base font-semibold text-slate-800 truncate">{nombre || 'Nombre de la categoría'}</p>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {iconoMeta ? `${iconoMeta.label} · ${iconoMeta.grupo}` : icono}
+            <p className="text-lg text-slate-400 mt-0.5" aria-hidden="true">
+              {icono}
             </p>
             <button
               onClick={() => setPickerOpen(true)}
-              className="text-xs text-indigo-600 hover:text-indigo-800 mt-1 font-medium"
+              className="text-xs mt-1 font-medium hover:underline"
+              style={{ color: 'var(--accent)' }}
             >
               Cambiar icono →
             </button>
@@ -129,10 +132,10 @@ export function EditarCategoriaClient({ categoria }: { categoria: CategoriaProp 
         )}
       </div>
 
-      <IconPickerModal
+      <EmojiPickerModal
         open={pickerOpen}
         current={icono}
-        onPick={(name) => setIcono(name)}
+        onPick={(emoji) => setIcono(emoji)}
         onClose={() => setPickerOpen(false)}
       />
     </div>

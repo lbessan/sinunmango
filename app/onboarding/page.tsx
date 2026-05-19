@@ -27,58 +27,18 @@ const CARD_VARIANTS = [
   { id: 'infinite',  label: 'Infinite'  },
 ]
 
-// ─── Emojis para categorías ───────────────────────────────────────────────────
-
-const EMOJI_OPTS = [
-  '🛒','🍔','🚗','🏠','⚡','💊','💉','🎬','👔','📱',
-  '🎓','✈️','🐾','🏋️','💄','🎁','🔧','📝','📺','💼',
-  '💻','📈','🏘️','💸','🍕','☕','🎮','🏥','🛍️','⛽',
-  '💡','🔑','📦','🎵','🍷','🚌','🏦','🎯','🌱','🐶',
-  '🍼','🧴','🎪','🏖️','🚀','🧠','🎸','🍎','🌍','💰',
-]
-
-// ─── Categorías por defecto ───────────────────────────────────────────────────
+// Antes había un paso 3 en el onboarding donde el user "seleccionaba"
+// 21+ categorías iniciales. Eso era redundante: el trigger SQL
+// `handle_new_user` (docs/migration-seed-categorias-en-trigger.sql) ya las
+// crea atómicamente al sign-up. El user terminaba re-creando las mismas
+// (o peor: el dedupe agarraba unos íconos vs otros y le quedaba un mix
+// con iconos distintos a los que vio).
 //
-// IMPORTANTE: los iconos de las primeras 21 categorías DEBEN matchear a las
-// del trigger handle_new_user (ver docs/migration-seed-categorias-en-trigger.sql).
-// El trigger crea esas filas atómicamente al sign-up con un icono. El onboarding
-// dedupea por tipo+nombre, así que si los iconos no matchean el del trigger
-// "gana" y el user termina con un emoji distinto al que vio en la UI.
-//
-// Las 3 últimas de Gasto (Alquiler/Expensas, Educación, Belleza) NO están en
-// el trigger seed — solo se crean si el user las elige en este onboarding.
+// Decisión: el paso 3 se eliminó. Lo que vendría era apariencia (ahora
+// step 3 después del renumber). Si el user quiere agregar/editar
+// categorías propias, lo hace después desde /categorias.
 
-const DEFAULT_CATS = [
-  // Gastos — primeros 16 alineados con el seed del trigger
-  { nombre: 'Supermercado',          icono: '🛒', tipo: 'Gasto'   },
-  { nombre: 'Restaurantes',          icono: '🍽️', tipo: 'Gasto'   },
-  { nombre: 'Transporte',            icono: '🚗', tipo: 'Gasto'   },
-  { nombre: 'Servicios',             icono: '💡', tipo: 'Gasto'   },
-  { nombre: 'Salud',                 icono: '🏥', tipo: 'Gasto'   },
-  { nombre: 'Farmacia',              icono: '💊', tipo: 'Gasto'   },
-  { nombre: 'Entretenimiento',       icono: '🎬', tipo: 'Gasto'   },
-  { nombre: 'Ropa',                  icono: '👕', tipo: 'Gasto'   },
-  { nombre: 'Telecomunicaciones',    icono: '📱', tipo: 'Gasto'   },
-  { nombre: 'Viajes',                icono: '✈️', tipo: 'Gasto'   },
-  { nombre: 'Mascotas',              icono: '🐶', tipo: 'Gasto'   },
-  { nombre: 'Gym / Deporte',         icono: '🏋️', tipo: 'Gasto'   },
-  { nombre: 'Regalos',               icono: '🎁', tipo: 'Gasto'   },
-  { nombre: 'Hogar',                 icono: '🏠', tipo: 'Gasto'   },
-  { nombre: 'Impuestos',             icono: '📑', tipo: 'Gasto'   },
-  { nombre: 'Suscripciones',         icono: '📺', tipo: 'Gasto'   },
-  // Gastos extra — no están en el trigger seed (opt-in del onboarding)
-  { nombre: 'Alquiler / Expensas',   icono: '🏘️', tipo: 'Gasto'   },
-  { nombre: 'Educación',             icono: '🎓', tipo: 'Gasto'   },
-  { nombre: 'Belleza',               icono: '💄', tipo: 'Gasto'   },
-  // Ingresos — alineados con el seed del trigger
-  { nombre: 'Sueldo',                icono: '💰', tipo: 'Ingreso'  },
-  { nombre: 'Freelance',             icono: '💼', tipo: 'Ingreso'  },
-  { nombre: 'Alquiler cobrado',      icono: '🏘️', tipo: 'Ingreso'  },
-  { nombre: 'Inversiones',           icono: '📈', tipo: 'Ingreso'  },
-  { nombre: 'Transferencia recibida',icono: '↗️', tipo: 'Ingreso'  },
-] as const
-
-const TOTAL_STEPS = 4
+const TOTAL_STEPS = 3
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -274,16 +234,9 @@ export default function OnboardingPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
 
-  // ── Step 3: Categorías ──────────────────────────────────────────────────────
-  const [selectedCats,    setSelectedCats]    = useState<Set<number>>(() => new Set(DEFAULT_CATS.map((_, i) => i)))
-  const [newCatNombre,    setNewCatNombre]    = useState('')
-  const [newCatTipo,      setNewCatTipo]      = useState<'Gasto' | 'Ingreso'>('Gasto')
-  const [newCatIcono,     setNewCatIcono]     = useState('📦')
-  const [extraCats,       setExtraCats]       = useState<{ nombre: string; icono: string; tipo: string }[]>([])
-  const [showNewCatForm,  setShowNewCatForm]  = useState(false)
-  const [savingCats,      setSavingCats]      = useState(false)
-
-  // ── Step 4: Tema ────────────────────────────────────────────────────────────
+  // ── Step 3: Tema (apariencia) ───────────────────────────────────────────────
+  // (El antiguo step "Categorías" se eliminó — las 21 categorías default
+  // ya las crea el trigger SQL handle_new_user al sign-up.)
   const [themeKey, setThemeKey] = useState<ThemeKey>('verde')
   const [isDark,   setIsDark]   = useState(false)
 
@@ -468,52 +421,10 @@ export default function OnboardingPage() {
     setStep(3)
   }
 
-  // ── Handlers: Categorías ──────────────────────────────────────────────────────
-
-  const toggleCat = (i: number) => {
-    setSelectedCats(prev => {
-      const next = new Set(prev)
-      if (next.has(i)) next.delete(i); else next.add(i)
-      return next
-    })
-  }
-
-  const handleAgregarExtraCat = () => {
-    if (!newCatNombre.trim()) return
-    setExtraCats(prev => [...prev, { nombre: newCatNombre.trim(), icono: newCatIcono, tipo: newCatTipo }])
-    setNewCatNombre(''); setNewCatIcono('📦'); setShowNewCatForm(false)
-  }
-
-  const handleSaveCategorias = async () => {
-    setSavingCats(true)
-
-    // Traer categorías existentes para no duplicar si el onboarding se corrió más de una vez
-    const existingRes = await fetch('/api/categorias').catch(() => null)
-    const existing: { nombre_categoria: string; tipo_default: string }[] =
-      existingRes?.ok ? await existingRes.json() : []
-    const existingKeys = new Set(
-      existing.map(c => `${c.tipo_default}::${c.nombre_categoria.trim().toLowerCase()}`)
-    )
-
-    const selected  = DEFAULT_CATS.filter((_, i) => selectedCats.has(i))
-    const toCreate  = [...selected, ...extraCats].filter(cat =>
-      !existingKeys.has(`${cat.tipo}::${cat.nombre.trim().toLowerCase()}`)
-    )
-
-    await Promise.all(
-      toCreate.map(cat =>
-        fetch('/api/categorias', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ nombre_categoria: cat.nombre, tipo_default: cat.tipo, icono: cat.icono }),
-        })
-      )
-    )
-    setSavingCats(false)
-    setStep(4)
-  }
-
   // ── Handlers: Tema ────────────────────────────────────────────────────────────
+  // (handleAgregarExtraCat / handleSaveCategorias / toggleCat eliminados
+  // junto con el step 3 antiguo de categorías — el seed default vive en el
+  // trigger SQL handle_new_user.)
 
   const handleThemeChange = (key: ThemeKey) => {
     setThemeKey(key)
@@ -929,171 +840,11 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ PASO 3 */}
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ PASO 3 (apariencia) */}
         {step === 3 && (
           <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-            <p className="text-xs text-slate-400 uppercase tracking-widest mb-1">Paso 3 · Categorías</p>
-            <h2 className="text-base font-semibold text-slate-800 mb-1">Elegí tus categorías</h2>
-            <p className="text-sm text-slate-500 mb-5">
-              Seleccioná las que usás habitualmente. Podés agregar más después.
-            </p>
-
-            {/* Gastos */}
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Gastos</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {DEFAULT_CATS.map((c, i) => {
-                if (c.tipo !== 'Gasto') return null
-                const on = selectedCats.has(i)
-                return (
-                  <button key={i} onClick={() => toggleCat(i)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm transition-all"
-                    style={on
-                      ? { borderColor: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 8%, white)', color: 'var(--accent)' }
-                      : { borderColor: '#e2e8f0', background: '#f8fafc', color: '#94a3b8' }}>
-                    <span>{c.icono}</span>
-                    <span className="font-medium">{c.nombre}</span>
-                    {on ? <Check size={12} style={{ color: 'var(--accent)' }} /> : <X size={12} className="text-slate-300" />}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Ingresos */}
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Ingresos</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {DEFAULT_CATS.map((c, i) => {
-                if (c.tipo !== 'Ingreso') return null
-                const on = selectedCats.has(i)
-                return (
-                  <button key={i} onClick={() => toggleCat(i)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm transition-all"
-                    style={on
-                      ? { borderColor: '#10b981', background: '#f0fdf4', color: '#10b981' }
-                      : { borderColor: '#e2e8f0', background: '#f8fafc', color: '#94a3b8' }}>
-                    <span>{c.icono}</span>
-                    <span className="font-medium">{c.nombre}</span>
-                    {on ? <Check size={12} className="text-emerald-500" /> : <X size={12} className="text-slate-300" />}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Extras añadidas por el usuario */}
-            {extraCats.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {extraCats.map((c, i) => (
-                  <span key={i}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm"
-                    style={{ borderColor: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 8%, white)', color: 'var(--accent)' }}>
-                    <span>{c.icono}</span>
-                    <span className="font-medium">{c.nombre}</span>
-                    <button onClick={() => setExtraCats(prev => prev.filter((_, j) => j !== i))}>
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Agregar nueva categoría */}
-            {showNewCatForm ? (
-              <div className="border border-slate-200 rounded-xl p-4 mb-4 space-y-3">
-                {/* Emoji picker grid */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-2">Ícono</label>
-                  <div className="grid grid-cols-10 gap-1 mb-2">
-                    {EMOJI_OPTS.map(emoji => (
-                      <button
-                        key={emoji}
-                        onClick={() => setNewCatIcono(emoji)}
-                        title={emoji}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-lg transition-all hover:scale-110"
-                        style={newCatIcono === emoji
-                          ? { background: 'color-mix(in srgb, var(--accent) 12%, white)', outline: '2px solid var(--accent)', outlineOffset: '1px' }
-                          : { background: '#f8fafc' }}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Fallback: custom emoji input */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">O escribí uno:</span>
-                    <input
-                      type="text"
-                      value={newCatIcono}
-                      onChange={e => setNewCatIcono(e.target.value)}
-                      className="w-12 border border-slate-200 rounded-lg px-2 py-1 text-center text-base focus:outline-none"
-                      maxLength={2}
-                    />
-                    <span className="text-xl">{newCatIcono}</span>
-                  </div>
-                </div>
-
-                {/* Nombre */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Nombre</label>
-                  <input
-                    type="text"
-                    value={newCatNombre}
-                    onChange={e => setNewCatNombre(e.target.value)}
-                    placeholder="Nombre de la categoría"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    onKeyDown={e => e.key === 'Enter' && handleAgregarExtraCat()}
-                  />
-                </div>
-
-                {/* Tipo + acciones */}
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1.5">
-                    {(['Gasto', 'Ingreso'] as const).map(t => (
-                      <button key={t} onClick={() => setNewCatTipo(t)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-medium border transition-all"
-                        style={newCatTipo === t
-                          ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' }
-                          : { background: '#f8fafc', color: '#94a3b8', borderColor: '#e2e8f0' }}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex gap-1.5 ml-auto">
-                    <button
-                      onClick={() => { setShowNewCatForm(false); setNewCatNombre(''); setNewCatIcono('📦') }}
-                      className="px-3 py-1 text-xs text-slate-400 hover:text-slate-600"
-                    >
-                      Cancelar
-                    </button>
-                    <button onClick={handleAgregarExtraCat} disabled={!newCatNombre.trim()}
-                      className="px-3 py-1 rounded-lg text-xs font-semibold text-white disabled:opacity-40"
-                      style={{ background: 'var(--accent)' }}>
-                      Agregar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setShowNewCatForm(true)}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 mb-4">
-                <Plus size={13} /> Agregar categoría propia
-              </button>
-            )}
-
-            <p className="text-xs text-slate-400 mb-4">
-              {selectedCats.size + extraCats.length} categorías seleccionadas
-            </p>
-
-            <button onClick={handleSaveCategorias} disabled={savingCats}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-              style={{ background: 'var(--accent)' }}>
-              {savingCats ? 'Guardando…' : 'Continuar →'}
-            </button>
-          </div>
-        )}
-
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ PASO 4 */}
-        {step === 4 && (
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
-            <p className="text-xs text-slate-400 uppercase tracking-widest mb-1">Paso 4 · Apariencia</p>
+            <p className="text-xs text-slate-400 uppercase tracking-widest mb-1">Paso 3 · Apariencia</p>
             <h2 className="text-base font-semibold text-slate-800 mb-1">Elegí el color de tu app</h2>
             <p className="text-sm text-slate-500 mb-6">Podés cambiarlo cuando quieras desde Configuración.</p>
 
