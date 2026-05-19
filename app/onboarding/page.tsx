@@ -888,7 +888,7 @@ export default function OnboardingPage() {
             <button onClick={handleFinish}
               className="w-full py-3 rounded-xl text-sm font-semibold text-white"
               style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}>
-              ¡Listo, empezar! 🥭
+              ¡Listo, empezar! →
             </button>
           </div>
         )}
