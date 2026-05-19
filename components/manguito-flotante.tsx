@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Send, X, User, CheckCircle, AlertCircle, Loader2, Minimize2, Trash2, Sparkles } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -130,6 +130,11 @@ function Avatar({ size = 26 }: { size?: number }) {
 export function ManguitoFlotante() {
   // Todos los hooks PRIMERO — Rules of Hooks (orden estable entre renders).
   const pathname                = usePathname()
+  const searchParams            = useSearchParams()
+  // El tour del onboarding (?tour=1) destaca el FAB con un spotlight y un
+  // tooltip al costado. Mientras el tour esté activo, ocultamos el label
+  // "Hablar con Manguito" para que no se solape con el tooltip del tour.
+  const tourActive              = searchParams?.get('tour') === '1'
   const [open, setOpen]         = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput]       = useState('')
@@ -455,8 +460,10 @@ export function ManguitoFlotante() {
         className="fixed z-50 flex items-center gap-3"
         style={{ right: 24, bottom: 'calc(24px + env(safe-area-inset-bottom))' }}
       >
-        {/* Label siempre visible cuando el panel está cerrado */}
-        {!open && (
+        {/* Label visible cuando el panel está cerrado Y el tour no está
+            activo (durante el tour, el tooltip describe qué es el Manguito,
+            sumar el label encima genera overlap visual confuso). */}
+        {!open && !tourActive && (
           <span
             className="text-white text-xs font-semibold px-3 py-2 rounded-xl whitespace-nowrap pointer-events-none"
             style={{

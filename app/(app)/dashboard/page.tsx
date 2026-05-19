@@ -924,7 +924,12 @@ export default async function DashboardPage({
 function EmptyState() {
   return (
     <div className="max-w-lg mx-auto mt-20 text-center space-y-4">
-      <p className="text-5xl">🥭</p>
+      <img
+        src="/manguito.png"
+        alt=""
+        aria-hidden="true"
+        className="w-20 h-20 mx-auto object-contain"
+      />
       <h2 className="text-xl font-semibold text-slate-800">¡Bienvenido a sinunmango!</h2>
       <p className="text-slate-500 text-sm">Todavía no tenés cuentas cargadas. Creá tu primera cuenta para ver el dashboard.</p>
       <a

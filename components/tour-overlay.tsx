@@ -9,7 +9,9 @@ type TourStep = {
   tourId: string
   title: string
   desc: string
-  emoji: string
+  /** Emoji OR image src — para el Manguito usamos el logo (no el emoji 🥭). */
+  emoji?: string
+  image?: string
 }
 
 const STEPS: TourStep[] = [
@@ -41,7 +43,7 @@ const STEPS: TourStep[] = [
     tourId: 'tour-manguito',
     title:  'Manguito',
     desc:   'Tu asistente con IA. Preguntale "¿cuánto gasté esta semana?" o dictale un gasto: "gasté $4.500 en el súper" — lo registra solo.',
-    emoji:  '🥭',
+    image:  '/manguito.png',
   },
 ]
 
@@ -227,7 +229,17 @@ export function TourOverlay({ onDone }: { onDone: () => void }) {
           </button>
         </div>
 
-        <p className="text-2xl mb-1">{step.emoji}</p>
+        {/* Avatar: emoji para los pasos genéricos, imagen del logo Manguito
+            para el step del asistente (evita el emoji genérico 🥭). */}
+        {step.image ? (
+          <img
+            src={step.image}
+            alt={step.title}
+            className="w-9 h-9 mb-1 object-contain"
+          />
+        ) : (
+          <p className="text-2xl mb-1" aria-hidden="true">{step.emoji}</p>
+        )}
         <h3 className="text-base font-bold text-slate-800 mb-1">{step.title}</h3>
         <p className="text-sm text-slate-500 leading-relaxed mb-4">{step.desc}</p>
 

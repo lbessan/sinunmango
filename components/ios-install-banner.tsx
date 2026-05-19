@@ -96,12 +96,12 @@ export function IOSInstallBanner() {
 
         <div className="flex items-start gap-3">
           <div
-            className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+            className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden"
             style={{ background: '#0d2137' }}
           >
-            {/* Mismo emoji-style del manguito — fallback simple por si la
-                imagen no carga */}
-            <span className="text-lg">🥭</span>
+            {/* Logo del Manguito real (no emoji 🥭) — consistente con la
+                identidad de marca en el resto de la app. */}
+            <img src="/manguito.png" alt="" aria-hidden="true" className="w-7 h-7 object-contain" />
           </div>
           <div className="flex-1 min-w-0">
             <p
