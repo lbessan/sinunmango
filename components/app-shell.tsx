@@ -25,7 +25,10 @@ export function AppShell({ sidebar, children }: AppShellProps) {
   }, [open])
 
   return (
-    <SidebarContext.Provider value={{ closeSidebar: () => setOpen(false) }}>
+    <SidebarContext.Provider value={{
+      closeSidebar: () => setOpen(false),
+      openSidebar:  () => setOpen(true),
+    }}>
       <div className="flex min-h-screen" style={{ backgroundColor: 'var(--bg-main, #f1f5f9)' }}>
 
         {/* ── Desktop sidebar (lg+) ───────────────────────────────────────── */}

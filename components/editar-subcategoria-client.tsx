@@ -3,9 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Pencil } from 'lucide-react'
-import { ICONOS_CATEGORIAS } from '@/lib/iconos-categorias'
 import { IconoCategoria } from '@/components/icono-categoria'
-import { IconPickerModal } from '@/components/icon-picker-modal'
+import { EmojiPickerModal } from '@/components/emoji-picker-modal'
 
 type Categoria = { id: string; nombre_categoria: string; icono: string | null }
 
@@ -31,14 +30,14 @@ export function EditarSubcategoriaClient({
   const router   = useRouter()
   const [nombre,  setNombre]  = useState(subcategoria.nombre_subcategoria ?? '')
   const [padreId, setPadreId] = useState(subcategoria.categoria_padre ?? catIdActual)
-  const [icono,   setIcono]   = useState<string>(subcategoria.icono ?? 'ShoppingCart')
+  // Default emoji (no Lucide name): consistente con el seed SQL del trigger.
+  const [icono,   setIcono]   = useState<string>(subcategoria.icono ?? '🏷️')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
   const [error,   setError]   = useState('')
 
   const isNew = !subcategoria.id
-  const iconoMeta = ICONOS_CATEGORIAS.find(i => i.name === icono)
 
   const handleGuardar = async () => {
     if (!nombre.trim()) { setError('El nombre es obligatorio'); return }
@@ -69,22 +68,25 @@ export function EditarSubcategoriaClient({
         <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
           <button
             onClick={() => setPickerOpen(true)}
-            className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center justify-center shrink-0 group relative"
+            className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 hover:border-[color:var(--accent)] hover:shadow-md transition-all flex items-center justify-center shrink-0 group relative"
           >
             <IconoCategoria icono={icono} size={28} color="#475569" />
-            {/* Badge "editar": visible siempre en mobile, hover-only en sm+. */}
-            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-sm sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            {/* Badge "editar": visible siempre en mobile, hover-only en sm+.
+                Color de marca (accent) en lugar del indigo legacy. */}
+            <span
+              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full text-white flex items-center justify-center shadow-sm sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+              style={{ background: 'var(--accent)' }}
+            >
               <Pencil size={10} />
             </span>
           </button>
           <div className="flex-1 min-w-0">
             <p className="text-base font-semibold text-slate-800 truncate">{nombre || 'Nombre de la subcategoría'}</p>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {iconoMeta ? `${iconoMeta.label} · ${iconoMeta.grupo}` : icono}
-            </p>
+            <p className="text-lg text-slate-400 mt-0.5" aria-hidden="true">{icono}</p>
             <button
               onClick={() => setPickerOpen(true)}
-              className="text-xs text-indigo-600 hover:text-indigo-800 mt-1 font-medium"
+              className="text-xs mt-1 font-medium hover:underline"
+              style={{ color: 'var(--accent)' }}
             >
               Cambiar icono →
             </button>
@@ -119,10 +121,10 @@ export function EditarSubcategoriaClient({
         </div>
       </div>
 
-      <IconPickerModal
+      <EmojiPickerModal
         open={pickerOpen}
         current={icono}
-        onPick={(name) => setIcono(name)}
+        onPick={(emoji) => setIcono(emoji)}
         onClose={() => setPickerOpen(false)}
       />
     </div>

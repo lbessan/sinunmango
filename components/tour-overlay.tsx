@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronRight, X } from 'lucide-react'
+import { useSidebar } from './sidebar-context'
 
 type TourStep = {
   tourId: string
@@ -15,31 +16,31 @@ const STEPS: TourStep[] = [
   {
     tourId: 'tour-dashboard',
     title:  'Dashboard',
-    desc:   'Acá ves el resumen de tus finanzas: saldo disponible, deuda de tarjetas y proyección de los próximos meses.',
+    desc:   'Tu foto del mes en un vistazo: saldo disponible en pesos y dólares, gastos del mes, deuda de tarjetas y proyección de cómo terminás.',
     emoji:  '📊',
   },
   {
     tourId: 'tour-movimientos',
     title:  'Movimientos',
-    desc:   'Registrá gastos e ingresos. Podés categorizar cada uno, adjuntar fotos de tickets y hacer transferencias entre cuentas.',
+    desc:   'Cargá gastos e ingresos como prefieras: a mano, escaneando un ticket con la cámara, o reenviando los mails de notificación de tu banco a tu dirección @sinunmango.com.ar y se cargan solos.',
     emoji:  '💸',
   },
   {
     tourId: 'tour-cuentas',
     title:  'Cuentas',
-    desc:   'Tus bancos, billeteras y efectivo. Cada cuenta muestra su saldo actualizado en tiempo real.',
+    desc:   'Bancos, billeteras y efectivo. En pesos o dólares. Cada saldo se actualiza en tiempo real con cada movimiento que cargás.',
     emoji:  '🏦',
   },
   {
     tourId: 'tour-tarjetas',
     title:  'Tarjetas de crédito',
-    desc:   'Seguí el gasto acumulado de cada tarjeta por período. Ves cuánto debés y cuándo vence el próximo cierre.',
+    desc:   'Subí el PDF del resumen y la IA detecta todos los consumos. Seguí el gasto por período, conciliá contra el resumen real, y sabé cuándo vence cada cierre.',
     emoji:  '💳',
   },
   {
     tourId: 'tour-manguito',
     title:  'Manguito',
-    desc:   'Tu asistente financiero con IA. Preguntale en lenguaje natural: "¿cuánto gasté esta semana?" o "¿en qué estoy gastando más?".',
+    desc:   'Tu asistente con IA. Preguntale "¿cuánto gasté esta semana?" o dictale un gasto: "gasté $4.500 en el súper" — lo registra solo.',
     emoji:  '🥭',
   },
 ]
@@ -50,9 +51,31 @@ export function TourOverlay({ onDone }: { onDone: () => void }) {
   const [currentStep, setCurrentStep] = useState(0)
   const [targetRect, setTargetRect]   = useState<Rect | null>(null)
   const router = useRouter()
+  const { openSidebar, closeSidebar } = useSidebar()
 
   const step = STEPS[currentStep]
 
+  // En mobile (< lg) la sidebar está oculta detrás del drawer cerrado. Los
+  // anchors data-tour viven adentro de la sidebar → getBoundingClientRect()
+  // retorna 0/0 y el spotlight no se ve. Abrimos el drawer al iniciar tour
+  // y lo cerramos al terminar. El último step (Manguito FAB) no necesita
+  // sidebar abierta porque su anchor está en el FAB flotante.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const isMobile = window.innerWidth < 1024
+    if (!isMobile) return
+
+    if (step.tourId === 'tour-manguito') {
+      // El FAB del Manguito es visible incluso con la sidebar cerrada
+      closeSidebar()
+    } else {
+      openSidebar()
+    }
+  }, [step.tourId, openSidebar, closeSidebar])
+
+  // Re-medir después de que la animación del drawer termina (~300ms en app-shell).
+  // Si medimos al instante, las clases translate-x todavía no se aplicaron y
+  // getBoundingClientRect retorna posiciones intermedias.
   const measureTarget = useCallback(() => {
     const el = document.querySelector(`[data-tour="${step.tourId}"]`)
     if (el) {
@@ -65,19 +88,33 @@ export function TourOverlay({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     measureTarget()
+    // Re-medición diferida para esperar a la transición del drawer en mobile.
+    const t = setTimeout(measureTarget, 350)
     window.addEventListener('resize', measureTarget)
-    return () => window.removeEventListener('resize', measureTarget)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('resize', measureTarget)
+    }
   }, [measureTarget])
 
   const next = () => {
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(s => s + 1)
     } else {
-      onDone()
+      finish()
     }
   }
 
-  const skip = () => onDone()
+  // Al terminar/saltar: cerrar el drawer (si estaba abierto por el tour) y
+  // notificar al parent.
+  const finish = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      closeSidebar()
+    }
+    onDone()
+  }
+
+  const skip = () => finish()
 
   // Spotlight box dimensions with padding
   const PAD = 6
@@ -90,11 +127,33 @@ export function TourOverlay({ onDone }: { onDone: () => void }) {
       }
     : null
 
-  // Tooltip positioning: prefer right of target, fallback to center
-  const tooltipLeft = spotlight ? Math.min(spotlight.left + spotlight.width + 16, window.innerWidth - 320) : '50%'
-  const tooltipTop  = spotlight
-    ? Math.max(16, spotlight.top + spotlight.height / 2 - 100)
-    : '50%'
+  // Tooltip positioning. En desktop: a la derecha del spotlight.
+  // En mobile (cuando la sidebar drawer está abierta) el spotlight queda en
+  // la izquierda del viewport — el tooltip va abajo del spotlight para no
+  // tapar la sidebar ni quedar afuera del viewport.
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
+  const TOOLTIP_W = isMobile ? Math.min(320, window.innerWidth - 32) : 288
+
+  let tooltipLeft: number | string
+  let tooltipTop: number | string
+
+  if (!spotlight) {
+    tooltipLeft = '50%'
+    tooltipTop = '50%'
+  } else if (isMobile) {
+    // Mobile: centrado horizontal, debajo del spotlight si hay espacio,
+    // arriba si no.
+    tooltipLeft = Math.max(16, (window.innerWidth - TOOLTIP_W) / 2)
+    const belowSpace = window.innerHeight - (spotlight.top + spotlight.height)
+    const TOOLTIP_H = 240
+    tooltipTop = belowSpace > TOOLTIP_H + 24
+      ? spotlight.top + spotlight.height + 16
+      : Math.max(16, spotlight.top - TOOLTIP_H - 16)
+  } else {
+    // Desktop: a la derecha del spotlight, clamp-eado al viewport.
+    tooltipLeft = Math.min(spotlight.left + spotlight.width + 16, window.innerWidth - TOOLTIP_W - 16)
+    tooltipTop = Math.max(16, spotlight.top + spotlight.height / 2 - 100)
+  }
 
   return (
     <div className="fixed inset-0 z-50" style={{ pointerEvents: 'auto' }}>
@@ -136,10 +195,13 @@ export function TourOverlay({ onDone }: { onDone: () => void }) {
         )}
       </svg>
 
-      {/* Tooltip card */}
+      {/* Tooltip card. Width responsive (max-w-[calc(100vw-2rem)] evita que
+          se salga en pantallas < 320px). */}
       <div
-        className="absolute bg-white rounded-2xl shadow-2xl p-5 w-72"
+        className="absolute bg-white rounded-2xl shadow-2xl p-5"
         style={{
+          width: TOOLTIP_W,
+          maxWidth: 'calc(100vw - 2rem)',
           left: typeof tooltipLeft === 'number' ? tooltipLeft : undefined,
           top:  typeof tooltipTop  === 'number' ? tooltipTop  : undefined,
           transform: typeof tooltipLeft === 'string' ? 'translate(-50%, -50%)' : undefined,

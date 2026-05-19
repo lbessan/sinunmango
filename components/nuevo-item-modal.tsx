@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 import { X, Pencil } from 'lucide-react'
-import { ICONOS_CATEGORIAS } from '@/lib/iconos-categorias'
 import { IconoCategoria } from '@/components/icono-categoria'
-import { IconPickerModal } from '@/components/icon-picker-modal'
+import { EmojiPickerModal } from '@/components/emoji-picker-modal'
 
 type Categoria = { id: string; nombre_categoria: string; icono: string | null }
 
@@ -19,14 +18,13 @@ type Props = {
 
 export function NuevoItemModal({ tipo, categorias, categoriaActual, onCreado, onClose, zIndex = 60 }: Props) {
   const [nombre,  setNombre]  = useState('')
-  const [icono,   setIcono]   = useState<string>('ShoppingCart')
+  // Default emoji — consistente con el seed SQL del trigger.
+  const [icono,   setIcono]   = useState<string>('🏷️')
   const [tipoMov, setTipoMov] = useState('Gasto')
   const [padreId, setPadreId] = useState(categoriaActual ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState('')
-
-  const iconoMeta = ICONOS_CATEGORIAS.find(i => i.name === icono)
 
   const handleGuardar = async () => {
     if (!nombre.trim()) { setError('El nombre es obligatorio'); return }
@@ -73,19 +71,25 @@ export function NuevoItemModal({ tipo, categorias, categoriaActual, onCreado, on
           <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl">
             <button
               onClick={() => setPickerOpen(true)}
-              className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center justify-center shrink-0 group relative"
+              className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 hover:border-[color:var(--accent)] hover:shadow-md transition-all flex items-center justify-center shrink-0 group relative"
             >
               <IconoCategoria icono={icono} size={28} color="#475569" />
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Badge "editar": visible siempre en mobile, hover-only en sm+.
+                  Color de marca (accent) en lugar del indigo legacy. */}
+              <span
+                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full text-white flex items-center justify-center shadow-sm sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                style={{ background: 'var(--accent)' }}
+              >
                 <Pencil size={10} />
               </span>
             </button>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-700 truncate">{nombre || 'Nombre'}</p>
-              <p className="text-xs text-slate-400">{iconoMeta ? `${iconoMeta.label} · ${iconoMeta.grupo}` : icono}</p>
+              <p className="text-base text-slate-400" aria-hidden="true">{icono}</p>
               <button
                 onClick={() => setPickerOpen(true)}
-                className="text-xs text-indigo-600 hover:text-indigo-800 mt-1 font-medium"
+                className="text-xs mt-1 font-medium hover:underline"
+                style={{ color: 'var(--accent)' }}
               >
                 Cambiar icono →
               </button>
@@ -142,10 +146,10 @@ export function NuevoItemModal({ tipo, categorias, categoriaActual, onCreado, on
         </div>
       </div>
 
-      <IconPickerModal
+      <EmojiPickerModal
         open={pickerOpen}
         current={icono}
-        onPick={(name) => setIcono(name)}
+        onPick={(emoji) => setIcono(emoji)}
         onClose={() => setPickerOpen(false)}
       />
     </div>

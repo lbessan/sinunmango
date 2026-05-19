@@ -6,8 +6,7 @@ import { Pencil, Plus, X, Save } from 'lucide-react'
 import { DeleteButton } from '@/components/delete-button'
 import { IconoCategoria } from '@/components/icono-categoria'
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
-import { IconPickerModal } from '@/components/icon-picker-modal'
-import { ICONOS_CATEGORIAS } from '@/lib/iconos-categorias'
+import { EmojiPickerModal } from '@/components/emoji-picker-modal'
 
 type Categoria    = { id: string; nombre_categoria: string; icono: string | null; tipo_default: string | null }
 type Subcategoria = { id: string; categoria_padre: string; nombre_subcategoria: string; icono: string | null }
@@ -21,12 +20,11 @@ function EditarSubcatModal({ sub, categorias, onGuardado, onClose }: {
 }) {
   const [nombre,   setNombre]   = useState(sub.nombre_subcategoria)
   const [padreId,  setPadreId]  = useState(sub.categoria_padre)
-  const [icono,    setIcono]    = useState<string>(sub.icono ?? 'ShoppingCart')
+  // Default emoji (no Lucide name) — consistente con el seed SQL.
+  const [icono,    setIcono]    = useState<string>(sub.icono ?? '🏷️')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [saving,   setSaving]   = useState(false)
   const [error,    setError]    = useState('')
-
-  const iconoMeta = ICONOS_CATEGORIAS.find(i => i.name === icono)
 
   const handleGuardar = async () => {
     if (!nombre.trim()) { setError('El nombre es obligatorio'); return }
@@ -66,16 +64,21 @@ function EditarSubcatModal({ sub, categorias, onGuardado, onClose }: {
           <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl">
             <button
               onClick={() => setPickerOpen(true)}
-              className="w-12 h-12 rounded-xl bg-white border-2 border-slate-200 hover:border-indigo-300 hover:shadow-sm transition-all flex items-center justify-center shrink-0 group relative"
+              className="w-12 h-12 rounded-xl bg-white border-2 border-slate-200 hover:border-[color:var(--accent)] hover:shadow-sm transition-all flex items-center justify-center shrink-0 group relative"
             >
               <IconoCategoria icono={icono} size={24} color="#475569" />
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Badge "editar": siempre visible en mobile, hover-only en sm+.
+                  Color de marca (accent) en lugar del indigo legacy. */}
+              <span
+                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full text-white flex items-center justify-center shadow-sm sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                style={{ background: 'var(--accent)' }}
+              >
                 <Pencil size={9} />
               </span>
             </button>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-700 truncate">{nombre || 'Nombre'}</p>
-              <p className="text-xs text-slate-400">{iconoMeta ? `${iconoMeta.label} · ${iconoMeta.grupo}` : icono}</p>
+              <p className="text-base text-slate-400" aria-hidden="true">{icono}</p>
             </div>
           </div>
 
@@ -113,10 +116,10 @@ function EditarSubcatModal({ sub, categorias, onGuardado, onClose }: {
         </div>
       </div>
 
-      <IconPickerModal
+      <EmojiPickerModal
         open={pickerOpen}
         current={icono}
-        onPick={(name) => setIcono(name)}
+        onPick={(emoji) => setIcono(emoji)}
         onClose={() => setPickerOpen(false)}
       />
     </div>

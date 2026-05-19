@@ -446,8 +446,12 @@ export function ManguitoFlotante() {
 
       {/* ── Botón flotante ─────────────────────────────────────────────────── */}
       {/* bottom usa calc + env(safe-area-inset-bottom) para que el home
-          indicator del iPhone en PWA standalone no se solape con el FAB. */}
+          indicator del iPhone en PWA standalone no se solape con el FAB.
+          data-tour="tour-manguito" es el anchor del step 5 del TourOverlay
+          (components/tour-overlay.tsx) — antes apuntaba a un selector
+          inexistente y el tooltip caía centrado sin spotlight. */}
       <div
+        data-tour="tour-manguito"
         className="fixed z-50 flex items-center gap-3"
         style={{ right: 24, bottom: 'calc(24px + env(safe-area-inset-bottom))' }}
       >
