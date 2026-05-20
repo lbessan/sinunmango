@@ -548,6 +548,7 @@ export type Database = {
         Row: {
           authorized: boolean | null
           created_at: string | null
+          deleted_at: string | null
           email: string
           google_purchase_token: string | null
           google_subscription_id: string | null
@@ -559,6 +560,7 @@ export type Database = {
         Insert: {
           authorized?: boolean | null
           created_at?: string | null
+          deleted_at?: string | null
           email: string
           google_purchase_token?: string | null
           google_subscription_id?: string | null
@@ -570,6 +572,7 @@ export type Database = {
         Update: {
           authorized?: boolean | null
           created_at?: string | null
+          deleted_at?: string | null
           email?: string
           google_purchase_token?: string | null
           google_subscription_id?: string | null

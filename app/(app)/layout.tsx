@@ -14,6 +14,20 @@ export default async function AppLayout({
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
+  // Soft-delete gate: si la cuenta está marcada como deleted_at (pendiente
+  // de purga por el cron), mostrar la pantalla de recuperación en vez del
+  // dashboard. El user todavía tiene sesión Supabase válida porque auth.users
+  // sigue existiendo — solo user_profiles.deleted_at está seteado.
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('deleted_at')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (profile?.deleted_at) {
+    redirect('/account-deleted')
+  }
+
   // Onboarding gate: si el usuario no tiene cuentas activas, lo mandamos al onboarding.
   // RLS filtra automático por user_id; el .eq() se mantiene como defensa.
   const { count } = await supabase
