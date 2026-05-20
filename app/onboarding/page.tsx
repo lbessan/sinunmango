@@ -439,7 +439,19 @@ export default function OnboardingPage() {
     localStorage.setItem(STORAGE_DARKMODE, String(next))
   }
 
-  const handleFinish = () => router.push('/dashboard?tour=1')
+  const handleFinish = async () => {
+    // Marcamos el flag onboarding_completed_at. A partir de acá, los
+    // endpoints sensibles a cupo (parsear PDF/resumen) sí consumen contador.
+    // Es fire-and-forget — si falla no bloqueamos el redirect; el flag se
+    // termina seteando en el próximo intento o queda como NULL (no es crítico
+    // para el flow, solo para el contador).
+    try {
+      await fetch('/api/me/complete-onboarding', { method: 'POST' })
+    } catch {
+      // sin bloqueo
+    }
+    router.push('/dashboard?tour=1')
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
 

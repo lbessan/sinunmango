@@ -202,3 +202,20 @@ export function usageHeaders(usage: UsageResult): Record<string, string> {
     'X-Usage-Remaining': String(usage.remaining),
   }
 }
+
+// ── Onboarding: chequear si el user todavía no terminó el wizard ─────────────
+// Los endpoints sensibles a cupo lo usan para saltear check + commit mientras
+// el user está armando su cuenta. Una vez que termina (handleFinish del
+// onboarding llama a /api/me/complete-onboarding), el flag queda seteado y
+// los contadores empiezan a correr normal.
+export async function isOnboardingActive(
+  supabase: SupabaseClient<Database>,
+  userId:   string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('onboarding_completed_at')
+    .eq('user_id', userId)
+    .maybeSingle()
+  return !data?.onboarding_completed_at
+}
