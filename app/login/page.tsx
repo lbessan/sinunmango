@@ -124,6 +124,13 @@ function LoginContent() {
       ? 'Hubo un error al iniciar sesión. Intentá de nuevo.'
       : null
 
+  // Mensaje confirmando eliminación de cuenta (se llega acá tras eliminar
+  // desde /configuracion → /api/me/delete cierra sesión → redirect a
+  // /login?error=account_deleted). NO es un error real — es informativo.
+  const deletedMsg = errorParam === 'account_deleted'
+    ? 'Tu cuenta fue eliminada. Tenés 30 días para recuperarla iniciando sesión con el mismo email.'
+    : null
+
   const inputClass = 'w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-400 transition'
 
   return (
@@ -159,6 +166,14 @@ function LoginContent() {
             <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
               <AlertCircle size={16} className="text-red-400 mt-0.5 shrink-0" />
               <p className="text-sm text-red-600">{errorMsg}</p>
+            </div>
+          )}
+
+          {/* Mensaje informativo post-deletion (no es error). */}
+          {deletedMsg && (
+            <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+              <CheckCircle size={16} className="text-emerald-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-emerald-700">{deletedMsg}</p>
             </div>
           )}
 

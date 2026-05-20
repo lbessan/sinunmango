@@ -5,13 +5,14 @@ import {
   User, Shield, Palette, Moon, Sun, Check,
   ChevronRight, Mail, KeyRound, ShieldCheck, ShieldAlert,
   Info, Loader2, Smartphone, Bell, CalendarClock,
-  Copy, RefreshCw, Filter, AtSign, Lock, Sparkles,
+  Copy, RefreshCw, Filter, AtSign, Lock, Sparkles, ShieldOff,
 } from 'lucide-react'
 import { LimitReachedModal } from '@/components/limit-reached-modal'
 import {
   THEMES, ThemeKey, applyTheme,
   STORAGE_THEME, useTheme,
 } from '@/components/theme-provider'
+import { AccountActions } from '@/components/account-actions'
 import { createClient } from '@/lib/supabase/client'
 import type { UserPreferences } from '@/app/api/user-preferences/route'
 
@@ -1027,6 +1028,15 @@ export function ConfiguracionClient({
           </div>
 
         </div>
+      </Section>
+
+      {/* ── TU CUENTA (export + eliminar) ─────────────────────────────────── */}
+      <Section
+        icon={<ShieldOff size={16} />}
+        title="Tu cuenta"
+        description="Descargá tus datos o eliminá tu cuenta"
+      >
+        <AccountActions />
       </Section>
 
       <LimitReachedModal

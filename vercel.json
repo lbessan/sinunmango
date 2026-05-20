@@ -5,6 +5,7 @@
     { "path": "/api/cron/alertas-vencimientos",   "schedule": "0 11 * * *" },
     { "path": "/api/cron/actualizar-dolar",       "schedule": "0 10 * * 1-5" },
     { "path": "/api/cron/resumen-semanal",        "schedule": "0 9 * * 1"    },
-    { "path": "/api/cron/resumen-mensual",        "schedule": "0 9 1 * *"    }
+    { "path": "/api/cron/resumen-mensual",        "schedule": "0 9 1 * *"    },
+    { "path": "/api/cron/purge-deleted-users",    "schedule": "0 4 * * *"    }
   ]
 }
