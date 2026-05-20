@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus, Camera, Loader2 } from 'lucide-react'
+import { Plus, Camera, Loader2, ArrowLeft } from 'lucide-react'
 import { NuevoItemModal } from '@/components/nuevo-item-modal'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodoCuenta as calcularPeriodo, addMonths } from '@/lib/tarjeta-periodo'
@@ -195,10 +195,28 @@ function NuevoMovimientoContent() {
     )
   }
 
+  // Botón "Cancelar" / "Volver": si vino con ?returnTo (ej: desde gastos fijos
+  // al apretar "Registrar pago"), volvemos a ese origen. Si no, al listado
+  // de movimientos. Validamos que empiece con "/" para evitar open-redirects.
+  const cancelHref = (() => {
+    const raw = searchParams.get('returnTo')
+    return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/movimientos'
+  })()
+
   return (
     <div className="max-w-xl mx-auto">
       <div className="flex items-center justify-between mb-6 gap-3">
-        <h1 className="text-xl font-semibold text-slate-800 min-w-0 truncate">Nuevo movimiento</h1>
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            onClick={() => router.push(cancelHref)}
+            title="Volver"
+            aria-label="Volver"
+            className="shrink-0 p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-xl font-semibold text-slate-800 min-w-0 truncate">Nuevo movimiento</h1>
+        </div>
         {/* Escanear ticket con IA — en mobile texto corto "Escanear", icono full text en sm+ */}
         <div className="shrink-0">
           <input
@@ -404,14 +422,23 @@ function NuevoMovimientoContent() {
           </div>
         )}
 
-        <button
-          onClick={handleGuardar}
-          disabled={saving || saved}
-          className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-colors"
-          style={{ background: saved ? '#16a34a' : 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))', opacity: saving ? 0.7 : 1 }}
-        >
-          {saved ? '✓ Guardado — redirigiendo...' : saving ? 'Guardando...' : 'Guardar movimiento'}
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={handleGuardar}
+            disabled={saving || saved}
+            className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-colors"
+            style={{ background: saved ? '#16a34a' : 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))', opacity: saving ? 0.7 : 1 }}
+          >
+            {saved ? '✓ Guardado — redirigiendo...' : saving ? 'Guardando...' : 'Guardar movimiento'}
+          </button>
+          <button
+            onClick={() => router.push(cancelHref)}
+            disabled={saving || saved}
+            className="w-full py-2.5 rounded-xl text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-60 transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
 
       </div>
 

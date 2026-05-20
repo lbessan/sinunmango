@@ -127,6 +127,62 @@ export function CuentaFormClient({
 
       <div className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6 space-y-5">
 
+        {/* ── Tipo de cuenta — primero de todo porque cambia qué inputs
+            aparecen abajo (BankSelector solo para Banco/Billetera; subtipo
+            CA/CC solo para Banco). Chips grandes en vez de un <select>
+            chiquito enterrado: los users no encontraban el selector y
+            terminaban creando todo como "Banco" por default. */}
+        <div>
+          <label className={labelClass}>¿Qué tipo de cuenta es? *</label>
+          <div className="grid grid-cols-3 gap-2">
+            {(['Banco', 'Billetera', 'Efectivo'] as TipoPrincipal[]).map(t => {
+              const active = tipoPrincipal === t
+              const label  = t === 'Billetera' ? 'Billetera virtual' : t
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTipoPrincipal(t)}
+                  className="py-2.5 rounded-xl text-sm font-medium border transition-colors"
+                  style={{
+                    background: active ? 'var(--accent, #1a6b5a)' : 'white',
+                    color:      active ? 'white' : '#475569',
+                    borderColor: active ? 'var(--accent, #1a6b5a)' : '#e2e8f0',
+                  }}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+          {/* Subtipo solo para Banco */}
+          {tipoPrincipal === 'Banco' && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {([
+                { v: 'CA' as const, label: 'Caja de Ahorro' },
+                { v: 'CC' as const, label: 'Cuenta Corriente' },
+              ]).map(({ v, label }) => {
+                const active = subtipoBanco === v
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setSubtipoBanco(v)}
+                    className="py-2 rounded-lg text-xs font-medium border transition-colors"
+                    style={{
+                      background: active ? '#f1f5f9' : 'white',
+                      color:      active ? '#0f172a' : '#64748b',
+                      borderColor: active ? '#cbd5e1' : '#e2e8f0',
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
         {/* ── Selector de banco / billetera ── */}
         {tipoPrincipal !== 'Efectivo' && (
           <BankSelector
@@ -214,32 +270,6 @@ export function CuentaFormClient({
               <option value="USD">USD</option>
             </select>
           </div>
-          <div>
-            <label className={labelClass}>Tipo *</label>
-            <select
-              value={tipoPrincipal}
-              onChange={e => setTipoPrincipal(e.target.value as TipoPrincipal)}
-              className={inputClass}
-            >
-              <option value="Banco">Banco</option>
-              <option value="Billetera">Billetera virtual</option>
-              <option value="Efectivo">Efectivo</option>
-            </select>
-          </div>
-          {/* Subtipo: solo para bancos */}
-          {tipoPrincipal === 'Banco' && (
-            <div>
-              <label className={labelClass}>Subtipo</label>
-              <select
-                value={subtipoBanco}
-                onChange={e => setSubtipoBanco(e.target.value as 'CA' | 'CC')}
-                className={inputClass}
-              >
-                <option value="CA">Caja de Ahorro</option>
-                <option value="CC">Cuenta Corriente</option>
-              </select>
-            </div>
-          )}
           <div>
             <label className={labelClass}>Saldo inicial</label>
             <input type="number" step="0.01" value={form.saldo_inicial}
