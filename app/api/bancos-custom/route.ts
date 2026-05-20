@@ -5,9 +5,13 @@ import {
   type Validated,
 } from '@/lib/validators'
 
+type BancoTipo = 'banco' | 'billetera' | 'crypto'
+const BANCO_TIPOS: readonly BancoTipo[] = ['banco', 'billetera', 'crypto'] as const
+
 type BancoInsert = {
   nombre:            string
   color:             string
+  tipo:              BancoTipo
   imagen_url:        string | null
   imagen_banner_url: string | null
 }
@@ -26,6 +30,16 @@ function validateBanco(raw: unknown): Validated<BancoInsert> {
     color = v.data
   }
 
+  // Tipo (banco/billetera/crypto). Default 'banco' si no viene — backwards
+  // compatible con clients antiguos. La columna en DB también tiene default.
+  let tipo: BancoTipo = 'banco'
+  if (b.tipo !== undefined && b.tipo !== null && b.tipo !== '') {
+    if (typeof b.tipo !== 'string' || !BANCO_TIPOS.includes(b.tipo as BancoTipo)) {
+      return { ok: false, error: 'tipo inválido — debe ser banco, billetera o crypto' }
+    }
+    tipo = b.tipo as BancoTipo
+  }
+
   let imagen_url: string | null = null
   if (b.imagen_url !== undefined && b.imagen_url !== null && b.imagen_url !== '') {
     const v = validateString(b.imagen_url, { max: 500, field: 'imagen_url' })
@@ -40,7 +54,7 @@ function validateBanco(raw: unknown): Validated<BancoInsert> {
     imagen_banner_url = v.data
   }
 
-  return { ok: true, data: { nombre: nombre.data, color, imagen_url, imagen_banner_url } }
+  return { ok: true, data: { nombre: nombre.data, color, tipo, imagen_url, imagen_banner_url } }
 }
 
 export async function GET(req: NextRequest) {

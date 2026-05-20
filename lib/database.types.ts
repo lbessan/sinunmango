@@ -47,6 +47,7 @@ export type Database = {
           imagen_banner_url: string | null
           imagen_url: string | null
           nombre: string
+          tipo: string
           user_id: string
         }
         Insert: {
@@ -56,6 +57,7 @@ export type Database = {
           imagen_banner_url?: string | null
           imagen_url?: string | null
           nombre: string
+          tipo?: string
           user_id: string
         }
         Update: {
@@ -65,6 +67,7 @@ export type Database = {
           imagen_banner_url?: string | null
           imagen_url?: string | null
           nombre?: string
+          tipo?: string
           user_id?: string
         }
         Relationships: []
