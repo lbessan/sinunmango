@@ -7,13 +7,22 @@ import { BANKS, bankIconUrl, type BankEntry } from '@/constants/banks'
 import { ImagenUploader } from '@/components/imagen-uploader'
 import { DeleteButton } from '@/components/delete-button'
 
+type BancoTipo = 'banco' | 'billetera' | 'crypto'
+
 type BancoCustom = {
   id: string
   nombre: string
   color: string
+  tipo: BancoTipo
   imagen_url: string | null
   imagen_banner_url: string | null
 }
+
+const TIPO_CHIPS: { value: BancoTipo; label: string }[] = [
+  { value: 'banco',     label: 'Banco' },
+  { value: 'billetera', label: 'Billetera virtual' },
+  { value: 'crypto',    label: 'Cripto / Fintech' },
+]
 
 // ── Logo component ────────────────────────────────────────────────────────────
 
@@ -47,6 +56,7 @@ function BancoCustomForm({ banco, onSaved, onCancel }: {
   const isEditing   = !!banco
   const [nombre,    setNombre]    = useState(banco?.nombre ?? '')
   const [color,     setColor]     = useState(banco?.color ?? '#475569')
+  const [tipo,      setTipo]      = useState<BancoTipo>(banco?.tipo ?? 'banco')
   const [imagenUrl, setImagenUrl] = useState(banco?.imagen_url ?? '')
   const [bannerUrl, setBannerUrl] = useState(banco?.imagen_banner_url ?? '')
   const [saving,    setSaving]    = useState(false)
@@ -57,7 +67,7 @@ function BancoCustomForm({ banco, onSaved, onCancel }: {
     if (!nombre.trim()) { setError('El nombre es obligatorio'); return }
     setSaving(true); setError('')
 
-    const body = { nombre: nombre.trim(), color, imagen_url: imagenUrl || null, imagen_banner_url: bannerUrl || null }
+    const body = { nombre: nombre.trim(), color, tipo, imagen_url: imagenUrl || null, imagen_banner_url: bannerUrl || null }
 
     let id = banco?.id
     const res = isEditing
@@ -91,6 +101,32 @@ function BancoCustomForm({ banco, onSaved, onCancel }: {
         <input type="text" value={nombre} onChange={e => setNombre(e.target.value)}
           placeholder="Ej: Brubank, Naranja X, Lemon..."
           className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none bg-white" />
+      </div>
+
+      {/* Tipo — determina la sección donde aparece en el catálogo (Bancos /
+          Billeteras virtuales / Cripto-Fintech). */}
+      <div>
+        <label className="block text-xs font-medium text-slate-500 mb-1.5">¿Qué tipo es? *</label>
+        <div className="grid grid-cols-3 gap-2">
+          {TIPO_CHIPS.map(({ value, label }) => {
+            const active = tipo === value
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTipo(value)}
+                className="py-2.5 rounded-xl text-sm font-medium border transition-colors"
+                style={{
+                  background:  active ? 'var(--accent, #1a6b5a)' : 'white',
+                  color:       active ? 'white' : '#475569',
+                  borderColor: active ? 'var(--accent, #1a6b5a)' : '#e2e8f0',
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <div>
@@ -224,50 +260,50 @@ export function BancosClient({ bancosCustom: initialCustom }: { bancosCustom: Ba
         {search && <button onClick={() => setSearch('')} className="text-slate-300 hover:text-slate-500"><X size={13} /></button>}
       </div>
 
-      {/* Bancos personalizados */}
-      {filteredCustom.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-          <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
-            <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">✦ Personalizados</span>
-            <span className="text-xs text-amber-500">{filteredCustom.length}</span>
-          </div>
-          {filteredCustom.map(b => (
-            <div key={b.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
-              <BankLogo id={b.id} nombre={b.nombre} color={b.color} size={36} imagenUrl={b.imagen_url} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-700">{b.nombre}</p>
-                <p className="text-xs text-slate-400">Personalizado</p>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => { setEditando(b); setShowForm(false) }}
-                  className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
-                  title="Editar"
-                >
-                  <Pencil size={15} />
-                </button>
-                <DeleteButton
-                  endpoint={`/api/bancos-custom/${b.id}`}
-                  label={b.nombre}
-                  description="El banco personalizado se eliminará. Las cuentas existentes no se ven afectadas."
-                  variant="icon"
-                  onSuccess={() => setBancosCustom(prev => prev.filter(x => x.id !== b.id))}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Lista de bancos de fábrica */}
-      {(Object.keys(TIPO_LABELS) as ('banco' | 'billetera' | 'crypto')[]).map(tipo => {
-        const lista = grouped[tipo] ?? []
-        if (!lista.length) return null
+      {/* Lista combinada — bancos de fábrica + custom, agrupados por tipo.
+          Los custom van primero dentro de cada sección con badge "Personalizado"
+          y acciones de editar/eliminar; los de fábrica van después como
+          read-only. Esto reemplaza la sección "✦ Personalizados" suelta que
+          mezclaba todos los tipos. */}
+      {(Object.keys(TIPO_LABELS) as BancoTipo[]).map(tipo => {
+        const oficiales = grouped[tipo] ?? []
+        const customs   = filteredCustom.filter(b => b.tipo === tipo)
+        if (!oficiales.length && !customs.length) return null
         return (
           <div key={tipo} className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-            <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+            <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{TIPO_LABELS[tipo]}</p>
+              {customs.length > 0 && (
+                <span className="text-[10px] text-amber-600 font-semibold uppercase tracking-wider">
+                  {customs.length} personalizado{customs.length === 1 ? '' : 's'}
+                </span>
+              )}
             </div>
-            {lista.map(bank => (
+            {customs.map(b => (
+              <div key={b.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                <BankLogo id={b.id} nombre={b.nombre} color={b.color} size={36} imagenUrl={b.imagen_url} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-700 truncate">{b.nombre}</p>
+                  <p className="text-xs text-amber-600">✦ Personalizado</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => { setEditando(b); setShowForm(false) }}
+                    className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+                    title="Editar"
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <DeleteButton
+                    endpoint={`/api/bancos-custom/${b.id}`}
+                    label={b.nombre}
+                    description="El banco personalizado se eliminará. Las cuentas existentes no se ven afectadas."
+                    variant="icon"
+                    onSuccess={() => setBancosCustom(prev => prev.filter(x => x.id !== b.id))}
+                  />
+                </div>
+              </div>
+            ))}
+            {oficiales.map(bank => (
               <div key={bank.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0">
                 <BankLogo id={bank.id} nombre={bank.nombre} color={bank.color} size={36} />
                 <div className="flex-1 min-w-0">

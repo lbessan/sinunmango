@@ -5,6 +5,8 @@ import {
   type Validated,
 } from '@/lib/validators'
 
+const BANCO_TIPOS = ['banco', 'billetera', 'crypto'] as const
+
 function validateBancoUpdate(raw: unknown): Validated<Record<string, unknown>> {
   if (typeof raw !== 'object' || raw === null) return { ok: false, error: 'Body inválido' }
   const b = raw as Record<string, unknown>
@@ -19,6 +21,12 @@ function validateBancoUpdate(raw: unknown): Validated<Record<string, unknown>> {
     const v = validateHexColor(b.color, 'color')
     if (!v.ok) return v
     updates.color = v.data
+  }
+  if (b.tipo !== undefined) {
+    if (typeof b.tipo !== 'string' || !(BANCO_TIPOS as readonly string[]).includes(b.tipo)) {
+      return { ok: false, error: 'tipo inválido — debe ser banco, billetera o crypto' }
+    }
+    updates.tipo = b.tipo
   }
   if (b.imagen_url !== undefined) {
     if (b.imagen_url === null || b.imagen_url === '') {
