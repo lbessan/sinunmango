@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
-import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
+import { checkMonthlyLimit, commitMonthlyUsage, isOnboardingActive, usageHeaders } from '@/lib/usage-limits'
 import { parseClaudeJSON, recoverPartialArray } from '@/lib/parse-claude-json'
 
 const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario. PDFs típicos < 2 MB.
@@ -24,9 +24,13 @@ export async function POST(req: NextRequest) {
 
   // Monthly usage gate (free tier): 1 resumen/mes. Pro: ilimitado.
   // CHECK sin incrementar — solo consumimos cupo si la operación resulta exitosa.
-  const plan  = await getUserPlan(supabase)
-  const usage = await checkMonthlyLimit(supabase, 'resumen', plan.has_pro_access)
-  if (!usage.allowed) {
+  // Durante el onboarding, el contador no aplica (ver isOnboardingActive).
+  const plan         = await getUserPlan(supabase)
+  const inOnboarding = await isOnboardingActive(supabase, user.id)
+  const usage        = inOnboarding
+    ? null
+    : await checkMonthlyLimit(supabase, 'resumen', plan.has_pro_access)
+  if (usage && !usage.allowed) {
     return NextResponse.json(
       { error: 'limit_reached', feature: 'resumen', limit: usage.limit, used: usage.used },
       { status: 429 },
@@ -207,16 +211,16 @@ Notas importantes:
   // Intento de parse normal
   const parsed = parseClaudeJSON<{ transacciones?: unknown[] }>(rawText)
   if (parsed) {
-    const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
-    return NextResponse.json({ ok: true, transacciones: parsed.transacciones ?? [] }, { headers: usageHeaders(committed) })
+    const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
+    return NextResponse.json({ ok: true, transacciones: parsed.transacciones ?? [] }, { headers: committed ? usageHeaders(committed) : {} })
   }
 
   // Si el JSON está truncado, intentar rescatar el array de transacciones
   const recovered = recoverPartialArray(rawText, 'transacciones')
   if (recovered) {
     console.warn(`[parsear-resumen] Partial parse recovered ${recovered.length} transactions`)
-    const committed = await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
-    return NextResponse.json({ ok: true, transacciones: recovered }, { headers: usageHeaders(committed) })
+    const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
+    return NextResponse.json({ ok: true, transacciones: recovered }, { headers: committed ? usageHeaders(committed) : {} })
   }
 
   console.error('[parsear-resumen] Could not parse Claude response:', rawText.slice(0, 500))

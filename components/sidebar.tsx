@@ -54,8 +54,8 @@ export async function Sidebar() {
         <NavSection id="mis-cuentas" label="Mis cuentas" collapsible>
           <NavItem href="/cuentas"      icon={<Wallet size={17} />}      label="Cuentas"      tourId="tour-cuentas" />
           <NavItem href="/tarjetas"     icon={<CreditCard size={17} />}  label="Tarjetas"     tourId="tour-tarjetas" />
-          <NavItem href="/gastos-fijos" icon={<Receipt size={17} />}     label="Gastos fijos" />
-          <NavItem href="/inversiones"  icon={<TrendingUp size={17} />}  label="Inversiones" />
+          <NavItem href="/gastos-fijos" icon={<Receipt size={17} />}     label="Gastos fijos" tourId="tour-gastos-fijos" />
+          <NavItem href="/inversiones"  icon={<TrendingUp size={17} />}  label="Inversiones"  tourId="tour-inversiones" />
         </NavSection>
 
         <NavSection id="configuracion" label="Configuración" collapsible>

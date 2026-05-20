@@ -40,6 +40,18 @@ const STEPS: TourStep[] = [
     emoji:  '💳',
   },
   {
+    tourId: 'tour-gastos-fijos',
+    title:  'Gastos fijos',
+    desc:   'Netflix, expensas, prepaga, alquiler. Los cargás una vez y todos los meses se acreditan solos en el período que corresponda — sin olvidarte nada.',
+    emoji:  '🔁',
+  },
+  {
+    tourId: 'tour-inversiones',
+    title:  'Inversiones',
+    desc:   'Plazos fijos, FCI, dólares, crypto, CEDEARs, bonos. Seguí tu cartera en un solo lugar y mirá tu patrimonio total cuando quieras.',
+    emoji:  '📈',
+  },
+  {
     tourId: 'tour-manguito',
     title:  'Manguito',
     desc:   'Tu asistente con IA. Preguntale "¿cuánto gasté esta semana?" o dictale un gasto: "gasté $4.500 en el súper" — lo registra solo.',

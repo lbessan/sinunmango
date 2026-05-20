@@ -552,6 +552,7 @@ export type Database = {
           email: string
           google_purchase_token: string | null
           google_subscription_id: string | null
+          onboarding_completed_at: string | null
           plan: string
           plan_expires_at: string | null
           plan_updated_at: string | null
@@ -564,6 +565,7 @@ export type Database = {
           email: string
           google_purchase_token?: string | null
           google_subscription_id?: string | null
+          onboarding_completed_at?: string | null
           plan?: string
           plan_expires_at?: string | null
           plan_updated_at?: string | null
@@ -576,6 +578,7 @@ export type Database = {
           email?: string
           google_purchase_token?: string | null
           google_subscription_id?: string | null
+          onboarding_completed_at?: string | null
           plan?: string
           plan_expires_at?: string | null
           plan_updated_at?: string | null
