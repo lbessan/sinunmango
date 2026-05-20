@@ -141,12 +141,14 @@ export function TourOverlay({ onDone }: { onDone: () => void }) {
       }
     : null
 
-  // Tooltip positioning. En desktop: a la derecha del spotlight.
-  // En mobile (cuando la sidebar drawer está abierta) el spotlight queda en
-  // la izquierda del viewport — el tooltip va abajo del spotlight para no
-  // tapar la sidebar ni quedar afuera del viewport.
+  // Tooltip positioning. Estimación de alto del tooltip (avatar + título +
+  // 2-3 líneas de desc + botón ≈ 280px). Usamos esto para clamp tanto en
+  // desktop como mobile y evitar que la card quede recortada cuando el
+  // spotlight está cerca de un borde (caso típico: el FAB del Manguito
+  // pegado a la esquina inferior derecha).
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
   const TOOLTIP_W = isMobile ? Math.min(320, window.innerWidth - 32) : 288
+  const TOOLTIP_H = 280
 
   let tooltipLeft: number | string
   let tooltipTop: number | string
@@ -159,14 +161,29 @@ export function TourOverlay({ onDone }: { onDone: () => void }) {
     // arriba si no.
     tooltipLeft = Math.max(16, (window.innerWidth - TOOLTIP_W) / 2)
     const belowSpace = window.innerHeight - (spotlight.top + spotlight.height)
-    const TOOLTIP_H = 240
     tooltipTop = belowSpace > TOOLTIP_H + 24
       ? spotlight.top + spotlight.height + 16
       : Math.max(16, spotlight.top - TOOLTIP_H - 16)
   } else {
-    // Desktop: a la derecha del spotlight, clamp-eado al viewport.
-    tooltipLeft = Math.min(spotlight.left + spotlight.width + 16, window.innerWidth - TOOLTIP_W - 16)
-    tooltipTop = Math.max(16, spotlight.top + spotlight.height / 2 - 100)
+    // Desktop: por default a la derecha del spotlight. Si no entra abajo
+    // (caso del FAB en bottom-right), lo mandamos ARRIBA del spotlight
+    // centrado horizontalmente — así no se corta contra el bottom.
+    const belowSpace = window.innerHeight - (spotlight.top + spotlight.height / 2)
+    const fitsBeside = belowSpace > TOOLTIP_H / 2 + 16
+
+    if (fitsBeside) {
+      tooltipLeft = Math.min(spotlight.left + spotlight.width + 16, window.innerWidth - TOOLTIP_W - 16)
+      tooltipTop = Math.max(16, Math.min(
+        spotlight.top + spotlight.height / 2 - TOOLTIP_H / 2,
+        window.innerHeight - TOOLTIP_H - 16,
+      ))
+    } else {
+      tooltipTop  = Math.max(16, spotlight.top - TOOLTIP_H - 16)
+      tooltipLeft = Math.max(16, Math.min(
+        spotlight.left + spotlight.width / 2 - TOOLTIP_W / 2,
+        window.innerWidth - TOOLTIP_W - 16,
+      ))
+    }
   }
 
   return (
