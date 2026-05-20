@@ -92,89 +92,115 @@
           </div>
         </div>
 
-        {/*
-          ═══════════════════════════════════════════════════════════════════
-          CUANDO TENGAS EL VIDEO DEMO grabado, reemplazá este placeholder por:
+        {/* Video demo — autoplay muted + loop con botón 🔊 para activar audio.
+            Patrón Apple/Stripe: el video arranca solo (sin molestar al user
+            con sonido inesperado) y el que se engancha activa audio.
 
-          Opción A — mp4 self-hosted en /public/ (RECOMENDADO):
-            <video
-              controls
-              poster="/screenshots/dashboard.jpg"
-              preload="metadata"
-              class="block aspect-[1570/950] w-full bg-[var(--color-sidebar)]"
+            preload="metadata" → solo descarga los primeros KB para mostrar el
+            poster y los duración. El cuerpo del video baja recién al iniciar
+            el playback (autoplay en desktop, o tap en mobile si el browser
+            bloquea autoplay por política de batería).
+
+            Aspect ratio 16:9 (1920/1080) matchea el video real. El poster
+            evita la pantalla negra durante los primeros ms antes de que el
+            primer frame esté listo. */}
+        <div class="relative aspect-video w-full overflow-hidden bg-[var(--color-sidebar)]">
+          <video
+            id="hero-demo-video"
+            autoplay
+            muted
+            loop
+            playsinline
+            preload="metadata"
+            poster="/demo-poster.jpg"
+            aria-label="Demo de sinunmango: cargar gastos, ver dashboard y hablar con Manguito"
+            class="block h-full w-full object-cover"
+          >
+            <source src="/demo.mp4" type="video/mp4" />
+            {/* Fallback si el browser no soporta el video tag */}
+            <img
+              src="/demo-poster.jpg"
+              alt="Demo de sinunmango"
+              class="h-full w-full object-cover"
+            />
+          </video>
+
+          {/* Botón mute/unmute en la esquina inferior derecha. Estado inicial
+              es muted=true, click activa audio. Script al final del Hero. */}
+          <button
+            id="hero-demo-audio-toggle"
+            type="button"
+            aria-label="Activar audio del video"
+            aria-pressed="false"
+            class="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/75 sm:bottom-4 sm:right-4 sm:h-11 sm:w-11"
+          >
+            {/* Ícono "muted" (default) */}
+            <svg
+              data-icon="muted"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
             >
-              <source src="/demo.mp4" type="video/mp4" />
-              <source src="/demo.webm" type="video/webm" />
-            </video>
-
-          Opción B — YouTube embed:
-            <div class="aspect-[1570/950] w-full bg-black">
-              <iframe
-                src="https://www.youtube.com/embed/VIDEO_ID?rel=0&modestbranding=1"
-                title="Demo de sinunmango"
-                class="h-full w-full"
-                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-              ></iframe>
-            </div>
-
-          Recomendado: self-hosted mp4 — sin tracking de YouTube, sin overlay
-          de "videos recomendados" al final, y se ve más prolijo dentro del
-          browser frame. Ver docs/landing-video-guion.md para tips de grabación.
-          ═══════════════════════════════════════════════════════════════════
-        */}
-
-        {/* Placeholder de video: dashboard.jpg como poster + play overlay.
-            Mantiene el aspect ratio del dashboard original (1570/950) para
-            que cuando llegue el video real (que asumimos misma ratio) no
-            haya layout shift. */}
-        <div class="relative aspect-[1570/950] w-full overflow-hidden bg-[var(--color-sidebar)]">
-          <img
-            src="/screenshots/dashboard.jpg"
-            alt="Dashboard de sinunmango: saldo total, indicadores del mes, proyecciones y estado de cuentas"
-            width="1570"
-            height="950"
-            fetchpriority="high"
-            decoding="async"
-            class="absolute inset-0 h-full w-full object-cover opacity-70"
-          />
-          {/* Overlay oscuro + play button gigante */}
-          <div class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-black/20 via-black/30 to-black/50">
-            <button
-              type="button"
-              disabled
-              class="group relative flex h-20 w-20 items-center justify-center rounded-full bg-white/95 shadow-xl ring-4 ring-white/30 transition-transform hover:scale-105 sm:h-24 sm:w-24"
-              aria-label="Demo en video (próximamente)"
+              <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+              <line x1="22" y1="9" x2="16" y2="15" />
+              <line x1="16" y1="9" x2="22" y2="15" />
+            </svg>
+            {/* Ícono "unmuted" (se muestra cuando aria-pressed=true via CSS) */}
+            <svg
+              data-icon="unmuted"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+              class="hidden"
             >
-              {/* Play triangle, sutil shift a la derecha para balance óptico */}
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="ml-1 text-[var(--color-accent2)] sm:h-10 sm:w-10"
-                aria-hidden="true"
-              >
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </button>
-            <div class="text-center text-white">
-              <p class="text-sm font-semibold sm:text-base">
-                Demo en video — próximamente
-              </p>
-              <p class="mt-1 text-xs text-white/70 sm:text-sm">
-                Mientras tanto, probala directo en{" "}
-                <a
-                  href="https://app.sinunmango.com.ar"
-                  class="font-medium underline hover:text-white"
-                >
-                  app.sinunmango.com.ar
-                </a>
-              </p>
-            </div>
-          </div>
+              <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>
   </div>
 </section>
+
+<script>
+  // Toggle audio del video demo del Hero. Inicia muted (autoplay requiere
+  // muted en todos los browsers modernos). Click → muted=false + actualiza
+  // aria-pressed y swap de íconos. Re-click → vuelve a muted.
+  const video = document.getElementById('hero-demo-video') as HTMLVideoElement | null
+  const btn   = document.getElementById('hero-demo-audio-toggle')
+  if (video && btn) {
+    const iconMuted   = btn.querySelector('[data-icon="muted"]')
+    const iconUnmuted = btn.querySelector('[data-icon="unmuted"]')
+
+    btn.addEventListener('click', () => {
+      const willUnmute = video.muted
+      video.muted = !willUnmute
+      btn.setAttribute('aria-pressed', String(willUnmute))
+      btn.setAttribute(
+        'aria-label',
+        willUnmute ? 'Silenciar audio del video' : 'Activar audio del video',
+      )
+      iconMuted?.classList.toggle('hidden', willUnmute)
+      iconUnmuted?.classList.toggle('hidden', !willUnmute)
+      // Si el video estaba pausado (caso mobile sin autoplay), forzar play
+      // al activar el audio — el click es un user gesture válido.
+      if (willUnmute && video.paused) {
+        video.play().catch(() => {/* no-op si el browser igual lo rechaza */})
+      }
+    })
+  }
+</script>
