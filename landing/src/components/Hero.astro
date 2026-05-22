@@ -153,16 +153,24 @@
         </div>
       </div>
 
-      {/* ── Columna derecha: Manguito + chat bubble + KPI card ────── */}
+      {/* ── Columna derecha: Manguito + chat bubble + KPI card ──────
+          Layout: el Manguito en el centro de su columna, los floaters
+          (bubble + KPI) anclados POR FUERA del bounding box visual del
+          Manguito para que no se solapen con el cuerpo de la mascota.
+          - Bubble: arriba-izquierda, fuera del Manguito (hacia la col
+            del headline). Sale del lado superior, "habla" hacia el texto.
+          - KPI: abajo-derecha, fuera del Manguito (sangra al borde). */}
       <div class="relative lg:col-span-5 lg:-mr-12 xl:-mr-20">
         {/* Halo neón mango detrás del Manguito */}
         <div
-          class="absolute inset-[10%] rounded-full opacity-50 blur-[80px]"
+          class="absolute inset-[10%] rounded-full opacity-60 blur-[80px]"
           style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
           aria-hidden="true"
         ></div>
 
-        {/* Manguito gigante. Mismo asset que antes. */}
+        {/* Manguito gigante con animación viva (float + bob + sway).
+            Tres animaciones combinadas para que parezca "vivo" en lugar
+            de un sprite plano flotando. */}
         <img
           src="/manguito-hero.webp"
           alt="Manguito, el asistente con IA de sinunmango"
@@ -170,18 +178,30 @@
           height="1024"
           fetchpriority="high"
           decoding="async"
-          class="relative mx-auto block w-full max-w-[420px] animate-manguito-float sm:max-w-[520px] lg:max-w-none"
+          class="relative mx-auto block w-full max-w-[420px] animate-manguito sm:max-w-[520px] lg:max-w-none"
         />
 
-        {/* Chat bubble — versión dark glassmorphism. Sale del lado
-            superior del Manguito con un tag "MANGUITO RESPONDE".
-            Anclado off-grid (negativo en x) para sumar al desbalance. */}
+        {/* Chat bubble — fuera del bounding del Manguito (más a la
+            izquierda y arriba) para que no se solape con el cuerpo.
+            Fondo casi sólido (#0A0E1A/92) con border ámbar sutil para
+            destacarse contra el dark background sin perderse.
+            Cola apuntando hacia abajo-derecha → hacia el Manguito. */}
         <div
-          class="absolute top-[6%] -left-2 z-20 max-w-[300px] sm:-left-8 sm:max-w-[340px] lg:-left-16"
+          class="absolute -top-4 -left-6 z-20 max-w-[280px] rotate-[-3deg] animate-bubble-float sm:-top-6 sm:-left-12 sm:max-w-[320px] lg:-left-24"
         >
           <div
-            class="relative rounded-2xl rounded-br-md border border-white/10 bg-white/[0.06] px-5 py-4 shadow-2xl backdrop-blur-xl"
+            class="relative rounded-2xl rounded-br-md border border-[#FFB84D]/30 bg-[#0A0E1A]/92 px-5 py-4 shadow-[0_20px_60px_-15px_rgba(255,184,77,0.35)] backdrop-blur-xl"
           >
+            {/* Cola del bubble apuntando hacia el Manguito (abajo-derecha) */}
+            <svg
+              class="absolute -bottom-2 right-6 h-3 w-4 text-[#0A0E1A]/92"
+              viewBox="0 0 16 12"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M0 0 L16 0 L8 12 Z" />
+            </svg>
+
             {/* Tag superior en mono */}
             <div class="mb-2 flex items-center justify-between">
               <span
@@ -190,12 +210,12 @@
               >
                 Manguito responde
               </span>
-              <span class="flex h-1.5 w-1.5">
+              <span class="relative flex h-2 w-2">
                 <span
-                  class="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-[#4ADE80] opacity-75"
+                  class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#4ADE80] opacity-75"
                 ></span>
                 <span
-                  class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#4ADE80]"
+                  class="relative inline-flex h-2 w-2 rounded-full bg-[#4ADE80]"
                 ></span>
               </span>
             </div>
@@ -208,7 +228,7 @@
             </p>
             <p
               id="hero-bubble-answer"
-              class="mt-2 text-sm leading-relaxed text-white/70"
+              class="mt-2 text-sm leading-relaxed text-white/80"
             >
               <span class="font-semibold text-[#FFB84D]">$83.450</span>
               en 14 pedidos. Casi 3× tu promedio del año.
@@ -216,9 +236,10 @@
           </div>
         </div>
 
-        {/* Mini KPI card flotante (offset al otro lado) */}
+        {/* KPI card — abajo a la derecha, sangra al borde para sumar
+            asimetría. Fondo casi sólido para destacarse del Manguito. */}
         <div
-          class="absolute bottom-[10%] -right-2 z-20 hidden rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 backdrop-blur-xl sm:-right-4 sm:block lg:-right-8"
+          class="absolute -bottom-2 -right-2 z-20 hidden rotate-[4deg] animate-kpi-float rounded-2xl border border-[#4ADE80]/30 bg-[#0A0E1A]/92 px-4 py-3 shadow-[0_20px_60px_-15px_rgba(74,222,128,0.35)] backdrop-blur-xl sm:-right-6 sm:block lg:-right-12"
         >
           <div class="flex items-center gap-3">
             <div
@@ -227,7 +248,7 @@
             >
               +47%
             </div>
-            <div class="text-xs leading-tight text-white/70">
+            <div class="text-xs leading-tight text-white/80">
               <div class="font-semibold text-white">Ahorrás más</div>
               <div>vs no controlar</div>
             </div>
@@ -237,17 +258,52 @@
     </div>
   </div>
 
-  {/* Animaciones */}
+  {/* Animaciones del Hero. Más vivas que la versión anterior:
+        - Manguito: combina bob vertical amplio + sway lateral + tilt
+          + micro-bounce. Periodicidad asincrónica entre ejes para que
+          NO se vea como un péndulo plano sino como un personaje que
+          "respira" con cierta torpeza simpática.
+        - Bubble: flotación leve fuera de sync con el Manguito (parece
+          que está "dialogando" en el aire).
+        - KPI card: rotación oscilatoria muy sutil + bob mínimo. */}
   <style is:global>
-    @keyframes manguito-float {
-      0%, 100% { transform: translateY(0px) rotate(-1deg); }
-      50% { transform: translateY(-14px) rotate(1deg); }
+    @keyframes manguito-bob {
+      0%, 100% { transform: translateY(0) translateX(0) rotate(-2deg) scale(1); }
+      20%      { transform: translateY(-12px) translateX(4px) rotate(0.5deg) scale(1.005); }
+      45%      { transform: translateY(-22px) translateX(-2px) rotate(2.5deg) scale(1.01); }
+      65%      { transform: translateY(-14px) translateX(-6px) rotate(1deg) scale(1.005); }
+      85%      { transform: translateY(-4px) translateX(2px) rotate(-1deg) scale(1); }
     }
-    .animate-manguito-float {
-      animation: manguito-float 7s ease-in-out infinite;
+    .animate-manguito {
+      animation: manguito-bob 8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+      transform-origin: 50% 80%;
+      will-change: transform;
     }
+
+    @keyframes bubble-float {
+      0%, 100% { transform: rotate(-3deg) translateY(0); }
+      50%      { transform: rotate(-2.2deg) translateY(-6px); }
+    }
+    .animate-bubble-float {
+      animation: bubble-float 6s ease-in-out infinite;
+      animation-delay: -2s;
+      will-change: transform;
+    }
+
+    @keyframes kpi-float {
+      0%, 100% { transform: rotate(4deg) translateY(0); }
+      50%      { transform: rotate(3deg) translateY(-8px); }
+    }
+    .animate-kpi-float {
+      animation: kpi-float 7s ease-in-out infinite;
+      animation-delay: -1.5s;
+      will-change: transform;
+    }
+
     @media (prefers-reduced-motion: reduce) {
-      .animate-manguito-float {
+      .animate-manguito,
+      .animate-bubble-float,
+      .animate-kpi-float {
         animation: none;
       }
     }
