@@ -552,39 +552,111 @@ export type Database = {
           authorized: boolean | null
           created_at: string | null
           deleted_at: string | null
+          early_access: boolean
+          early_access_expires_at: string | null
           email: string
           google_purchase_token: string | null
           google_subscription_id: string | null
+          mp_payer_id: string | null
+          mp_preapproval_id: string | null
+          mp_status: string | null
           onboarding_completed_at: string | null
           plan: string
+          plan_amount: number | null
           plan_expires_at: string | null
+          plan_period: string | null
+          plan_renews_at: string | null
           plan_updated_at: string | null
+          subscribed_at: string | null
           user_id: string
         }
         Insert: {
           authorized?: boolean | null
           created_at?: string | null
           deleted_at?: string | null
+          early_access?: boolean
+          early_access_expires_at?: string | null
           email: string
           google_purchase_token?: string | null
           google_subscription_id?: string | null
+          mp_payer_id?: string | null
+          mp_preapproval_id?: string | null
+          mp_status?: string | null
           onboarding_completed_at?: string | null
           plan?: string
+          plan_amount?: number | null
           plan_expires_at?: string | null
+          plan_period?: string | null
+          plan_renews_at?: string | null
           plan_updated_at?: string | null
+          subscribed_at?: string | null
           user_id: string
         }
         Update: {
           authorized?: boolean | null
           created_at?: string | null
           deleted_at?: string | null
+          early_access?: boolean
+          early_access_expires_at?: string | null
           email?: string
           google_purchase_token?: string | null
           google_subscription_id?: string | null
+          mp_payer_id?: string | null
+          mp_preapproval_id?: string | null
+          mp_status?: string | null
           onboarding_completed_at?: string | null
           plan?: string
+          plan_amount?: number | null
           plan_expires_at?: string | null
+          plan_period?: string | null
+          plan_renews_at?: string | null
           plan_updated_at?: string | null
+          subscribed_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          mp_payment_id: string
+          mp_preapproval_id: string | null
+          period_end: string | null
+          period_start: string | null
+          raw_event: Json | null
+          status: string
+          status_detail: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          mp_payment_id: string
+          mp_preapproval_id?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          raw_event?: Json | null
+          status: string
+          status_detail?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          mp_payment_id?: string
+          mp_preapproval_id?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          raw_event?: Json | null
+          status?: string
+          status_detail?: string | null
           user_id?: string
         }
         Relationships: []
