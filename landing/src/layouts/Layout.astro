@@ -109,13 +109,15 @@ const allJsonLd = jsonLd
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500;1,9..144,700&family=Geist+Mono:wght@400;500;600&display=swap"
     />
 
-    {/* Preload del Manguito gigante del hero — protagonista del above-the-fold.
-        Mejora LCP. fetchpriority=high empuja al browser a bajarlo primero. */}
+    {/* El hero ahora muestra un mock dashboard HTML hardcoded — no hay
+        imagen grande que preload-ear. El manguito.png chico del FAB es
+        suficientemente liviano y el browser lo baja con el resto del HTML.
+        Dejamos el flag por si en el futuro hay otro asset crítico. */}
     {preloadHero && (
       <link
         rel="preload"
         as="image"
-        href="/manguito-hero-billete.webp"
+        href="/manguito.png"
         fetchpriority="high"
       />
     )}
