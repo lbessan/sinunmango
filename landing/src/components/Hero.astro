@@ -1,206 +1,295 @@
 ---
-// Hero — copy "manguito-forward". Headline juega con el nombre.
-// Hero shot: dashboard real de la app con halo decorativo de marca.
+// Hero — dirección "Manguito-Forward": la mascota es el protagonista
+// del above-the-fold, no un detalle. Headline en Fraunces itálica grande
+// con personalidad serif. Manguito ocupa ~50% del viewport (desktop),
+// con un chat-bubble saliendo de él que ciclea preguntas reales.
+//
+// Tono: cálido, en primera persona del Manguito, sin lenguaje corpo.
+// La página entera baja desde acá con la misma voz.
 ---
 
-<section class="bg-hero-glow relative overflow-hidden pt-32 pb-20 sm:pt-44 sm:pb-28 lg:pt-48 lg:pb-32">
-  <div class="mx-auto grid max-w-7xl items-center gap-14 px-6 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
-    <div class="text-center lg:text-left">
+<section class="relative overflow-hidden pt-28 pb-16 sm:pt-36 sm:pb-24 lg:pt-44 lg:pb-32">
+  {/* Fondo: gradiente sutil + manchas radiales con los colores de marca.
+      Inspirado en notion/duolingo: superficies cálidas, no clínicas. */}
+  <div class="absolute inset-0 -z-10" aria-hidden="true">
+    <div class="absolute inset-0 bg-[#FAFAF7]"></div>
+    <div
+      class="absolute -top-32 right-[-10%] h-[600px] w-[600px] rounded-full opacity-[0.18] blur-3xl"
+      style="background: radial-gradient(circle, #F97316 0%, transparent 70%);"
+    ></div>
+    <div
+      class="absolute bottom-[-15%] left-[-10%] h-[500px] w-[500px] rounded-full opacity-[0.15] blur-3xl"
+      style="background: radial-gradient(circle, #1B3A6B 0%, transparent 70%);"
+    ></div>
+    <div
+      class="absolute top-1/2 left-1/3 h-[300px] w-[300px] rounded-full opacity-[0.10] blur-3xl"
+      style="background: radial-gradient(circle, #10B981 0%, transparent 70%);"
+    ></div>
+  </div>
+
+  <div class="mx-auto grid max-w-7xl items-center gap-12 px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-20">
+    {/* ── Columna izquierda: Manguito + chat bubble ───────────────────── */}
+    <div class="relative order-2 lg:order-1">
+      {/* Wrapper con el manguito + bubble. position relative para anclar
+          el bubble a la cabeza del manguito (top-right). */}
+      <div class="relative mx-auto max-w-md sm:max-w-lg lg:max-w-none">
+        {/* Halo decorativo detrás del manguito */}
+        <div
+          class="absolute inset-[15%] rounded-full opacity-40 blur-3xl"
+          style="background: radial-gradient(circle, #FFE5C2 0%, transparent 60%);"
+          aria-hidden="true"
+        ></div>
+
+        {/* Manguito gigante. fetchpriority=high porque es el LCP. */}
+        <img
+          src="/manguito-hero.webp"
+          alt="Manguito, el asistente con IA de sinunmango"
+          width="1024"
+          height="1024"
+          fetchpriority="high"
+          decoding="async"
+          class="relative mx-auto block w-full max-w-[420px] animate-manguito-float sm:max-w-[480px] lg:max-w-[540px]"
+        />
+
+        {/* Bubble de chat saliendo desde la cabeza del Manguito, hacia la
+            derecha (apunta al headline en desktop). Ciclea preguntas reales
+            que la app responde. El SVG hace de "punta" del globo. */}
+        <div
+          class="absolute top-[8%] right-[-12px] z-10 max-w-[280px] sm:right-[-20px] sm:max-w-[320px] lg:right-[-40px]"
+        >
+          <div
+            class="relative rounded-2xl rounded-bl-md bg-white px-5 py-4 shadow-xl ring-1 ring-black/5"
+          >
+            {/* Cola del bubble apuntando hacia el manguito (abajo-izq) */}
+            <svg
+              class="absolute -bottom-2 left-2 h-3 w-4 text-white"
+              viewBox="0 0 16 12"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M0 0 L16 0 L8 12 Z" />
+            </svg>
+
+            <div class="flex items-center gap-2">
+              <span
+                class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#10B981]"
+              ></span>
+              <span
+                class="text-[10px] font-semibold uppercase tracking-wider text-[#10B981]"
+              >
+                Manguito está pensando…
+              </span>
+            </div>
+
+            {/* Texto que rota cada ~4s — controlado por el script al pie.
+                Default visible para SSR / no-JS. */}
+            <p
+              id="hero-bubble-text"
+              class="mt-2 text-base font-medium leading-snug text-[#0F172A]"
+            >
+              "¿Cuánto gasté en delivery este mes?"
+            </p>
+            <p
+              id="hero-bubble-answer"
+              class="mt-2 text-sm text-[#475569]"
+            >
+              <span class="font-semibold text-[#0F172A]">$83.450</span>
+              en 14 pedidos. Casi 3× tu promedio del año.
+            </p>
+          </div>
+        </div>
+
+        {/* Mini-card decorativa: número grande "+47%" como prueba de valor.
+            Anclada al lado opuesto del bubble para balance visual. */}
+        <div
+          class="absolute bottom-[8%] left-[-8px] hidden rounded-2xl bg-[#1B3A6B] px-4 py-3 text-white shadow-xl sm:left-[-16px] sm:block lg:left-[-32px]"
+        >
+          <div class="flex items-center gap-3">
+            <div class="text-3xl font-bold text-[#10B981]">+47%</div>
+            <div class="text-xs leading-tight">
+              <div class="font-semibold">Ahorrá más</div>
+              <div class="text-white/70">vs no controlar</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* ── Columna derecha: headline + CTAs ──────────────────────────────── */}
+    <div class="order-1 text-center lg:order-2 lg:text-left">
       <span
-        class="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white/70 px-3.5 py-1.5 text-xs font-medium text-[var(--color-ink-soft)] backdrop-blur"
+        class="inline-flex items-center gap-2 rounded-full border border-[#0F172A]/10 bg-white/80 px-3.5 py-1.5 text-xs font-medium text-[#475569] backdrop-blur"
       >
-        <span class="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]"></span>
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#F97316]"></span>
         Hecho en Argentina · pesos, dólares y todo lo del medio
       </span>
 
+      {/* Headline en Fraunces. La itálica es del display style — agrega
+          carácter sin perder seriedad. "Hola." en una línea como apertura,
+          después el value prop completo en regular. */}
       <h1
-        class="mt-7 text-5xl font-bold leading-[1.02] tracking-tight text-[var(--color-ink)] sm:text-6xl lg:text-7xl xl:text-[5rem]"
+        class="mt-8 text-[clamp(2.75rem,7vw,5.5rem)] font-bold leading-[0.95] tracking-tight text-[#0F172A]"
+        style="font-family: 'Fraunces', Georgia, serif;"
       >
-        Tus finanzas,
-        <span class="text-brand-gradient">sin un mango</span>
-        menos.
+        <span class="italic" style="font-variation-settings: 'opsz' 144;">
+          Hola.
+        </span>
+        <br />
+        Soy{" "}
+        <span
+          class="italic"
+          style="font-variation-settings: 'opsz' 144; color: #F97316;"
+        >
+          Manguito
+        </span>.
       </h1>
 
       <p
-        class="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-[var(--color-ink-soft)] sm:text-xl lg:mx-0"
+        class="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-[#475569] sm:text-xl lg:mx-0"
       >
-        Reenviame los mails del banco. Subí el resumen de la tarjeta. Mandale
-        un mensaje a Manguito. Como te quede más cómodo: tus gastos se
-        cargan solos.
+        Te ayudo a controlar tu plata sin que te explote la cabeza ni el Excel.
+        Cargame los gastos como quieras —{" "}
+        <span class="font-semibold text-[#0F172A]">
+          o pedime que lo haga yo
+        </span>{" "}
+        y los respondo en segundos.
       </p>
 
-      <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
+      <div
+        class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start"
+      >
         <a
           href="https://app.sinunmango.com.ar"
-          class="bg-brand-gradient inline-flex items-center gap-2 rounded-xl px-7 py-4 text-base font-semibold text-white shadow-lg shadow-[color:var(--color-accent)]/20 transition-transform hover:-translate-y-0.5 sm:text-lg"
+          class="group inline-flex items-center gap-2 rounded-2xl bg-[#F97316] px-7 py-4 text-base font-semibold text-white shadow-lg shadow-[#F97316]/30 transition-all hover:-translate-y-0.5 hover:bg-[#EA580C] hover:shadow-xl hover:shadow-[#F97316]/40 sm:text-lg"
         >
-          Probar en la web
-          <span aria-hidden="true">→</span>
+          Hablar con Manguito
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="transition-transform group-hover:translate-x-1"
+            aria-hidden="true"
+          >
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
         </a>
 
-        <!-- Botón Google Play. Color negro estándar de los store badges
-             para máxima familiaridad visual. Apunta al listing real. -->
         <a
           href="https://play.google.com/store/apps/details?id=com.sinunmango.mobile"
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex items-center gap-3 rounded-xl bg-[#0f172a] px-5 py-3.5 text-white transition-transform hover:-translate-y-0.5 sm:px-6 sm:py-4"
+          class="inline-flex items-center gap-3 rounded-2xl border border-[#0F172A]/10 bg-white px-5 py-3.5 text-[#0F172A] transition-all hover:-translate-y-0.5 hover:border-[#0F172A]/20 hover:shadow-md sm:px-6 sm:py-4"
           aria-label="Descargar sinunmango en Google Play"
         >
-          <!-- Logo Google Play oficial (4 triángulos de colores) -->
-          <svg width="22" height="24" viewBox="0 0 22 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="shrink-0">
+          <svg width="22" height="24" viewBox="0 0 22 24" fill="none" aria-hidden="true" class="shrink-0">
             <path d="M.84 1.2A2 2 0 0 0 .5 2.31v19.38c0 .4.12.77.34 1.11l10.49-11.4L.84 1.2Z" fill="#5BC8F3"/>
             <path d="m15.5 7.86-3.43 3.73 3.43 3.74 5.04-2.86c1.27-.72 1.27-2.57 0-3.29L15.5 7.86Z" fill="#FFCE3D"/>
             <path d="m12.07 11.59 3.43-3.73L1.5.95 12.07 11.59Z" fill="#EE4647"/>
             <path d="m12.07 11.6L1.5 22.24l14-6.91-3.43-3.73Z" fill="#3BCC70"/>
           </svg>
           <div class="text-left leading-tight">
-            <div class="text-[10px] uppercase tracking-wide opacity-80">Disponible en</div>
+            <div class="text-[10px] uppercase tracking-wide text-[#475569]">Disponible en</div>
             <div class="text-base font-semibold sm:text-lg">Google Play</div>
           </div>
         </a>
       </div>
 
-      <p class="mt-6 text-sm text-[var(--color-ink-muted)]">
-        Entrás con Google o email · Free para siempre · Sin tarjeta al registrarte.
+      <p class="mt-6 text-sm text-[#94A3B8]">
+        Free para siempre · Sin tarjeta al registrarte · Pro 7 días gratis
       </p>
-    </div>
 
-    <!-- Hero shot: video demo de la app dentro del browser frame.
-         Halo decorativo + frame estilo macOS por coherencia visual. -->
-    <div class="relative mx-auto w-full max-w-3xl lg:max-w-none">
-      <!-- Halo decorativo más amplio para que se sienta aireado -->
+      {/* Trust strip: 3 highlights que justifican el "soy real" */}
       <div
-        class="bg-brand-gradient absolute -inset-6 rounded-[2rem] opacity-25 blur-3xl"
-        aria-hidden="true"
-      ></div>
-
-      <!-- Browser frame con video / placeholder -->
-      <div
-        class="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-2xl shadow-[color:var(--color-accent2)]/20"
+        class="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-[#475569] lg:justify-start"
       >
-        <div
-          class="flex items-center gap-2 border-b border-[var(--color-border)] bg-[#f5f5f7] px-4 py-3"
-        >
-          <span class="h-3 w-3 rounded-full bg-[#ff5f57]"></span>
-          <span class="h-3 w-3 rounded-full bg-[#febc2e]"></span>
-          <span class="h-3 w-3 rounded-full bg-[#28c840]"></span>
-          <div
-            class="ml-2 flex h-6 flex-1 items-center justify-center rounded bg-white px-3 text-xs text-[var(--color-ink-muted)]"
-          >
-            app.sinunmango.com.ar
-          </div>
+        <div class="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-[#10B981]" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <span>Sin compartir password del banco</span>
         </div>
-
-        {/* Video demo — autoplay muted + loop con botón 🔊 para activar audio.
-            Patrón Apple/Stripe: el video arranca solo (sin molestar al user
-            con sonido inesperado) y el que se engancha activa audio.
-
-            preload="metadata" → solo descarga los primeros KB para mostrar el
-            poster y los duración. El cuerpo del video baja recién al iniciar
-            el playback (autoplay en desktop, o tap en mobile si el browser
-            bloquea autoplay por política de batería).
-
-            Aspect ratio 16:9 (1920/1080) matchea el video real. El poster
-            evita la pantalla negra durante los primeros ms antes de que el
-            primer frame esté listo. */}
-        <div class="relative aspect-video w-full overflow-hidden bg-[var(--color-sidebar)]">
-          <video
-            id="hero-demo-video"
-            autoplay
-            muted
-            loop
-            playsinline
-            preload="metadata"
-            poster="/demo-poster.jpg"
-            aria-label="Demo de sinunmango: cargar gastos, ver dashboard y hablar con Manguito"
-            class="block h-full w-full object-cover"
-          >
-            <source src="/demo.mp4" type="video/mp4" />
-            {/* Fallback si el browser no soporta el video tag */}
-            <img
-              src="/demo-poster.jpg"
-              alt="Demo de sinunmango"
-              class="h-full w-full object-cover"
-            />
-          </video>
-
-          {/* Botón mute/unmute en la esquina inferior derecha. Estado inicial
-              es muted=true, click activa audio. Script al final del Hero. */}
-          <button
-            id="hero-demo-audio-toggle"
-            type="button"
-            aria-label="Activar audio del video"
-            aria-pressed="false"
-            class="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/75 sm:bottom-4 sm:right-4 sm:h-11 sm:w-11"
-          >
-            {/* Ícono "muted" (default) */}
-            <svg
-              data-icon="muted"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M11 5 6 9H2v6h4l5 4V5Z" />
-              <line x1="22" y1="9" x2="16" y2="15" />
-              <line x1="16" y1="9" x2="22" y2="15" />
-            </svg>
-            {/* Ícono "unmuted" (se muestra cuando aria-pressed=true via CSS) */}
-            <svg
-              data-icon="unmuted"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-              class="hidden"
-            >
-              <path d="M11 5 6 9H2v6h4l5 4V5Z" />
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-            </svg>
-          </button>
+        <div class="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-[#10B981]" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <span>Datos encriptados</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-[#10B981]" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <span>Exportá todo cuando quieras</span>
         </div>
       </div>
     </div>
   </div>
+
+  {/* Animación flotante sutil del Manguito */}
+  <style is:global>
+    @keyframes manguito-float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-12px); }
+    }
+    .animate-manguito-float {
+      animation: manguito-float 6s ease-in-out infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .animate-manguito-float {
+        animation: none;
+      }
+    }
+  </style>
 </section>
 
 <script>
-  // Toggle audio del video demo del Hero. Inicia muted (autoplay requiere
-  // muted en todos los browsers modernos). Click → muted=false + actualiza
-  // aria-pressed y swap de íconos. Re-click → vuelve a muted.
-  const video = document.getElementById('hero-demo-video') as HTMLVideoElement | null
-  const btn   = document.getElementById('hero-demo-audio-toggle')
-  if (video && btn) {
-    const iconMuted   = btn.querySelector('[data-icon="muted"]')
-    const iconUnmuted = btn.querySelector('[data-icon="unmuted"]')
+  // Rotación de preguntas en el bubble del Manguito. Cada 5s cambia
+  // pregunta + respuesta. Fade out → swap → fade in. Pausa si la pestaña
+  // está oculta (document.hidden) para no gastar batería de fondo.
+  const dialogues: { q: string; a: string }[] = [
+    {
+      q: '"¿Cuánto gasté en delivery este mes?"',
+      a: '<span class="font-semibold text-[#0F172A]">$83.450</span> en 14 pedidos. Casi 3× tu promedio del año.',
+    },
+    {
+      q: '"¿Llego a fin de mes?"',
+      a: 'Te quedan <span class="font-semibold text-[#0F172A]">$142k</span> y faltan 12 días. Vas bien si no aparece nada raro.',
+    },
+    {
+      q: '"Anotame: gasté $4.500 en el súper"',
+      a: 'Listo. Categoría: <span class="font-semibold text-[#0F172A]">Supermercado</span>. Pagaste con Galicia.',
+    },
+    {
+      q: '"¿En qué se me va más plata?"',
+      a: 'Top 3: <span class="font-semibold text-[#0F172A]">Alquiler, Delivery y Suscripciones</span>. ¿Te muestro el detalle?',
+    },
+  ]
 
-    btn.addEventListener('click', () => {
-      const willUnmute = video.muted
-      video.muted = !willUnmute
-      btn.setAttribute('aria-pressed', String(willUnmute))
-      btn.setAttribute(
-        'aria-label',
-        willUnmute ? 'Silenciar audio del video' : 'Activar audio del video',
-      )
-      iconMuted?.classList.toggle('hidden', willUnmute)
-      iconUnmuted?.classList.toggle('hidden', !willUnmute)
-      // Si el video estaba pausado (caso mobile sin autoplay), forzar play
-      // al activar el audio — el click es un user gesture válido.
-      if (willUnmute && video.paused) {
-        video.play().catch(() => {/* no-op si el browser igual lo rechaza */})
-      }
-    })
+  const qEl = document.getElementById('hero-bubble-text')
+  const aEl = document.getElementById('hero-bubble-answer')
+
+  if (qEl && aEl) {
+    let i = 0
+    const swap = () => {
+      if (document.hidden) return
+      i = (i + 1) % dialogues.length
+      // Fade out
+      qEl.style.opacity = '0'
+      aEl.style.opacity = '0'
+      qEl.style.transition = 'opacity 250ms ease'
+      aEl.style.transition = 'opacity 250ms ease'
+      setTimeout(() => {
+        qEl.textContent = dialogues[i].q
+        aEl.innerHTML    = dialogues[i].a
+        qEl.style.opacity = '1'
+        aEl.style.opacity = '1'
+      }, 280)
+    }
+    setInterval(swap, 5000)
   }
 </script>
