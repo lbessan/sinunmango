@@ -1,337 +1,265 @@
 ---
-import ManguitoPresenter from "./ManguitoPresenter.astro";
-
-// Onboarding inmersivo: el slider muestra el flow visual completo (6 pantallas)
-// que cubren los 4 pasos del wizard. Las dos pantallas del PDF están integradas
-// como continuación del paso "Tarjeta". El bloque "antes/después" abajo
-// destaca el momento del análisis IA en plano más grande.
-
-type Step = {
-  title: string;
-  blurb: string;
-  image: string;
-  alt: string;
-};
-
-const steps: Step[] = [
-  {
-    title: "Tu primera cuenta",
-    blurb: "Banco, billetera o efectivo. Pesos o dólares. Color y logo.",
-    image: "/screenshots/onb-1-cuenta.png",
-    alt: "Pantalla de agregar la primera cuenta",
-  },
-  {
-    title: "Tu tarjeta de crédito",
-    blurb: "La cargás a mano o seguís al modo PDF: la IA detecta todo por vos.",
-    image: "/screenshots/onb-2-tarjeta.png",
-    alt: "Pantalla de agregar tarjeta de crédito",
-  },
-  {
-    title: "Subís el resumen",
-    blurb: "Arrastrás uno o varios PDFs de tu tarjeta a la zona de drop.",
-    image: "/screenshots/onb-2-pdf-dropzone.png",
-    alt: "Pantalla del dropzone de PDFs",
-  },
-  {
-    title: "La IA leyó todo",
-    blurb: "Banco, red, variante, fechas, consumos. Listos para confirmar.",
-    image: "/screenshots/onb-2-pdf-analizado.png",
-    alt: "Pantalla de la tarjeta detectada con sus consumos",
-  },
-  {
-    title: "Tus categorías",
-    blurb: "Elegís las que usás. Después editás, agregás, lo que quieras.",
-    image: "/screenshots/onb-3-categorias.png",
-    alt: "Pantalla de elegir categorías",
-  },
-  {
-    title: "Color y modo",
-    blurb: "Cinco paletas y modo claro u oscuro. También se cambia después.",
-    image: "/screenshots/onb-4-apariencia.png",
-    alt: "Pantalla de elegir tema de color",
-  },
-];
+// Onboarding — sección "Arranca en 30 segundos".
+//
+// Reemplazo de la versión slider antigua. El video real del onboarding
+// (/demo.mp4 — 40s, 1.4 MB) vive acá ahora, no en el hero. El hero
+// queda libre para un futuro video que muestre la app EN USO.
+//
+// Posición en la home: entre Features y Pricing — cierra el "qué hace"
+// con el argumento "y arrancar es así de fácil" antes del precio.
 ---
 
 <section
   id="onboarding"
-  class="relative overflow-hidden bg-[var(--color-sidebar)] py-24 text-white sm:py-32"
+  class="relative isolate overflow-hidden bg-[#0A0E1A] py-24 sm:py-32 lg:py-40"
 >
-  <!-- Glow decorativo de fondo — verde + azul (los acentos de la marca) -->
   <div
-    class="pointer-events-none absolute inset-0"
+    class="absolute top-0 left-0 right-0 h-px"
+    style="background: linear-gradient(90deg, transparent, rgba(255,184,77,0.3), transparent);"
     aria-hidden="true"
-    style="background:
-      radial-gradient(50% 60% at 80% 20%, rgba(26, 107, 90, 0.35) 0%, transparent 70%),
-      radial-gradient(50% 50% at 15% 90%, rgba(27, 58, 107, 0.40) 0%, transparent 70%);"
-  >
+  ></div>
+
+  <div class="absolute inset-0 -z-10" aria-hidden="true">
+    <div
+      class="absolute top-[15%] right-[5%] h-[450px] w-[450px] rounded-full opacity-[0.12] blur-[100px]"
+      style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
+    ></div>
   </div>
 
-  <div class="relative mx-auto max-w-6xl px-6">
-    <ManguitoPresenter
-      align="right"
-      text="Te llevo de la mano. Cuatro pasos y subís el resumen de tu tarjeta — yo me encargo de leerlo."
-    />
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="grid grid-cols-1 items-center gap-y-12 lg:grid-cols-12 lg:gap-x-10">
+      {/* ── Columna izquierda: copy ─────────────────────────────────── */}
+      <div class="lg:col-span-5">
+        <div
+          class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 backdrop-blur"
+        >
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#FFB84D]"></span>
+          <span
+            class="text-[10px] uppercase tracking-[0.18em] text-white/60"
+            style="font-family: 'Geist Mono', monospace;"
+          >
+            Arrancar es fácil
+          </span>
+        </div>
 
-    <div class="mx-auto max-w-2xl text-center">
-      <span
-        class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white/90"
-      >
-        Onboarding · 2 minutos
-      </span>
-      <h2 class="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-        Cuatro pasos y estás adentro.
-      </h2>
-      <p class="mt-4 text-lg text-white/70">
-        Sin formularios eternos, sin verificaciones, sin tutoriales en
-        video que nadie mira.
-      </p>
-    </div>
+        <h2
+          class="mt-6 text-[clamp(2rem,4.5vw,3.5rem)] font-bold leading-[0.95] tracking-[-0.03em] text-white"
+          style="font-family: 'Inter', system-ui, sans-serif;"
+        >
+          Tu primera cuenta en{" "}
+          <span
+            class="italic font-medium"
+            style="font-family: 'Fraunces', Georgia, serif; font-variation-settings: 'opsz' 144; color: #FFB84D;"
+          >
+            30 segundos
+          </span>.
+        </h2>
 
-    <!-- Slider grande: 6 pantallas del flow -->
-    <div class="onboarding-flow mt-14" data-onboarding-flow>
-      <!-- Caption arriba (cambia con cada paso) -->
-      <div class="relative mx-auto h-24 max-w-2xl text-center sm:h-20">
-        {
-          steps.map((s, i) => (
-            <div
-              data-step={i}
-              class:list={[
-                "onboarding-caption absolute inset-0 flex flex-col items-center justify-center gap-2 transition-opacity duration-400",
-                i === 0 ? "opacity-100" : "opacity-0",
-              ]}
+        <p class="mt-6 text-base text-white/60 sm:text-lg">
+          Iniciás sesión con Google, agregás un banco o billetera y un par
+          de movimientos. Listo, ya estás usando la app — sin importar
+          datos, sin permisos raros, sin compartir nada con el banco.
+        </p>
+
+        <ol class="mt-10 space-y-5">
+          <li class="flex items-start gap-4">
+            <span
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#FFB84D]/30 bg-[#FFB84D]/10 text-xs font-bold text-[#FFB84D]"
+              style="font-family: 'Geist Mono', monospace;"
             >
-              <h3 class="text-2xl font-bold leading-tight sm:text-3xl">
-                {s.title}
-              </h3>
-              <p class="text-base text-white/75">{s.blurb}</p>
+              01
+            </span>
+            <div>
+              <p class="font-semibold text-white">Iniciá con Google</p>
+              <p class="mt-0.5 text-sm text-white/60">
+                Sin formularios. Un click y entrás.
+              </p>
             </div>
-          ))
-        }
+          </li>
+          <li class="flex items-start gap-4">
+            <span
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#FFB84D]/30 bg-[#FFB84D]/10 text-xs font-bold text-[#FFB84D]"
+              style="font-family: 'Geist Mono', monospace;"
+            >
+              02
+            </span>
+            <div>
+              <p class="font-semibold text-white">Agregá tu primera cuenta</p>
+              <p class="mt-0.5 text-sm text-white/60">
+                Banco, billetera o efectivo. Pesos o dólares. Color y logo
+                del banco se completan solos.
+              </p>
+            </div>
+          </li>
+          <li class="flex items-start gap-4">
+            <span
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#FFB84D]/30 bg-[#FFB84D]/10 text-xs font-bold text-[#FFB84D]"
+              style="font-family: 'Geist Mono', monospace;"
+            >
+              03
+            </span>
+            <div>
+              <p class="font-semibold text-white">Cargá un par de movimientos</p>
+              <p class="mt-0.5 text-sm text-white/60">
+                A mano, escaneando un ticket, o pegando el PDF del resumen
+                — vos elegís cómo.
+              </p>
+            </div>
+          </li>
+        </ol>
+
+        <a
+          href="https://app.sinunmango.com.ar"
+          class="group mt-10 inline-flex items-center gap-2 rounded-xl bg-[#FFB84D] px-6 py-3.5 text-sm font-semibold text-[#0A0E1A] shadow-lg shadow-[#FFB84D]/20 transition-all hover:-translate-y-0.5 hover:bg-[#FFC972] hover:shadow-xl hover:shadow-[#FFB84D]/30"
+        >
+          Crear mi cuenta ahora
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="transition-transform group-hover:translate-x-1"
+            aria-hidden="true"
+          >
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
+        </a>
       </div>
 
-      <!-- Slider: capturas PNG transparentes flotando sobre el fondo oscuro -->
-      <div class="relative mx-auto mt-6 w-full max-w-3xl">
-        <!-- Halo decorativo verde atrás de la captura -->
-        <div
-          class="pointer-events-none absolute left-1/2 top-1/2 h-[80%] w-[80%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--color-accent)] opacity-25 blur-3xl"
-          aria-hidden="true"
-        ></div>
-
-        <!-- Frame del slider con flechas de navegación a los costados -->
+      {/* ── Columna derecha: video del onboarding ───────────────────── */}
+      <div class="lg:col-span-7">
         <div class="relative">
-          <div class="onboarding-slider relative h-[640px] sm:h-[720px]">
-            {
-              steps.map((s, i) => (
-                <div
-                  data-step={i}
-                  class:list={[
-                    "onboarding-slide absolute inset-0 flex items-center justify-center px-4 transition-opacity duration-500",
-                    i === 0 ? "opacity-100" : "opacity-0 pointer-events-none",
-                  ]}
+          <div
+            class="absolute inset-[5%] rounded-[2rem] opacity-25 blur-3xl"
+            style="background: linear-gradient(135deg, #FFB84D 0%, #4ADE80 100%);"
+            aria-hidden="true"
+          ></div>
+
+          <div
+            class="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0F1424] shadow-2xl"
+          >
+            <div
+              class="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-4 py-3"
+            >
+              <span class="h-2.5 w-2.5 rounded-full bg-[#ff5f57]"></span>
+              <span class="h-2.5 w-2.5 rounded-full bg-[#febc2e]"></span>
+              <span class="h-2.5 w-2.5 rounded-full bg-[#28c840]"></span>
+              <div
+                class="ml-3 flex h-6 flex-1 items-center justify-center rounded-md bg-white/[0.04] px-3 text-[11px] text-white/40"
+                style="font-family: 'Geist Mono', monospace;"
+              >
+                app.sinunmango.com.ar/onboarding
+              </div>
+            </div>
+
+            <div class="relative aspect-video w-full overflow-hidden bg-[#0F1424]">
+              <video
+                id="onboarding-demo-video"
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                poster="/demo-poster.jpg"
+                aria-label="Onboarding de sinunmango: crear cuenta y cargar primer movimiento"
+                class="block h-full w-full object-cover"
+              >
+                <source src="/demo.mp4" type="video/mp4" />
+                <img
+                  src="/demo-poster.jpg"
+                  alt="Onboarding de sinunmango"
+                  class="h-full w-full object-cover"
+                />
+              </video>
+
+              <button
+                id="onboarding-demo-audio-toggle"
+                type="button"
+                aria-label="Activar audio del video"
+                aria-pressed="false"
+                class="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/75 sm:bottom-4 sm:right-4 sm:h-11 sm:w-11"
+              >
+                <svg
+                  data-icon="muted"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
                 >
-                  <img
-                    src={s.image}
-                    alt={s.alt}
-                    loading={i === 0 ? "eager" : "lazy"}
-                    decoding="async"
-                    class="max-h-full max-w-full object-contain drop-shadow-[0_25px_50px_rgba(0,0,0,0.45)]"
-                  />
-                </div>
-              ))
-            }
+                  <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                  <line x1="22" y1="9" x2="16" y2="15" />
+                  <line x1="16" y1="9" x2="22" y2="15" />
+                </svg>
+                <svg
+                  data-icon="unmuted"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                  class="hidden"
+                >
+                  <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <!-- Flecha anterior -->
-          <button
-            type="button"
-            data-onboarding-prev
-            aria-label="Pantalla anterior"
-            class="group absolute -left-2 top-1/2 z-10 -translate-y-1/2 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-[var(--color-sidebar)] text-white shadow-xl transition-all hover:scale-110 hover:bg-[var(--color-accent)] hover:border-white/40 sm:-left-6 sm:h-14 sm:w-14"
+          <p
+            class="mt-4 text-center text-[10px] uppercase tracking-[0.2em] text-white/40"
+            style="font-family: 'Geist Mono', monospace;"
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-          </button>
-
-          <!-- Flecha siguiente -->
-          <button
-            type="button"
-            data-onboarding-next
-            aria-label="Pantalla siguiente"
-            class="group absolute -right-2 top-1/2 z-10 -translate-y-1/2 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-[var(--color-sidebar)] text-white shadow-xl transition-all hover:scale-110 hover:bg-[var(--color-accent)] hover:border-white/40 sm:-right-6 sm:h-14 sm:w-14"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </button>
-        </div>
-
-        <!-- Dots de progreso, más prominentes -->
-        <div class="mt-8 flex items-center justify-center gap-2.5">
-          {
-            steps.map((_, i) => (
-              <button
-                type="button"
-                class:list={[
-                  "onboarding-dot h-3 rounded-full transition-all",
-                  i === 0
-                    ? "w-10 bg-white"
-                    : "w-3 bg-white/25 hover:bg-white/60",
-                ]}
-                data-step={i}
-                aria-label={`Pantalla ${i + 1} de ${steps.length}`}
-              />
-            ))
-          }
-        </div>
-      </div>
-    </div>
-
-    <!-- Bloque destacado del PDF: zoom-in al momento clave (compacto) -->
-    <div
-      class="mt-16 overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur"
-    >
-      <div class="grid items-center gap-6 p-6 sm:p-8 md:grid-cols-[1.2fr_1fr] md:gap-10">
-        <div>
-          <span
-            class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white/90"
-          >
-            ✨ El momento clave
-          </span>
-          <h3 class="mt-3 text-xl font-bold leading-tight sm:text-2xl">
-            Subís el PDF.
-            <span class="text-brand-gradient">44 consumos en segundos.</span>
-          </h3>
-          <p class="mt-3 text-sm leading-relaxed text-white/80">
-            La IA detecta banco, red, variante, fechas de cierre y
-            vencimiento, y carga cada consumo con su categoría sugerida.
-            Vos revisás y confirmás.
+            Onboarding real · sin acelerar
           </p>
-        </div>
-
-        <div class="mx-auto w-full max-w-xs">
-          <img
-            src="/screenshots/onb-2-pdf-analizado.png"
-            alt="Tarjeta detectada automáticamente con todos sus consumos"
-            width="675"
-            height="878"
-            loading="lazy"
-            decoding="async"
-            class="h-auto w-full drop-shadow-[0_25px_50px_rgba(0,0,0,0.5)]"
-          />
         </div>
       </div>
     </div>
   </div>
 
-  <script>
-    // Auto-rotate del onboarding. Pausa al hover, arranca al entrar al viewport.
-    const flow = document.querySelector<HTMLElement>("[data-onboarding-flow]");
-    if (flow) {
-      const slides = flow.querySelectorAll<HTMLElement>(".onboarding-slide");
-      const dots = flow.querySelectorAll<HTMLButtonElement>(".onboarding-dot");
-      const captions = flow.querySelectorAll<HTMLElement>(".onboarding-caption");
-      const total = slides.length;
-      let current = 0;
-      let timer: number | null = null;
-      let paused = false;
-      let inView = false;
-
-      const STEP_MS = 3000;
-
-      function show(idx: number) {
-        slides.forEach((el, i) => {
-          const active = i === idx;
-          el.classList.toggle("opacity-100", active);
-          el.classList.toggle("opacity-0", !active);
-          el.classList.toggle("pointer-events-none", !active);
-        });
-        captions.forEach((el, i) => {
-          el.classList.toggle("opacity-100", i === idx);
-          el.classList.toggle("opacity-0", i !== idx);
-        });
-        dots.forEach((el, i) => {
-          const active = i === idx;
-          el.classList.toggle("w-10", active);
-          el.classList.toggle("bg-white", active);
-          el.classList.toggle("w-3", !active);
-          el.classList.toggle("bg-white/25", !active);
-        });
-        current = idx;
-      }
-
-      function tick() {
-        if (paused || !inView) return;
-        show((current + 1) % total);
-      }
-
-      function start() {
-        if (timer !== null) return;
-        timer = window.setInterval(tick, STEP_MS);
-      }
-      function stop() {
-        if (timer !== null) {
-          clearInterval(timer);
-          timer = null;
-        }
-      }
-
-      dots.forEach((dot, i) => {
-        dot.addEventListener("click", () => {
-          show(i);
-          stop();
-          start();
-        });
-      });
-
-      // Flechas previa/siguiente
-      const prevBtn = flow.querySelector<HTMLButtonElement>("[data-onboarding-prev]");
-      const nextBtn = flow.querySelector<HTMLButtonElement>("[data-onboarding-next]");
-      prevBtn?.addEventListener("click", () => {
-        show((current - 1 + total) % total);
-        stop();
-        start();
-      });
-      nextBtn?.addEventListener("click", () => {
-        show((current + 1) % total);
-        stop();
-        start();
-      });
-
-      // Soporte de flechas del teclado cuando el flow está enfocado
-      flow.addEventListener("keydown", (e) => {
-        if (e.key === "ArrowLeft") {
-          e.preventDefault();
-          show((current - 1 + total) % total);
-          stop();
-          start();
-        } else if (e.key === "ArrowRight") {
-          e.preventDefault();
-          show((current + 1) % total);
-          stop();
-          start();
-        }
-      });
-
-      flow.addEventListener("mouseenter", () => {
-        paused = true;
-      });
-      flow.addEventListener("mouseleave", () => {
-        paused = false;
-      });
-
-      const io = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            inView = entry.isIntersecting;
-            if (inView) start();
-            else stop();
-          }
-        },
-        { threshold: 0.3 }
-      );
-      io.observe(flow);
-    }
-  </script>
+  <div
+    class="absolute bottom-0 left-0 right-0 h-px"
+    style="background: linear-gradient(90deg, transparent, rgba(74,222,128,0.3), transparent);"
+    aria-hidden="true"
+  ></div>
 </section>
+
+<script>
+  // Toggle audio del video del onboarding. Autoplay muted + click activa.
+  const video = document.getElementById('onboarding-demo-video') as HTMLVideoElement | null
+  const btn   = document.getElementById('onboarding-demo-audio-toggle')
+  if (video && btn) {
+    const iconMuted   = btn.querySelector('[data-icon="muted"]')
+    const iconUnmuted = btn.querySelector('[data-icon="unmuted"]')
+
+    btn.addEventListener('click', () => {
+      const willUnmute = video.muted
+      video.muted = !willUnmute
+      btn.setAttribute('aria-pressed', String(willUnmute))
+      btn.setAttribute(
+        'aria-label',
+        willUnmute ? 'Silenciar audio del video' : 'Activar audio del video',
+      )
+      iconMuted?.classList.toggle('hidden', willUnmute)
+      iconUnmuted?.classList.toggle('hidden', !willUnmute)
+      if (willUnmute && video.paused) {
+        video.play().catch(() => {})
+      }
+    })
+  }
+</script>
