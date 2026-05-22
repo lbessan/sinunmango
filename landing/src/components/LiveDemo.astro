@@ -1,48 +1,52 @@
 ---
-// LiveDemo — sección "Probalo en vivo" justo después del Hero.
+// LiveDemo — sección "Conocé a Manguito".
 //
-// Es una mini-demo interactiva: simula la app real con:
-//   - Input "fake" que ciclea preguntas escribiéndose con efecto typewriter
-//   - Manguito tipea la respuesta letra a letra (también con caret)
-//   - Cards de resultado que aparecen flotando (gráficos, números)
+// Replica visual del popup real del Manguito (components/manguito-flotante.tsx):
+//   - Header con gradient azul-marino → verde y avatar circular
+//   - Body LIGHT (como el popup real) — crea contraste tipo "ventana
+//     iluminada" sobre el dark del background
+//   - Mensajes: user en azul (#1B3A6B) a la derecha, bot en blanco a la
+//     izquierda con avatar chico
+//   - Input falso al pie con el placeholder real
 //
-// El user NO escribe — todo está scripteado en loop. El click en el CTA
-// final lo manda a la app real para probarlo con sus datos.
+// En desktop: Manguito saludando con billete sangra al borde izquierdo
+// como si "presentara" su propio chat. En mobile el Manguito se va y
+// queda solo el popup centrado.
 //
-// Visual coherente con el Hero: dark mode, paleta mango+verde, tipografía
-// Inter + Fraunces itálica + Geist Mono.
+// El demo loop sigue ciclando 4 turnos (user → bot tipea letra a letra),
+// disparado por IntersectionObserver.
 ---
 
 <section
   id="live-demo"
   class="relative isolate overflow-hidden bg-[#0A0E1A] py-24 sm:py-32 lg:py-40"
 >
-  {/* Línea separadora arriba — gradiente sutil mango+transparente */}
+  {/* Separador superior */}
   <div
     class="absolute top-0 left-0 right-0 h-px"
     style="background: linear-gradient(90deg, transparent, rgba(255,184,77,0.4), transparent);"
     aria-hidden="true"
   ></div>
 
-  {/* Halo decorativo */}
+  {/* Halo */}
   <div class="absolute inset-0 -z-10" aria-hidden="true">
     <div
       class="absolute top-[20%] left-[10%] h-[400px] w-[400px] rounded-full opacity-[0.10] blur-[100px]"
       style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
     ></div>
+    <div
+      class="absolute bottom-[10%] right-[10%] h-[400px] w-[400px] rounded-full opacity-[0.08] blur-[100px]"
+      style="background: radial-gradient(circle, #4ADE80 0%, transparent 70%);"
+    ></div>
   </div>
 
   <div class="mx-auto max-w-6xl px-6">
-    {/* Header de la sección — posiciona a Manguito como SUPER feature,
-        no como el producto. Después del Hero que muestra la plataforma,
-        acá decimos "y además, podés hablarle". */}
-    <div class="mb-16 text-center">
+    {/* Header de la sección */}
+    <div class="mb-16 max-w-3xl text-center mx-auto">
       <div
         class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 backdrop-blur"
       >
-        <span
-          class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#4ADE80]"
-        ></span>
+        <span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#4ADE80]"></span>
         <span
           class="text-[10px] uppercase tracking-[0.18em] text-white/60"
           style="font-family: 'Geist Mono', monospace;"
@@ -66,122 +70,175 @@
       </h2>
       <p class="mx-auto mt-6 max-w-xl text-base text-white/60 sm:text-lg">
         Manguito es tu asistente con IA — incluido en todos los planes.
-        Le hablás como a una persona y te responde con los datos reales de
-        tu cuenta.
+        Le hablás como a una persona y te responde con los datos reales
+        de tu cuenta.
       </p>
     </div>
 
-    {/* Demo frame: input + chat + cards flotantes a los costados */}
-    <div class="relative">
-      {/* Frame estilo "ventana de app" */}
-      <div
-        class="relative mx-auto max-w-3xl overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] shadow-2xl backdrop-blur-xl"
-      >
-        {/* Top bar tipo macOS pero dark */}
-        <div
-          class="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-4 py-3"
-        >
-          <span class="h-2.5 w-2.5 rounded-full bg-[#ff5f57]"></span>
-          <span class="h-2.5 w-2.5 rounded-full bg-[#febc2e]"></span>
-          <span class="h-2.5 w-2.5 rounded-full bg-[#28c840]"></span>
+    {/* Layout: Manguito a la izquierda (desktop) + popup a la derecha */}
+    <div class="relative grid grid-cols-1 items-center gap-y-12 lg:grid-cols-12 lg:gap-x-8">
+      {/* ── Columna izquierda: Manguito saludando con billete (desktop) ─ */}
+      <div class="relative hidden lg:col-span-5 lg:block">
+        <div class="relative">
+          {/* Halo cálido detrás */}
           <div
-            class="ml-3 flex h-6 flex-1 items-center justify-center rounded-md bg-white/[0.04] px-3 text-[11px] text-white/40"
+            class="absolute inset-[10%] rounded-full opacity-40 blur-[80px]"
+            style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
+            aria-hidden="true"
+          ></div>
+
+          <img
+            src="/manguito-hero-billete.webp"
+            alt="Manguito saluda con un billete en la mano"
+            width="1024"
+            height="1024"
+            loading="lazy"
+            decoding="async"
+            class="relative mx-auto block w-full max-w-[420px] animate-manguito-live xl:max-w-[480px]"
+          />
+
+          {/* Etiqueta sutil debajo, en mono */}
+          <p
+            class="relative mt-4 text-center text-[10px] uppercase tracking-[0.2em] text-white/40"
             style="font-family: 'Geist Mono', monospace;"
           >
-            app.sinunmango.com.ar/manguito
-          </div>
+            Ahí está
+          </p>
         </div>
+      </div>
 
-        {/* Cuerpo del chat */}
-        <div class="space-y-4 px-6 py-8 sm:px-10 sm:py-12 min-h-[400px]">
-          {/* Mensaje del user (rotating) */}
-          <div class="flex justify-end">
-            <div
-              class="max-w-[80%] rounded-2xl rounded-br-md bg-[#FFB84D] px-4 py-3 text-[#0A0E1A]"
-            >
-              <p
-                id="demo-user-msg"
-                class="text-sm font-medium leading-snug sm:text-base"
-              >
-                ¿Cuánto gasté en delivery este mes?
-              </p>
-            </div>
-          </div>
+      {/* ── Columna derecha: popup del Manguito (replica del componente real) ─ */}
+      <div class="relative lg:col-span-7">
+        {/* Halo decorativo detrás del popup */}
+        <div
+          class="absolute inset-[5%] rounded-[2rem] opacity-25 blur-3xl"
+          style="background: linear-gradient(135deg, #07192b 0%, #1a6b5a 100%);"
+          aria-hidden="true"
+        ></div>
 
-          {/* Respuesta de Manguito (tipea) */}
-          <div class="flex gap-3">
+        {/* Popup container — replica visual del componente real */}
+        <div
+          class="relative mx-auto max-w-[520px] overflow-hidden rounded-[20px] border border-white/10 bg-[#f8fafc] shadow-[0_24px_64px_rgba(0,0,0,0.42),0_4px_16px_rgba(0,0,0,0.22)]"
+        >
+          {/* Header con gradient idéntico al real */}
+          <div
+            class="flex items-center gap-3 px-4 py-3.5"
+            style="background: linear-gradient(135deg, #07192b 0%, #1a6b5a 100%);"
+          >
+            {/* Avatar circular grande */}
             <div
-              class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#FFB84D] to-[#F97316] p-1.5"
+              class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full"
+              style="background: rgba(255,255,255,0.12); box-shadow: 0 0 0 2px rgba(255,255,255,0.2);"
             >
               <img
                 src="/manguito.png"
                 alt=""
-                width="36"
-                height="36"
-                class="h-full w-full object-contain"
+                width="34"
+                height="34"
+                class="h-[34px] w-[34px] object-contain"
               />
             </div>
-            <div
-              class="max-w-[85%] flex-1 rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.04] px-4 py-3"
-            >
-              <p
-                id="demo-bot-msg"
-                class="text-sm leading-relaxed text-white sm:text-base"
+
+            <div class="flex-1 min-w-0">
+              <p class="text-base font-bold leading-tight text-white">Manguito</p>
+              <p class="mt-0.5 text-xs text-white/60">Tu asistente financiero</p>
+            </div>
+
+            {/* Botones simulados (decorativos) */}
+            <div class="flex items-center gap-1.5">
+              <span
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-white/40"
+                aria-hidden="true"
               >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 6h18" />
+                  <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6M14 11v6" />
+                  <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                </svg>
+              </span>
+              <span
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-white/40"
+                aria-hidden="true"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="4 14 10 14 10 20" />
+                  <polyline points="20 10 14 10 14 4" />
+                  <line x1="14" y1="10" x2="21" y2="3" />
+                  <line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              </span>
+            </div>
+          </div>
+
+          {/* Body — área de mensajes */}
+          <div class="space-y-3 px-4 py-4 min-h-[340px] sm:min-h-[380px]">
+            {/* Mensaje de bienvenida — siempre visible */}
+            <div class="flex items-start gap-2.5">
+              <div class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#07192b] to-[#1a6b5a] p-1">
+                <img src="/manguito.png" alt="" width="22" height="22" class="h-full w-full object-contain" />
+              </div>
+              <div class="max-w-[85%] rounded-2xl rounded-tl-sm border border-slate-100 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 shadow-sm">
+                Hola 👋 Soy Manguito, tu asistente financiero. Preguntame
+                lo que necesites sobre tus finanzas o dictame un gasto para
+                registrarlo.
+              </div>
+            </div>
+
+            {/* Mensaje del USER (rotating) */}
+            <div class="flex items-start gap-2.5 flex-row-reverse">
+              <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1B3A6B] text-white mt-0.5">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </div>
+              <div
+                id="demo-user-msg"
+                class="max-w-[82%] rounded-2xl rounded-tr-sm bg-[#1B3A6B] px-3.5 py-2.5 text-sm leading-relaxed text-white shadow-sm"
+              >
+                ¿Cuánto gasté en delivery este mes?
+              </div>
+            </div>
+
+            {/* Mensaje del BOT (tipea) */}
+            <div class="flex items-start gap-2.5">
+              <div class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#07192b] to-[#1a6b5a] p-1">
+                <img src="/manguito.png" alt="" width="22" height="22" class="h-full w-full object-contain" />
+              </div>
+              <div class="max-w-[85%] rounded-2xl rounded-tl-sm border border-slate-100 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 shadow-sm">
+                <span id="demo-bot-text"></span>
                 <span
-                  id="demo-bot-text"
-                ></span><span
                   id="demo-caret"
-                  class="ml-0.5 inline-block h-4 w-[2px] animate-blink bg-[#FFB84D] align-middle"
+                  class="ml-0.5 inline-block h-3.5 w-[2px] animate-blink bg-[#1a6b5a] align-middle"
                 ></span>
+              </div>
+            </div>
+          </div>
+
+          {/* Input (decorativo — no interactivo) */}
+          <div
+            class="border-t border-slate-100 bg-white px-4 pb-4 pt-2"
+          >
+            <div class="flex items-end gap-2.5 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 shadow-sm">
+              <p class="flex-1 text-sm text-slate-400 leading-relaxed">
+                Escribí un mensaje...
               </p>
+              <button
+                type="button"
+                tabindex="-1"
+                aria-hidden="true"
+                class="flex h-8 w-8 items-center justify-center rounded-xl text-white shadow"
+                style="background: linear-gradient(135deg, #1B3A6B 0%, #1a6b5a 100%);"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Cards flotantes que aparecen con las respuestas — visibles solo
-          en desktop. Cada respuesta dispara una card distinta. */}
-      <div
-        id="demo-card-left"
-        class="pointer-events-none absolute top-[20%] -left-4 hidden w-56 -rotate-3 rounded-2xl border border-white/10 bg-[#0A0E1A] p-4 opacity-0 shadow-2xl transition-all duration-500 lg:block xl:-left-12"
-      >
-        <p
-          class="text-[10px] uppercase tracking-wider text-white/40"
-          style="font-family: 'Geist Mono', monospace;"
-        >
-          Top categoría
-        </p>
-        <p class="mt-1 text-2xl font-bold text-[#FFB84D]">Delivery</p>
-        <p class="mt-2 text-xs text-white/60">14 pedidos · 28% del mes</p>
-        <div class="mt-3 h-2 overflow-hidden rounded-full bg-white/5">
-          <div
-            class="h-full rounded-full bg-gradient-to-r from-[#FFB84D] to-[#F97316]"
-            style="width: 78%;"
-          ></div>
-        </div>
-      </div>
-
-      <div
-        id="demo-card-right"
-        class="pointer-events-none absolute bottom-[15%] -right-4 hidden w-52 rotate-2 rounded-2xl border border-white/10 bg-[#0A0E1A] p-4 opacity-0 shadow-2xl transition-all duration-500 lg:block xl:-right-12"
-      >
-        <div class="flex items-center justify-between">
-          <p
-            class="text-[10px] uppercase tracking-wider text-white/40"
-            style="font-family: 'Geist Mono', monospace;"
-          >
-            Disponible
-          </p>
-          <span class="text-[10px] text-[#4ADE80]">●</span>
-        </div>
-        <p
-          class="mt-1 text-3xl font-bold text-white"
-          style="font-variant-numeric: tabular-nums;"
-        >
-          $142.380
-        </p>
-        <p class="mt-1 text-xs text-white/60">a 12 días del cierre</p>
       </div>
     </div>
 
@@ -217,7 +274,7 @@
     </div>
   </div>
 
-  {/* Línea separadora abajo */}
+  {/* Separador inferior */}
   <div
     class="absolute bottom-0 left-0 right-0 h-px"
     style="background: linear-gradient(90deg, transparent, rgba(74,222,128,0.3), transparent);"
@@ -232,8 +289,22 @@
     .animate-blink {
       animation: blink 1s infinite;
     }
+
+    /* Manguito del LiveDemo — flota suavemente, distinto del hero
+       (que ya no tiene manguito gigante) */
+    @keyframes manguito-live {
+      0%, 100% { transform: translateY(0) rotate(-2deg); }
+      50%      { transform: translateY(-16px) rotate(2deg); }
+    }
+    .animate-manguito-live {
+      animation: manguito-live 7s ease-in-out infinite;
+      transform-origin: 50% 80%;
+      will-change: transform;
+    }
+
     @media (prefers-reduced-motion: reduce) {
-      .animate-blink {
+      .animate-blink,
+      .animate-manguito-live {
         animation: none;
       }
     }
@@ -243,45 +314,32 @@
 <script>
   // Live demo: ciclea pares pregunta/respuesta. Cada turno:
   //   1. Muestra la pregunta (cambio inmediato)
-  //   2. "Tipea" la respuesta letra a letra (40ms por char)
-  //   3. Espera 4s con la respuesta completa
-  //   4. Limpia respuesta + cambia pregunta + repite
-  //
-  // Pausa si la pestaña está oculta o si el user prefiere reduced-motion.
-  type Turn = {
-    user: string
-    bot: string
-    cardLeft?: { label: string; value: string; sub: string; pct: number }
-    cardRight?: { label: string; value: string; sub: string }
-  }
+  //   2. "Tipea" la respuesta letra a letra (~35ms por char)
+  //   3. Espera 4.5s con la respuesta completa
+  //   4. Cambia pregunta + repite
+  type Turn = { user: string; bot: string }
 
   const turns: Turn[] = [
     {
       user: '¿Cuánto gasté en delivery este mes?',
       bot:  '$83.450 en 14 pedidos. Casi 3× tu promedio del año.',
-      cardLeft: { label: 'Top categoría', value: 'Delivery', sub: '14 pedidos · 28% del mes', pct: 78 },
     },
     {
       user: '¿Llego a fin de mes?',
       bot:  'Te quedan $142.380 y faltan 12 días. Vas bien si no aparece nada raro.',
-      cardRight: { label: 'Disponible', value: '$142.380', sub: 'a 12 días del cierre' },
     },
     {
       user: 'Anotame: gasté $4.500 en el súper',
       bot:  'Listo. Categoría: Supermercado. Pagaste con Galicia. Quedan $137.880 disponibles.',
-      cardLeft: { label: 'Movimiento nuevo', value: '$4.500', sub: 'Supermercado · Galicia', pct: 100 },
     },
     {
       user: '¿En qué se me va más plata?',
       bot:  'Top 3: Alquiler ($420k), Delivery ($83k) y Suscripciones ($28k). ¿Te muestro el detalle?',
-      cardRight: { label: 'Mes corriente', value: '$531k', sub: 'top 3 categorías' },
     },
   ]
 
   const userEl = document.getElementById('demo-user-msg')
   const botEl  = document.getElementById('demo-bot-text')
-  const cardL  = document.getElementById('demo-card-left')
-  const cardR  = document.getElementById('demo-card-right')
 
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -295,7 +353,6 @@
       let pos = 0
       const tick = () => {
         if (document.hidden) {
-          // Reanudar cuando vuelva la pestaña al frente
           typingTimer = setTimeout(tick, 500)
           return
         }
@@ -309,35 +366,10 @@
       tick()
     }
 
-    const showCard = (el: HTMLElement | null, data: unknown) => {
-      if (!el || !data) return
-      el.style.opacity = '1'
-      el.style.transform = el.id === 'demo-card-right'
-        ? 'rotate(2deg) translateY(-8px)'
-        : 'rotate(-3deg) translateY(-8px)'
-      // Actualizar contenido (opcional — para simplicidad dejamos el HTML
-      // estático del SSR, las cards son visualmente consistentes con la
-      // respuesta más popular del demo).
-    }
-
-    const hideCards = () => {
-      if (cardL) {
-        cardL.style.opacity = '0'
-        cardL.style.transform = 'rotate(-3deg) translateY(0)'
-      }
-      if (cardR) {
-        cardR.style.opacity = '0'
-        cardR.style.transform = 'rotate(2deg) translateY(0)'
-      }
-    }
-
     const nextTurn = () => {
       const t = turns[i]
       userEl.textContent = t.user
-      hideCards()
       typeAnswer(t.bot, () => {
-        if (t.cardLeft)  showCard(cardL, t.cardLeft)
-        if (t.cardRight) showCard(cardR, t.cardRight)
         cycleTimer = setTimeout(() => {
           i = (i + 1) % turns.length
           nextTurn()
@@ -345,18 +377,21 @@
       })
     }
 
-    // IntersectionObserver — solo arrancar el ciclo cuando la sección
-    // entra al viewport, así no gastamos CPU en background.
+    // IntersectionObserver: arrancar el loop cuando la sección entra
+    // al viewport. Evita gastar CPU si el user nunca scrollea.
     const section = document.getElementById('live-demo')
     if (section) {
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            nextTurn()
-            io.disconnect()
-          }
-        })
-      }, { threshold: 0.25 })
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              nextTurn()
+              io.disconnect()
+            }
+          })
+        },
+        { threshold: 0.25 },
+      )
       io.observe(section)
     }
   }
