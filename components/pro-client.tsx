@@ -1,25 +1,32 @@
 'use client'
 
-// ─── Página /pro — showcase de features y CTA de compra ──────────────────────
+// ─── Página /pro — showcase de features y CTA de compra vía Mercado Pago ────
 //
-// Server pasa: plan ('free'|'pro'|'grandfathered'), planExpiresAt, hasProAccess.
-// Si hasProAccess=true → mostramos estado de la suscripción y gestión.
-// Si no → showcase con pricing y CTA.
+// Server pasa: plan, planExpiresAt, hasProAccess + pricing (priceArs,
+// earlyAccess, earlySlotsRemaining).
 //
-// La compra desde web va a estar disponible cuando termine Web Billing (RC).
-// Por ahora el CTA abre un modal con instrucciones de descargar la app mobile.
+// Flujo de suscripción:
+//   1. User toca "Suscribirme ahora" → POST /api/billing/mp/subscribe
+//   2. Endpoint crea un preapproval en MP y devuelve { init_point }
+//   3. window.location = init_point → MP checkout
+//   4. MP redirige a /checkout/result con query params del status
+//   5. Webhook MP confirma autorización → activa Pro en backend
 
 import { useState } from 'react'
 import {
   Sparkles, Bot, Camera, Mail, FileText, BarChart3, Palette,
-  Check, X, Smartphone, ExternalLink, Crown,
+  Check, X, ExternalLink, Crown, Loader2, AlertCircle,
 } from 'lucide-react'
+import Link from 'next/link'
 import type { Plan } from '@/lib/subscription'
 
 type Props = {
-  plan:          Plan
-  planExpiresAt: string | null
-  hasProAccess:  boolean
+  plan:                Plan
+  planExpiresAt:       string | null
+  hasProAccess:        boolean
+  priceArs:            number
+  earlyAccess:         boolean
+  earlySlotsRemaining: number
 }
 
 const FEATURES = [
@@ -73,8 +80,41 @@ const COMPARADOR = [
   { feature: 'Personalización (tema claro/oscuro, colores)',free: false, pro: true  },
 ] as const
 
-export function ProClient({ plan, planExpiresAt, hasProAccess }: Props) {
-  const [openHowTo, setOpenHowTo] = useState<'monthly' | 'annual' | null>(null)
+const fmt = (n: number) =>
+  n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+
+export function ProClient({
+  plan,
+  planExpiresAt,
+  hasProAccess,
+  priceArs,
+  earlyAccess,
+  earlySlotsRemaining,
+}: Props) {
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState<string | null>(null)
+
+  const handleSubscribe = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/billing/mp/subscribe', { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? `Error ${res.status}`)
+      }
+      const data = await res.json() as { init_point?: string }
+      if (!data.init_point) {
+        throw new Error('Respuesta inválida del servidor.')
+      }
+      // Redirect al checkout de MP. window.location preserva el flow estándar
+      // (back button del navegador funciona, MP recibe el referrer correcto).
+      window.location.href = data.init_point
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos iniciar el cobro.')
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -97,45 +137,103 @@ export function ProClient({ plan, planExpiresAt, hasProAccess }: Props) {
               </p>
             )}
             {plan === 'pro' && (
-              <a
-                href="https://play.google.com/store/account/subscriptions"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/configuracion/suscripcion"
                 className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-800 mt-2"
               >
                 Gestionar suscripción <ExternalLink size={11} />
-              </a>
+              </Link>
             )}
           </div>
         </div>
       )}
 
-      {/* ── Trial / Pricing ───────────────────────────────────────────────────
-          PRECIOS: hoy hardcoded como referencia AR. Cuando hagamos la
-          integración mobile real con Purchases.getOfferings(), levantamos
-          los precios desde RC (pkg.product.priceString) — ahí Google nos
-          devuelve el precio en la moneda local del user automáticamente. */}
+      {/* ── Pricing card ──────────────────────────────────────────────────── */}
       {!hasProAccess && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <PricingCard
-            badge="Más popular"
-            badgeColor="indigo"
-            title="Mensual"
-            price="$3.499"
-            sub="por mes"
-            cta="Probá 7 días gratis"
-            highlight
-            onClick={() => setOpenHowTo('monthly')}
-          />
-          <PricingCard
-            badge="Ahorrás 36%"
-            badgeColor="emerald"
-            title="Anual"
-            price="$26.999"
-            sub="por año · equivale a $2.250/mes"
-            cta="Probá 7 días gratis"
-            onClick={() => setOpenHowTo('annual')}
-          />
+        <div className="max-w-md mx-auto">
+          <div className={`rounded-2xl p-7 border ${earlyAccess ? 'bg-gradient-to-br from-amber-50 via-white to-emerald-50/40 border-amber-200' : 'bg-gradient-to-br from-indigo-50 via-white to-violet-50 border-indigo-100'}`}>
+            {/* Badge superior */}
+            {earlyAccess ? (
+              <div className="flex items-center gap-2 mb-4">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 text-amber-700 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider">
+                  ✦ Early access
+                </span>
+                <span className="text-xs text-amber-700 font-medium">
+                  Quedan {earlySlotsRemaining} {earlySlotsRemaining === 1 ? 'lugar' : 'lugares'}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mb-4">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 text-indigo-700 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider">
+                  ✦ Plan Pro
+                </span>
+              </div>
+            )}
+
+            <p className="text-sm font-bold text-slate-800 mb-1">Mensual</p>
+
+            <div className="flex items-baseline gap-2 mb-1">
+              <p className="text-4xl font-bold text-slate-900 tabular-nums">
+                ${fmt(priceArs)}
+              </p>
+              <p className="text-sm text-slate-500">/ mes</p>
+            </div>
+
+            {earlyAccess ? (
+              <p className="text-xs text-amber-700 font-medium">
+                50% off durante los primeros 12 meses como early adopter
+              </p>
+            ) : (
+              <p className="text-xs text-slate-500">
+                Sin permanencia · Cancelás cuando quieras
+              </p>
+            )}
+
+            {/* Lista de beneficios cortita */}
+            <ul className="mt-5 space-y-2 text-sm text-slate-700">
+              <li className="flex items-start gap-2">
+                <Check size={15} className="mt-0.5 shrink-0 text-emerald-500" />
+                <span>Manguito + tickets + PDFs + emails — todo ilimitado</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check size={15} className="mt-0.5 shrink-0 text-emerald-500" />
+                <span>Insights con IA en Analítica y reportes mensuales</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check size={15} className="mt-0.5 shrink-0 text-emerald-500" />
+                <span>Temas de color, modo claro y oscuro</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <Check size={15} className="mt-0.5 shrink-0 text-emerald-500" />
+                <span><strong>7 días gratis</strong> — sin cargo si cancelás antes</span>
+              </li>
+            </ul>
+
+            {/* Error */}
+            {error && (
+              <div className="mt-4 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2 text-xs text-red-600">
+                <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* CTA principal */}
+            <button
+              onClick={handleSubscribe}
+              disabled={loading}
+              className="w-full mt-6 px-4 py-3.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 hover:shadow-md transition-all disabled:opacity-70"
+              style={{ background: 'linear-gradient(90deg, #1B3A6B, #1a6b5a)' }}
+            >
+              {loading
+                ? <><Loader2 size={15} className="animate-spin" /> Redirigiendo…</>
+                : <><Sparkles size={15} /> Suscribirme con Mercado Pago</>
+              }
+            </button>
+
+            <p className="text-[11px] text-slate-400 text-center mt-3">
+              Pagás con tarjeta, débito, CBU o efectivo via MP
+            </p>
+          </div>
         </div>
       )}
 
@@ -149,7 +247,7 @@ export function ProClient({ plan, planExpiresAt, hasProAccess }: Props) {
             <div key={f.title} className="bg-white rounded-2xl border border-slate-100 p-5 flex items-start gap-4 hover:shadow-sm transition-shadow">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
-                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+                style={{ background: 'linear-gradient(135deg, #1B3A6B, #1a6b5a)' }}
               >
                 <f.icon size={18} />
               </div>
@@ -167,22 +265,17 @@ export function ProClient({ plan, planExpiresAt, hasProAccess }: Props) {
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">
           Free vs Pro
         </p>
-        {/* En mobile las features largas no entraban: las columnas Free/Pro
-            ocupaban ~112px cada una (min-w-[80px] + px-4), dejando solo
-            ~136px para el texto del feature. Reducimos padding lateral del
-            container, min-w de las celdas, y bajamos texto del feature a
-            text-xs sm:text-sm. */}
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <div className="grid grid-cols-[1fr_auto_auto] items-center px-3 sm:px-5 py-3 border-b border-slate-100 bg-slate-50">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Feature</p>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-2 sm:px-4 text-center">Free</p>
-            <p className="text-xs font-semibold uppercase tracking-wider px-2 sm:px-4 text-center" style={{ color: '#6366f1' }}>Pro</p>
+            <p className="text-xs font-semibold uppercase tracking-wider px-2 sm:px-4 text-center" style={{ color: '#1a6b5a' }}>Pro</p>
           </div>
           {COMPARADOR.map(row => (
             <div key={row.feature} className="grid grid-cols-[1fr_auto_auto] items-center px-3 sm:px-5 py-3 border-b border-slate-50 last:border-0">
               <p className="text-xs sm:text-sm text-slate-700">{row.feature}</p>
               <ComparadorCell value={row.free} className="text-slate-400" />
-              <ComparadorCell value={row.pro}  className="font-semibold" colorOverride="#6366f1" />
+              <ComparadorCell value={row.pro}  className="font-semibold" colorOverride="#1a6b5a" />
             </div>
           ))}
         </div>
@@ -199,60 +292,26 @@ export function ProClient({ plan, planExpiresAt, hasProAccess }: Props) {
               No. Durante los 7 días no se te hace ningún cargo. Si cancelás antes del día 7, no pagás nada y volvés a Free.
             </FAQ>
             <FAQ q="¿Puedo cancelar cuando quiera?">
-              Sí, sin penalización. La cancelación se hace desde la app de Google Play, en Suscripciones.
+              Sí, sin penalización. La cancelación se hace desde la app, en Configuración → Suscripción.
+              Tu plan Pro sigue activo hasta el fin del período pago, después degrada a Free.
             </FAQ>
             <FAQ q="¿Qué pasa si bajo a Free?">
               Tus datos y configuración se mantienen intactos. Solo pasan a aplicar los límites mensuales en las features con IA y se desactiva la personalización (queda el tema actual pero no podés cambiarlo).
             </FAQ>
+            <FAQ q="¿Cómo paga MP?">
+              Tarjeta de crédito, débito, CBU/CVU, dinero en cuenta MP, o efectivo en Rapipago/PagoFácil. Eligís al momento de suscribirte.
+            </FAQ>
+            {earlyAccess && (
+              <FAQ q="¿Qué es Early Access?">
+                Los primeros 100 suscriptores pagan ${fmt(priceArs)}/mes durante 12 meses (50% off). Después de los 12 meses, te pedimos renovar al precio normal de $6.999/mes. Es nuestra forma de agradecerle a los que apuestan al producto temprano.
+              </FAQ>
+            )}
             <FAQ q="¿Por qué cobran por la IA?">
               Cada análisis con IA tiene un costo real para nosotros. El plan Pro nos permite mantener el servicio funcionando y mejorar las funcionalidades.
             </FAQ>
           </div>
         </section>
       )}
-
-      {/* ── Modal cómo comprar (mientras no haya Web Billing) ─────────────── */}
-      {openHowTo && (
-        <HowToBuyModal plan={openHowTo} onClose={() => setOpenHowTo(null)} />
-      )}
-    </div>
-  )
-}
-
-// ─── PricingCard ──────────────────────────────────────────────────────────────
-function PricingCard({
-  badge, badgeColor, title, price, sub, cta, highlight, onClick,
-}: {
-  badge?: string; badgeColor?: 'indigo' | 'emerald'
-  title: string; price: string; sub: string; cta: string
-  highlight?: boolean; onClick: () => void
-}) {
-  const badgeBg = badgeColor === 'emerald'
-    ? 'bg-emerald-100 text-emerald-700'
-    : 'bg-indigo-100 text-indigo-700'
-
-  return (
-    <div className={`rounded-2xl p-6 border ${highlight ? 'bg-gradient-to-br from-indigo-50 via-white to-violet-50 border-indigo-100' : 'bg-white border-slate-100'}`}>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-bold text-slate-800">{title}</p>
-        {badge && (
-          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${badgeBg}`}>
-            {badge}
-          </span>
-        )}
-      </div>
-      <p className="text-3xl font-bold text-slate-900">{price}</p>
-      <p className="text-xs text-slate-500 mt-0.5">{sub}</p>
-      <button
-        onClick={onClick}
-        className="w-full mt-5 px-4 py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 hover:shadow-md transition-shadow"
-        style={{ background: 'linear-gradient(90deg, #6366f1, #8b5cf6)' }}
-      >
-        <Sparkles size={14} /> {cta}
-      </button>
-      <p className="text-[11px] text-slate-400 text-center mt-2">
-        Cancelás cuando quieras
-      </p>
     </div>
   )
 }
@@ -278,7 +337,6 @@ function ComparadorCell({
     )
   }
   return (
-    // min-w bajó de 80 a 56 en mobile (sm+ vuelve a 80). px-2 mobile / px-4 sm+.
     <div className="px-2 sm:px-4 py-2 text-[11px] sm:text-xs text-center min-w-[56px] sm:min-w-[80px]">
       <span className={className} style={colorOverride ? { color: colorOverride } : undefined}>
         {value}
@@ -297,53 +355,5 @@ function FAQ({ q, children }: { q: string; children: React.ReactNode }) {
       </summary>
       <p className="text-xs text-slate-500 leading-relaxed mt-2 pl-0.5">{children}</p>
     </details>
-  )
-}
-
-// ─── HowToBuyModal — placeholder hasta tener Web Billing ─────────────────────
-function HowToBuyModal({ plan, onClose }: { plan: 'monthly' | 'annual'; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between mb-4">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white">
-            <Smartphone size={20} />
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
-            <X size={18} />
-          </button>
-        </div>
-        <p className="text-base font-bold text-slate-800 mb-1">
-          Activá Pro {plan === 'monthly' ? 'mensual' : 'anual'}
-        </p>
-        <p className="text-sm text-slate-500 mb-5">
-          La suscripción se gestiona desde la app Android. Una vez activa, también vas a tener Pro automáticamente acá en la web.
-        </p>
-        <ol className="space-y-3 mb-5">
-          {[
-            'Descargá sinunmango desde Google Play',
-            'Iniciá sesión con tu mismo email',
-            'Tocá "Pro" en el menú y elegí tu plan',
-            'Activá los 7 días de prueba gratis',
-          ].map((step, i) => (
-            <li key={i} className="flex items-start gap-3 text-sm text-slate-600">
-              <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0">
-                {i + 1}
-              </span>
-              <span>{step}</span>
-            </li>
-          ))}
-        </ol>
-        <a
-          href="https://play.google.com/store/apps/details?id=com.sinunmango.mobile"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full block text-center px-4 py-3 rounded-xl text-sm font-semibold text-white"
-          style={{ background: 'linear-gradient(90deg, #6366f1, #8b5cf6)' }}
-        >
-          Descargar la app
-        </a>
-      </div>
-    </div>
   )
 }
