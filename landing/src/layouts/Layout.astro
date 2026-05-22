@@ -97,22 +97,25 @@ const allJsonLd = jsonLd
          de la app real (consistente con el app shell). -->
     <meta name="theme-color" content="#0d2137" />
 
-    <!-- Font Inter (Google Fonts). preconnect minimiza el handshake TLS;
-         display=swap evita FOIT (texto invisible mientras carga el font). -->
+    <!-- Fonts (Google Fonts). preconnect minimiza el handshake TLS;
+         display=swap evita FOIT (texto invisible mientras carga el font).
+         Inter para body/UI; Fraunces para display (headlines del hero) —
+         serif moderno con personalidad, mucha presencia en tamaños grandes,
+         soporta itálicas marcadas. */}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500;1,9..144,700&display=swap"
     />
 
-    {/* Preload del hero shot — mejora LCP (Largest Contentful Paint) en la
-        home. fetchpriority=high empuja el browser a bajarlo primero. */}
+    {/* Preload del Manguito gigante del hero — protagonista del above-the-fold.
+        Mejora LCP. fetchpriority=high empuja al browser a bajarlo primero. */}
     {preloadHero && (
       <link
         rel="preload"
         as="image"
-        href="/screenshots/dashboard.jpg"
+        href="/manguito-hero.webp"
         fetchpriority="high"
       />
     )}
