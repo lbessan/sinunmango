@@ -176,107 +176,79 @@
             </div>
           </div>
 
-          {/* Video demo — la app de verdad, no un mock. Autoplay muted +
-              loop con botón 🔊 para activar audio. preload=metadata baja
-              solo los primeros KB para mostrar poster; el cuerpo se
-              descarga al iniciar playback. */}
-          <div class="relative aspect-video w-full overflow-hidden bg-[#0F1424]">
-            <video
-              id="hero-demo-video"
-              autoplay
-              muted
-              loop
-              playsinline
-              preload="metadata"
-              poster="/demo-poster.jpg"
-              aria-label="Demo de sinunmango: cargar gastos, ver dashboard y hablar con Manguito"
-              class="block h-full w-full object-cover"
-            >
-              <source src="/demo.mp4" type="video/mp4" />
-              <img
-                src="/demo-poster.jpg"
-                alt="Demo de sinunmango"
-                class="h-full w-full object-cover"
-              />
-            </video>
+          {/* Placeholder mientras el video del Hero está en producción.
+              Aspect ratio 16:9 + halo neón + play button grande decorativo
+              + caption editorial en mono. Cuando el video esté listo,
+              reemplazar este bloque por el <video> tag con preload=metadata
+              poster=... source=/dashboard-video.mp4 (o similar). */}
+          <div class="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-[#0F1424] via-[#0A0E1A] to-[#0F1424]">
+            {/* Halo decorativo radial */}
+            <div
+              class="absolute inset-0 opacity-40"
+              style="background: radial-gradient(circle at 50% 50%, rgba(255,184,77,0.15) 0%, transparent 60%);"
+              aria-hidden="true"
+            ></div>
 
-            {/* Botón mute/unmute esquina inferior derecha. Estado inicial
-                muted=true, click activa audio. */}
-            <button
-              id="hero-demo-audio-toggle"
-              type="button"
-              aria-label="Activar audio del video"
-              aria-pressed="false"
-              class="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/75 sm:bottom-4 sm:right-4 sm:h-11 sm:w-11"
-            >
-              <svg
-                data-icon="muted"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+            {/* Grid sutil de fondo (textura) */}
+            <div
+              class="absolute inset-0 opacity-[0.05]"
+              style="background-image: linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px); background-size: 48px 48px;"
+              aria-hidden="true"
+            ></div>
+
+            {/* Centro: play button + caption */}
+            <div class="relative flex h-full flex-col items-center justify-center gap-5 px-6 text-center">
+              <button
+                type="button"
+                tabindex="-1"
                 aria-hidden="true"
+                class="group relative flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#FFB84D]/40 bg-[#FFB84D]/10 backdrop-blur-sm transition-transform sm:h-24 sm:w-24"
               >
-                <path d="M11 5 6 9H2v6h4l5 4V5Z" />
-                <line x1="22" y1="9" x2="16" y2="15" />
-                <line x1="16" y1="9" x2="22" y2="15" />
-              </svg>
-              <svg
-                data-icon="unmuted"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-                class="hidden"
-              >
-                <path d="M11 5 6 9H2v6h4l5 4V5Z" />
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-              </svg>
-            </button>
+                {/* Pulso decorativo */}
+                <span
+                  class="absolute inset-0 animate-ping rounded-full bg-[#FFB84D]/20 opacity-60"
+                ></span>
+                {/* Play triangle */}
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  class="ml-1 text-[#FFB84D] sm:h-9 sm:w-9"
+                  aria-hidden="true"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </button>
+
+              <div>
+                <p
+                  class="text-[10px] uppercase tracking-[0.2em] text-[#FFB84D]"
+                  style="font-family: 'Geist Mono', monospace;"
+                >
+                  Video demo
+                </p>
+                <p class="mt-2 text-base font-semibold text-white sm:text-lg">
+                  Mostrando la app en uso · próximamente
+                </p>
+                <p class="mx-auto mt-2 max-w-sm text-xs text-white/50 sm:text-sm">
+                  Mientras tanto, probala directo en{" "}
+                  <a
+                    href="https://app.sinunmango.com.ar"
+                    class="text-white/80 underline decoration-[#FFB84D]/40 underline-offset-2 transition-colors hover:text-[#FFB84D] hover:decoration-[#FFB84D]"
+                  >
+                    app.sinunmango.com.ar
+                  </a>
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  {/* No quedan animaciones específicas del Hero — el video aporta el
-      "movimiento" del above-the-fold. El resto es estático. */}
+  {/* Sin script — el placeholder es estático (el ping del play button
+      lo hace Tailwind con animate-ping). Cuando vuelva el video real,
+      restaurar acá el toggle de audio. */}
 </section>
-
-<script>
-  // Toggle audio del video del Hero. Inicia muted (autoplay lo requiere).
-  // Click → muted=false + actualiza aria-pressed y swap de íconos.
-  // En mobile, si el browser bloqueó autoplay, el click sirve como user
-  // gesture para iniciar playback con audio.
-  const video = document.getElementById('hero-demo-video') as HTMLVideoElement | null
-  const btn   = document.getElementById('hero-demo-audio-toggle')
-  if (video && btn) {
-    const iconMuted   = btn.querySelector('[data-icon="muted"]')
-    const iconUnmuted = btn.querySelector('[data-icon="unmuted"]')
-
-    btn.addEventListener('click', () => {
-      const willUnmute = video.muted
-      video.muted = !willUnmute
-      btn.setAttribute('aria-pressed', String(willUnmute))
-      btn.setAttribute(
-        'aria-label',
-        willUnmute ? 'Silenciar audio del video' : 'Activar audio del video',
-      )
-      iconMuted?.classList.toggle('hidden', willUnmute)
-      iconUnmuted?.classList.toggle('hidden', !willUnmute)
-      if (willUnmute && video.paused) {
-        video.play().catch(() => {})
-      }
-    })
-  }
-</script>
