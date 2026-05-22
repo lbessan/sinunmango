@@ -1,46 +1,168 @@
 ---
-// Hero — dirección "Manguito-Forward": la mascota es el protagonista
-// del above-the-fold, no un detalle. Headline en Fraunces itálica grande
-// con personalidad serif. Manguito ocupa ~50% del viewport (desktop),
-// con un chat-bubble saliendo de él que ciclea preguntas reales.
+// Hero — mezcla "Brutal Editorial + Manguito-Forward":
+//   - Dark mode (#0A0E1A) con acento mango neón #FFB84D y verde dato #4ADE80
+//   - Manguito gigante a la derecha con halo neón mango
+//   - Tipografía gigante asimétrica: Inter Display bold 96-128px,
+//     palabras clave en Fraunces itálica para contraste editorial
+//   - Layout intencionalmente desbalanceado (Manguito off-grid)
+//   - Trust strip en Geist Mono para textura editorial
 //
-// Tono: cálido, en primera persona del Manguito, sin lenguaje corpo.
-// La página entera baja desde acá con la misma voz.
+// El video demo NO vive más acá — pasa a una sección LiveDemo dedicada
+// después del Hero.
 ---
 
-<section class="relative overflow-hidden pt-28 pb-16 sm:pt-36 sm:pb-24 lg:pt-44 lg:pb-32">
-  {/* Fondo: gradiente sutil + manchas radiales con los colores de marca.
-      Inspirado en notion/duolingo: superficies cálidas, no clínicas. */}
+<section class="relative isolate overflow-hidden bg-[#0A0E1A] pt-28 pb-20 sm:pt-32 sm:pb-28 lg:pt-36 lg:pb-32">
+  {/* Grid sutil de fondo para textura editorial (tipo Linear/Vercel) */}
+  <div
+    class="absolute inset-0 -z-10 opacity-[0.04]"
+    style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 64px 64px;"
+    aria-hidden="true"
+  ></div>
+
+  {/* Halos de marca difuminados */}
   <div class="absolute inset-0 -z-10" aria-hidden="true">
-    <div class="absolute inset-0 bg-[#FAFAF7]"></div>
     <div
-      class="absolute -top-32 right-[-10%] h-[600px] w-[600px] rounded-full opacity-[0.18] blur-3xl"
-      style="background: radial-gradient(circle, #F97316 0%, transparent 70%);"
+      class="absolute top-[10%] right-[5%] h-[700px] w-[700px] rounded-full opacity-[0.18] blur-[120px]"
+      style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
     ></div>
     <div
-      class="absolute bottom-[-15%] left-[-10%] h-[500px] w-[500px] rounded-full opacity-[0.15] blur-3xl"
-      style="background: radial-gradient(circle, #1B3A6B 0%, transparent 70%);"
-    ></div>
-    <div
-      class="absolute top-1/2 left-1/3 h-[300px] w-[300px] rounded-full opacity-[0.10] blur-3xl"
-      style="background: radial-gradient(circle, #10B981 0%, transparent 70%);"
+      class="absolute bottom-[-20%] left-[-10%] h-[500px] w-[500px] rounded-full opacity-[0.12] blur-[100px]"
+      style="background: radial-gradient(circle, #4ADE80 0%, transparent 70%);"
     ></div>
   </div>
 
-  <div class="mx-auto grid max-w-7xl items-center gap-12 px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-20">
-    {/* ── Columna izquierda: Manguito + chat bubble ───────────────────── */}
-    <div class="relative order-2 lg:order-1">
-      {/* Wrapper con el manguito + bubble. position relative para anclar
-          el bubble a la cabeza del manguito (top-right). */}
-      <div class="relative mx-auto max-w-md sm:max-w-lg lg:max-w-none">
-        {/* Halo decorativo detrás del manguito */}
+  <div class="mx-auto max-w-7xl px-6">
+    {/* Layout grid 12-col asimétrico. La col del headline ocupa 7
+        columnas, la del Manguito 6 (overflow intencional → más
+        editorial, menos balanceado). En mobile colapsa a una columna. */}
+    <div class="grid grid-cols-1 items-end gap-y-12 lg:grid-cols-12 lg:gap-x-4">
+      {/* ── Columna izquierda: headline + CTAs ─────────────────────── */}
+      <div class="relative z-10 lg:col-span-7 lg:pt-12">
+        {/* Etiqueta pequeña en Geist Mono — chip de marca */}
         <div
-          class="absolute inset-[15%] rounded-full opacity-40 blur-3xl"
-          style="background: radial-gradient(circle, #FFE5C2 0%, transparent 60%);"
+          class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 backdrop-blur"
+        >
+          <span
+            class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#FFB84D]"
+          ></span>
+          <span
+            class="text-[10px] uppercase tracking-[0.18em] text-white/60"
+            style="font-family: 'Geist Mono', 'IBM Plex Mono', ui-monospace, monospace;"
+          >
+            v2.0 · Hecho en Argentina
+          </span>
+        </div>
+
+        {/* Headline gigante asimétrico. Cada línea con su tracking y
+            su tamaño. Las palabras clave en Fraunces itálica suman
+            textura editorial sin perder la onda brutal. */}
+        <h1
+          class="mt-8 text-[clamp(3.5rem,9vw,8rem)] font-bold leading-[0.88] tracking-[-0.04em] text-white"
+          style="font-family: 'Inter', system-ui, sans-serif;"
+        >
+          <span class="block">Tu plata,</span>
+          <span class="block">
+            sin{" "}
+            <span
+              class="italic font-medium"
+              style="font-family: 'Fraunces', Georgia, serif; font-variation-settings: 'opsz' 144; color: #FFB84D;"
+            >
+              vueltas
+            </span>.
+          </span>
+        </h1>
+
+        {/* Subhead — punto medio entre headline y body */}
+        <p
+          class="mt-8 max-w-xl text-lg leading-relaxed text-white/70 sm:text-xl"
+        >
+          Soy <span class="font-semibold text-white">Manguito</span>. Te ayudo a
+          controlar tu plata sin Excels ni planillas. Cargame los gastos
+          como quieras —{" "}
+          <span class="text-white">o pedime que lo haga yo</span>.
+        </p>
+
+        {/* CTAs */}
+        <div
+          class="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center"
+        >
+          <a
+            href="https://app.sinunmango.com.ar"
+            class="group inline-flex items-center gap-2 rounded-xl bg-[#FFB84D] px-7 py-4 text-base font-semibold text-[#0A0E1A] transition-all hover:-translate-y-0.5 hover:bg-[#FFC972] hover:shadow-[0_10px_40px_-10px_#FFB84D] sm:text-lg"
+          >
+            Hablar con Manguito
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="transition-transform group-hover:translate-x-1"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
+          </a>
+
+          <a
+            href="https://play.google.com/store/apps/details?id=com.sinunmango.mobile"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-3 rounded-xl border border-white/15 bg-white/[0.03] px-5 py-3.5 text-white transition-all hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.06] sm:px-6 sm:py-4"
+            aria-label="Descargar sinunmango en Google Play"
+          >
+            <svg width="22" height="24" viewBox="0 0 22 24" fill="none" aria-hidden="true" class="shrink-0">
+              <path d="M.84 1.2A2 2 0 0 0 .5 2.31v19.38c0 .4.12.77.34 1.11l10.49-11.4L.84 1.2Z" fill="#5BC8F3"/>
+              <path d="m15.5 7.86-3.43 3.73 3.43 3.74 5.04-2.86c1.27-.72 1.27-2.57 0-3.29L15.5 7.86Z" fill="#FFCE3D"/>
+              <path d="m12.07 11.59 3.43-3.73L1.5.95 12.07 11.59Z" fill="#EE4647"/>
+              <path d="m12.07 11.6L1.5 22.24l14-6.91-3.43-3.73Z" fill="#3BCC70"/>
+            </svg>
+            <div class="text-left leading-tight">
+              <div
+                class="text-[9px] uppercase tracking-wide text-white/60"
+                style="font-family: 'Geist Mono', monospace;"
+              >
+                Disponible en
+              </div>
+              <div class="text-base font-semibold sm:text-lg">Google Play</div>
+            </div>
+          </a>
+        </div>
+
+        {/* Trust strip en mono — añade textura editorial */}
+        <div
+          class="mt-10 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] uppercase tracking-wider text-white/50"
+          style="font-family: 'Geist Mono', 'IBM Plex Mono', ui-monospace, monospace;"
+        >
+          <div class="flex items-center gap-1.5">
+            <span class="text-[#4ADE80]">●</span>
+            <span>Sin password del banco</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[#4ADE80]">●</span>
+            <span>Free para siempre</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[#4ADE80]">●</span>
+            <span>Exportá todo</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Columna derecha: Manguito + chat bubble + KPI card ────── */}
+      <div class="relative lg:col-span-5 lg:-mr-12 xl:-mr-20">
+        {/* Halo neón mango detrás del Manguito */}
+        <div
+          class="absolute inset-[10%] rounded-full opacity-50 blur-[80px]"
+          style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
           aria-hidden="true"
         ></div>
 
-        {/* Manguito gigante. fetchpriority=high porque es el LCP. */}
+        {/* Manguito gigante. Mismo asset que antes. */}
         <img
           src="/manguito-hero.webp"
           alt="Manguito, el asistente con IA de sinunmango"
@@ -48,196 +170,81 @@
           height="1024"
           fetchpriority="high"
           decoding="async"
-          class="relative mx-auto block w-full max-w-[420px] animate-manguito-float sm:max-w-[480px] lg:max-w-[540px]"
+          class="relative mx-auto block w-full max-w-[420px] animate-manguito-float sm:max-w-[520px] lg:max-w-none"
         />
 
-        {/* Bubble de chat saliendo desde la cabeza del Manguito, hacia la
-            derecha (apunta al headline en desktop). Ciclea preguntas reales
-            que la app responde. El SVG hace de "punta" del globo. */}
+        {/* Chat bubble — versión dark glassmorphism. Sale del lado
+            superior del Manguito con un tag "MANGUITO RESPONDE".
+            Anclado off-grid (negativo en x) para sumar al desbalance. */}
         <div
-          class="absolute top-[8%] right-[-12px] z-10 max-w-[280px] sm:right-[-20px] sm:max-w-[320px] lg:right-[-40px]"
+          class="absolute top-[6%] -left-2 z-20 max-w-[300px] sm:-left-8 sm:max-w-[340px] lg:-left-16"
         >
           <div
-            class="relative rounded-2xl rounded-bl-md bg-white px-5 py-4 shadow-xl ring-1 ring-black/5"
+            class="relative rounded-2xl rounded-br-md border border-white/10 bg-white/[0.06] px-5 py-4 shadow-2xl backdrop-blur-xl"
           >
-            {/* Cola del bubble apuntando hacia el manguito (abajo-izq) */}
-            <svg
-              class="absolute -bottom-2 left-2 h-3 w-4 text-white"
-              viewBox="0 0 16 12"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path d="M0 0 L16 0 L8 12 Z" />
-            </svg>
-
-            <div class="flex items-center gap-2">
+            {/* Tag superior en mono */}
+            <div class="mb-2 flex items-center justify-between">
               <span
-                class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#10B981]"
-              ></span>
-              <span
-                class="text-[10px] font-semibold uppercase tracking-wider text-[#10B981]"
+                class="text-[10px] uppercase tracking-[0.18em] text-[#FFB84D]"
+                style="font-family: 'Geist Mono', monospace;"
               >
-                Manguito está pensando…
+                Manguito responde
+              </span>
+              <span class="flex h-1.5 w-1.5">
+                <span
+                  class="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-[#4ADE80] opacity-75"
+                ></span>
+                <span
+                  class="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#4ADE80]"
+                ></span>
               </span>
             </div>
 
-            {/* Texto que rota cada ~4s — controlado por el script al pie.
-                Default visible para SSR / no-JS. */}
             <p
               id="hero-bubble-text"
-              class="mt-2 text-base font-medium leading-snug text-[#0F172A]"
+              class="text-base font-medium leading-snug text-white"
             >
               "¿Cuánto gasté en delivery este mes?"
             </p>
             <p
               id="hero-bubble-answer"
-              class="mt-2 text-sm text-[#475569]"
+              class="mt-2 text-sm leading-relaxed text-white/70"
             >
-              <span class="font-semibold text-[#0F172A]">$83.450</span>
+              <span class="font-semibold text-[#FFB84D]">$83.450</span>
               en 14 pedidos. Casi 3× tu promedio del año.
             </p>
           </div>
         </div>
 
-        {/* Mini-card decorativa: número grande "+47%" como prueba de valor.
-            Anclada al lado opuesto del bubble para balance visual. */}
+        {/* Mini KPI card flotante (offset al otro lado) */}
         <div
-          class="absolute bottom-[8%] left-[-8px] hidden rounded-2xl bg-[#1B3A6B] px-4 py-3 text-white shadow-xl sm:left-[-16px] sm:block lg:left-[-32px]"
+          class="absolute bottom-[10%] -right-2 z-20 hidden rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 backdrop-blur-xl sm:-right-4 sm:block lg:-right-8"
         >
           <div class="flex items-center gap-3">
-            <div class="text-3xl font-bold text-[#10B981]">+47%</div>
-            <div class="text-xs leading-tight">
-              <div class="font-semibold">Ahorrá más</div>
-              <div class="text-white/70">vs no controlar</div>
+            <div
+              class="text-3xl font-bold text-[#4ADE80]"
+              style="font-variant-numeric: tabular-nums;"
+            >
+              +47%
+            </div>
+            <div class="text-xs leading-tight text-white/70">
+              <div class="font-semibold text-white">Ahorrás más</div>
+              <div>vs no controlar</div>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    {/* ── Columna derecha: headline + CTAs ──────────────────────────────── */}
-    <div class="order-1 text-center lg:order-2 lg:text-left">
-      <span
-        class="inline-flex items-center gap-2 rounded-full border border-[#0F172A]/10 bg-white/80 px-3.5 py-1.5 text-xs font-medium text-[#475569] backdrop-blur"
-      >
-        <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#F97316]"></span>
-        Hecho en Argentina · pesos, dólares y todo lo del medio
-      </span>
-
-      {/* Headline en Fraunces. La itálica es del display style — agrega
-          carácter sin perder seriedad. "Hola." en una línea como apertura,
-          después el value prop completo en regular. */}
-      <h1
-        class="mt-8 text-[clamp(2.75rem,7vw,5.5rem)] font-bold leading-[0.95] tracking-tight text-[#0F172A]"
-        style="font-family: 'Fraunces', Georgia, serif;"
-      >
-        <span class="italic" style="font-variation-settings: 'opsz' 144;">
-          Hola.
-        </span>
-        <br />
-        Soy{" "}
-        <span
-          class="italic"
-          style="font-variation-settings: 'opsz' 144; color: #F97316;"
-        >
-          Manguito
-        </span>.
-      </h1>
-
-      <p
-        class="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-[#475569] sm:text-xl lg:mx-0"
-      >
-        Te ayudo a controlar tu plata sin que te explote la cabeza ni el Excel.
-        Cargame los gastos como quieras —{" "}
-        <span class="font-semibold text-[#0F172A]">
-          o pedime que lo haga yo
-        </span>{" "}
-        y los respondo en segundos.
-      </p>
-
-      <div
-        class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start"
-      >
-        <a
-          href="https://app.sinunmango.com.ar"
-          class="group inline-flex items-center gap-2 rounded-2xl bg-[#F97316] px-7 py-4 text-base font-semibold text-white shadow-lg shadow-[#F97316]/30 transition-all hover:-translate-y-0.5 hover:bg-[#EA580C] hover:shadow-xl hover:shadow-[#F97316]/40 sm:text-lg"
-        >
-          Hablar con Manguito
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="transition-transform group-hover:translate-x-1"
-            aria-hidden="true"
-          >
-            <path d="M5 12h14" />
-            <path d="m12 5 7 7-7 7" />
-          </svg>
-        </a>
-
-        <a
-          href="https://play.google.com/store/apps/details?id=com.sinunmango.mobile"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="inline-flex items-center gap-3 rounded-2xl border border-[#0F172A]/10 bg-white px-5 py-3.5 text-[#0F172A] transition-all hover:-translate-y-0.5 hover:border-[#0F172A]/20 hover:shadow-md sm:px-6 sm:py-4"
-          aria-label="Descargar sinunmango en Google Play"
-        >
-          <svg width="22" height="24" viewBox="0 0 22 24" fill="none" aria-hidden="true" class="shrink-0">
-            <path d="M.84 1.2A2 2 0 0 0 .5 2.31v19.38c0 .4.12.77.34 1.11l10.49-11.4L.84 1.2Z" fill="#5BC8F3"/>
-            <path d="m15.5 7.86-3.43 3.73 3.43 3.74 5.04-2.86c1.27-.72 1.27-2.57 0-3.29L15.5 7.86Z" fill="#FFCE3D"/>
-            <path d="m12.07 11.59 3.43-3.73L1.5.95 12.07 11.59Z" fill="#EE4647"/>
-            <path d="m12.07 11.6L1.5 22.24l14-6.91-3.43-3.73Z" fill="#3BCC70"/>
-          </svg>
-          <div class="text-left leading-tight">
-            <div class="text-[10px] uppercase tracking-wide text-[#475569]">Disponible en</div>
-            <div class="text-base font-semibold sm:text-lg">Google Play</div>
-          </div>
-        </a>
-      </div>
-
-      <p class="mt-6 text-sm text-[#94A3B8]">
-        Free para siempre · Sin tarjeta al registrarte · Pro 7 días gratis
-      </p>
-
-      {/* Trust strip: 3 highlights que justifican el "soy real" */}
-      <div
-        class="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-[#475569] lg:justify-start"
-      >
-        <div class="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-[#10B981]" aria-hidden="true">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          <span>Sin compartir password del banco</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-[#10B981]" aria-hidden="true">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          <span>Datos encriptados</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-[#10B981]" aria-hidden="true">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          <span>Exportá todo cuando quieras</span>
-        </div>
-      </div>
-    </div>
   </div>
 
-  {/* Animación flotante sutil del Manguito */}
+  {/* Animaciones */}
   <style is:global>
     @keyframes manguito-float {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-12px); }
+      0%, 100% { transform: translateY(0px) rotate(-1deg); }
+      50% { transform: translateY(-14px) rotate(1deg); }
     }
     .animate-manguito-float {
-      animation: manguito-float 6s ease-in-out infinite;
+      animation: manguito-float 7s ease-in-out infinite;
     }
     @media (prefers-reduced-motion: reduce) {
       .animate-manguito-float {
@@ -248,25 +255,24 @@
 </section>
 
 <script>
-  // Rotación de preguntas en el bubble del Manguito. Cada 5s cambia
-  // pregunta + respuesta. Fade out → swap → fade in. Pausa si la pestaña
-  // está oculta (document.hidden) para no gastar batería de fondo.
+  // Rotación de diálogos en el bubble del Hero. Cada ~5s cambia
+  // pregunta + respuesta. Fade out 250ms → swap → fade in.
   const dialogues: { q: string; a: string }[] = [
     {
       q: '"¿Cuánto gasté en delivery este mes?"',
-      a: '<span class="font-semibold text-[#0F172A]">$83.450</span> en 14 pedidos. Casi 3× tu promedio del año.',
+      a: '<span class="font-semibold text-[#FFB84D]">$83.450</span> en 14 pedidos. Casi 3× tu promedio del año.',
     },
     {
       q: '"¿Llego a fin de mes?"',
-      a: 'Te quedan <span class="font-semibold text-[#0F172A]">$142k</span> y faltan 12 días. Vas bien si no aparece nada raro.',
+      a: 'Te quedan <span class="font-semibold text-[#FFB84D]">$142k</span> y faltan 12 días. Vas bien si no aparece nada raro.',
     },
     {
       q: '"Anotame: gasté $4.500 en el súper"',
-      a: 'Listo. Categoría: <span class="font-semibold text-[#0F172A]">Supermercado</span>. Pagaste con Galicia.',
+      a: 'Listo. Categoría: <span class="font-semibold text-[#FFB84D]">Supermercado</span>. Pagaste con Galicia.',
     },
     {
       q: '"¿En qué se me va más plata?"',
-      a: 'Top 3: <span class="font-semibold text-[#0F172A]">Alquiler, Delivery y Suscripciones</span>. ¿Te muestro el detalle?',
+      a: 'Top 3: <span class="font-semibold text-[#FFB84D]">Alquiler, Delivery y Suscripciones</span>. ¿Te muestro el detalle?',
     },
   ]
 
@@ -278,7 +284,6 @@
     const swap = () => {
       if (document.hidden) return
       i = (i + 1) % dialogues.length
-      // Fade out
       qEl.style.opacity = '0'
       aEl.style.opacity = '0'
       qEl.style.transition = 'opacity 250ms ease'
