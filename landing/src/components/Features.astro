@@ -1,22 +1,10 @@
 ---
 import { Fragment } from "astro/jsx-runtime";
 
-// ─── Features ────────────────────────────────────────────────────────────────
-//
-// Estructura en dos niveles para reducir el scroll y dar jerarquía visual:
-//
-//   1) "Diferenciales" — 3 cards GRANDES con los flows de carga automática
-//      (mail / PDF / Manguito). Son los que justifican que sinunmango es
-//      distinto a Excel u otras apps de finanzas.
-//
-//   2) "Lo demás" — 6 cards compactas con las capabilities tradicionales
-//      de cualquier app de finanzas (conciliación, monedas, tarjetas,
-//      gastos fijos, inversiones, analítica).
-//
-// El ManguitoPresenter se removió de acá porque ya aparece en Onboarding,
-// que es donde tiene sentido contextual ("te llevo de la mano"). Repetirlo
-// en 4 secciones (Features, Screenshots, Onboarding, FAQ) anulaba su
-// impacto — ahora es un saludo y desaparece hasta el siguiente paso natural.
+// Features — dark editorial.
+// Estructura en dos niveles:
+//   1) "Diferenciales" — 3 cards GRANDES con los flows de carga automática.
+//   2) "Lo demás" — 6 cards compactas con las capabilities clásicas.
 
 type Feature = {
   title: string;
@@ -24,7 +12,6 @@ type Feature = {
   icon: string;
 };
 
-// Los 3 diferenciales — los flows de carga automática.
 const highlights: Feature[] = [
   {
     title: "Reenviá los mails del banco",
@@ -41,12 +28,11 @@ const highlights: Feature[] = [
   {
     title: "Decile a Manguito",
     blurb:
-      "“Gasté $4.500 en el súper”. El asistente entiende, anota, te muestra los datos y vos confirmás. También responde lo que sea sobre tu plata.",
+      '"Gasté $4.500 en el súper". El asistente entiende, anota, te muestra los datos y vos confirmás. También responde lo que sea sobre tu plata.',
     icon: `<path d="M21 12a8 8 0 1 1-3.2-6.4L21 4v5h-5"/><circle cx="9" cy="12" r="0.8" fill="currentColor"/><circle cx="13" cy="12" r="0.8" fill="currentColor"/><circle cx="17" cy="12" r="0.8" fill="currentColor"/>`,
   },
 ];
 
-// Las 6 features clásicas.
 const features: Feature[] = [
   {
     title: "Conciliaciones que cierran",
@@ -87,62 +73,86 @@ const features: Feature[] = [
 ];
 ---
 
-<section id="features" class="relative py-24 sm:py-32">
+<section id="features" class="relative bg-[#0A0E1A] py-24 sm:py-32">
+  {/* Halo decorativo */}
+  <div class="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    <div
+      class="absolute top-[20%] right-[-10%] h-[500px] w-[500px] rounded-full opacity-[0.08] blur-[120px]"
+      style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
+    ></div>
+  </div>
+
   <div class="mx-auto max-w-6xl px-6">
-    <!-- Header de la sección -->
-    <div class="mx-auto max-w-2xl text-center">
-      <span
-        class="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-soft)]"
+    {/* Header */}
+    <div class="max-w-3xl">
+      <div
+        class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 backdrop-blur"
       >
-        Qué hace
-      </span>
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#4ADE80]"></span>
+        <span
+          class="text-[10px] uppercase tracking-[0.18em] text-white/60"
+          style="font-family: 'Geist Mono', monospace;"
+        >
+          Qué hace
+        </span>
+      </div>
       <h2
-        class="mt-4 text-3xl font-bold tracking-tight text-[var(--color-ink)] sm:text-4xl"
+        class="mt-6 text-[clamp(2rem,4.5vw,3.5rem)] font-bold leading-[0.95] tracking-[-0.03em] text-white"
+        style="font-family: 'Inter', system-ui, sans-serif;"
       >
-        Lo más tedioso es
-        <span class="text-brand-gradient">cargar los gastos</span>.
+        Lo más tedioso es{" "}
+        <span
+          class="italic font-medium"
+          style="font-family: 'Fraunces', Georgia, serif; font-variation-settings: 'opsz' 144; color: #FFB84D;"
+        >
+          cargar los gastos
+        </span>.
+        <br class="hidden sm:inline" />
         Lo hacemos por vos.
       </h2>
-      <p class="mt-4 text-lg text-[var(--color-ink-soft)]">
+      <p class="mt-6 max-w-xl text-base text-white/60 sm:text-lg">
         Tres formas de que tu plata termine ordenada sin que pases media
         hora con la calculadora del celular.
       </p>
     </div>
 
-    <!-- ── Diferenciales: 3 cards grandes ─────────────────────────────── -->
-    <ul class="mt-12 grid gap-5 sm:gap-6 lg:grid-cols-3">
+    {/* Diferenciales: 3 cards grandes */}
+    <ul class="mt-14 grid gap-5 sm:gap-6 lg:grid-cols-3">
       {
-        highlights.map((f) => (
-          <li class="card relative overflow-hidden p-7 sm:p-8 ring-1 ring-[color:var(--color-accent)]/15">
-            {/* Halo decorativo arriba a la derecha — sutil */}
+        highlights.map((f, i) => (
+          <li class="group relative overflow-hidden rounded-2xl border border-[#FFB84D]/20 bg-white/[0.03] p-7 transition-all hover:border-[#FFB84D]/40 hover:bg-white/[0.05] sm:p-8">
             <div
-              class="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-25 blur-2xl"
-              style="background: linear-gradient(135deg, var(--color-accent2), var(--color-accent));"
+              class="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full opacity-20 blur-3xl transition-opacity duration-500 group-hover:opacity-40"
+              style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
               aria-hidden="true"
             />
             <div class="relative">
-              <div
-                class="bg-brand-gradient mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-md shadow-[color:var(--color-accent)]/25"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="26"
-                  height="26"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
+              <div class="flex items-center justify-between">
+                <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-[#FFB84D]/30 bg-[#FFB84D]/10 text-[#FFB84D]">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <Fragment set:html={f.icon} />
+                  </svg>
+                </div>
+                <p
+                  class="text-[10px] uppercase tracking-[0.2em] text-white/30"
+                  style="font-family: 'Geist Mono', monospace;"
                 >
-                  <Fragment set:html={f.icon} />
-                </svg>
+                  0{i + 1}
+                </p>
               </div>
-              <h3 class="text-xl font-bold text-[var(--color-ink)]">
-                {f.title}
-              </h3>
-              <p class="mt-3 text-sm leading-relaxed text-[var(--color-ink-soft)]">
+              <h3 class="mt-5 text-xl font-bold text-white">{f.title}</h3>
+              <p class="mt-3 text-sm leading-relaxed text-white/60">
                 {f.blurb}
               </p>
             </div>
@@ -151,21 +161,24 @@ const features: Feature[] = [
       }
     </ul>
 
-    <!-- ── Divisor sutil ────────────────────────────────────────────────── -->
+    {/* Divisor sutil */}
     <div class="mt-20 mb-10 flex items-center gap-4">
-      <div class="h-px flex-1 bg-[var(--color-border)]"></div>
-      <p class="text-xs font-semibold uppercase tracking-widest text-[var(--color-ink-muted)]">
-        Y lo de siempre, pero bien hecho
+      <div class="h-px flex-1 bg-white/10"></div>
+      <p
+        class="text-[10px] uppercase tracking-[0.2em] text-white/40"
+        style="font-family: 'Geist Mono', monospace;"
+      >
+        Y lo de siempre, bien hecho
       </p>
-      <div class="h-px flex-1 bg-[var(--color-border)]"></div>
+      <div class="h-px flex-1 bg-white/10"></div>
     </div>
 
-    <!-- ── 6 features clásicas en grid compacto ─────────────────────────── -->
+    {/* 6 features clásicas compactas */}
     <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {
         features.map((f) => (
-          <li class="card p-5">
-            <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-bg)] text-[var(--color-accent)]">
+          <li class="group rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition-colors hover:border-white/20 hover:bg-white/[0.04]">
+            <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-[#4ADE80] transition-colors group-hover:border-[#4ADE80]/30 group-hover:bg-[#4ADE80]/10">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -181,10 +194,8 @@ const features: Feature[] = [
                 <Fragment set:html={f.icon} />
               </svg>
             </div>
-            <h3 class="text-base font-semibold text-[var(--color-ink)]">
-              {f.title}
-            </h3>
-            <p class="mt-1.5 text-sm leading-relaxed text-[var(--color-ink-soft)]">
+            <h3 class="text-base font-semibold text-white">{f.title}</h3>
+            <p class="mt-1.5 text-sm leading-relaxed text-white/60">
               {f.blurb}
             </p>
           </li>
