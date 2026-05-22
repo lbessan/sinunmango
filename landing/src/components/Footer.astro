@@ -2,59 +2,72 @@
 const year = new Date().getFullYear();
 ---
 
-<footer class="border-t border-[var(--color-border)] bg-white">
-  <div class="mx-auto max-w-6xl px-6 py-12">
-    <div class="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
+<footer class="relative border-t border-white/10 bg-[#0A0E1A]">
+  <div class="mx-auto max-w-6xl px-6 py-14">
+    <div class="flex flex-col items-start justify-between gap-10 md:flex-row md:items-center">
       <div>
         <a href="/" class="flex items-center gap-2">
           <img src="/logo.png" alt="sinunmango" width="32" height="32" class="h-8 w-8" />
-          <span class="text-base font-semibold text-[var(--color-ink)]">sinunmango</span>
+          <span class="text-base font-semibold text-white">
+            sinun<span class="text-[#FFB84D]">mango</span>
+          </span>
         </a>
-        <p class="mt-3 max-w-sm text-sm text-[var(--color-ink-soft)]">
-          Una app argentina para llevar tus finanzas sin que te vuelva loco.
-          Hecha por una persona, para personas.
+        <p class="mt-3 max-w-sm text-sm text-white/60">
+          Una app argentina para llevar tus finanzas sin que te vuelva
+          loco. Hecha por una persona, para personas.
         </p>
       </div>
 
       <nav class="grid grid-cols-2 gap-x-12 gap-y-2 text-sm sm:grid-cols-3">
         <div class="space-y-2">
-          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
+          <p
+            class="text-[10px] uppercase tracking-[0.18em] text-white/40"
+            style="font-family: 'Geist Mono', monospace;"
+          >
             Producto
           </p>
-          <a href="#features" class="block text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Qué hace</a>
-          <a href="#para-quien" class="block text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Para quién</a>
-          <a href="#pricing" class="block text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Planes</a>
-          <a href="https://app.sinunmango.com.ar" class="block text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Ir a la app</a>
+          <a href="#features" class="block text-white/70 transition-colors hover:text-white">Qué hace</a>
+          <a href="#para-quien" class="block text-white/70 transition-colors hover:text-white">Para quién</a>
+          <a href="#pricing" class="block text-white/70 transition-colors hover:text-white">Planes</a>
+          <a href="https://app.sinunmango.com.ar" class="block text-white/70 transition-colors hover:text-white">Ir a la app</a>
           <a
             href="https://play.google.com/store/apps/details?id=com.sinunmango.mobile"
             target="_blank"
             rel="noopener noreferrer"
-            class="block text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
-          >Google Play</a>
+            class="block text-white/70 transition-colors hover:text-white"
+          >
+            Google Play
+          </a>
         </div>
         <div class="space-y-2">
-          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
+          <p
+            class="text-[10px] uppercase tracking-[0.18em] text-white/40"
+            style="font-family: 'Geist Mono', monospace;"
+          >
             Soporte
           </p>
-          <a href="#faq" class="block text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Preguntas</a>
-          <a href="mailto:luchobessan@gmail.com" class="block text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Contacto</a>
+          <a href="#faq" class="block text-white/70 transition-colors hover:text-white">Preguntas</a>
+          <a href="mailto:luchobessan@gmail.com" class="block text-white/70 transition-colors hover:text-white">Contacto</a>
         </div>
         <div class="space-y-2">
-          <p class="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
+          <p
+            class="text-[10px] uppercase tracking-[0.18em] text-white/40"
+            style="font-family: 'Geist Mono', monospace;"
+          >
             Legal
           </p>
-          <a href="/privacidad" class="block text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Privacidad</a>
+          <a href="/privacidad" class="block text-white/70 transition-colors hover:text-white">Privacidad</a>
         </div>
       </nav>
     </div>
 
     <div
-      class="mt-10 flex flex-col items-start justify-between gap-3 border-t border-[var(--color-border)] pt-6 text-xs text-[var(--color-ink-muted)] sm:flex-row sm:items-center"
+      class="mt-12 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row sm:items-center"
     >
-      <p>© {year} sinunmango. Hecho en Buenos Aires, con mate.</p>
+      <p>© {year} sinunmango · Hecho en Buenos Aires, con mate.</p>
       <p>
-        sinunmango no es un banco ni un asesor financiero. Es una herramienta
-        para que sepas dónde está tu plata.
+        sinunmango no es un banco ni un asesor financiero. Es una
+        herramienta para que sepas dónde está tu plata.
       </p>
     </div>
   </div>

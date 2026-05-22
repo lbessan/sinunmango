@@ -1,28 +1,45 @@
 ---
-// Datos centralizados en src/data/faqs.ts — los consumimos acá para
-// renderear las preguntas, y desde index.astro para generar el JSON-LD
-// FAQPage en <head> (rich snippets en Google).
-//
-// Nota: el ManguitoPresenter se removió de esta sección — vive solo en
-// Onboarding para que no se repita en cada sección y pierda impacto.
+// FAQ — dark editorial. Datos en src/data/faqs.ts.
+// El JSON-LD FAQPage para Google rich snippets se genera en index.astro.
 
 import { FAQS as faqs } from "../data/faqs";
 ---
 
-<section id="faq" class="relative py-24 sm:py-32">
+<section id="faq" class="relative bg-[#0A0E1A] py-24 sm:py-32">
+  {/* Separador superior */}
+  <div
+    class="absolute top-0 left-0 right-0 h-px"
+    style="background: linear-gradient(90deg, transparent, rgba(74,222,128,0.3), transparent);"
+    aria-hidden="true"
+  ></div>
+
   <div class="mx-auto max-w-3xl px-6">
-    <div class="text-center">
-      <span
-        class="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-soft)]"
+    {/* Header */}
+    <div class="max-w-2xl">
+      <div
+        class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 backdrop-blur"
       >
-        Dudas
-      </span>
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#4ADE80]"></span>
+        <span
+          class="text-[10px] uppercase tracking-[0.18em] text-white/60"
+          style="font-family: 'Geist Mono', monospace;"
+        >
+          Dudas
+        </span>
+      </div>
       <h2
-        class="mt-4 text-3xl font-bold tracking-tight text-[var(--color-ink)] sm:text-4xl"
+        class="mt-6 text-[clamp(2rem,4.5vw,3.5rem)] font-bold leading-[0.95] tracking-[-0.03em] text-white"
+        style="font-family: 'Inter', system-ui, sans-serif;"
       >
-        Preguntas frecuentes
+        Preguntas{" "}
+        <span
+          class="italic font-medium"
+          style="font-family: 'Fraunces', Georgia, serif; font-variation-settings: 'opsz' 144; color: #FFB84D;"
+        >
+          frecuentes
+        </span>.
       </h2>
-      <p class="mt-4 text-lg text-[var(--color-ink-soft)]">
+      <p class="mt-6 text-base text-white/60 sm:text-lg">
         Lo que la gente nos pregunta antes de probarla.
       </p>
     </div>
@@ -31,20 +48,16 @@ import { FAQS as faqs } from "../data/faqs";
       {
         faqs.map((f, i) => (
           // name="faq-accordion" agrupa todos los <details> como exclusive:
-          // al abrir uno, los demás se colapsan automáticamente. HTML
-          // nativo desde Chrome 120 / Safari 17.2 / Firefox 109 (2024+).
-          // Cero JS, accessibility OK (sigue siendo <details>/<summary>).
+          // al abrir uno, los demás se colapsan automáticamente.
           <details
             name="faq-accordion"
-            class="card group p-0 [&_summary::-webkit-details-marker]:hidden"
+            class="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] transition-colors [&_summary::-webkit-details-marker]:hidden hover:border-white/20"
             open={i === 0}
           >
             <summary class="flex cursor-pointer list-none items-center justify-between gap-6 p-5 text-left">
-              <span class="text-base font-semibold text-[var(--color-ink)]">
-                {f.q}
-              </span>
+              <span class="text-base font-semibold text-white">{f.q}</span>
               <span
-                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-ink-soft)] transition-transform group-open:rotate-45"
+                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/15 text-white/60 transition-all group-open:rotate-45 group-open:border-[#FFB84D]/40 group-open:bg-[#FFB84D]/10 group-open:text-[#FFB84D]"
                 aria-hidden="true"
               >
                 <svg
@@ -61,7 +74,7 @@ import { FAQS as faqs } from "../data/faqs";
                 </svg>
               </span>
             </summary>
-            <div class="px-5 pb-5 text-sm leading-relaxed text-[var(--color-ink-soft)]">
+            <div class="border-t border-white/5 px-5 py-5 text-sm leading-relaxed text-white/60">
               {f.a}
             </div>
           </details>
