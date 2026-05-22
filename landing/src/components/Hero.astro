@@ -155,7 +155,9 @@
           aria-hidden="true"
         ></div>
 
-        {/* Browser frame estilo macOS dark */}
+        {/* Browser frame estilo macOS dark con el video real de la app
+            adentro. El video ya muestra el FAB del Manguito en su esquina,
+            así que no agregamos overlay extra — sería duplicar. */}
         <div
           class="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0F1424] shadow-2xl"
         >
@@ -174,236 +176,107 @@
             </div>
           </div>
 
-          {/* Mock dashboard body */}
-          <div class="relative px-5 py-5 sm:px-7 sm:py-7">
-            {/* Header: período */}
-            <div class="flex items-end justify-between">
-              <div>
-                <p
-                  class="text-[10px] uppercase tracking-[0.18em] text-white/40"
-                  style="font-family: 'Geist Mono', monospace;"
-                >
-                  Resumen financiero
-                </p>
-                <p class="mt-1 text-xs text-white/60">Mayo 2026</p>
-              </div>
-              <p
-                class="text-3xl font-bold tracking-tight text-white sm:text-4xl"
-                style="font-variant-numeric: tabular-nums; font-family: 'Inter', sans-serif;"
-              >
-                MAYO
-                <span class="text-[#FFB84D]">26</span>
-              </p>
-            </div>
+          {/* Video demo — la app de verdad, no un mock. Autoplay muted +
+              loop con botón 🔊 para activar audio. preload=metadata baja
+              solo los primeros KB para mostrar poster; el cuerpo se
+              descarga al iniciar playback. */}
+          <div class="relative aspect-video w-full overflow-hidden bg-[#0F1424]">
+            <video
+              id="hero-demo-video"
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              poster="/demo-poster.jpg"
+              aria-label="Demo de sinunmango: cargar gastos, ver dashboard y hablar con Manguito"
+              class="block h-full w-full object-cover"
+            >
+              <source src="/demo.mp4" type="video/mp4" />
+              <img
+                src="/demo-poster.jpg"
+                alt="Demo de sinunmango"
+                class="h-full w-full object-cover"
+              />
+            </video>
 
-            {/* KPIs grandes — Saldo + Proyección */}
-            <div class="mt-6 grid grid-cols-2 gap-3">
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                <p
-                  class="text-[9px] uppercase tracking-[0.16em] text-white/40"
-                  style="font-family: 'Geist Mono', monospace;"
-                >
-                  Saldo disponible
-                </p>
-                <p
-                  class="mt-2 text-2xl font-bold text-[#4ADE80] sm:text-3xl"
-                  style="font-variant-numeric: tabular-nums;"
-                >
-                  $1.847.230
-                </p>
-                <p class="mt-1 text-[10px] text-white/40">Pesos + dólares</p>
-              </div>
-              <div class="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                <p
-                  class="text-[9px] uppercase tracking-[0.16em] text-white/40"
-                  style="font-family: 'Geist Mono', monospace;"
-                >
-                  Proyección fin de mes
-                </p>
-                <p
-                  class="mt-2 text-2xl font-bold text-white sm:text-3xl"
-                  style="font-variant-numeric: tabular-nums;"
-                >
-                  $1.412.580
-                </p>
-                <p class="mt-1 text-[10px] text-[#FFB84D]">después de gastos fijos</p>
-              </div>
-            </div>
-
-            {/* Indicadores chicos del mes */}
-            <div class="mt-3 grid grid-cols-3 gap-2 text-[10px]">
-              <div class="rounded-lg border border-white/5 bg-white/[0.015] p-2.5">
-                <div class="flex items-center gap-1.5">
-                  <span class="h-1.5 w-1.5 rounded-full bg-[#4ADE80]"></span>
-                  <span class="text-white/40" style="font-family: 'Geist Mono', monospace;">INGRESOS</span>
-                </div>
-                <p
-                  class="mt-1 text-sm font-semibold text-white"
-                  style="font-variant-numeric: tabular-nums;"
-                >
-                  $850.000
-                </p>
-              </div>
-              <div class="rounded-lg border border-white/5 bg-white/[0.015] p-2.5">
-                <div class="flex items-center gap-1.5">
-                  <span class="h-1.5 w-1.5 rounded-full bg-[#F87171]"></span>
-                  <span class="text-white/40" style="font-family: 'Geist Mono', monospace;">GASTOS</span>
-                </div>
-                <p
-                  class="mt-1 text-sm font-semibold text-white"
-                  style="font-variant-numeric: tabular-nums;"
-                >
-                  $432.180
-                </p>
-              </div>
-              <div class="rounded-lg border border-white/5 bg-white/[0.015] p-2.5">
-                <div class="flex items-center gap-1.5">
-                  <span class="h-1.5 w-1.5 rounded-full bg-[#FFB84D]"></span>
-                  <span class="text-white/40" style="font-family: 'Geist Mono', monospace;">DEUDA TJ</span>
-                </div>
-                <p
-                  class="mt-1 text-sm font-semibold text-white"
-                  style="font-variant-numeric: tabular-nums;"
-                >
-                  $143.754
-                </p>
-              </div>
-            </div>
-
-            {/* Estado de cuentas */}
-            <div class="mt-5">
-              <p
-                class="text-[9px] uppercase tracking-[0.16em] text-white/40"
-                style="font-family: 'Geist Mono', monospace;"
-              >
-                Estado de cuentas
-              </p>
-              <div class="mt-2 space-y-1.5">
-                <div class="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.015] px-3 py-2">
-                  <div class="flex items-center gap-2.5">
-                    <div class="h-7 w-7 shrink-0 rounded-md bg-[#FD6400]/15 flex items-center justify-center text-[10px] font-bold text-[#FD6400]">G</div>
-                    <div>
-                      <p class="text-xs font-medium text-white">Banco Galicia</p>
-                      <p class="text-[10px] text-white/40">Caja de Ahorro · ARS</p>
-                    </div>
-                  </div>
-                  <p
-                    class="text-sm font-semibold text-white"
-                    style="font-variant-numeric: tabular-nums;"
-                  >
-                    $542.380
-                  </p>
-                </div>
-                <div class="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.015] px-3 py-2">
-                  <div class="flex items-center gap-2.5">
-                    <div class="h-7 w-7 shrink-0 rounded-md bg-[#009EE3]/15 flex items-center justify-center text-[10px] font-bold text-[#009EE3]">MP</div>
-                    <div>
-                      <p class="text-xs font-medium text-white">Mercado Pago</p>
-                      <p class="text-[10px] text-white/40">Billetera · ARS</p>
-                    </div>
-                  </div>
-                  <p
-                    class="text-sm font-semibold text-white"
-                    style="font-variant-numeric: tabular-nums;"
-                  >
-                    $89.520
-                  </p>
-                </div>
-                <div class="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.015] px-3 py-2">
-                  <div class="flex items-center gap-2.5">
-                    <div class="h-7 w-7 shrink-0 rounded-md bg-[#EC0000]/15 flex items-center justify-center text-[10px] font-bold text-[#EC0000]">S</div>
-                    <div>
-                      <p class="text-xs font-medium text-white">Santander USD</p>
-                      <p class="text-[10px] text-white/40">Caja de Ahorro · USD</p>
-                    </div>
-                  </div>
-                  <p
-                    class="text-sm font-semibold text-white"
-                    style="font-variant-numeric: tabular-nums;"
-                  >
-                    US$ 850
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* FAB del Manguito en la esquina inferior derecha — chico,
-                como en la app real. Bubble pequeño que aparece arriba con
-                animación. Esto sugiere el asistente sin dominar. */}
-            <div class="absolute bottom-4 right-4 z-10">
-              {/* Bubble */}
-              <div
-                class="absolute -top-2 right-0 -translate-y-full whitespace-nowrap rounded-xl rounded-br-md border border-[#FFB84D]/30 bg-[#0A0E1A]/95 px-3 py-2 shadow-lg backdrop-blur-xl animate-bubble-tap"
-              >
-                <p class="text-[11px] font-medium text-white">
-                  ¿Te ayudo con algo?
-                </p>
-                <svg
-                  class="absolute -bottom-1.5 right-4 h-2 w-3 text-[#0A0E1A]/95"
-                  viewBox="0 0 16 12"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M0 0 L16 0 L8 12 Z" />
-                </svg>
-              </div>
-              {/* FAB circular con manguito chico — saluda */}
-              <button
-                type="button"
+            {/* Botón mute/unmute esquina inferior derecha. Estado inicial
+                muted=true, click activa audio. */}
+            <button
+              id="hero-demo-audio-toggle"
+              type="button"
+              aria-label="Activar audio del video"
+              aria-pressed="false"
+              class="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/75 sm:bottom-4 sm:right-4 sm:h-11 sm:w-11"
+            >
+              <svg
+                data-icon="muted"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
                 aria-hidden="true"
-                tabindex="-1"
-                class="relative flex h-14 w-14 items-center justify-center rounded-full shadow-2xl ring-2 ring-[#FFB84D]/30 transition-transform animate-fab-pulse"
-                style="background: linear-gradient(135deg, #07192b 0%, #1a6b5a 100%);"
               >
-                <img
-                  src="/manguito.png"
-                  alt=""
-                  width="40"
-                  height="40"
-                  class="h-10 w-10 object-contain"
-                />
-                {/* Dot verde "online" */}
-                <span
-                  class="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-[#0F1424] bg-[#4ADE80]"
-                ></span>
-              </button>
-            </div>
+                <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                <line x1="22" y1="9" x2="16" y2="15" />
+                <line x1="16" y1="9" x2="22" y2="15" />
+              </svg>
+              <svg
+                data-icon="unmuted"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                class="hidden"
+              >
+                <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  {/* Animaciones */}
-  <style is:global>
-    /* FAB del manguito: pulsación suave del ring + ligera oscilación
-       para que esté "vivo" sin distraer. */
-    @keyframes fab-pulse {
-      0%, 100% { transform: scale(1) rotate(-3deg); box-shadow: 0 0 0 0 rgba(255, 184, 77, 0.45); }
-      50%      { transform: scale(1.04) rotate(3deg); box-shadow: 0 0 0 14px rgba(255, 184, 77, 0); }
-    }
-    .animate-fab-pulse {
-      animation: fab-pulse 3s ease-in-out infinite;
-      will-change: transform, box-shadow;
-    }
-
-    /* Bubble del manguito: aparece/desaparece cíclicamente */
-    @keyframes bubble-tap {
-      0%, 15%   { opacity: 0; transform: translateY(calc(-100% + 4px)); }
-      20%, 80%  { opacity: 1; transform: translateY(-100%); }
-      85%, 100% { opacity: 0; transform: translateY(calc(-100% + 4px)); }
-    }
-    .animate-bubble-tap {
-      animation: bubble-tap 8s ease-in-out infinite;
-      animation-delay: 2s;
-      will-change: opacity, transform;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .animate-fab-pulse,
-      .animate-bubble-tap {
-        animation: none;
-      }
-    }
-  </style>
+  {/* No quedan animaciones específicas del Hero — el video aporta el
+      "movimiento" del above-the-fold. El resto es estático. */}
 </section>
+
+<script>
+  // Toggle audio del video del Hero. Inicia muted (autoplay lo requiere).
+  // Click → muted=false + actualiza aria-pressed y swap de íconos.
+  // En mobile, si el browser bloqueó autoplay, el click sirve como user
+  // gesture para iniciar playback con audio.
+  const video = document.getElementById('hero-demo-video') as HTMLVideoElement | null
+  const btn   = document.getElementById('hero-demo-audio-toggle')
+  if (video && btn) {
+    const iconMuted   = btn.querySelector('[data-icon="muted"]')
+    const iconUnmuted = btn.querySelector('[data-icon="unmuted"]')
+
+    btn.addEventListener('click', () => {
+      const willUnmute = video.muted
+      video.muted = !willUnmute
+      btn.setAttribute('aria-pressed', String(willUnmute))
+      btn.setAttribute(
+        'aria-label',
+        willUnmute ? 'Silenciar audio del video' : 'Activar audio del video',
+      )
+      iconMuted?.classList.toggle('hidden', willUnmute)
+      iconUnmuted?.classList.toggle('hidden', !willUnmute)
+      if (willUnmute && video.paused) {
+        video.play().catch(() => {})
+      }
+    })
+  }
+</script>
