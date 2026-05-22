@@ -1,16 +1,17 @@
 ---
-// Nav superior fijo.
+// Nav superior fijo — adaptado al dark mode del Hero.
 //
 // Comportamiento:
-//   - `fixed top-0` siempre visible (antes era absolute → se perdía al
-//     scrollear y el CTA "Ir a la app" desaparecía, perdiendo conversión).
-//   - Transparente al cargar (sobre el hero glow); al scrollear pasa a
-//     blanco con backdrop-blur + border sutil. La transición es smooth.
-//   - Shrink: padding vertical 20px → 12px cuando hay scroll.
-//   - Mobile (<sm): hamburguesa que abre drawer con los links + CTA.
+//   - `fixed top-0` siempre visible.
+//   - Antes del scroll: fondo transparente con textos blancos (sobre el
+//     Hero dark). Logo "sinunmango" en blanco/mango para legibilidad.
+//   - Después del scroll: fondo dark glassmorphism (blur sobre lo que
+//     viene atrás) y sigue legible cuando el user llega a secciones
+//     light (Features/Pricing etc) porque el blur+contrast lo cuida.
+//   - Mobile: drawer dark coherente.
 //
-// El padding-top que necesita el primer section ya está cubierto por el
-// pt-32 sm:pt-44 lg:pt-48 del Hero.
+// El padding-top que necesita el primer section está cubierto por el
+// pt-28 sm:pt-32 lg:pt-36 del Hero nuevo.
 ---
 
 <header
@@ -29,8 +30,8 @@
         height="36"
         class="h-9 w-9 transition-transform group-hover:scale-105"
       />
-      <span class="text-lg font-semibold tracking-tight text-[var(--color-ink)]">
-        sinunmango
+      <span class="text-lg font-semibold tracking-tight text-white">
+        sinun<span class="text-[#FFB84D]">mango</span>
       </span>
     </a>
 
@@ -38,25 +39,25 @@
     <div class="hidden items-center gap-1 sm:flex">
       <a
         href="#features"
-        class="rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition-colors hover:text-white"
       >
         Qué hace
       </a>
       <a
         href="#pricing"
-        class="rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition-colors hover:text-white"
       >
         Planes
       </a>
       <a
         href="#faq"
-        class="rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+        class="rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition-colors hover:text-white"
       >
         Preguntas
       </a>
       <a
         href="https://app.sinunmango.com.ar"
-        class="bg-brand-gradient ml-2 inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform hover:-translate-y-0.5"
+        class="ml-2 inline-flex items-center gap-1.5 rounded-lg bg-[#FFB84D] px-4 py-2 text-sm font-semibold text-[#0A0E1A] shadow-lg shadow-[#FFB84D]/20 transition-all hover:-translate-y-0.5 hover:bg-[#FFC972] hover:shadow-xl hover:shadow-[#FFB84D]/30"
       >
         Ir a la app
         <span aria-hidden="true">→</span>
@@ -67,7 +68,7 @@
     <div class="flex items-center gap-2 sm:hidden">
       <a
         href="https://app.sinunmango.com.ar"
-        class="bg-brand-gradient inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white shadow-sm"
+        class="inline-flex items-center gap-1 rounded-lg bg-[#FFB84D] px-3 py-2 text-xs font-semibold text-[#0A0E1A] shadow-sm"
       >
         Ir a la app
       </a>
@@ -77,7 +78,7 @@
         aria-expanded="false"
         aria-controls="mobile-menu"
         aria-label="Abrir menú"
-        class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white text-[var(--color-ink)] transition-colors hover:bg-slate-50"
+        class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-white/[0.05] text-white backdrop-blur transition-colors hover:bg-white/[0.10]"
       >
         <!-- Hamburguesa — visible cuando el menú está cerrado -->
         <svg
@@ -109,30 +110,29 @@
     </div>
   </nav>
 
-  <!-- Mobile drawer — se abre debajo del nav. Cuando data-open=true se
-       expande con max-height transition. -->
+  <!-- Mobile drawer -->
   <div
     id="mobile-menu"
     data-mobile-menu
     data-open="false"
-    class="overflow-hidden border-b border-[var(--color-border)] bg-white transition-[max-height,opacity] duration-300 ease-out sm:hidden max-h-0 opacity-0 data-[open='true']:max-h-[480px] data-[open='true']:opacity-100"
+    class="overflow-hidden border-b border-white/10 bg-[#0A0E1A]/95 backdrop-blur-xl transition-[max-height,opacity] duration-300 ease-out sm:hidden max-h-0 opacity-0 data-[open='true']:max-h-[480px] data-[open='true']:opacity-100"
   >
     <div class="mx-auto flex max-w-6xl flex-col gap-1 px-6 py-4">
       <a
         href="#features"
-        class="block rounded-lg px-3 py-3 text-base font-medium text-[var(--color-ink)] hover:bg-slate-50"
+        class="block rounded-lg px-3 py-3 text-base font-medium text-white hover:bg-white/[0.05]"
       >
         Qué hace
       </a>
       <a
         href="#pricing"
-        class="block rounded-lg px-3 py-3 text-base font-medium text-[var(--color-ink)] hover:bg-slate-50"
+        class="block rounded-lg px-3 py-3 text-base font-medium text-white hover:bg-white/[0.05]"
       >
         Planes
       </a>
       <a
         href="#faq"
-        class="block rounded-lg px-3 py-3 text-base font-medium text-[var(--color-ink)] hover:bg-slate-50"
+        class="block rounded-lg px-3 py-3 text-base font-medium text-white hover:bg-white/[0.05]"
       >
         Preguntas
       </a>
@@ -140,7 +140,7 @@
         href="https://play.google.com/store/apps/details?id=com.sinunmango.mobile"
         target="_blank"
         rel="noopener noreferrer"
-        class="mt-2 flex items-center justify-center gap-2 rounded-lg bg-[#0f172a] px-4 py-3 text-sm font-semibold text-white"
+        class="mt-2 flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-white"
       >
         <svg width="18" height="20" viewBox="0 0 22 24" fill="none" aria-hidden="true">
           <path d="M.84 1.2A2 2 0 0 0 .5 2.31v19.38c0 .4.12.77.34 1.11l10.49-11.4L.84 1.2Z" fill="#5BC8F3"/>
@@ -155,20 +155,17 @@
 </header>
 
 <script>
-  // Sticky nav: aplica fondo + shrink cuando hay scroll. Listener pasivo
-  // por performance; threshold 24px (después del scroll inicial).
-  const nav = document.querySelector<HTMLElement>("[data-nav]");
+  // Sticky nav: aplica fondo + shrink cuando hay scroll. Listener pasivo.
+  const nav      = document.querySelector<HTMLElement>("[data-nav]");
   const navInner = document.querySelector<HTMLElement>("[data-nav-inner]");
-  const toggle = document.querySelector<HTMLButtonElement>("[data-mobile-toggle]");
-  const menu = document.querySelector<HTMLElement>("[data-mobile-menu]");
+  const toggle   = document.querySelector<HTMLButtonElement>("[data-mobile-toggle]");
+  const menu     = document.querySelector<HTMLElement>("[data-mobile-menu]");
 
   if (nav && navInner) {
     const SCROLL_THRESHOLD = 24;
 
     function updateNavStyle() {
       const scrolled = window.scrollY > SCROLL_THRESHOLD;
-      // Clase + atributo: tailwind no expone variantes para scrollY, así que
-      // toggleamos clases manualmente para el background + border.
       nav!.classList.toggle("is-scrolled", scrolled);
       navInner!.dataset.scrolled = String(scrolled);
     }
@@ -179,15 +176,12 @@
 
   // Mobile menu toggle.
   if (toggle && menu) {
-    const openIcon = toggle.querySelector<SVGElement>("[data-icon='open']");
+    const openIcon  = toggle.querySelector<SVGElement>("[data-icon='open']");
     const closeIcon = toggle.querySelector<SVGElement>("[data-icon='close']");
 
     function setOpen(open: boolean) {
       toggle!.setAttribute("aria-expanded", String(open));
-      toggle!.setAttribute(
-        "aria-label",
-        open ? "Cerrar menú" : "Abrir menú",
-      );
+      toggle!.setAttribute("aria-label", open ? "Cerrar menú" : "Abrir menú");
       menu!.dataset.open = String(open);
       openIcon?.classList.toggle("hidden", open);
       closeIcon?.classList.toggle("hidden", !open);
@@ -198,12 +192,10 @@
       setOpen(!isOpen);
     });
 
-    // Cerrar al hacer click en un link interno
     menu.querySelectorAll<HTMLAnchorElement>("a[href^='#']").forEach((a) => {
       a.addEventListener("click", () => setOpen(false));
     });
 
-    // Cerrar con Escape
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") setOpen(false);
     });
@@ -211,13 +203,17 @@
 </script>
 
 <style>
-  /* Estados scroll: background blanco con blur + border sutil.
-     Se aplica vía clase JS porque depende de scrollY y no de viewport. */
+  /* Estados scroll:
+       - Sobre Hero (top): transparente, sin border ni shadow.
+       - Después del scroll: fondo dark glassmorphism para legibilidad
+         coherente con el tema del Hero. Cuando el user llegue a las
+         secciones light (más abajo), el dark del nav igual se ve OK
+         porque el contraste con cualquier fondo es alto. */
   [data-nav].is-scrolled {
-    background-color: rgb(255 255 255 / 0.85);
-    backdrop-filter: saturate(180%) blur(12px);
-    -webkit-backdrop-filter: saturate(180%) blur(12px);
-    border-bottom: 1px solid var(--color-border);
-    box-shadow: 0 1px 3px rgb(13 33 55 / 0.04);
+    background-color: rgb(10 14 26 / 0.78);
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    border-bottom: 1px solid rgb(255 255 255 / 0.08);
+    box-shadow: 0 4px 24px rgb(0 0 0 / 0.20);
   }
 </style>
