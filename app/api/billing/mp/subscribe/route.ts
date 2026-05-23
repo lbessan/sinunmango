@@ -3,6 +3,7 @@ import { createClientForRequest } from '@/lib/supabase/route'
 import { adminClient } from '@/lib/supabase/admin'
 import {
   createPreapproval,
+  preapprovalCheckoutUrl,
   PRO_PRICE_ARS,
   EARLY_ACCESS_PRICE_ARS,
   EARLY_ACCESS_LIMIT,
@@ -135,7 +136,10 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok:                  true,
-    init_point:          preapproval.init_point,
+    // preapprovalCheckoutUrl elige sandbox_init_point cuando el token es
+    // TEST- y init_point cuando es prod. El frontend hace
+    // window.location = init_point sin saber la diferencia.
+    init_point:          preapprovalCheckoutUrl(preapproval),
     preapproval_id:      preapproval.id,
     early_access:        isEarlyAccess,
     plan_amount:         priceArs,
