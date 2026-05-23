@@ -97,13 +97,14 @@ export type MpPreapprovalStatus =
   | 'cancelled'    // finalizado
 
 export type MpPreapproval = {
-  id:             string
-  payer_id?:      number
-  payer_email?:   string
-  status:         MpPreapprovalStatus
-  reason?:        string
+  id:                 string
+  payer_id?:          number
+  payer_email?:       string
+  status:             MpPreapprovalStatus
+  reason?:            string
   external_reference?: string
-  init_point:     string  // URL para mandar al user a autorizar
+  init_point:         string  // URL prod del checkout
+  sandbox_init_point?: string // URL sandbox — usar cuando el token es TEST-
   next_payment_date?: string
   auto_recurring: {
     frequency:           number
@@ -113,6 +114,17 @@ export type MpPreapproval = {
     transaction_amount:  number
     currency_id:         'ARS'
   }
+}
+
+/**
+ * Devuelve la URL correcta a la que mandar al user según el modo (sandbox
+ * vs prod). En sandbox, usamos sandbox_init_point porque init_point apunta
+ * a la URL prod y MP redirige a "gestionar" en lugar del checkout cuando
+ * el access token es TEST-.
+ */
+export function preapprovalCheckoutUrl(p: MpPreapproval): string {
+  if (isSandbox() && p.sandbox_init_point) return p.sandbox_init_point
+  return p.init_point
 }
 
 /**
