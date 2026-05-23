@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Send, X, User, CheckCircle, AlertCircle, Loader2, Minimize2, Trash2, Sparkles } from 'lucide-react'
+import { VoiceButton } from './voice-button'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Message = {
@@ -417,15 +418,19 @@ export function ManguitoFlotante() {
               <div ref={bottomRef} />
             </div>
 
-            {/* Input */}
-            <div className="shrink-0 px-4 pb-4 pt-2" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
-              <div className="rounded-2xl px-3 py-2.5 flex gap-2.5 items-end shadow-sm" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
+            {/* Input — relative para que el overlay del VoiceButton se posicione
+                contra este contenedor (instrucciones de grabación y errors). */}
+            <div
+              className="shrink-0 px-4 pb-4 pt-2 relative"
+              style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}
+            >
+              <div className="rounded-2xl px-3 py-2.5 flex gap-2 items-end shadow-sm" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
                 <textarea
                   ref={textareaRef}
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Escribí un mensaje..."
+                  placeholder="Escribí un mensaje o mantené el mic 🎙️"
                   rows={1}
                   className="flex-1 resize-none text-sm text-slate-800 outline-none bg-transparent placeholder-slate-400 self-center"
                   style={{ minHeight: 26, maxHeight: 120, lineHeight: '1.5' }}
@@ -433,6 +438,20 @@ export function ManguitoFlotante() {
                     const t = e.target as HTMLTextAreaElement
                     t.style.height = 'auto'
                     t.style.height = Math.min(t.scrollHeight, 120) + 'px'
+                  }}
+                />
+                {/* Botón micrófono: push-to-talk. Al soltar, el texto
+                    transcripto cae en el input para que el user lo revise
+                    y mande (o edite si la transcripción falló). */}
+                <VoiceButton
+                  disabled={loading}
+                  onTranscript={(text) => {
+                    // Agregamos al texto existente si el user ya estaba
+                    // tipeando algo. Si no, lo reemplazamos directo.
+                    setInput(prev => prev ? `${prev} ${text}` : text)
+                    // Focus en el textarea para que el user pueda mandar
+                    // inmediatamente con Enter.
+                    setTimeout(() => textareaRef.current?.focus(), 50)
                   }}
                 />
                 <button
