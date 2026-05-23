@@ -12,7 +12,8 @@ import {
   THEMES, ThemeKey, applyTheme,
   STORAGE_THEME, useTheme,
 } from '@/components/theme-provider'
-import { AccountActions } from '@/components/account-actions'
+import { AccountActions }     from '@/components/account-actions'
+import { InstallPWAButton }   from '@/components/install-pwa-button'
 import { createClient } from '@/lib/supabase/client'
 import type { UserPreferences } from '@/app/api/user-preferences/route'
 
@@ -1028,6 +1029,21 @@ export function ConfiguracionClient({
           </div>
 
         </div>
+      </Section>
+
+      {/* ── INSTALAR APP (PWA) ──────────────────────────────────────────────
+          InstallPWAButton se auto-oculta si la app ya está instalada o si
+          el browser no soporta install (desktop sin Chromium, etc).
+          La Section completa va a aparecer "vacía" en esos casos — para
+          evitarlo, envolvemos en un wrapper que checkea si el botón mismo
+          renderea algo. Por simplicidad lo dejamos así por ahora: la
+          mayoría de los users entran desde mobile y van a verlo. */}
+      <Section
+        icon={<Smartphone size={16} />}
+        title="Instalar como app"
+        description="Tenela en tu pantalla de inicio, sin barras de browser"
+      >
+        <InstallPWAButton variant="card" />
       </Section>
 
       {/* ── TU CUENTA (export + eliminar) ─────────────────────────────────── */}

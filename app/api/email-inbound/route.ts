@@ -420,6 +420,20 @@ export async function POST(req: NextRequest) {
     const venceDay    = cuenta.fecha_vencimiento_tarjeta
       ? new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
 
+    // Logging defensivo para diagnosticar el bug del período mal asignado.
+    // Cuando volvamos a ver una asignación incorrecta, este log va a tener
+    // todo el contexto (fechas, días, moneda, flags) sin tener que reproducir.
+    console.log(
+      `[email-inbound/period-debug] cuenta=${cuenta.nombre_cuenta} ` +
+      `tipo=${cuenta.tipo_cuenta} ` +
+      `cierre_raw=${cuenta.fecha_cierre_tarjeta} cierreDay=${cierreDay} ` +
+      `vence_raw=${cuenta.fecha_vencimiento_tarjeta} venceDay=${venceDay} ` +
+      `parsed_fecha=${parsed.fecha} parsed_moneda=${parsed.moneda} ` +
+      `parsed_detalle="${parsed.detalle}" parsed_monto=${parsed.monto} ` +
+      `isTarjeta=${isTarjeta} isIngreso=${isIngreso} ` +
+      `aplica_diferimiento=${isTarjeta && !isIngreso && parsed.moneda !== 'USD'}`
+    )
+
     // Los ingresos no se dividen en cuotas
     const cuotasEfectivas = isIngreso ? 1 : parsed.cuotas
     const montoCuota      = parsed.monto / cuotasEfectivas
@@ -433,6 +447,15 @@ export async function POST(req: NextRequest) {
         fechaCuota, cierreDay, venceDay,
         isTarjeta && !isIngreso && parsed.moneda !== 'USD'
       )
+
+      // Log por cuota (uno por movimiento creado) — el período calculado
+      // es el dato clave a comparar contra lo que muestra el form al editar.
+      if (i === 0) {
+        console.log(
+          `[email-inbound/period-result] fechaCuota=${fechaCuota} ` +
+          `periodoCuota=${periodoCuota} (cuotas_total=${cuotasEfectivas})`
+        )
+      }
       return {
         id:              crypto.randomUUID(),
         fecha:           fechaCuota,
