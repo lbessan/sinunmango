@@ -101,7 +101,14 @@ export function ProClient({
       const res = await fetch('/api/billing/mp/subscribe', { method: 'POST' })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error ?? `Error ${res.status}`)
+        // En sandbox, mostramos también el detalle de MP para diagnosticar
+        // rápido. mp_status + mp_body solo se mandan cuando el server detecta
+        // que está corriendo con TEST- token.
+        const baseMsg = data.error ?? `Error ${res.status}`
+        const detail = data.mp_body
+          ? `\n\n[MP ${data.mp_status}] ${data.mp_body.slice(0, 300)}`
+          : ''
+        throw new Error(baseMsg + detail)
       }
       const data = await res.json() as { init_point?: string }
       if (!data.init_point) {
@@ -213,7 +220,7 @@ export function ProClient({
             {error && (
               <div className="mt-4 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2 text-xs text-red-600">
                 <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                <span>{error}</span>
+                <span className="whitespace-pre-wrap break-words font-mono leading-relaxed">{error}</span>
               </div>
             )}
 
