@@ -22,6 +22,176 @@ import { faqJsonLd } from "../data/faqs";
     <Onboarding />
     <Pricing />
     <FAQ />
+
+    {/* ── CTA final — el ángulo argentino + métodos de pago locales ──── */}
+    <section class="relative isolate overflow-hidden bg-[#0A0E1A] py-24 sm:py-32 lg:py-40">
+      {/* Separador superior */}
+      <div
+        class="absolute top-0 left-0 right-0 h-px"
+        style="background: linear-gradient(90deg, transparent, rgba(255,184,77,0.3), transparent);"
+        aria-hidden="true"
+      ></div>
+
+      <div class="mx-auto max-w-4xl px-6">
+        <div class="relative overflow-hidden rounded-3xl border border-[#FFB84D]/30 bg-gradient-to-br from-[#FFB84D]/[0.08] to-[#4ADE80]/[0.04] p-8 sm:p-14 lg:p-16 shadow-[0_0_120px_-30px_#FFB84D]">
+          {/* Halos decorativos */}
+          <div
+            class="pointer-events-none absolute -top-24 -right-24 h-80 w-80 rounded-full opacity-30 blur-3xl"
+            style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
+            aria-hidden="true"
+          ></div>
+          <div
+            class="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full opacity-20 blur-3xl"
+            style="background: radial-gradient(circle, #4ADE80 0%, transparent 70%);"
+            aria-hidden="true"
+          ></div>
+
+          <div class="relative">
+            <div
+              class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 backdrop-blur"
+            >
+              <span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#FFB84D]"></span>
+              <span
+                class="text-[10px] uppercase tracking-[0.18em] text-white/70"
+                style="font-family: 'Geist Mono', monospace;"
+              >
+                Empezá ahora
+              </span>
+            </div>
+
+            <h2
+              class="mt-6 text-[clamp(2rem,5vw,3.75rem)] font-bold leading-[0.95] tracking-[-0.03em] text-white"
+              style="font-family: 'Inter', system-ui, sans-serif;"
+            >
+              Una app argentina.
+              <br />
+              Hasta para{" "}
+              <span
+                class="italic font-medium"
+                style="font-family: 'Fraunces', Georgia, serif; font-variation-settings: 'opsz' 144; color: #FFB84D;"
+              >
+                pagarla
+              </span>.
+            </h2>
+
+            <p class="mt-6 max-w-2xl text-base text-white/70 sm:text-lg">
+              Sin USD, sin tarjetas internacionales, sin friction.
+              <span class="block mt-2 text-white/60">
+                Pagá Pro como pagás todo lo demás — con lo que te quede cómodo.
+              </span>
+            </p>
+
+            {/* Chips de métodos de pago — visualmente "argentino" */}
+            <div class="mt-8 flex flex-wrap gap-2.5">
+              <span class="payment-chip">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <rect x="2" y="6" width="20" height="14" rx="2" />
+                  <path d="M2 11h20" />
+                </svg>
+                Tarjeta de crédito
+              </span>
+              <span class="payment-chip">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <rect x="2" y="6" width="20" height="14" rx="2" />
+                  <path d="M6 15h4" />
+                </svg>
+                Débito
+              </span>
+              <span class="payment-chip">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <path d="M3 21h18" />
+                  <path d="M3 10h18" />
+                  <path d="M5 6l7-3 7 3" />
+                  <path d="M4 10v11" />
+                  <path d="M20 10v11" />
+                  <path d="M8 14v3" />
+                  <path d="M12 14v3" />
+                  <path d="M16 14v3" />
+                </svg>
+                CBU / CVU
+              </span>
+              <span class="payment-chip">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <rect x="5" y="2" width="14" height="20" rx="2" />
+                  <path d="M11 18h2" />
+                </svg>
+                Dinero en MP
+              </span>
+              <span class="payment-chip">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M2 7h20v10H2z" />
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M6 10h.01M18 14h.01" />
+                </svg>
+                Efectivo (Rapipago, PagoFácil)
+              </span>
+            </div>
+
+            {/* CTA principal */}
+            <div class="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+              <a
+                href="https://app.sinunmango.com.ar/pro"
+                class="group inline-flex items-center gap-2 rounded-xl bg-[#FFB84D] px-7 py-4 text-base font-semibold text-[#0A0E1A] shadow-lg shadow-[#FFB84D]/30 transition-all hover:-translate-y-0.5 hover:bg-[#FFC972] hover:shadow-xl hover:shadow-[#FFB84D]/40 sm:text-lg"
+              >
+                Probar Pro — 7 días gratis
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="transition-transform group-hover:translate-x-1"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+              </a>
+              <a
+                href="https://app.sinunmango.com.ar"
+                class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-5 py-3.5 text-sm font-medium text-white transition-all hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.1] sm:text-base"
+              >
+                Seguir en Free
+              </a>
+            </div>
+
+            {/* Pie con info de early access */}
+            <p
+              class="mt-7 text-[11px] uppercase tracking-wider text-white/40"
+              style="font-family: 'Geist Mono', monospace;"
+            >
+              ✦ Early access · 50% off durante 12 meses · 100 plazas disponibles
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
   <Footer />
 </Layout>
+
+{/* PaymentChip component — chip visual con icono inline + label. Pensado
+    para los métodos de pago de MP. */}
+<script>
+  // No JS necesario — el componente es estático. Mantenido por si querés
+  // sumar interacción más adelante.
+</script>
+
+<style is:global>
+  .payment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.85);
+    font-size: 0.75rem;
+    font-weight: 500;
+    backdrop-filter: blur(8px);
+  }
+</style>
