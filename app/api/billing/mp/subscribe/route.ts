@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
   // ── 4. Crear preapproval en MP ─────────────────────────────────────────
   let preapproval
   try {
+    console.log(`[mp/subscribe] creando preapproval user=${user.id} email=${profile.email} amount=${priceArs} early=${isEarlyAccess} trialEnd=${trialEnd.toISOString()}`)
     preapproval = await createPreapproval({
       userId:            user.id,
       payerEmail:        profile.email,
@@ -98,11 +99,18 @@ export async function POST(req: NextRequest) {
       startDate:         trialEnd,
       externalReference: user.id,
     })
+    console.log(`[mp/subscribe] preapproval creado id=${preapproval.id} status=${preapproval.status} init_point=${preapproval.init_point} sandbox_init=${preapproval.sandbox_init_point ?? 'N/A'}`)
   } catch (err) {
     if (err instanceof MercadoPagoError) {
-      console.error('[mp/subscribe] MP error:', err.status, err.rawBody.slice(0, 500))
+      console.error('[mp/subscribe] MP error:', err.status, err.rawBody.slice(0, 1000))
+      // Devolvemos el error de MP al frontend en sandbox para diagnosticar
+      // más rápido. En prod sólo mensaje genérico.
+      const isDev = process.env.MP_ACCESS_TOKEN?.startsWith('TEST-')
       return NextResponse.json(
-        { error: 'No pudimos iniciar el cobro. Probá de nuevo en un momento.' },
+        {
+          error: 'No pudimos iniciar el cobro. Probá de nuevo en un momento.',
+          ...(isDev ? { mp_status: err.status, mp_body: err.rawBody.slice(0, 1000) } : {}),
+        },
         { status: 502 },
       )
     }
