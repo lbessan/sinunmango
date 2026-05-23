@@ -149,10 +149,10 @@ export async function createPreapproval(opts: {
   /** Para Pro standard / early access. Solo informativo, no afecta a MP. */
   externalReference: string
 }): Promise<MpPreapproval> {
-  // start_date sin milisegundos — MP a veces rechaza el formato .NNN.
-  // Formato esperado: "2026-05-30T01:22:47.074Z" → "2026-05-30T01:22:47Z".
-  const startDateIso = opts.startDate.toISOString().replace(/\.\d{3}Z$/, 'Z')
-
+  // MP requiere start_date en formato ISO 8601 CON milisegundos
+  // ("2026-05-30T01:22:47.074Z"). Sin los .NNN responde 400
+  // "Invalid format in auto_recurring.start_date".
+  // No tocar a menos que MP cambie la API.
   const body = {
     payer_email: opts.payerEmail,
     back_url:    `${appUrl()}/checkout/result`,
@@ -161,17 +161,13 @@ export async function createPreapproval(opts: {
     auto_recurring: {
       frequency:          1,
       frequency_type:     'months',
-      start_date:         startDateIso,
+      start_date:         opts.startDate.toISOString(),
       transaction_amount: opts.amountArs,
       currency_id:        'ARS',
     },
-    // NOTA: NO mandamos `status: 'pending'`. MP lo deduce solo a partir de
-    // `back_url` (redirect mode). Pasar status explícito a veces tira 500
-    // genérico sin info útil. La ausencia del campo es la forma documentada.
+    status: 'pending' as const,  // MP lo pasa a 'authorized' cuando el user autoriza
   }
 
-  // Logueamos en sandbox para diagnosticar — el body completo es info crítica
-  // cuando MP devuelve 500 sin causa.
   if (isSandbox()) {
     console.log('[mp/preapproval] request body:', JSON.stringify(body))
   }
