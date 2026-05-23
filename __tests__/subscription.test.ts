@@ -33,7 +33,6 @@ describe('getUserPlan', () => {
     expect(plan).toEqual({
       plan: 'free',
       plan_expires_at: null,
-      google_subscription_id: null,
       has_pro_access: false,
     })
   })
@@ -41,7 +40,7 @@ describe('getUserPlan', () => {
   it('free explícito → has_pro_access=false', async () => {
     const supabase = createSupabaseMock({
       table: { user_profiles: {
-        data: { plan: 'free', plan_expires_at: null, google_subscription_id: null },
+        data: { plan: 'free', plan_expires_at: null },
         error: null,
       } },
     })
@@ -53,20 +52,19 @@ describe('getUserPlan', () => {
   it('pro con expires futuro → has_pro_access=true', async () => {
     const supabase = createSupabaseMock({
       table: { user_profiles: {
-        data: { plan: 'pro', plan_expires_at: FUTURO, google_subscription_id: 'sub_123' },
+        data: { plan: 'pro', plan_expires_at: FUTURO },
         error: null,
       } },
     })
     const plan = await getUserPlan(supabase)
     expect(plan.has_pro_access).toBe(true)
     expect(plan.plan).toBe('pro')
-    expect(plan.google_subscription_id).toBe('sub_123')
   })
 
   it('pro con expires pasado → has_pro_access=false (degradado)', async () => {
     const supabase = createSupabaseMock({
       table: { user_profiles: {
-        data: { plan: 'pro', plan_expires_at: PASADO, google_subscription_id: 'sub_123' },
+        data: { plan: 'pro', plan_expires_at: PASADO },
         error: null,
       } },
     })
@@ -79,7 +77,7 @@ describe('getUserPlan', () => {
   it('pro sin expires (null) → has_pro_access=true (lifetime)', async () => {
     const supabase = createSupabaseMock({
       table: { user_profiles: {
-        data: { plan: 'pro', plan_expires_at: null, google_subscription_id: null },
+        data: { plan: 'pro', plan_expires_at: null },
         error: null,
       } },
     })
@@ -90,7 +88,7 @@ describe('getUserPlan', () => {
   it('grandfathered con expires pasado → has_pro_access=true (la expiración no aplica)', async () => {
     const supabase = createSupabaseMock({
       table: { user_profiles: {
-        data: { plan: 'grandfathered', plan_expires_at: PASADO, google_subscription_id: null },
+        data: { plan: 'grandfathered', plan_expires_at: PASADO },
         error: null,
       } },
     })
@@ -101,7 +99,7 @@ describe('getUserPlan', () => {
   it('plan null en DB se interpreta como free', async () => {
     const supabase = createSupabaseMock({
       table: { user_profiles: {
-        data: { plan: null, plan_expires_at: null, google_subscription_id: null },
+        data: { plan: null, plan_expires_at: null },
         error: null,
       } },
     })
@@ -115,7 +113,7 @@ describe('getUserPlanById', () => {
   it('usa el cliente admin con .eq(user_id, …) y mismo cálculo de has_pro_access', async () => {
     const supabase = createSupabaseMock({
       table: { user_profiles: {
-        data: { plan: 'pro', plan_expires_at: FUTURO, google_subscription_id: null },
+        data: { plan: 'pro', plan_expires_at: FUTURO },
         error: null,
       } },
     })
@@ -132,7 +130,6 @@ describe('getUserPlanById', () => {
     expect(plan).toEqual({
       plan: 'free',
       plan_expires_at: null,
-      google_subscription_id: null,
       has_pro_access: false,
     })
   })
@@ -141,7 +138,7 @@ describe('getUserPlanById', () => {
     const justBefore = new Date(NOW.getTime() - 1000).toISOString()
     const supabase = createSupabaseMock({
       table: { user_profiles: {
-        data: { plan: 'pro', plan_expires_at: justBefore, google_subscription_id: 'sub' },
+        data: { plan: 'pro', plan_expires_at: justBefore },
         error: null,
       } },
     })
@@ -153,7 +150,7 @@ describe('getUserPlanById', () => {
     const justAfter = new Date(NOW.getTime() + 1000).toISOString()
     const supabase = createSupabaseMock({
       table: { user_profiles: {
-        data: { plan: 'pro', plan_expires_at: justAfter, google_subscription_id: 'sub' },
+        data: { plan: 'pro', plan_expires_at: justAfter },
         error: null,
       } },
     })

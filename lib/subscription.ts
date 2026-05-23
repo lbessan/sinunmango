@@ -8,17 +8,15 @@ import type { Database } from '@/lib/database.types'
 export type Plan = 'free' | 'pro' | 'grandfathered'
 
 export type UserPlan = {
-  plan:                   Plan
-  plan_expires_at:        string | null  // ISO string o null
-  google_subscription_id: string | null
-  has_pro_access:         boolean        // true si grandfathered o pro vigente
+  plan:            Plan
+  plan_expires_at: string | null  // ISO string o null
+  has_pro_access:  boolean        // true si grandfathered o pro vigente
 }
 
 const DEFAULT_PLAN: UserPlan = {
-  plan:                   'free',
-  plan_expires_at:        null,
-  google_subscription_id: null,
-  has_pro_access:         false,
+  plan:            'free',
+  plan_expires_at: null,
+  has_pro_access:  false,
 }
 
 // ─── User-scoped: leer plan del usuario actual ───────────────────────────────
@@ -32,7 +30,7 @@ const DEFAULT_PLAN: UserPlan = {
 export async function getUserPlan(supabase: SupabaseClient<Database>): Promise<UserPlan> {
   const { data } = await supabase
     .from('user_profiles')
-    .select('plan, plan_expires_at, google_subscription_id')
+    .select('plan, plan_expires_at')
     .maybeSingle()
 
   if (!data) return DEFAULT_PLAN
@@ -45,8 +43,7 @@ export async function getUserPlan(supabase: SupabaseClient<Database>): Promise<U
 
   return {
     plan,
-    plan_expires_at:        expires,
-    google_subscription_id: data.google_subscription_id as string | null,
+    plan_expires_at: expires,
     has_pro_access,
   }
 }
@@ -54,7 +51,7 @@ export async function getUserPlan(supabase: SupabaseClient<Database>): Promise<U
 // ─── Admin: leer plan por userId (para webhooks sin sesión) ──────────────────
 
 /**
- * Variante de getUserPlan para contextos sin sesión (webhooks Resend, RC, etc).
+ * Variante de getUserPlan para contextos sin sesión (webhooks Resend, MP, etc).
  * Requiere adminClient. Filtra por user_id explícito en lugar de depender de RLS.
  */
 export async function getUserPlanById(
@@ -63,7 +60,7 @@ export async function getUserPlanById(
 ): Promise<UserPlan> {
   const { data } = await admin
     .from('user_profiles')
-    .select('plan, plan_expires_at, google_subscription_id')
+    .select('plan, plan_expires_at')
     .eq('user_id', userId)
     .maybeSingle()
 
@@ -77,35 +74,31 @@ export async function getUserPlanById(
 
   return {
     plan,
-    plan_expires_at:        expires,
-    google_subscription_id: data.google_subscription_id as string | null,
+    plan_expires_at: expires,
     has_pro_access,
   }
 }
 
-// ─── Admin: actualizar plan (llamado solo desde webhooks) ────────────────────
+// ─── Admin: actualizar plan (llamado desde webhooks de billing) ──────────────
 
 /**
- * Actualiza el plan de un usuario desde el webhook de Google Play.
- * Usa adminClient (service role) porque el webhook no tiene sesión de usuario
- * — Google nos manda la notificación con el userId en obfuscatedExternalAccountId.
+ * Actualiza el plan de un usuario desde un webhook de billing (Mercado Pago).
+ * Usa adminClient (service role) porque los webhooks no tienen sesión de usuario.
+ *
+ * Nota: el webhook de MP en /api/webhooks/mp hace su propio update directamente
+ * a user_profiles porque necesita guardar también mp_status, plan_renews_at,
+ * mp_payer_id, etc. Esta función queda para usos más simples (legacy o futuros).
  */
 export async function updateUserPlan(
   userId: string,
   plan: Plan,
-  opts?: {
-    plan_expires_at?:        string | null
-    google_purchase_token?:  string | null
-    google_subscription_id?: string | null
-  }
+  opts?: { plan_expires_at?: string | null }
 ) {
   const { error } = await adminClient
     .from('user_profiles')
     .update({
       plan,
-      plan_expires_at:        opts?.plan_expires_at        ?? null,
-      google_purchase_token:  opts?.google_purchase_token  ?? null,
-      google_subscription_id: opts?.google_subscription_id ?? null,
+      plan_expires_at: opts?.plan_expires_at ?? null,
     })
     .eq('user_id', userId)
 
