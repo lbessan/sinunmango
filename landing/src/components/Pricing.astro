@@ -121,12 +121,12 @@ const FILAS: ComparadorRow[] = [
 
       {/* PRO */}
       <div class="relative flex flex-col rounded-2xl border border-[#FFB84D]/40 bg-gradient-to-br from-[#FFB84D]/[0.05] to-[#4ADE80]/[0.03] p-8 shadow-[0_0_60px_-30px_#FFB84D] sm:p-10">
-        {/* Badge */}
+        {/* Badge — Early Access para los primeros 100 suscriptores */}
         <span
           class="absolute -top-3 left-8 inline-flex items-center gap-1.5 rounded-full bg-[#FFB84D] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#0A0E1A] shadow-lg"
           style="font-family: 'Geist Mono', monospace;"
         >
-          ✦ Recomendado
+          ✦ Early access
         </span>
 
         <div class="flex items-center gap-3">
@@ -143,6 +143,8 @@ const FILAS: ComparadorRow[] = [
           ilimitadas, insights y personalización.
         </p>
 
+        {/* Precio early access — primeros 100 suscriptores pagan 50% off
+            durante 12 meses. Después renuevan al precio normal ($6.999). */}
         <div class="mt-6 flex items-baseline gap-3">
           <span
             class="text-5xl font-bold tracking-tight text-white"
@@ -151,9 +153,15 @@ const FILAS: ComparadorRow[] = [
             $3.499
           </span>
           <span class="text-sm text-white/40">/ mes</span>
+          <span
+            class="text-sm text-white/30 line-through"
+            style="font-variant-numeric: tabular-nums;"
+          >
+            $6.999
+          </span>
         </div>
-        <p class="mt-1 text-xs text-white/50">
-          o <strong class="text-white/80">$26.999/año</strong> (equivale a $2.250/mes, ahorrás 36%)
+        <p class="mt-1 text-xs text-[#FFB84D]">
+          <strong>50% off</strong> los primeros 12 meses como early adopter
         </p>
 
         <ul class="mt-7 space-y-3 text-sm text-white/70">
