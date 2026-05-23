@@ -142,24 +142,36 @@ export async function POST(req: NextRequest) {
   // mp_status arranca en 'pending' — el webhook lo pasa a 'authorized'
   // cuando el user completa el flujo en MP. plan sigue siendo 'free' hasta
   // que el primer cobro real sea aprobado (también vía webhook).
-  const { error: upErr } = await supabase
+  //
+  // Usamos adminClient para bypassear RLS — el webhook también lo hace, así
+  // que mantenemos consistencia. RLS en user_profiles puede no tener policy
+  // de UPDATE para el dueño (depende de cómo está configurado), y eso causa
+  // que el update falle silenciosamente (no devuelve error pero no afecta
+  // rows). Con admin client esto no es ambiguo.
+  const updates = {
+    mp_preapproval_id:       preapproval.id,
+    mp_status:               'pending',
+    plan_period:             'monthly',
+    plan_amount:             priceArs,
+    plan_renews_at:          trialEnd.toISOString(),
+    subscribed_at:           now.toISOString(),
+    early_access:            isEarlyAccess,
+    early_access_expires_at: earlyAccessExpiresAt,
+  }
+
+  const { data: updated, error: upErr } = await adminClient
     .from('user_profiles')
-    .update({
-      mp_preapproval_id:       preapproval.id,
-      mp_status:               'pending',
-      plan_period:             'monthly',
-      plan_amount:             priceArs,
-      plan_renews_at:          trialEnd.toISOString(),
-      subscribed_at:           now.toISOString(),
-      early_access:            isEarlyAccess,
-      early_access_expires_at: earlyAccessExpiresAt,
-    })
+    .update(updates)
     .eq('user_id', user.id)
+    .select('user_id')
 
   if (upErr) {
     console.error('[mp/subscribe] update profile error:', upErr)
-    // No bloqueamos al user — el preapproval ya está en MP, le mandamos al
-    // init_point igual. El webhook va a reconciliar con external_reference.
+  } else {
+    console.log(`[mp/subscribe] profile updated rows=${updated?.length ?? 0} user=${user.id}`)
+    if (!updated || updated.length === 0) {
+      console.error('[mp/subscribe] WARNING: 0 rows affected — user_profiles row no existe para user_id?')
+    }
   }
 
   return NextResponse.json({
