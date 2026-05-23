@@ -446,7 +446,18 @@ export function ManguitoFlotante() {
                 </div>
               )}
 
-              {/* Toast de error de voz — solo cuando no hay grabación activa */}
+              {/* Overlay durante transcripción (después de soltar) */}
+              {voiceState.kind === 'transcribing' && (
+                <div className="absolute inset-x-4 -top-1 -translate-y-full z-10 flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+                  <Loader2 size={14} className="text-blue-500 animate-spin shrink-0" />
+                  <p className="text-[11px] font-semibold text-blue-700 leading-tight">
+                    Transcribiendo audio…
+                  </p>
+                </div>
+              )}
+
+              {/* Toast de error de voz — solo cuando no hay grabación ni
+                  transcripción activa */}
               {voiceError && voiceState.kind === 'idle' && (
                 <div className="absolute inset-x-4 -top-1 -translate-y-full z-10 flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 shadow-lg text-[11px] text-amber-700">
                   <span className="flex-1 leading-snug">{voiceError.message}</span>
