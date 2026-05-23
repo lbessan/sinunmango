@@ -67,10 +67,14 @@ async function mpFetch<T>(
 
   if (!res.ok) {
     const body = await res.text().catch(() => '')
+    // Capturamos x-request-id — clave para reportar al support de MP
+    // cuando el body del error es genérico (500 internal server error).
+    const reqId = res.headers.get('x-request-id') ?? 'N/A'
+    const enriched = `${body} (x-request-id: ${reqId})`
     throw new MercadoPagoError(
-      `MP ${init?.method ?? 'GET'} ${path} failed: ${res.status} ${body.slice(0, 400)}`,
+      `MP ${init?.method ?? 'GET'} ${path} failed: ${res.status} ${enriched.slice(0, 600)}`,
       res.status,
-      body,
+      enriched,
     )
   }
 
@@ -145,22 +149,36 @@ export async function createPreapproval(opts: {
   /** Para Pro standard / early access. Solo informativo, no afecta a MP. */
   externalReference: string
 }): Promise<MpPreapproval> {
+  // start_date sin milisegundos — MP a veces rechaza el formato .NNN.
+  // Formato esperado: "2026-05-30T01:22:47.074Z" → "2026-05-30T01:22:47Z".
+  const startDateIso = opts.startDate.toISOString().replace(/\.\d{3}Z$/, 'Z')
+
+  const body = {
+    payer_email: opts.payerEmail,
+    back_url:    `${appUrl()}/checkout/result`,
+    reason:      opts.reason,
+    external_reference: opts.externalReference,
+    auto_recurring: {
+      frequency:          1,
+      frequency_type:     'months',
+      start_date:         startDateIso,
+      transaction_amount: opts.amountArs,
+      currency_id:        'ARS',
+    },
+    // NOTA: NO mandamos `status: 'pending'`. MP lo deduce solo a partir de
+    // `back_url` (redirect mode). Pasar status explícito a veces tira 500
+    // genérico sin info útil. La ausencia del campo es la forma documentada.
+  }
+
+  // Logueamos en sandbox para diagnosticar — el body completo es info crítica
+  // cuando MP devuelve 500 sin causa.
+  if (isSandbox()) {
+    console.log('[mp/preapproval] request body:', JSON.stringify(body))
+  }
+
   return mpFetch<MpPreapproval>('/preapproval', {
     method: 'POST',
-    body: JSON.stringify({
-      payer_email: opts.payerEmail,
-      back_url:    `${appUrl()}/checkout/result`,
-      reason:      opts.reason,
-      external_reference: opts.externalReference,
-      auto_recurring: {
-        frequency:          1,
-        frequency_type:     'months',
-        start_date:         opts.startDate.toISOString(),
-        transaction_amount: opts.amountArs,
-        currency_id:        'ARS',
-      },
-      status: 'pending',  // MP lo pasa a 'authorized' cuando el user autoriza
-    }),
+    body:   JSON.stringify(body),
   })
 }
 
