@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Send, X, User, CheckCircle, AlertCircle, Loader2, Minimize2, Trash2, Sparkles } from 'lucide-react'
-import { VoiceButton } from './voice-button'
+import { VoiceButton, formatVoiceTime, type VoiceState, type VoiceError } from './voice-button'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Message = {
@@ -140,6 +140,8 @@ export function ManguitoFlotante() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput]       = useState('')
   const [loading, setLoading]   = useState(false)
+  const [voiceState, setVoiceState] = useState<VoiceState>({ kind: 'idle' })
+  const [voiceError, setVoiceError] = useState<VoiceError | null>(null)
   const bottomRef               = useRef<HTMLDivElement>(null)
   const textareaRef             = useRef<HTMLTextAreaElement>(null)
   const panelRef                = useRef<HTMLDivElement>(null)
@@ -418,19 +420,54 @@ export function ManguitoFlotante() {
               <div ref={bottomRef} />
             </div>
 
-            {/* Input — relative para que el overlay del VoiceButton se posicione
-                contra este contenedor (instrucciones de grabación y errors). */}
+            {/* Input — relative para que el overlay de grabación/error
+                se posicione contra este contenedor (dentro del panel,
+                no del viewport). */}
             <div
               className="shrink-0 px-4 pb-4 pt-2 relative"
               style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}
             >
+              {/* Overlay durante grabación — arriba del input bar, dentro
+                  del panel. */}
+              {voiceState.kind === 'recording' && (
+                <div className="absolute inset-x-4 -top-1 -translate-y-full z-10 flex items-center gap-3 rounded-xl border border-red-100 bg-red-50/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold text-red-700 leading-tight">
+                      Grabando · {formatVoiceTime(voiceState.elapsedSec)}
+                    </p>
+                    <p className="text-[10px] text-red-600/80 mt-0.5">
+                      Soltá para enviar · Arrastrá afuera para cancelar
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Toast de error de voz — debajo, dentro del panel */}
+              {voiceError && voiceState.kind === 'idle' && (
+                <div className="absolute inset-x-4 -top-1 -translate-y-full z-10 flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 shadow-lg text-[11px] text-amber-700">
+                  <span className="flex-1 leading-snug">{voiceError.message}</span>
+                  <button
+                    type="button"
+                    onClick={() => setVoiceError(null)}
+                    className="p-0.5 rounded text-amber-500 hover:bg-amber-100 shrink-0"
+                    aria-label="Cerrar"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              )}
+
               <div className="rounded-2xl px-3 py-2.5 flex gap-2 items-end shadow-sm" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
                 <textarea
                   ref={textareaRef}
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Escribí un mensaje o mantené el mic 🎙️"
+                  placeholder="Escribí un mensaje o mantené el mic"
                   rows={1}
                   className="flex-1 resize-none text-sm text-slate-800 outline-none bg-transparent placeholder-slate-400 self-center"
                   style={{ minHeight: 26, maxHeight: 120, lineHeight: '1.5' }}
@@ -442,17 +479,17 @@ export function ManguitoFlotante() {
                 />
                 {/* Botón micrófono: push-to-talk. Al soltar, el texto
                     transcripto cae en el input para que el user lo revise
-                    y mande (o edite si la transcripción falló). */}
+                    y mande (o edite si la transcripción falló).
+                    El estado y los errores se rendereaan arriba (overlay
+                    dentro del panel, no del propio botón). */}
                 <VoiceButton
                   disabled={loading}
                   onTranscript={(text) => {
-                    // Agregamos al texto existente si el user ya estaba
-                    // tipeando algo. Si no, lo reemplazamos directo.
                     setInput(prev => prev ? `${prev} ${text}` : text)
-                    // Focus en el textarea para que el user pueda mandar
-                    // inmediatamente con Enter.
                     setTimeout(() => textareaRef.current?.focus(), 50)
                   }}
+                  onStateChange={setVoiceState}
+                  onError={setVoiceError}
                 />
                 <button
                   onClick={() => sendMessage()}

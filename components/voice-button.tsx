@@ -1,71 +1,71 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { Mic, X } from 'lucide-react'
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react'
+import { Mic } from 'lucide-react'
 
 // ─── VoiceButton ────────────────────────────────────────────────────────────
 //
-// Botón push-to-talk al lado del input de Manguito. UX estilo WhatsApp audio:
+// Botón push-to-talk al lado del input de Manguito. Estilo WhatsApp audio:
 //
 //   1. Press (mousedown/touchstart) → empieza a grabar
-//   2. Mientras presiona: muestra timer, animación de pulso, "Soltá para enviar"
-//   3. Release (mouseup/touchend) → para grabación, transcribe, llena el input
-//   4. Drag fuera del botón mientras presiona → cancela (no manda nada)
+//   2. Release → para grabación + transcribe + llama onTranscript
+//   3. Drag fuera del botón mientras presiona → cancela (no transcribe)
 //
 // Tecnología: Web Speech API nativa del browser. Cero costo, cero deps.
 // Idioma fijo a 'es-AR' para mejor precisión con acento argentino.
 //
-// Compatibilidad:
-//   - Chrome / Edge / Opera (desktop y Android): ✓ funciona bien
-//   - Safari iOS / macOS: ✓ funciona pero requiere user gesture explícito
-//     (lo cubre el press-to-start)
-//   - Firefox: webkitSpeechRecognition no soportada → el botón no se renderea
+// El componente SOLO renderea el botón. La UI de "grabando..." y los
+// mensajes de error los maneja el parent vía las props onStateChange y
+// onError, así puede posicionar el overlay donde tenga sentido (no
+// dentro del propio componente, que terminaría con problemas de
+// stacking y desbordes).
 //
-// Si el browser no soporta la API o el user negó permiso de micrófono, el
-// componente devuelve null. Esa es la razón de no usar feature-detect
-// asincrónico en parent — el botón "no aparece" en browsers no compatibles.
+// Compatibilidad:
+//   - Chrome / Edge / Opera (desktop y Android): ✓ funciona
+//   - Safari iOS / macOS: ✓ con user gesture (lo cubre el press-to-start)
+//   - Firefox: API no soportada → el botón NO se renderea
+//
+// IMPORTANTE: Web Speech API en Chrome desktop usa Google Cloud Speech
+// (nube). Si hay VPN, ad-blocker, firewall o ISP que bloquee
+// *.google.com / *.googleapis.com, el evento 'error' tira 'network'.
+// En ese caso no hay fallback local — al user le toca probar otra red,
+// otro browser, o escribir.
 
-// Tipos de Web Speech API (no están en lib.dom por default, los definimos)
+// Tipos de Web Speech API (no están en lib.dom por default)
 interface SpeechRecognitionEvent extends Event {
   readonly resultIndex: number
   readonly results: SpeechRecognitionResultList
 }
-
 interface SpeechRecognitionResultList {
   readonly length: number
   item(index: number): SpeechRecognitionResult
   [index: number]: SpeechRecognitionResult
 }
-
 interface SpeechRecognitionResult {
   readonly length: number
   readonly isFinal: boolean
   item(index: number): SpeechRecognitionAlternative
   [index: number]: SpeechRecognitionAlternative
 }
-
 interface SpeechRecognitionAlternative {
   readonly transcript: string
   readonly confidence: number
 }
-
 interface SpeechRecognitionErrorEvent extends Event {
   readonly error: string
   readonly message?: string
 }
-
 interface SpeechRecognition extends EventTarget {
-  continuous:        boolean
-  interimResults:    boolean
-  lang:              string
-  start():           void
-  stop():            void
-  abort():           void
-  onresult:          ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null
-  onerror:           ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null
-  onend:             ((this: SpeechRecognition) => void) | null
+  continuous:     boolean
+  interimResults: boolean
+  lang:           string
+  start():        void
+  stop():         void
+  abort():        void
+  onresult:       ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null
+  onerror:        ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null
+  onend:          ((this: SpeechRecognition) => void) | null
 }
-
 type SpeechRecognitionCtor = new () => SpeechRecognition
 
 function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
@@ -77,24 +77,44 @@ function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
-export function VoiceButton({
-  onTranscript,
-  disabled,
-}: {
-  /** Callback con el texto transcripto. El parent decide qué hacer (llenar
-      input, enviar directo, etc). */
-  onTranscript: (text: string) => void
-  disabled?:    boolean
-}) {
-  const [supported,  setSupported]  = useState(false)
-  const [recording,  setRecording]  = useState(false)
-  const [cancelled,  setCancelled]  = useState(false)
-  const [errorMsg,   setErrorMsg]   = useState<string | null>(null)
-  const [elapsedSec, setElapsedSec] = useState(0)
+export type VoiceState =
+  | { kind: 'idle' }
+  | { kind: 'recording'; elapsedSec: number }
+  | { kind: 'transcribing' }
+
+export type VoiceError = {
+  /** Mensaje de error legible para mostrar al user */
+  message: string
+  /** Código bruto del SpeechRecognition error event (para logging/debug) */
+  code:    string
+}
+
+export type VoiceButtonHandle = {
+  /** Cierra el toast de error pendiente. El parent lo llama desde su
+      botón de "X" sin tener que duplicar lógica de state. */
+  clearError: () => void
+}
+
+export const VoiceButton = forwardRef<VoiceButtonHandle, {
+  /** Callback con el texto transcripto al soltar el botón (sin cancelar). */
+  onTranscript:   (text: string) => void
+  /** Notifica al parent del state actual (para renderear overlay donde
+      tenga sentido — el componente no maneja UI más allá del botón). */
+  onStateChange?: (state: VoiceState) => void
+  /** Notifica al parent de un error de transcripción. */
+  onError?:       (err: VoiceError | null) => void
+  disabled?:      boolean
+}>(function VoiceButton({ onTranscript, onStateChange, onError, disabled }, ref) {
+  const [supported, setSupported] = useState(false)
+  const [recording, setRecording] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const finalTextRef   = useRef<string>('')
-  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
   const cancelledRef   = useRef<boolean>(false)
+  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useImperativeHandle(ref, () => ({
+    clearError: () => onError?.(null),
+  }), [onError])
 
   useEffect(() => {
     setSupported(getSpeechRecognitionCtor() !== null)
@@ -102,7 +122,6 @@ export function VoiceButton({
 
   useEffect(() => {
     return () => {
-      // Cleanup: si el componente desmonta mientras está grabando, cortar.
       recognitionRef.current?.abort()
       if (timerRef.current) clearInterval(timerRef.current)
     }
@@ -113,19 +132,19 @@ export function VoiceButton({
     const Ctor = getSpeechRecognitionCtor()
     if (!Ctor) return
 
-    setErrorMsg(null)
-    setCancelled(false)
+    onError?.(null)
     cancelledRef.current = false
     finalTextRef.current = ''
-    setElapsedSec(0)
 
     const recognition = new Ctor()
-    recognition.continuous     = true
+    // continuous=false: una sola frase. continuous=true daba 'network'
+    // errors espurios en Chrome desktop cuando el user soltaba el botón
+    // antes de que el socket recibiera result final.
+    recognition.continuous     = false
     recognition.interimResults = false
     recognition.lang           = 'es-AR'
 
     recognition.onresult = (event) => {
-      // Acumulamos todos los resultados finales (porque continuous=true).
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i]
         if (result.isFinal && result[0]) {
@@ -136,29 +155,29 @@ export function VoiceButton({
 
     recognition.onerror = (event) => {
       const code = event.error
+      if (code === 'aborted') return  // user-initiated, no es error real
+      let message = 'Error al grabar. Probá de nuevo.'
       if (code === 'no-speech') {
-        setErrorMsg('No te escuché. Probá de nuevo.')
+        message = 'No te escuché. Probá de nuevo.'
       } else if (code === 'not-allowed' || code === 'service-not-allowed') {
-        setErrorMsg('Permiso de micrófono denegado.')
+        message = 'Tenés que dar permiso de micrófono al navegador.'
       } else if (code === 'audio-capture') {
-        setErrorMsg('No pude usar el micrófono.')
+        message = 'No pude usar el micrófono. ¿Otra app lo está usando?'
       } else if (code === 'network') {
-        setErrorMsg('Error de red. Probá de nuevo.')
-      } else if (code !== 'aborted') {
-        setErrorMsg('Error al grabar.')
+        message = 'Sin conexión a servicio de voz. Probá escribir, o desactivá VPN/bloqueadores y reintentá.'
       }
-      // Si fue 'aborted' (cancel del user), no mostramos error
+      console.warn('[VoiceButton] error:', code, event.message ?? '')
+      onError?.({ message, code })
     }
 
     recognition.onend = () => {
-      // onend dispara tanto en stop() normal como en abort().
       setRecording(false)
+      onStateChange?.({ kind: 'idle' })
       if (timerRef.current) {
         clearInterval(timerRef.current)
         timerRef.current = null
       }
       const text = finalTextRef.current.trim()
-      // Si el user canceló (drag out), no mandamos el texto.
       if (!cancelledRef.current && text.length > 0) {
         onTranscript(text)
       }
@@ -168,135 +187,66 @@ export function VoiceButton({
       recognition.start()
       recognitionRef.current = recognition
       setRecording(true)
+      let elapsed = 0
+      onStateChange?.({ kind: 'recording', elapsedSec: 0 })
       timerRef.current = setInterval(() => {
-        setElapsedSec(s => s + 1)
+        elapsed++
+        onStateChange?.({ kind: 'recording', elapsedSec: elapsed })
       }, 1000)
     } catch (err) {
       console.error('[VoiceButton] start error:', err)
-      setErrorMsg('No pude iniciar la grabación.')
+      onError?.({ message: 'No pude iniciar la grabación.', code: 'start-failed' })
       setRecording(false)
+      onStateChange?.({ kind: 'idle' })
     }
   }
 
   const stopRecording = (cancel = false) => {
     if (!recording) return
     cancelledRef.current = cancel
-    setCancelled(cancel)
     recognitionRef.current?.stop()
   }
 
-  // No renderear nada si el browser no soporta la API. Mejor que mostrar
-  // botón roto que el user va a clickear esperando que funcione.
+  // No renderear nada si el browser no soporta. El parent no ve el botón
+  // y no rompe el layout.
   if (!supported) return null
 
-  // Touch handlers — push-to-talk. Para mobile usamos touch events;
-  // para desktop, mouse events. Ambos hacen lo mismo: start/stop.
-  const handleStart = (e: React.PointerEvent | React.MouseEvent | React.TouchEvent) => {
+  const handleStart = (e: React.PointerEvent) => {
     e.preventDefault()
     startRecording()
   }
 
-  const handleEnd = (e: React.PointerEvent | React.MouseEvent | React.TouchEvent) => {
+  const handleEnd = (e: React.PointerEvent) => {
     e.preventDefault()
     stopRecording(false)
   }
 
-  // Cancel: si el user mueve el dedo/mouse fuera del botón mientras presiona.
-  // Esto matchea el patrón de WhatsApp audio "drag to cancel".
   const handleLeave = () => {
     if (recording) stopRecording(true)
   }
 
   return (
-    <>
-      <button
-        type="button"
-        aria-label={recording ? 'Soltá para enviar el audio' : 'Mantené presionado para grabar'}
-        disabled={disabled}
-        onPointerDown={handleStart}
-        onPointerUp={handleEnd}
-        onPointerLeave={handleLeave}
-        // touchstart prevent default — algunos browsers triggerean mousedown
-        // después de touchend si no lo prevenimos, causando double-start.
-        onContextMenu={e => e.preventDefault()}
-        className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 transition-all mb-0.5 ${
-          recording ? 'animate-mic-pulse' : ''
-        }`}
-        style={{
-          background: recording
-            ? '#ef4444'
-            : disabled
-              ? '#cbd5e1'
-              : 'var(--bg-card-alt, #f1f5f9)',
-          color: recording ? '#ffffff' : 'var(--text-secondary, #64748b)',
-        }}
-      >
-        <Mic size={14} />
-      </button>
-
-      {/* Overlay durante grabación — full panel, oscuro, instrucciones */}
-      {recording && (
-        <div
-          className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-3 border-t border-red-100 bg-red-50/95 px-4 py-3 backdrop-blur-sm"
-          style={{ borderBottomLeftRadius: 20, borderBottomRightRadius: 20 }}
-        >
-          <span className="relative flex h-3 w-3 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-red-700 leading-tight">
-              Grabando… {formatTime(elapsedSec)}
-            </p>
-            <p className="text-[10px] text-red-600/80 mt-0.5">
-              Soltá para enviar · Arrastrá afuera del botón para cancelar
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => stopRecording(true)}
-            className="shrink-0 p-1.5 rounded-lg text-red-500 hover:bg-red-100"
-            aria-label="Cancelar grabación"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
-
-      {/* Toast de error o cancel */}
-      {errorMsg && !recording && (
-        <div
-          className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-amber-100 bg-amber-50 px-4 py-2.5 text-xs text-amber-700"
-          style={{ borderBottomLeftRadius: 20, borderBottomRightRadius: 20 }}
-        >
-          <span>{errorMsg}</span>
-          <button
-            type="button"
-            onClick={() => setErrorMsg(null)}
-            className="ml-auto p-1 rounded text-amber-500 hover:bg-amber-100"
-            aria-label="Cerrar"
-          >
-            <X size={12} />
-          </button>
-        </div>
-      )}
-
-      {cancelled && !recording && !errorMsg && (
-        <div
-          className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500"
-          style={{ borderBottomLeftRadius: 20, borderBottomRightRadius: 20 }}
-        >
-          <span>Audio cancelado</span>
-          <button
-            type="button"
-            onClick={() => setCancelled(false)}
-            className="ml-auto p-1 rounded text-slate-400 hover:bg-slate-100"
-            aria-label="Cerrar"
-          >
-            <X size={12} />
-          </button>
-        </div>
-      )}
+    <button
+      type="button"
+      aria-label={recording ? 'Soltá para enviar el audio' : 'Mantené presionado para grabar'}
+      disabled={disabled}
+      onPointerDown={handleStart}
+      onPointerUp={handleEnd}
+      onPointerLeave={handleLeave}
+      onContextMenu={e => e.preventDefault()}
+      className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 transition-all mb-0.5 ${
+        recording ? 'animate-mic-pulse' : ''
+      }`}
+      style={{
+        background: recording
+          ? '#ef4444'
+          : disabled
+            ? '#cbd5e1'
+            : 'var(--bg-card-alt, #f1f5f9)',
+        color: recording ? '#ffffff' : 'var(--text-secondary, #64748b)',
+      }}
+    >
+      <Mic size={14} />
 
       <style jsx global>{`
         @keyframes mic-pulse {
@@ -310,11 +260,11 @@ export function VoiceButton({
           .animate-mic-pulse { animation: none; }
         }
       `}</style>
-    </>
+    </button>
   )
-}
+})
 
-function formatTime(seconds: number): string {
+export function formatVoiceTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${m}:${String(s).padStart(2, '0')}`
