@@ -2,23 +2,22 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
+import { getPreapproval, MercadoPagoError } from '@/lib/mercadopago'
 import { CheckCircle2, AlertCircle, Clock, ArrowRight } from 'lucide-react'
 
 // ─── /checkout/result ───────────────────────────────────────────────────────
 //
 // Página a la que MP redirige al user después de completar (o cancelar) el
-// flow de autorización del preapproval. MP agrega query params al URL:
-//   - collection_status: approved | pending | rejected | null
-//   - preapproval_id:    el ID del preapproval
-//   - status:            authorized | pending | cancelled
+// flow de autorización del preapproval. MP agrega query params al URL,
+// pero los nombres / valores que pone varían (a veces `status`, a veces
+// `collection_status`, a veces nada). NO confiamos en eso.
 //
-// Mostramos feedback acorde + CTA para volver a la app. NO confiamos en los
-// query params para activar Pro — eso lo hace el webhook (más seguro, MP
-// firma los webhooks pero no los query params).
+// En su lugar, leemos `preapproval_id` del URL y consultamos a MP el
+// estado real del preapproval. Eso es la single source of truth.
 
 type SearchParams = Promise<{
-  collection_status?: string
   preapproval_id?:    string
+  collection_status?: string
   status?:            string
 }>
 
@@ -30,13 +29,40 @@ export default async function CheckoutResultPage({
   const { user } = await getAuthedClient()
   if (!user) redirect('/login')
 
-  const params = await searchParams
-  const status = params.status ?? params.collection_status ?? 'unknown'
+  const params         = await searchParams
+  const preapprovalId  = params.preapproval_id
+  const queryStatus    = params.status ?? params.collection_status ?? null
 
-  // 3 estados visuales según lo que devolvió MP
+  console.log(`[checkout/result] params: preapproval_id=${preapprovalId} status=${queryStatus}`)
+
+  // Consultamos a MP el estado real del preapproval. Single source of
+  // truth — no confiamos en query params.
+  let realStatus: string | null = null
+  let fetchError: string | null = null
+  if (preapprovalId) {
+    try {
+      const pre = await getPreapproval(preapprovalId)
+      realStatus = pre.status
+      console.log(`[checkout/result] preapproval ${preapprovalId} → status=${pre.status} next_payment=${pre.next_payment_date}`)
+    } catch (err) {
+      if (err instanceof MercadoPagoError) {
+        console.error(`[checkout/result] MP fetch error ${err.status}:`, err.rawBody.slice(0, 300))
+        fetchError = `MP ${err.status}`
+      } else {
+        console.error('[checkout/result] unexpected:', err)
+        fetchError = 'unknown'
+      }
+    }
+  }
+
+  // Decidir variant: el status REAL del preapproval manda. Si no lo
+  // pudimos consultar (fetchError), caemos al query param como fallback.
+  const effectiveStatus = realStatus ?? queryStatus ?? 'unknown'
   const variant = (() => {
-    if (status === 'authorized' || status === 'approved') return 'success'
-    if (status === 'pending')                              return 'pending'
+    if (effectiveStatus === 'authorized') return 'success'
+    if (effectiveStatus === 'approved')   return 'success'
+    if (effectiveStatus === 'pending')    return 'pending'
+    if (effectiveStatus === 'paused')     return 'pending'  // MP a veces deja "paused" temporal antes de "authorized"
     return 'error'
   })()
 
@@ -115,10 +141,12 @@ export default async function CheckoutResultPage({
             )}
           </div>
 
-          {/* Footer chico — info técnica para soporte si hay problemas */}
-          {params.preapproval_id && (
+          {/* Footer — info técnica para soporte si hay problemas */}
+          {preapprovalId && (
             <p className="mt-6 text-[10px] uppercase tracking-wider text-slate-300 font-mono">
-              ID: {params.preapproval_id.slice(0, 16)}…
+              ID: {preapprovalId.slice(0, 16)}…
+              {realStatus && ` · ${realStatus}`}
+              {fetchError && ` · fetch:${fetchError}`}
             </p>
           )}
         </div>
