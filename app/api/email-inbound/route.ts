@@ -5,6 +5,7 @@ import { todayAR } from '@/lib/timezone'
 import { getUserPlanById } from '@/lib/subscription'
 import { checkMonthlyUsageAsAdmin, enforceMonthlyLimitAsAdmin } from '@/lib/usage-limits'
 import { isGmailVerificationEmail, extractGmailConfirmUrl } from '@/lib/gmail-verification'
+import { MODEL_EMAIL_INBOUND } from '@/lib/claude-models'
 import crypto from 'crypto'
 
 // crypto.createHmac requiere runtime Node (no Edge)
@@ -172,7 +173,7 @@ ${emailText.slice(0, 3000)}`
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model:      'claude-haiku-4-5-20251001',
+        model:      MODEL_EMAIL_INBOUND,
         max_tokens: 1024,
         messages:   [{ role: 'user', content: prompt }],
       }),

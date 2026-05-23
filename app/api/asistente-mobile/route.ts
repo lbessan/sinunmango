@@ -4,6 +4,7 @@ import { todayAR, todayPartsAR } from '@/lib/timezone'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
+import { MODEL_ASISTENTE_MOBILE } from '@/lib/claude-models'
 
 // ─── POST /api/asistente-mobile ───────────────────────────────────────────────
 // Non-streaming version of /api/asistente for the mobile app.
@@ -284,7 +285,7 @@ REGLAS CRÍTICAS:
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model:      'claude-sonnet-4-6',
+      model:      MODEL_ASISTENTE_MOBILE,
       max_tokens: 1024,
       // Prompt caching: el contexto financiero (saldos, movs, categorías) cambia
       // poco entre mensajes consecutivos. Cache TTL 5min reduce costo de

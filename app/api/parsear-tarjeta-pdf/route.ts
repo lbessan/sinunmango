@@ -4,6 +4,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, isOnboardingActive, usageHeaders } from '@/lib/usage-limits'
 import { parseClaudeJSON, recoverPartialArray, recoverObject } from '@/lib/parse-claude-json'
+import { MODEL_PARSEAR_TARJETA_PDF } from '@/lib/claude-models'
 
 const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario
 const CLAUDE_TIMEOUT_MS    = 55_000
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
       'anthropic-beta':    'pdfs-2024-09-25',
     },
     body: JSON.stringify({
-      model:      'claude-sonnet-4-6',
+      model:      MODEL_PARSEAR_TARJETA_PDF,
       max_tokens: 16000,
       messages: [
         {

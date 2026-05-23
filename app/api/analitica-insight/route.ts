@@ -3,6 +3,7 @@ import { createClientForRequest } from '@/lib/supabase/route'
 import { getUserPlan } from '@/lib/subscription'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { todayAR } from '@/lib/timezone'
+import { MODEL_ANALITICA_INSIGHT } from '@/lib/claude-models'
 
 export const runtime = 'nodejs'
 
@@ -109,7 +110,7 @@ export async function POST(req: NextRequest) {
       'content-type':      'application/json',
     },
     body: JSON.stringify({
-      model:      'claude-haiku-4-5-20251001',
+      model:      MODEL_ANALITICA_INSIGHT,
       max_tokens: isProfundo ? 2500 : 700,
       system: [
         // Sistema cacheable — mismo prompt para todos los usuarios del mismo tipo

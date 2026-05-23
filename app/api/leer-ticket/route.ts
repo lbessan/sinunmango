@@ -4,6 +4,7 @@ import { todayAR } from '@/lib/timezone'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
+import { MODEL_LEER_TICKET } from '@/lib/claude-models'
 
 // ─── POST /api/leer-ticket ───────────────────────────────────────────────────
 // Receives a base64 image of a receipt/ticket, sends it to Claude Vision,
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: MODEL_LEER_TICKET,
       max_tokens: 512,
       messages: [
         {

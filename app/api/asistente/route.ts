@@ -4,6 +4,7 @@ import { todayAR, todayPartsAR } from '@/lib/timezone'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { getUserPlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
+import { MODEL_ASISTENTE } from '@/lib/claude-models'
 
 // ─── POST /api/asistente ─────────────────────────────────────────────────────
 // Streaming chat with Claude.
@@ -323,7 +324,7 @@ REGLAS CRÍTICAS:
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model:      'claude-sonnet-4-6',
+      model:      MODEL_ASISTENTE,
       max_tokens: 1024,
       // System prompt con prompt caching: el contexto financiero (saldos, movs,
       // categorías) cambia poco entre mensajes consecutivos de una conversación,
