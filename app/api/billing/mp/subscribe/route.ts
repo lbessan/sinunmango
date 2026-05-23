@@ -87,15 +87,20 @@ export async function POST(req: NextRequest) {
 
   // ── 4. Crear preapproval en MP ─────────────────────────────────────────
   //
-  // En SANDBOX (MP_ACCESS_TOKEN empieza con TEST-), el payer_email debe
-  // corresponder a un Test User comprador (no a un email real). Si
-  // mandamos el email real del user, MP responde "Una de las partes es
-  // de prueba" y tira pantalla de error.
+  // En SANDBOX el payer_email debe corresponder a un Test User comprador.
+  // Si mandamos el email real, MP responde "Both payer and collector must
+  // be real or test users" o similar.
   //
-  // Solution: si en sandbox hay MP_SANDBOX_TEST_BUYER_EMAIL configurado,
-  // lo usamos como payer_email para todos los tests. En prod, siempre
+  // Solution: si MP_SANDBOX_TEST_BUYER_EMAIL está configurado Y MP_MODE=sandbox
+  // (o el token es TEST-), usamos ese email como payer. En prod, siempre
   // se usa el email real del user.
-  const isSandboxMode = process.env.MP_ACCESS_TOKEN?.startsWith('TEST-') ?? false
+  //
+  // El detect de "sandbox mode" se basa en MP_MODE explícito como source
+  // of truth — el prefix del token no alcanza porque las credenciales del
+  // test seller pueden empezar con APP_USR- en lugar de TEST-.
+  const mpModeEnv = process.env.MP_MODE?.toLowerCase()
+  const tokenIsTest = process.env.MP_ACCESS_TOKEN?.startsWith('TEST-') ?? false
+  const isSandboxMode = mpModeEnv === 'sandbox' || (mpModeEnv !== 'production' && tokenIsTest)
   const sandboxBuyerEmail = process.env.MP_SANDBOX_TEST_BUYER_EMAIL
   const payerEmail = (isSandboxMode && sandboxBuyerEmail)
     ? sandboxBuyerEmail
@@ -120,11 +125,11 @@ export async function POST(req: NextRequest) {
       console.error('[mp/subscribe] MP error:', err.status, err.rawBody.slice(0, 1000))
       // Devolvemos el error de MP al frontend en sandbox para diagnosticar
       // más rápido. En prod sólo mensaje genérico.
-      const isDev = process.env.MP_ACCESS_TOKEN?.startsWith('TEST-')
+      // Reusamos el flag isSandboxMode calculado más arriba.
       return NextResponse.json(
         {
           error: 'No pudimos iniciar el cobro. Probá de nuevo en un momento.',
-          ...(isDev ? { mp_status: err.status, mp_body: err.rawBody.slice(0, 1000) } : {}),
+          ...(isSandboxMode ? { mp_status: err.status, mp_body: err.rawBody.slice(0, 1000) } : {}),
         },
         { status: 502 },
       )

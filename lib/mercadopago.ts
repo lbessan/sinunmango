@@ -44,9 +44,28 @@ function accessToken(): string {
   return tok
 }
 
+/**
+ * Detecta el modo de operación de MP:
+ *   - 'sandbox': estamos en testing — aplica MP_SANDBOX_TEST_BUYER_EMAIL,
+ *     log defensivo, devolución del error MP al frontend, etc.
+ *   - 'production': cobros reales con tarjetas reales.
+ *
+ * Orden de precedencia:
+ *   1. MP_MODE explícita (sandbox | production)
+ *   2. Detect por prefix del access token (TEST- → sandbox)
+ *
+ * Cuando usamos credenciales del test SELLER dentro del environment de
+ * test de MP, esas pueden empezar con APP_USR- (en lugar de TEST-) y el
+ * detect por prefix falla. Por eso preferimos MP_MODE explícito.
+ */
+function mpMode(): 'sandbox' | 'production' {
+  const explicit = process.env.MP_MODE?.toLowerCase()
+  if (explicit === 'sandbox' || explicit === 'production') return explicit
+  return accessToken().startsWith('TEST-') ? 'sandbox' : 'production'
+}
+
 function isSandbox(): boolean {
-  // Tokens de sandbox empiezan con TEST- según las convenciones de MP.
-  return accessToken().startsWith('TEST-')
+  return mpMode() === 'sandbox'
 }
 
 // ── MP API base ────────────────────────────────────────────────────────────
