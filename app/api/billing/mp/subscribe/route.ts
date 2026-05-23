@@ -86,12 +86,27 @@ export async function POST(req: NextRequest) {
     : null
 
   // ── 4. Crear preapproval en MP ─────────────────────────────────────────
+  //
+  // En SANDBOX (MP_ACCESS_TOKEN empieza con TEST-), el payer_email debe
+  // corresponder a un Test User comprador (no a un email real). Si
+  // mandamos el email real del user, MP responde "Una de las partes es
+  // de prueba" y tira pantalla de error.
+  //
+  // Solution: si en sandbox hay MP_SANDBOX_TEST_BUYER_EMAIL configurado,
+  // lo usamos como payer_email para todos los tests. En prod, siempre
+  // se usa el email real del user.
+  const isSandboxMode = process.env.MP_ACCESS_TOKEN?.startsWith('TEST-') ?? false
+  const sandboxBuyerEmail = process.env.MP_SANDBOX_TEST_BUYER_EMAIL
+  const payerEmail = (isSandboxMode && sandboxBuyerEmail)
+    ? sandboxBuyerEmail
+    : profile.email
+
   let preapproval
   try {
-    console.log(`[mp/subscribe] creando preapproval user=${user.id} email=${profile.email} amount=${priceArs} early=${isEarlyAccess} trialEnd=${trialEnd.toISOString()}`)
+    console.log(`[mp/subscribe] creando preapproval user=${user.id} payer_email=${payerEmail} (sandbox=${isSandboxMode}) amount=${priceArs} early=${isEarlyAccess} trialEnd=${trialEnd.toISOString()}`)
     preapproval = await createPreapproval({
       userId:            user.id,
-      payerEmail:        profile.email,
+      payerEmail:        payerEmail,
       amountArs:         priceArs,
       reason:            isEarlyAccess
         ? 'sinunmango Pro · Early Access ($3.499/mes durante 12 meses)'
