@@ -555,8 +555,6 @@ export type Database = {
           early_access: boolean
           early_access_expires_at: string | null
           email: string
-          google_purchase_token: string | null
-          google_subscription_id: string | null
           mp_payer_id: string | null
           mp_preapproval_id: string | null
           mp_status: string | null
@@ -577,8 +575,6 @@ export type Database = {
           early_access?: boolean
           early_access_expires_at?: string | null
           email: string
-          google_purchase_token?: string | null
-          google_subscription_id?: string | null
           mp_payer_id?: string | null
           mp_preapproval_id?: string | null
           mp_status?: string | null
@@ -599,8 +595,6 @@ export type Database = {
           early_access?: boolean
           early_access_expires_at?: string | null
           email?: string
-          google_purchase_token?: string | null
-          google_subscription_id?: string | null
           mp_payer_id?: string | null
           mp_preapproval_id?: string | null
           mp_status?: string | null
