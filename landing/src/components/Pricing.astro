@@ -20,9 +20,6 @@ const FILAS: ComparadorRow[] = [
   { feature: "Informe completo con IA", free: false, pro: true },
   { feature: "Temas y modo claro/oscuro", free: false, pro: true },
 ];
-
-const PLAY_URL =
-  "https://play.google.com/store/apps/details?id=com.sinunmango.mobile";
 ---
 
 <section id="pricing" class="relative bg-[#0A0E1A] py-24 sm:py-32">
@@ -183,9 +180,7 @@ const PLAY_URL =
         </ul>
 
         <a
-          href={PLAY_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          href="https://app.sinunmango.com.ar/pro"
           class="mt-10 inline-flex items-center justify-center gap-2 rounded-xl bg-[#FFB84D] px-6 py-3.5 text-sm font-semibold text-[#0A0E1A] shadow-lg shadow-[#FFB84D]/20 transition-all hover:-translate-y-0.5 hover:bg-[#FFC972] hover:shadow-xl hover:shadow-[#FFB84D]/30"
         >
           Probá Pro 7 días gratis
@@ -195,7 +190,7 @@ const PLAY_URL =
           class="mt-3 text-center text-[10px] uppercase tracking-wider text-white/40"
           style="font-family: 'Geist Mono', monospace;"
         >
-          Cancelás cuando quieras desde Google Play
+          Cancelás cuando quieras desde la app
         </p>
       </div>
     </div>
@@ -281,9 +276,9 @@ const PLAY_URL =
     </details>
 
     <p class="mt-10 text-center text-sm text-white/40">
-      La suscripción Pro hoy se compra desde la app de Google Play. Si
-      pagás y no te sirve, la cancelás desde Play y no tenés cargos
-      después del trial.
+      La suscripción Pro se cobra vía Mercado Pago — tarjeta, débito,
+      CBU o efectivo. Si pagás y no te sirve, la cancelás desde la app
+      en Configuración → Suscripción y no tenés cargos después del trial.
     </p>
   </div>
 </section>

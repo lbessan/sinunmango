@@ -27,7 +27,7 @@ export const FAQS: FAQ[] = [
   },
   {
     q: "¿En qué dispositivos puedo usarla?",
-    a: "Hay app nativa de Android publicada en Google Play. Para iPhone no tenemos app nativa pero la web funciona perfecto en Safari y se puede agregar a la pantalla de inicio (Compartir → Agregar a pantalla de inicio): queda como una app más, con su ícono, sin barra de browser. Y desde la compu también la abrís en cualquier navegador.",
+    a: "Funciona en cualquier dispositivo con navegador moderno: Android, iPhone, Mac, Windows. Si la usás del celular, en Android (Chrome) y en iPhone (Safari) podés agregarla a la pantalla de inicio (Compartir → Agregar a pantalla de inicio) y queda como una app más, con su ícono y sin barra de browser. Sin descargas, sin tienda de apps.",
   },
   {
     q: "¿Cómo te contacto si encuentro un bug?",
