@@ -11,7 +11,7 @@ export type FAQ = { q: string; a: string };
 export const FAQS: FAQ[] = [
   {
     q: "¿Es gratis?",
-    a: "Sí, hay un plan Free para siempre con todo lo importante: cargar movimientos, cuentas, tarjetas, gastos fijos, inversiones, dashboard y proyecciones. Lo único limitado en Free son los flows con IA (Manguito, importación por mail, PDF de tarjeta, foto de ticket) que tienen un cupo mensual. Si querés esos ilimitados, hay Pro a $3.499/mes con 7 días gratis de prueba — mirá la sección de Planes más abajo.",
+    a: "Sí, hay un plan Free para siempre con todo lo importante: cargar movimientos, cuentas, tarjetas, gastos fijos, inversiones, dashboard y proyecciones. Lo único limitado en Free son los flows con IA (Manguito, importación por mail, PDF de tarjeta, foto de ticket) que tienen un cupo mensual. Si querés esos ilimitados, hay Pro a $6.999/mes con 7 días gratis de prueba. Los primeros 100 suscriptores entran en Early Access a $3.499/mes durante 12 meses (50% off). Mirá la sección de Planes más abajo.",
   },
   {
     q: "¿Mis datos están seguros?",
@@ -19,7 +19,7 @@ export const FAQS: FAQ[] = [
   },
   {
     q: "¿Cómo se cargan los movimientos sin tener que tipear todo?",
-    a: "Hay tres caminos y los podés combinar: (1) cuando creás la cuenta te damos una dirección @sinunmango.com.ar y reenviás ahí las notificaciones de tu banco; los movimientos se registran solos. (2) Subís el PDF de tu resumen de tarjeta y la IA detecta banco, red, variante y todos los consumos. (3) Le mandás un mensaje a Manguito (“gasté $4.500 en el súper”) y lo carga por vos. Y si querés, también podés cargar a mano o escanear un ticket con la cámara.",
+    a: "Hay cuatro caminos y los podés combinar: (1) cuando creás la cuenta te damos una dirección @sinunmango.com.ar y reenviás ahí las notificaciones de tu banco; los movimientos se registran solos. (2) Subís el PDF de tu resumen de tarjeta y la IA detecta banco, red, variante y todos los consumos. (3) Le hablás a Manguito por voz: mantenés el micrófono y dictás “gasté cuatro mil quinientos en el súper”, Manguito lo registra solo. (4) Le mandás un mensaje escrito a Manguito y hace lo mismo. Y si querés, también podés cargar a mano o escanear un ticket con la cámara.",
   },
   {
     q: "¿Qué bancos soporta la importación por mail?",

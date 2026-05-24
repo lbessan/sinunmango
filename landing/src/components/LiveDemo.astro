@@ -70,8 +70,9 @@
       </h2>
       <p class="mx-auto mt-6 max-w-xl text-base text-white/60 sm:text-lg">
         Manguito es tu asistente con IA — incluido en todos los planes.
-        Le hablás como a una persona y te responde con los datos reales
-        de tu cuenta.
+        <span class="text-white"> Escribíle o dictále por voz</span>: te
+        responde con los datos reales de tu cuenta, y te registra los
+        gastos solo.
       </p>
     </div>
 
@@ -185,7 +186,10 @@
               </div>
             </div>
 
-            {/* Mensaje del USER (rotating) */}
+            {/* Mensaje del USER (rotating). Mini-indicador de voz arriba
+                del bubble — un ícono de mic + "audio · 0:03" — sugiere
+                que el mensaje fue dictado. Es una pista visual sutil de
+                que la app acepta voz, no solo texto. */}
             <div class="flex items-start gap-2.5 flex-row-reverse">
               <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1B3A6B] text-white mt-0.5">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -193,11 +197,21 @@
                   <circle cx="12" cy="7" r="4" />
                 </svg>
               </div>
-              <div
-                id="demo-user-msg"
-                class="max-w-[82%] rounded-2xl rounded-tr-sm bg-[#1B3A6B] px-3.5 py-2.5 text-sm leading-relaxed text-white shadow-sm"
-              >
-                ¿Cuánto gasté en delivery este mes?
+              <div class="flex flex-col items-end max-w-[82%]">
+                <div class="mb-1 inline-flex items-center gap-1 text-[10px] text-slate-400">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="2" width="6" height="12" rx="3" />
+                    <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
+                    <line x1="12" y1="19" x2="12" y2="22" />
+                  </svg>
+                  <span>Audio · 0:03</span>
+                </div>
+                <div
+                  id="demo-user-msg"
+                  class="rounded-2xl rounded-tr-sm bg-[#1B3A6B] px-3.5 py-2.5 text-sm leading-relaxed text-white shadow-sm"
+                >
+                  ¿Cuánto gasté en delivery este mes?
+                </div>
               </div>
             </div>
 
