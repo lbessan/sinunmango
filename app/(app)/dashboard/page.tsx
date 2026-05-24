@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
 import { TourTrigger } from '@/components/tour-trigger'
 import { CargarIngresosCTA } from '@/components/cargar-ingresos-cta'
+import { InstallPWAButton } from '@/components/install-pwa-button'
 import { todayAR, todayPartsAR } from '@/lib/timezone'
 
 type DB = SupabaseClient<Database>
@@ -527,6 +528,15 @@ export default async function DashboardPage({
               <span>{mesLabel(offsetMes(mes, 1)).split(' ')[0]}</span>
               <ChevronRight size={16} />
             </Link>
+          </div>
+
+          {/* CTA Instalar PWA — solo mobile, solo si no está ya instalado.
+              El componente detecta standalone y devuelve null si ya está,
+              así que en PWA instalado no se ve nada. En desktop tampoco
+              se ve por el lg:hidden. Sin estado de dismiss porque la
+              ausencia post-install ya cumple esa función. */}
+          <div className="lg:hidden">
+            <InstallPWAButton variant="card" />
           </div>
 
           <div className="flex items-start gap-3">
