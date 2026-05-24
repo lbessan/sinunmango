@@ -1,29 +1,34 @@
 // Helper mínimo para mockear SupabaseClient en tests unitarios.
 //
-// Solo cubre los métodos que los libs realmente usan:
-//   from -> select -> [eq...] -> maybeSingle/single
-//   rpc(name, args)
+// Cubre los patterns más usados en la app:
+//   - from(table).select(...).eq(...).maybeSingle()
+//   - from(table).select(...).order(...).limit(...) — chain entero es thenable
+//   - from(table).insert({...}) / .upsert({...}) — thenable directo
+//   - from(table).update({...}).eq(...) — thenable
+//   - from(table).update({...}).eq(...).select('col') — thenable
+//   - from(table).delete().eq(...) — thenable
+//   - from(table).select(..., { count: 'exact', head: true }).eq(...) — count
+//   - rpc(name, args)
 //
-// Para casos más complejos (storage, auth.admin.getUserById, etc.) extender acá.
+// El builder produce un chainable que también es thenable, así cualquier
+// punto del chain (con o sin maybeSingle/single al final) resuelve a la
+// respuesta configurada de la tabla.
 
 import { vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
 
-type Response = { data: unknown; error: unknown }
+type Response = { data: unknown; error: unknown; count?: number | null }
 
 export type SupabaseMockConfig = {
-  // Respuesta del terminal (.maybeSingle()/.single()) por tabla.
-  // Si no se setea, devuelve { data: null, error: null }.
+  // Respuesta del terminal por tabla. Aplica a todos los terminales
+  // (maybeSingle, single, await directo, .select() después de update).
   table?: Record<string, Response>
   // Respuesta de .rpc() por nombre.
   rpc?:   Record<string, Response>
 }
 
 export function createSupabaseMock(config: SupabaseMockConfig = {}) {
-  // Cada chain de la forma from(table).select(...).eq(...).eq(...).maybeSingle()
-  // tiene que terminar en una promesa. Hacemos un proxy que devuelve self para
-  // todos los métodos chainable y resuelve al llegar a maybeSingle/single.
   const tableResponses = config.table ?? {}
   const rpcResponses   = config.rpc   ?? {}
 
@@ -32,13 +37,24 @@ export function createSupabaseMock(config: SupabaseMockConfig = {}) {
     const chain: Record<string, unknown> = {}
 
     // Métodos chainable que retornan self.
-    for (const m of ['select', 'eq', 'in', 'gte', 'lte', 'lt', 'gt', 'order', 'limit', 'not']) {
+    for (const m of [
+      'select', 'eq', 'neq', 'in', 'gte', 'lte', 'lt', 'gt', 'is',
+      'order', 'limit', 'range', 'not', 'or', 'filter', 'match',
+      'insert', 'upsert', 'update', 'delete',
+    ]) {
       chain[m] = vi.fn(() => chain)
     }
 
-    // Terminales que retornan una promesa con la respuesta configurada.
+    // Terminales explícitos (.maybeSingle/.single) — los devuelven directamente.
     chain.maybeSingle = vi.fn(() => Promise.resolve(terminal))
     chain.single      = vi.fn(() => Promise.resolve(terminal))
+
+    // Hacer el chain thenable: `await chain` resuelve a `terminal` también.
+    // Esto cubre el caso "await supabase.from('t').update(x).eq('y', z)"
+    // donde no hay maybeSingle/single al final.
+    chain.then = (onFulfilled: (v: Response) => unknown) => {
+      return Promise.resolve(terminal).then(onFulfilled)
+    }
 
     return chain
   }
@@ -49,6 +65,9 @@ export function createSupabaseMock(config: SupabaseMockConfig = {}) {
       const resp = rpcResponses[rpcName] ?? { data: null, error: null }
       return Promise.resolve(resp)
     }),
+    auth: {
+      getUser: vi.fn(),
+    },
   } as unknown as SupabaseClient<Database>
 
   return supabase
