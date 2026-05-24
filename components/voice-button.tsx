@@ -76,13 +76,20 @@ export const VoiceButton = forwardRef<VoiceButtonHandle, {
   onError?:       (err: VoiceError | null) => void
   disabled?:      boolean
 }>(function VoiceButton({ onTranscript, onStateChange, onError, disabled }, ref) {
+  // TODOS los hooks ANTES del cualquier early return (Rules of Hooks).
+  // Antes tenía activePointerIdRef + endedRef DESPUÉS del `if (!supported)
+  // return null`, lo que causaba "Rendered more hooks than during the
+  // previous render" en el segundo render (después del useEffect que
+  // setea supported=true).
   const [supported, setSupported] = useState(false)
   const [recording, setRecording] = useState(false)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const streamRef        = useRef<MediaStream | null>(null)
-  const chunksRef        = useRef<Blob[]>([])
-  const cancelledRef     = useRef<boolean>(false)
-  const timerRef         = useRef<ReturnType<typeof setInterval> | null>(null)
+  const mediaRecorderRef   = useRef<MediaRecorder | null>(null)
+  const streamRef          = useRef<MediaStream | null>(null)
+  const chunksRef          = useRef<Blob[]>([])
+  const cancelledRef       = useRef<boolean>(false)
+  const timerRef           = useRef<ReturnType<typeof setInterval> | null>(null)
+  const activePointerIdRef = useRef<number | null>(null)
+  const endedRef           = useRef(false)
 
   useImperativeHandle(ref, () => ({
     clearError: () => onError?.(null),
@@ -246,15 +253,8 @@ export const VoiceButton = forwardRef<VoiceButtonHandle, {
 
   if (!supported) return null
 
-  // Tracking del pointerId activo. setPointerCapture asegura que el botón
-  // sigue recibiendo eventos aunque el dedo salga del botón — crítico en
-  // iOS PWA standalone donde pointerup a veces no se dispara si el dedo
-  // se mueve. También nos protege del drag-cancel accidental.
-  const activePointerIdRef = useRef<number | null>(null)
-
-  // Helper para no llamar a stopRecording dos veces (si pointerup Y
-  // touchend disparan ambos).
-  const endedRef = useRef(false)
+  // (activePointerIdRef + endedRef movidos arriba con el resto de hooks,
+  // ver comentario arriba sobre Rules of Hooks).
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault()
