@@ -99,6 +99,7 @@ export function LimitReachedModal({
           </button>
           <Link
             href="/pro"
+            onClick={onClose}
             className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
             style={{ background: 'linear-gradient(90deg, #6366f1, #8b5cf6)' }}
           >
