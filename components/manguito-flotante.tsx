@@ -157,9 +157,15 @@ export function ManguitoFlotante() {
     if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, open])
 
-  // Focus textarea when panel opens
+  // Focus textarea cuando se abre el panel — SOLO desktop.
+  // En mobile, el auto-focus dispara el teclado on-screen automáticamente,
+  // lo que es molesto si el user abrió el panel solo para usar el mic o
+  // leer una respuesta. Que toque el textarea cuando quiera escribir.
   useEffect(() => {
-    if (open) setTimeout(() => textareaRef.current?.focus(), 120)
+    if (!open) return
+    if (typeof window === 'undefined') return
+    if (!window.matchMedia('(min-width: 640px)').matches) return
+    setTimeout(() => textareaRef.current?.focus(), 120)
   }, [open])
 
   // Close on Escape
@@ -483,16 +489,19 @@ export function ManguitoFlotante() {
                 </div>
               )}
 
-              <div className="rounded-2xl px-3 py-2.5 flex gap-2 items-end shadow-sm" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
+              {/* px-3 py-3 + gap-2.5: padding más generoso para que los
+                  botones de 11×11 (44px) — guía Apple de minimum tap
+                  target — no queden pegados a los bordes en mobile. */}
+              <div className="rounded-2xl px-3 py-2.5 flex gap-2.5 items-end shadow-sm" style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}>
                 <textarea
                   ref={textareaRef}
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Escribí un mensaje o mantené el mic"
+                  placeholder="Escribí o mantené el mic"
                   rows={1}
                   className="flex-1 resize-none text-sm text-slate-800 outline-none bg-transparent placeholder-slate-400 self-center"
-                  style={{ minHeight: 26, maxHeight: 120, lineHeight: '1.5' }}
+                  style={{ minHeight: 32, maxHeight: 120, lineHeight: '1.5' }}
                   onInput={e => {
                     const t = e.target as HTMLTextAreaElement
                     t.style.height = 'auto'
@@ -503,7 +512,10 @@ export function ManguitoFlotante() {
                     transcripto cae en el input para que el user lo revise
                     y mande (o edite si la transcripción falló).
                     El estado y los errores se rendereaan arriba (overlay
-                    dentro del panel, no del propio botón). */}
+                    dentro del panel, no del propio botón).
+                    En mobile, antes de grabar hacemos blur del textarea —
+                    si el teclado estaba abierto, se cierra. Evita que la
+                    grabación compita con keyboard input. */}
                 <VoiceButton
                   ref={voiceButtonRef}
                   disabled={loading}
@@ -511,16 +523,22 @@ export function ManguitoFlotante() {
                     setInput(prev => prev ? `${prev} ${text}` : text)
                     setTimeout(() => textareaRef.current?.focus(), 50)
                   }}
-                  onStateChange={setVoiceState}
+                  onStateChange={(state) => {
+                    setVoiceState(state)
+                    // Al empezar a grabar, cerrar el teclado si estaba abierto
+                    if (state.kind === 'recording') {
+                      textareaRef.current?.blur()
+                    }
+                  }}
                   onError={setVoiceError}
                 />
                 <button
                   onClick={() => sendMessage()}
                   disabled={!input.trim() || loading}
-                  className="h-8 w-8 rounded-xl flex items-center justify-center text-white shrink-0 transition-all mb-0.5"
+                  className="h-11 w-11 rounded-xl flex items-center justify-center text-white shrink-0 transition-all"
                   style={{ background: input.trim() && !loading ? 'linear-gradient(135deg, var(--accent2, #1B3A6B) 0%, var(--accent, #1a6b5a) 100%)' : '#cbd5e1' }}
                 >
-                  {loading ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 </button>
               </div>
             </div>

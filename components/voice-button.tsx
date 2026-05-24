@@ -314,7 +314,7 @@ export const VoiceButton = forwardRef<VoiceButtonHandle, {
       onLostPointerCapture={handlePointerCancel}
       onTouchEnd={handleTouchEnd}
       onContextMenu={e => e.preventDefault()}
-      className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 transition-all mb-0.5 ${
+      className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 transition-all ${
         recording ? 'animate-mic-pulse' : ''
       }`}
       style={{
@@ -333,7 +333,7 @@ export const VoiceButton = forwardRef<VoiceButtonHandle, {
         WebkitTouchCallout: 'none',
       }}
     >
-      <Mic size={14} />
+      <Mic size={18} />
 
       <style jsx global>{`
         @keyframes mic-pulse {
