@@ -6,7 +6,17 @@
 // respuesta es 429 con error='limit_reached', se setea el state y se abre.
 //
 // Copy y CTA varían según el feature (asistente, ticket, resumen, mail).
+//
+// IMPORTANTE: el render va vía createPortal a document.body para escapar
+// stacking contexts de ancestros. Sin esto, cuando el modal se montaba
+// adentro del sidebar (position: sticky crea stacking context aunque no
+// haya z-index), el <main> hermano pintaba encima y tapaba parte del modal.
+// Bug observado: la sección de proyecciones del dashboard renderaba ENCIMA
+// del título/body/botones de este modal. Portal evita stacking contexts
+// porque el modal pasa a ser hijo directo de <body>.
 
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { X, Sparkles } from 'lucide-react'
 
@@ -47,10 +57,17 @@ export function LimitReachedModal({
   info:    LimitReachedInfo | null
   onClose: () => void
 }) {
-  if (!info) return null
+  // SSR guard: createPortal necesita document, que no existe en server.
+  // En el primer render del cliente mounted=false → no rendereamos nada;
+  // tras el primer paint useEffect marca mounted=true y ya podemos
+  // usar document.body como target del portal.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
+  if (!info || !mounted) return null
   const { title, body } = COPY[info.feature]
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div
         className="rounded-2xl shadow-xl max-w-md w-full p-6"
@@ -89,7 +106,8 @@ export function LimitReachedModal({
           </Link>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
