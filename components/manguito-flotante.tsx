@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Send, X, User, CheckCircle, AlertCircle, Loader2, Minimize2, Trash2, Sparkles } from 'lucide-react'
-import { VoiceButton, formatVoiceTime, type VoiceState, type VoiceError } from './voice-button'
+import { VoiceButton, formatVoiceTime, type VoiceState, type VoiceError, type VoiceButtonHandle } from './voice-button'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Message = {
@@ -145,6 +145,7 @@ export function ManguitoFlotante() {
   const bottomRef               = useRef<HTMLDivElement>(null)
   const textareaRef             = useRef<HTMLTextAreaElement>(null)
   const panelRef                = useRef<HTMLDivElement>(null)
+  const voiceButtonRef          = useRef<VoiceButtonHandle>(null)
 
   // No renderear el FAB cuando ya estamos en /asistente — ese es el chat
   // completo del Manguito; tener el FAB encima es redundante y tapaba el
@@ -428,7 +429,9 @@ export function ManguitoFlotante() {
               style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}
             >
               {/* Overlay durante grabación — arriba del input bar, dentro
-                  del panel. */}
+                  del panel. La X cancela la grabación sin subir audio
+                  (más confiable que el drag-out que antes fallaba en
+                  iOS PWA standalone). */}
               {voiceState.kind === 'recording' && (
                 <div className="absolute inset-x-4 -top-1 -translate-y-full z-10 flex items-center gap-3 rounded-xl border border-red-100 bg-red-50/95 px-3 py-2 shadow-lg backdrop-blur-sm">
                   <span className="relative flex h-2.5 w-2.5 shrink-0">
@@ -440,9 +443,17 @@ export function ManguitoFlotante() {
                       Grabando · {formatVoiceTime(voiceState.elapsedSec)}
                     </p>
                     <p className="text-[10px] text-red-600/80 mt-0.5">
-                      Soltá para enviar · Arrastrá afuera para cancelar
+                      Soltá el micrófono para enviar
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => voiceButtonRef.current?.cancel()}
+                    className="shrink-0 p-1 rounded-md text-red-500 hover:bg-red-100"
+                    aria-label="Cancelar grabación"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               )}
 
@@ -494,6 +505,7 @@ export function ManguitoFlotante() {
                     El estado y los errores se rendereaan arriba (overlay
                     dentro del panel, no del propio botón). */}
                 <VoiceButton
+                  ref={voiceButtonRef}
                   disabled={loading}
                   onTranscript={(text) => {
                     setInput(prev => prev ? `${prev} ${text}` : text)

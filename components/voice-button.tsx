@@ -43,6 +43,8 @@ export type VoiceError = {
 
 export type VoiceButtonHandle = {
   clearError: () => void
+  /** Cancela la grabación activa (si la hay). El audio NO se sube. */
+  cancel:     () => void
 }
 
 // Detect feature: MediaRecorder + getUserMedia. Si falta alguno, no rendereamos.
@@ -84,7 +86,8 @@ export const VoiceButton = forwardRef<VoiceButtonHandle, {
 
   useImperativeHandle(ref, () => ({
     clearError: () => onError?.(null),
-  }), [onError])
+    cancel: () => stopRecording(true),
+  }), [onError])  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setSupported(isMediaRecorderSupported())
@@ -243,18 +246,61 @@ export const VoiceButton = forwardRef<VoiceButtonHandle, {
 
   if (!supported) return null
 
-  const handleStart = (e: React.PointerEvent) => {
+  // Tracking del pointerId activo. setPointerCapture asegura que el botón
+  // sigue recibiendo eventos aunque el dedo salga del botón — crítico en
+  // iOS PWA standalone donde pointerup a veces no se dispara si el dedo
+  // se mueve. También nos protege del drag-cancel accidental.
+  const activePointerIdRef = useRef<number | null>(null)
+
+  // Helper para no llamar a stopRecording dos veces (si pointerup Y
+  // touchend disparan ambos).
+  const endedRef = useRef(false)
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault()
+    activePointerIdRef.current = e.pointerId
+    endedRef.current = false
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // Si el browser no soporta capture, seguimos igual
+    }
     void startRecording()
   }
 
-  const handleEnd = (e: React.PointerEvent) => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault()
+    if (endedRef.current) return
+    endedRef.current = true
+    try {
+      if (activePointerIdRef.current !== null) {
+        e.currentTarget.releasePointerCapture(activePointerIdRef.current)
+      }
+    } catch {
+      // Si ya estaba released, ignoramos
+    }
+    activePointerIdRef.current = null
     stopRecording(false)
   }
 
-  const handleLeave = () => {
-    if (recording) stopRecording(true)
+  // Fallback para iOS PWA standalone — pointerup a veces NO se dispara,
+  // pero touchend casi siempre lo hace. Combinamos ambos con endedRef
+  // para no duplicar la llamada a stopRecording.
+  const handleTouchEnd = (e: React.TouchEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    if (endedRef.current) return
+    endedRef.current = true
+    activePointerIdRef.current = null
+    stopRecording(false)
+  }
+
+  // pointercancel: el sistema interrumpe el pointer (ej. llamada, scroll,
+  // notificación que abre quick view). Cancelamos la grabación.
+  const handlePointerCancel = () => {
+    if (endedRef.current) return
+    endedRef.current = true
+    activePointerIdRef.current = null
+    stopRecording(true)
   }
 
   return (
@@ -262,9 +308,11 @@ export const VoiceButton = forwardRef<VoiceButtonHandle, {
       type="button"
       aria-label={recording ? 'Soltá para enviar el audio' : 'Mantené presionado para grabar'}
       disabled={disabled}
-      onPointerDown={handleStart}
-      onPointerUp={handleEnd}
-      onPointerLeave={handleLeave}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onLostPointerCapture={handlePointerCancel}
+      onTouchEnd={handleTouchEnd}
       onContextMenu={e => e.preventDefault()}
       className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 transition-all mb-0.5 ${
         recording ? 'animate-mic-pulse' : ''
@@ -276,6 +324,13 @@ export const VoiceButton = forwardRef<VoiceButtonHandle, {
             ? '#cbd5e1'
             : 'var(--bg-card-alt, #f1f5f9)',
         color: recording ? '#ffffff' : 'var(--text-secondary, #64748b)',
+        // touch-action: none evita que iOS interprete el touch como un
+        // gesto (scroll, long-press menu, etc) y cancele el pointer.
+        // Crítico para PWA donde el sistema operativo intercepta gestos.
+        touchAction: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
       }}
     >
       <Mic size={14} />
