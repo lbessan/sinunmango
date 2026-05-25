@@ -7,7 +7,6 @@ import { Pencil, ArrowLeft } from 'lucide-react'
 import { CuentaSaldoReactivo } from '@/components/cuenta-saldo-reactivo'
 import { CuentaMovimientosTable } from '@/components/cuenta-movimientos-table'
 import { DeleteButton } from '@/components/delete-button'
-import { ShareAccountTrigger } from '@/components/share-account-trigger'
 
 type SaldoProps = ComponentProps<typeof CuentaSaldoReactivo>
 type TableProps = ComponentProps<typeof CuentaMovimientosTable>
@@ -84,11 +83,6 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
         <ArrowLeft size={14} />{isTarjeta ? 'Tarjetas' : 'Cuentas'}
       </Link>
       <div className="flex items-center gap-2">
-        <ShareAccountTrigger
-          cuentaId={id}
-          cuentaNombre={cuenta.nombre_cuenta ?? ''}
-          textColor={textColor}
-        />
         <DeleteButton
           endpoint={deleteEndpoint}
           redirectTo={backHref}

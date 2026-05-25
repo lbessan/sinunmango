@@ -39,42 +39,60 @@ export type Database = {
   }
   public: {
     Tables: {
-      account_shares: {
+      shares: {
         Row: {
-          accepted_at: string | null
-          cuenta_id: string
-          expires_at: string
-          id: string
-          invite_token: string
-          invited_at: string
+          accepted_at:     string | null
+          expires_at:      string
+          id:              string
+          invite_token:    string
+          invited_at:      string
           invitee_user_id: string | null
-          owner_user_id: string
-          revoked_at: string | null
-          role: string
+          owner_user_id:   string
+          revoked_at:      string | null
+          role:            string
         }
         Insert: {
-          accepted_at?: string | null
-          cuenta_id: string
-          expires_at?: string
-          id?: string
-          invite_token: string
-          invited_at?: string
+          accepted_at?:     string | null
+          expires_at?:      string
+          id?:              string
+          invite_token:     string
+          invited_at?:      string
           invitee_user_id?: string | null
-          owner_user_id: string
-          revoked_at?: string | null
-          role: string
+          owner_user_id:    string
+          revoked_at?:      string | null
+          role:             string
         }
         Update: {
-          accepted_at?: string | null
-          cuenta_id?: string
-          expires_at?: string
-          id?: string
-          invite_token?: string
-          invited_at?: string
+          accepted_at?:     string | null
+          expires_at?:      string
+          id?:              string
+          invite_token?:    string
+          invited_at?:      string
           invitee_user_id?: string | null
-          owner_user_id?: string
-          revoked_at?: string | null
-          role?: string
+          owner_user_id?:   string
+          revoked_at?:      string | null
+          role?:            string
+        }
+        Relationships: []
+      }
+      share_resources: {
+        Row: {
+          added_at:        string
+          resource_id:     string
+          resource_type:   string
+          share_id:        string
+        }
+        Insert: {
+          added_at?:       string
+          resource_id:     string
+          resource_type:   string
+          share_id:        string
+        }
+        Update: {
+          added_at?:       string
+          resource_id?:    string
+          resource_type?:  string
+          share_id?:       string
         }
         Relationships: []
       }
