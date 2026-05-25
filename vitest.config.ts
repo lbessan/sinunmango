@@ -13,7 +13,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['__tests__/**/*.test.ts'],
+    // Soporta .ts (tests de API/lib en node env) y .tsx (component tests
+    // que opt-in al happy-dom env con // @vitest-environment happy-dom).
+    include: ['__tests__/**/*.test.ts', '__tests__/**/*.test.tsx'],
     // El archivo de setup corre antes de cada test file. Lo usamos para
     // setear env vars fake que algunos módulos requieren al import time
     // (ej: lib/supabase/admin.ts instancia el cliente en module load).
