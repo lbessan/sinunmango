@@ -9,6 +9,14 @@ import { TourTrigger } from '@/components/tour-trigger'
 import { CargarIngresosCTA } from '@/components/cargar-ingresos-cta'
 import { InstallPWAButton } from '@/components/install-pwa-button'
 import { todayAR, todayPartsAR } from '@/lib/timezone'
+import {
+  calcularSaldoInicial,
+  bifurcarGastosFijos,
+  sumarMontoARS,
+  calcularTotalTCMes,
+  calcularProyeccionesIterativo,
+  calcularSkipCount,
+} from '@/lib/proyecciones'
 
 type DB = SupabaseClient<Database>
 
@@ -234,8 +242,6 @@ type ProyeccionMes = {
 
 async function calcularProyecciones(supabase: DB, userId: string, desde: string, meses = 4) {
   const { year: cyAR, month: cmAR } = todayPartsAR()
-  const today  = new Date(cyAR, cmAR - 1, 1)
-  const curMes = `${cyAR}-${String(cmAR).padStart(2, '0')}`
   const [{ data: resumen }, { data: gastosFijosRaw }, { data: tarjetasRaw }, { data: params }] =
     await Promise.all([
       supabase.from('dashboard_resumen').select('*').eq('user_id', userId).single(),
@@ -248,69 +254,73 @@ async function calcularProyecciones(supabase: DB, userId: string, desde: string,
     datosDelMes: { totalIng: 0, gastosFijosEfectivo: 0, gastosFijosTarjeta: 0, totalTC: 0 },
     proyecciones: [] as ProyeccionMes[],
   }
-  const dolar       = params?.valor ?? 1410
-  const tarjetaIds  = new Set((tarjetasRaw ?? []).map(t => t.id))
-  const deudaRest   = Math.max(0, (resumen.deuda_tarjetas_periodo ?? 0) - (resumen.pagos_tarjeta_mes ?? 0))
-  const startSaldo  = (resumen.disponible_real ?? 0) + (resumen.ingresos_futuros_mes ?? 0) - (resumen.gastos_fijos_pendientes ?? 0) - deudaRest
-  const gastosFijosEfectivo = (gastosFijosRaw ?? [])
-    .filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta !== 'Tarjeta Credito')
-    .reduce((a, g) => a + (g.moneda === 'USD' ? g.monto_estimado * dolar : g.monto_estimado), 0)
-  const gastosFijosTarjeta = (gastosFijosRaw ?? [])
-    .filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta === 'Tarjeta Credito')
-    .reduce((a, g) => a + (g.moneda === 'USD' ? g.monto_estimado * dolar : g.monto_estimado), 0)
-  const [cy, cm]  = curMes.split('-').map(Number)
-  const [dy, dm]  = desde.split('-').map(Number)
-  const skipCount = (dy - cy) * 12 + (dm - cm)
-  const totalLoop = skipCount + meses
-  let saldo = Math.round(startSaldo)
-  let saldoBase    = saldo
-  // saldoInicioMes = saldo justo ANTES de procesar el mes que se está mostrando
-  // Para skipCount=1 (Junio): captura startSaldo (antes de i=1)
-  // Para skipCount=2 (Julio): captura saldo después de Junio (antes de i=2)
-  let saldoInicioMes = Math.round(startSaldo)
-  // Valores exactos usados en el cálculo del mes mostrado (para que la fórmula cierre)
-  let datosDelMes = { totalIng: 0, gastosFijosEfectivo: Math.round(gastosFijosEfectivo), gastosFijosTarjeta: Math.round(gastosFijosTarjeta), totalTC: 0 }
-  const proyecciones: ProyeccionMes[] = []
-  for (let i = 1; i <= totalLoop; i++) {
-    // Capturar el saldo ANTES de procesar este mes (= inicio del mes i)
-    if (i === skipCount) saldoInicioMes = saldo
 
-    const fecha   = new Date(cy, cm - 1 + i, 1)
-    const periodo = fecha.toISOString().slice(0, 10)
+  // ── Cálculo de inputs (lib/proyecciones) ───────────────────────────────
+  const dolar      = params?.valor ?? 1410
+  const tarjetaIds = new Set((tarjetasRaw ?? []).map(t => t.id))
+  const startSaldo = calcularSaldoInicial(resumen)
+  const { efectivo: gastosFijosEfectivo, tarjeta: gastosFijosTarjeta } =
+    bifurcarGastosFijos(
+      (gastosFijosRaw ?? []).map(g => ({
+        monto_estimado: g.monto_estimado,
+        moneda:         g.moneda,
+        cuentas:        g.cuentas as CuentaJoin,
+      })),
+      dolar,
+    )
+
+  // ── Pre-fetch en paralelo de todos los meses ──────────────────────────
+  // Antes el loop hacía await secuencialmente — ahora resolvemos todos los
+  // meses en paralelo y después se procesa el cálculo iterativo de forma pura.
+  const skipCount = calcularSkipCount({
+    currentYear:  cyAR, currentMonth: cmAR,
+    desdeYear:    Number(desde.slice(0, 4)),
+    desdeMonth:   Number(desde.slice(5, 7)),
+  })
+  const totalLoop = skipCount + meses
+
+  const periodos: string[] = []
+  for (let i = 1; i <= totalLoop; i++) {
+    const fecha = new Date(cyAR, cmAR - 1 + i, 1)
+    periodos.push(fecha.toISOString().slice(0, 10))
+  }
+
+  const monthData = await Promise.all(periodos.map(async (periodo) => {
     const [{ data: ingresos }, { data: gastosTC }] = await Promise.all([
       supabase.from('movimientos').select('monto, moneda')
         .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodo).eq('user_id', userId),
       supabase.from('movimientos').select('monto, moneda, cuenta_origen')
         .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', periodo).eq('user_id', userId),
     ])
-    const totalIng = (ingresos ?? []).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
-    const totalTC  = (gastosTC ?? []).filter(m => m.cuenta_origen != null && tarjetaIds.has(m.cuenta_origen)).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
-    saldo = Math.round(saldo + totalIng - gastosFijosEfectivo - gastosFijosTarjeta - totalTC)
-    if (i === skipCount) {
-      saldoBase = saldo
-      // Capturar exactamente lo que se usó para este mes
-      datosDelMes = {
-        totalIng:            Math.round(totalIng),
-        gastosFijosEfectivo: Math.round(gastosFijosEfectivo),
-        gastosFijosTarjeta:  Math.round(gastosFijosTarjeta),
-        totalTC:             Math.round(totalTC),
-      }
+    return {
+      periodo,
+      totalIngresos: sumarMontoARS(ingresos ?? [], dolar),
+      totalTC:       calcularTotalTCMes(gastosTC ?? [], tarjetaIds, dolar),
     }
-    if (i > skipCount) {
-      const label = fecha.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
-        .replace(' de ', ' ').replace(/^\w/, c => c.toUpperCase())
-      const prev = i === skipCount + 1 ? saldoBase : proyecciones[proyecciones.length - 1].proyeccion
-      proyecciones.push({
-        periodo, label,
-        ingresos:       Math.round(totalIng),
-        gastos_fijos:   Math.round(gastosFijosEfectivo),
-        gastos_tarjeta: Math.round(totalTC),
-        proyeccion:     saldo,
-        diferencia:     saldo - prev,
-      })
-    }
+  }))
+
+  // ── Cálculo iterativo (función pura, testeada) ─────────────────────────
+  const { saldoBase, saldoInicioMes, proyecciones, datosDelMes } =
+    calcularProyeccionesIterativo({
+      startSaldo,
+      gastosFijosEfectivo,
+      gastosFijosTarjeta,
+      skipCount,
+      meses: monthData,
+    })
+
+  return {
+    saldoBase,
+    startSaldo:     Math.round(startSaldo),
+    saldoInicioMes,
+    datosDelMes: {
+      totalIng:            datosDelMes.totalIng,
+      gastosFijosEfectivo: Math.round(gastosFijosEfectivo),
+      gastosFijosTarjeta:  Math.round(gastosFijosTarjeta),
+      totalTC:             datosDelMes.totalTC,
+    },
+    proyecciones,
   }
-  return { saldoBase, startSaldo: Math.round(startSaldo), saldoInicioMes, datosDelMes, proyecciones }
 }
 
 // ─── Past month data ──────────────────────────────────────────────────────────
