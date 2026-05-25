@@ -136,7 +136,8 @@ export function ShareAccountModal({
             <h2 className="text-lg font-bold text-slate-900">Compartir cuenta</h2>
             <p className="text-sm text-slate-500 mt-0.5">{cuentaNombre}</p>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"
+                  aria-label="Cerrar modal">
             <X size={20} />
           </button>
         </div>
