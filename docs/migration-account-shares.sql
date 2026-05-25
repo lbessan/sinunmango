@@ -29,9 +29,11 @@
 BEGIN;
 
 -- ─── 1. Tabla principal ─────────────────────────────────────────────────────
+-- NOTA: cuentas.id es TEXT (los IDs tienen formato `cta_xxx`, no UUID).
+-- auth.users.id sí es UUID — eso lo provee Supabase y no podemos cambiarlo.
 CREATE TABLE IF NOT EXISTS public.account_shares (
   id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-  cuenta_id       UUID         NOT NULL REFERENCES public.cuentas(id)   ON DELETE CASCADE,
+  cuenta_id       TEXT         NOT NULL REFERENCES public.cuentas(id)   ON DELETE CASCADE,
   owner_user_id   UUID         NOT NULL REFERENCES auth.users(id)       ON DELETE CASCADE,
   invitee_user_id UUID                  REFERENCES auth.users(id)       ON DELETE SET NULL,
   invite_token    TEXT         NOT NULL UNIQUE,
