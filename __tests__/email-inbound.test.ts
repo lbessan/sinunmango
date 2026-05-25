@@ -248,3 +248,176 @@ describe('POST /api/email-inbound — token lookup', () => {
     consoleWarn.mockRestore()
   })
 })
+
+// ── Auto-delete del email después de procesar ─────────────────────────────
+//
+// Privacy: después de cada decisión terminal (excepto error de DB) llamamos
+// DELETE /emails/receiving/{id} para que no quede el body en el dashboard
+// de Resend. Tests verifican el call al endpoint Resend con method=DELETE.
+describe('POST /api/email-inbound — auto-delete tras procesar', () => {
+  function signedReq(body: unknown): NextRequest {
+    const ts = Math.floor(Date.now() / 1000).toString()
+    const bodyStr = JSON.stringify(body)
+    const sig = signSvix({ id: 'msg_1', timestamp: ts, body: bodyStr, secret: whsecSecret() })
+    return makeReq({ body: bodyStr, svixId: 'msg_1', svixTs: ts, svixSig: sig })
+  }
+
+  // Helper: intercept fetch a Resend API. Devuelve el spy para verificar calls.
+  function setupFetchSpy(opts: { deleteStatus?: number } = {}) {
+    const fetchSpy = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const u = typeof url === 'string' ? url : url.toString()
+      if (u.includes('api.resend.com') && init?.method === 'DELETE') {
+        return new Response('', { status: opts.deleteStatus ?? 200 })
+      }
+      // Default: respuesta vacía para evitar errores
+      return new Response('{}', { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+    return fetchSpy
+  }
+
+  beforeEach(() => {
+    process.env.RESEND_API_KEY = 'rk_test_123'
+  })
+
+  afterEach(() => {
+    delete process.env.RESEND_API_KEY
+    delete process.env.RESEND_KEEP_INBOUND
+    vi.unstubAllGlobals()
+  })
+
+  it('unknown token → DELETE al endpoint Resend con emailId correcto', async () => {
+    const fetchSpy = setupFetchSpy()
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await POST(signedReq({
+      object: 'email', id: 'em_unknown_123', to: 'unknown@sinunmango.com.ar',
+    }))
+
+    // El primer call (o algún call) tuvo que ser un DELETE a Resend con el emailId
+    const deleteCalls = fetchSpy.mock.calls.filter(c =>
+      typeof c[0] === 'string' &&
+      c[0].includes('/emails/receiving/em_unknown_123') &&
+      (c[1] as RequestInit | undefined)?.method === 'DELETE'
+    )
+    expect(deleteCalls.length).toBe(1)
+
+    // Auth header
+    const headers = (deleteCalls[0][1] as RequestInit).headers as Record<string, string>
+    expect(headers['Authorization']).toBe('Bearer rk_test_123')
+
+    consoleWarn.mockRestore()
+  })
+
+  it('sin RESEND_API_KEY → no llama DELETE (no-op)', async () => {
+    delete process.env.RESEND_API_KEY
+    const fetchSpy = setupFetchSpy()
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await POST(signedReq({
+      object: 'email', id: 'em_1', to: 'unknown@sinunmango.com.ar',
+    }))
+
+    const deleteCalls = fetchSpy.mock.calls.filter(c =>
+      typeof c[0] === 'string' && c[0].includes('api.resend.com') &&
+      (c[1] as RequestInit | undefined)?.method === 'DELETE'
+    )
+    expect(deleteCalls.length).toBe(0)
+
+    consoleWarn.mockRestore()
+  })
+
+  it('RESEND_KEEP_INBOUND=true (sandbox/dev) → NO borra (devs pueden inspeccionar)', async () => {
+    process.env.RESEND_KEEP_INBOUND = 'true'
+    const fetchSpy = setupFetchSpy()
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    await POST(signedReq({
+      object: 'email', id: 'em_dev', to: 'unknown@sinunmango.com.ar',
+    }))
+
+    const deleteCalls = fetchSpy.mock.calls.filter(c =>
+      typeof c[0] === 'string' && c[0].includes('api.resend.com') &&
+      (c[1] as RequestInit | undefined)?.method === 'DELETE'
+    )
+    expect(deleteCalls.length).toBe(0)
+
+    consoleWarn.mockRestore()
+    consoleLog.mockRestore()
+  })
+
+  it('DELETE devuelve 404 (ya borrado) → NO loguea warning (se trata como éxito)', async () => {
+    const fetchSpy = setupFetchSpy({ deleteStatus: 404 })
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    await POST(signedReq({
+      object: 'email', id: 'em_1', to: 'unknown@sinunmango.com.ar',
+    }))
+
+    // 404 lo tratamos como éxito (ya estaba borrado)
+    // Buscar que NO haya un warn sobre "Resend DELETE"
+    const deleteWarnings = consoleWarn.mock.calls.filter(c =>
+      typeof c[0] === 'string' && c[0].includes('Resend DELETE')
+    )
+    expect(deleteWarnings.length).toBe(0)
+
+    expect(fetchSpy).toHaveBeenCalled()
+    consoleWarn.mockRestore()
+    consoleLog.mockRestore()
+  })
+
+  it('DELETE devuelve 500 → loguea warning pero NO crashea', async () => {
+    const fetchSpy = setupFetchSpy({ deleteStatus: 500 })
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const res = await POST(signedReq({
+      object: 'email', id: 'em_1', to: 'unknown@sinunmango.com.ar',
+    }))
+
+    // El response se devuelve normal (best-effort): no propagamos el error
+    expect(res.status).toBe(200)
+    // Hubo intentos al DELETE
+    const deleteCalls = fetchSpy.mock.calls.filter(c =>
+      (c[1] as RequestInit | undefined)?.method === 'DELETE'
+    )
+    expect(deleteCalls.length).toBe(1)
+
+    consoleWarn.mockRestore()
+  })
+
+  it('DELETE tira excepción (timeout/network) → NO crashea, loguea', async () => {
+    const fetchSpy = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        throw new Error('network timeout')
+      }
+      return new Response('{}', { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const res = await POST(signedReq({
+      object: 'email', id: 'em_1', to: 'unknown@sinunmango.com.ar',
+    }))
+
+    expect(res.status).toBe(200)
+    consoleWarn.mockRestore()
+  })
+
+  it('"no matching to address" SIN emailId → no llama DELETE (no hay nada que borrar)', async () => {
+    const fetchSpy = setupFetchSpy()
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    process.env.EMAIL_INBOUND_DOMAIN = 'sinunmango.com.ar'
+
+    await POST(signedReq({ object: 'email', /* sin id */ to: [] }))
+
+    const deleteCalls = fetchSpy.mock.calls.filter(c =>
+      (c[1] as RequestInit | undefined)?.method === 'DELETE'
+    )
+    expect(deleteCalls.length).toBe(0)
+
+    consoleWarn.mockRestore()
+    delete process.env.EMAIL_INBOUND_DOMAIN
+  })
+})

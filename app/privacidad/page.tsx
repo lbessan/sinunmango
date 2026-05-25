@@ -4,7 +4,7 @@ export const metadata = {
 }
 
 export default function PrivacidadPage() {
-  const fecha = '4 de mayo de 2026'
+  const fecha = '25 de mayo de 2026'
 
   return (
     <div className="min-h-screen bg-white">
@@ -58,7 +58,30 @@ export default function PrivacidadPage() {
               El análisis se realiza mediante la API de Claude (Anthropic).
             </p>
 
-            <h3 className="font-semibold text-slate-800 mt-4 mb-2">2.4 Preferencias de la app</h3>
+            <h3 className="font-semibold text-slate-800 mt-4 mb-2">2.4 Emails reenviados desde tu banco</h3>
+            <p>
+              Cuando activás la importación por mail, te asignamos una dirección
+              única <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">tu-token@sinunmango.com.ar</code>{' '}
+              donde podés reenviar las notificaciones de movimientos de tu banco.
+              Cada email reenviado se procesa así:
+            </p>
+            <ol className="list-decimal pl-6 mt-2 space-y-1 text-slate-600">
+              <li>El email llega a nuestro proveedor (Resend) y dispara un webhook.</li>
+              <li>Extraemos las transacciones con IA (Anthropic Claude) y las guardamos en tu cuenta.</li>
+              <li><strong>Inmediatamente después borramos el email original</strong> del dashboard de Resend.</li>
+            </ol>
+            <p className="mt-3">
+              Solo retenemos el resultado del parseo (los movimientos en tu cuenta),
+              no el contenido del email. Esto cumple el principio de minimización
+              de datos (Habeas Data Art. 14 / GDPR Art. 5).
+            </p>
+            <p className="mt-3">
+              <strong>Excepción única:</strong> si la inserción de movimientos falla
+              por un error técnico, el email se conserva temporalmente para que
+              podamos diagnosticar el problema. Una vez resuelto, se borra.
+            </p>
+
+            <h3 className="font-semibold text-slate-800 mt-4 mb-2">2.5 Preferencias de la app</h3>
             <p>
               Guardamos tus preferencias de apariencia (tema de color, modo oscuro/claro)
               y preferencias de notificaciones.
@@ -97,7 +120,9 @@ export default function PrivacidadPage() {
                 <a href="https://www.anthropic.com/privacy" className="text-orange-500 hover:underline ml-1">Política de privacidad</a>
               </li>
               <li>
-                <strong>Resend</strong> — envío de emails de alerta.
+                <strong>Resend</strong> — envío de emails de alerta y recepción
+                de emails reenviados desde tu banco. Los emails entrantes
+                se procesan e inmediatamente se eliminan (ver sección 2.4).
                 <a href="https://resend.com/legal/privacy-policy" className="text-orange-500 hover:underline ml-1">Política de privacidad</a>
               </li>
               <li>
@@ -126,26 +151,41 @@ export default function PrivacidadPage() {
             </ul>
 
             <div className="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-5">
-              <h3 className="font-bold text-slate-800 mb-2">Cómo solicitar la eliminación de tu cuenta</h3>
+              <h3 className="font-bold text-slate-800 mb-2">Cómo eliminar tu cuenta</h3>
               <p className="text-slate-600 text-sm mb-3">
-                Para eliminar tu cuenta y todos los datos asociados, enviá un email a{' '}
-                <a href="mailto:luchobessan@gmail.com" className="text-orange-500 hover:underline">luchobessan@gmail.com</a>{' '}
-                con el asunto <strong>"Eliminar cuenta sinunmango"</strong> desde la dirección de email
-                con la que te registraste.
+                Andá a <strong>Configuración → Tu cuenta → Eliminar tu cuenta</strong>{' '}
+                desde la app. Tipeás <code className="text-xs bg-white border border-slate-200 px-1.5 py-0.5 rounded">ELIMINAR</code>{' '}
+                para confirmar y la cuenta queda marcada para borrar.
               </p>
               <p className="text-slate-600 text-sm mb-3">
-                Procesamos las solicitudes dentro de los <strong>7 días hábiles</strong>. Al eliminar tu cuenta se borran:
+                Tenés <strong>30 días</strong> para recuperarla iniciando sesión
+                con el mismo email (te ofrecemos un botón "Recuperar cuenta").
+                Pasado ese plazo el borrado es definitivo y los datos se eliminan
+                de nuestros sistemas:
               </p>
               <ul className="list-disc pl-5 text-sm text-slate-600 space-y-1">
                 <li>Tu perfil y datos de acceso</li>
                 <li>Todos tus movimientos, cuentas y tarjetas</li>
                 <li>Tus categorías, gastos fijos e inversiones</li>
                 <li>Tus preferencias y configuración</li>
+                <li>Tu dirección de email inbound (queda libre)</li>
               </ul>
+              <p className="text-slate-600 text-sm mt-3">
+                Antes de eliminar podés <strong>descargar todos tus datos</strong>{' '}
+                en formato CSV/JSON desde la misma sección — un solo click y te
+                bajás un ZIP con todo lo que tenemos sobre vos.
+              </p>
               <p className="text-slate-500 text-xs mt-3">
                 Nota: la vinculación con tu cuenta de Google se gestiona desde{' '}
                 <a href="https://myaccount.google.com/permissions" className="text-orange-500 hover:underline" target="_blank">
                   myaccount.google.com/permissions
+                </a>.
+              </p>
+              <p className="text-slate-500 text-xs mt-3">
+                Si tenés problemas con la eliminación auto-servicio o querés ayuda,
+                escribinos a{' '}
+                <a href="mailto:luchobessan@gmail.com" className="text-orange-500 hover:underline">
+                  luchobessan@gmail.com
                 </a>.
               </p>
             </div>

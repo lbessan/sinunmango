@@ -116,6 +116,52 @@ async function fetchResendEmailBody(emailId: string): Promise<string> {
   return data.text?.trim() || (data.html ? stripHtml(data.html) : '')
 }
 
+// ─── Delete inbound email from Resend (privacy) ──────────────────────────────
+//
+// Resend almacena el body de cada email entrante en su dashboard. Es data
+// financiera sensible (notificaciones bancarias) que NO necesitamos
+// retener una vez parseada. Borramos best-effort después de procesar:
+//
+//   1. Reduce la superficie de ataque si la cuenta de Resend se compromete.
+//   2. Cumple "minimización de datos" (Habeas Data Art. 14 / GDPR Art. 5):
+//      no guardar info más tiempo del necesario.
+//   3. El admin (dev) no puede leer transactions del user con ojo desnudo
+//      desde el dashboard de Resend.
+//
+// Es best-effort: si falla, loguemos pero NO devolvemos error al cron de
+// Resend (sino reintenta el webhook y volvemos a procesar el mismo email).
+// Idempotencia del lado del parser viene del UNIQUE constraint en
+// movimientos.id + grupo_cuotas; un DELETE 404 simplemente significa
+// "ya estaba borrado" o "no existe", ambos casos benignos.
+async function deleteResendInboundEmail(emailId: string): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey || !emailId) return
+
+  // En sandbox/dev local NO borramos — el dev quiere ver los emails para
+  // debuggear. Se controla via env var explícita.
+  if (process.env.RESEND_KEEP_INBOUND === 'true') {
+    console.log(`[email-inbound] RESEND_KEEP_INBOUND=true → skipping delete of ${emailId}`)
+    return
+  }
+
+  try {
+    const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+      method:  'DELETE',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal:  AbortSignal.timeout(10_000),
+    })
+    if (!res.ok && res.status !== 404) {
+      // 404 = ya borrado, lo tratamos como éxito.
+      const body = await res.text().catch(() => '')
+      console.warn(`[email-inbound] Resend DELETE ${emailId} → ${res.status}: ${body.slice(0, 200)}`)
+    } else {
+      console.log(`[email-inbound] ✓ deleted email ${emailId} from Resend (${res.status})`)
+    }
+  } catch (err) {
+    console.warn(`[email-inbound] Resend DELETE ${emailId} failed:`, err)
+  }
+}
+
 // ─── Claude email parser ──────────────────────────────────────────────────────
 type ParsedMov = {
   fecha:            string                 // ISO "2026-04-14"
@@ -257,6 +303,10 @@ export async function POST(req: NextRequest) {
 
   let emailText = ''
   let userId: string | null = null
+  // emailId queda en outer scope para que el delete-on-success funcione
+  // después del bloque if(isResend). En el legacy path queda null y los
+  // deletes son no-op.
+  let resendEmailId: string | null = null
 
   if (isResend) {
     const data = (typeof body.data === 'object' && body.data !== null)
@@ -265,6 +315,9 @@ export async function POST(req: NextRequest) {
 
     // Resend puede usar 'email_id' o 'id' según la versión del webhook
     const emailId = (data.email_id ?? data.id) as string | undefined
+    // Lo guardamos al outer scope para que los exit points POST-isResend
+    // (limit, no transactions, success) puedan borrar el email también.
+    if (emailId) resendEmailId = emailId
     const toField = data.to
     const toList: string[] = Array.isArray(toField)
       ? toField as string[]
@@ -276,6 +329,7 @@ export async function POST(req: NextRequest) {
     const token  = toAddr.split('@')[0].toLowerCase()
 
     if (!token) {
+      if (emailId) await deleteResendInboundEmail(emailId)
       return NextResponse.json({ ok: false, skipped: true, reason: 'no matching to address' })
     }
 
@@ -288,6 +342,7 @@ export async function POST(req: NextRequest) {
 
     if (!pref) {
       console.warn(`[email-inbound] Unknown inbound token: ${token}`)
+      if (emailId) await deleteResendInboundEmail(emailId)
       return NextResponse.json({ ok: false, skipped: true, reason: 'unknown token' })
     }
 
@@ -332,9 +387,13 @@ export async function POST(req: NextRequest) {
           )
 
         console.log(`[email-inbound] Gmail confirm URL saved for user ${userId}`)
+        // Email procesado (URL guardada) → borrar de Resend (no necesitamos
+        // retener el body — la URL ya está en user_preferences)
+        if (emailId) await deleteResendInboundEmail(emailId)
         return NextResponse.json({ ok: true, type: 'gmail_verification', autoConfirmed: false })
       }
       // Email de verificación sin URL reconocible — ignorar silenciosamente
+      if (emailId) await deleteResendInboundEmail(emailId)
       return NextResponse.json({ ok: false, skipped: true, reason: 'gmail verification email, no confirm url found' })
     }
 
@@ -351,6 +410,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!emailText) {
+    if (resendEmailId) await deleteResendInboundEmail(resendEmailId)
     return NextResponse.json({ ok: false, skipped: true, reason: 'empty body' })
   }
 
@@ -358,6 +418,7 @@ export async function POST(req: NextRequest) {
   // Free tier: 1 mail parseado/mes. Pro: ilimitado. Si no hay userId
   // (token desconocido o user eliminado), no procesamos para evitar abuso.
   if (!userId) {
+    if (resendEmailId) await deleteResendInboundEmail(resendEmailId)
     return NextResponse.json({ ok: false, skipped: true, reason: 'no userId for token' })
   }
   const plan = await getUserPlanById(adminClient, userId)
@@ -367,6 +428,9 @@ export async function POST(req: NextRequest) {
   const check = await checkMonthlyUsageAsAdmin(adminClient, userId, 'mail_tarjeta', plan.has_pro_access)
   if (!check.allowed) {
     console.log(`[email-inbound] limit_reached user=${userId} feature=mail_tarjeta`)
+    // Borramos igual — no vamos a procesar este email, no hay motivo para
+    // retenerlo en Resend.
+    if (resendEmailId) await deleteResendInboundEmail(resendEmailId)
     return NextResponse.json({ ok: false, skipped: true, reason: 'free_tier_limit_reached', limit: check.limit })
   }
 
@@ -374,6 +438,8 @@ export async function POST(req: NextRequest) {
   const parsedList = await parseEmailWithClaude(emailText)
   if (parsedList.length === 0) {
     // No consumimos cupo: el mail no tenía transacciones reconocibles.
+    // Tampoco hay razón para retener el body (no es accionable).
+    if (resendEmailId) await deleteResendInboundEmail(resendEmailId)
     return NextResponse.json({ ok: false, skipped: true, reason: 'no transactions found' })
   }
 
@@ -383,6 +449,7 @@ export async function POST(req: NextRequest) {
   const committed = await enforceMonthlyLimitAsAdmin(adminClient, userId, 'mail_tarjeta', plan.has_pro_access)
   if (!committed.allowed) {
     console.log(`[email-inbound] limit_reached_after_parse user=${userId} feature=mail_tarjeta`)
+    if (resendEmailId) await deleteResendInboundEmail(resendEmailId)
     return NextResponse.json({ ok: false, skipped: true, reason: 'free_tier_limit_reached_after_parse', limit: committed.limit })
   }
 
@@ -486,6 +553,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (allRecords.length === 0) {
+    // Mail con transactions parseadas pero ninguna cuenta del user matcheó
+    // las terminaciones. El user posiblemente no configuró las tarjetas
+    // todavía. Lo borramos: si el user vuelve a forward la misma noti, va
+    // a tener efecto cuando configure la cuenta.
+    if (resendEmailId) await deleteResendInboundEmail(resendEmailId)
     return NextResponse.json({
       ok:      false,
       skipped: true,
@@ -497,10 +569,16 @@ export async function POST(req: NextRequest) {
   const { error } = await adminClient.from('movimientos').insert(allRecords as never)
   if (error) {
     console.error('[email-inbound] Insert error:', error.message)
+    // Insert error es el ÚNICO caso donde NO borramos — dejamos el email
+    // en Resend para que el dev pueda diagnosticar qué salió mal (FK,
+    // constraint, etc). Si el user ve el mismo error repetido, hay un bug
+    // que se va a notar y se puede reproducir.
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
   }
 
   console.log(`[email-inbound] ✓ Imported ${allRecords.length} record(s): ${importados.join(' | ')}`)
+  // Éxito: los movimientos quedaron en Supabase, borramos el email original.
+  if (resendEmailId) await deleteResendInboundEmail(resendEmailId)
   return NextResponse.json({
     ok:         true,
     importados: importados.length,
