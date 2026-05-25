@@ -39,6 +39,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_shares: {
+        Row: {
+          accepted_at: string | null
+          cuenta_id: string
+          expires_at: string
+          id: string
+          invite_token: string
+          invited_at: string
+          invitee_user_id: string | null
+          owner_user_id: string
+          revoked_at: string | null
+          role: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          cuenta_id: string
+          expires_at?: string
+          id?: string
+          invite_token: string
+          invited_at?: string
+          invitee_user_id?: string | null
+          owner_user_id: string
+          revoked_at?: string | null
+          role: string
+        }
+        Update: {
+          accepted_at?: string | null
+          cuenta_id?: string
+          expires_at?: string
+          id?: string
+          invite_token?: string
+          invited_at?: string
+          invitee_user_id?: string | null
+          owner_user_id?: string
+          revoked_at?: string | null
+          role?: string
+        }
+        Relationships: []
+      }
       bancos_custom: {
         Row: {
           color: string

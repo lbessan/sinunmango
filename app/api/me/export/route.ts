@@ -67,10 +67,13 @@ export async function GET(req: NextRequest) {
   ]
 
   for (const t of tables) {
-    const { data, error } = await supabase
-      .from(t.from)
-      .select('*')
-      .eq('user_id', user.id)
+    // Las tablas en `tables` arriba todas tienen user_id, pero TableName
+    // (autogenerado de la DB) ahora incluye account_shares (sin user_id),
+    // y el TS hace union de columnas → .eq('user_id', x) deja de tipear.
+    // Cast del query builder con `unknown` + interface mínima.
+    type Eqable = { eq: (col: string, val: string) => Promise<{ data: unknown; error: { message: string } | null }> }
+    const builder = supabase.from(t.from).select('*') as unknown as Eqable
+    const { data, error } = await builder.eq('user_id', user.id)
 
     if (error) {
       console.warn(`[me/export] error fetching ${t.from}:`, error.message)
