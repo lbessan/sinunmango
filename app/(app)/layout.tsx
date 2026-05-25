@@ -5,6 +5,7 @@ import { ManguitoFlotante } from '@/components/manguito-flotante'
 import { IOSInstallBanner } from '@/components/ios-install-banner'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getCurrentWorkspace } from '@/lib/workspace'
 
 export default async function AppLayout({
   children,
@@ -38,12 +39,18 @@ export default async function AppLayout({
 
   if (!count || count === 0) redirect('/onboarding')
 
+  // Manguito (asistente IA) NO disponible para invitees en workspaces
+  // ajenos — privacy de la data del owner. En V2 podemos agregarlo con
+  // contexto filtrado por share_resources.
+  const workspace = await getCurrentWorkspace(user.id)
+  const showManguito = workspace.isOwn
+
   return (
     <ThemeProvider>
       <AppShell sidebar={<Sidebar />}>
         {children}
       </AppShell>
-      <ManguitoFlotante />
+      {showManguito && <ManguitoFlotante />}
       <IOSInstallBanner />
     </ThemeProvider>
   )

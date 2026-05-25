@@ -9,6 +9,7 @@ import { NavSection } from './nav-section'
 import { LogoutButton }       from './logout-button'
 import { DarkModeToggle }     from './dark-mode-toggle'
 import { SidebarUsageWidget } from './sidebar-usage-widget'
+import { WorkspaceSwitcher }  from './workspace-switcher'
 import { getAuthedClient }    from '@/lib/supabase/server'
 import { getUserPlan }        from '@/lib/subscription'
 
@@ -38,6 +39,12 @@ export async function Sidebar() {
         <p className="font-bold text-base leading-tight">
           <span className="text-white">sinun</span><span style={{ color: '#f97316' }}>mango</span>
         </p>
+      </div>
+
+      {/* Workspace switcher — solo se renderea si el user tiene shares
+          recibidos. Sino, silencioso (no clutter). */}
+      <div className="pt-3">
+        <WorkspaceSwitcher />
       </div>
 
       {/* Nav */}
