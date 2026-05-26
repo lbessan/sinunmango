@@ -184,12 +184,18 @@ COMMENT ON FUNCTION public.user_has_shared_access IS
 -- ─── 6. RLS cuentas: expand SELECT con shares ──────────────────────────────
 -- INSERT/UPDATE/DELETE siguen owner-only.
 
+-- NOTA importante: las columnas .id en distintas tablas tienen distintos
+-- tipos (cuentas.id es TEXT con formato cta_xxx; gastos_fijos.id e
+-- inversiones.id son UUID). La función espera TEXT en ambos params, así
+-- que casteamos con ::text en cada call. Es no-op para cuentas pero
+-- necesario para gastos_fijos / inversiones.
+
 DROP POLICY IF EXISTS "cuentas_select_own" ON public.cuentas;
 DROP POLICY IF EXISTS "cuentas_select"     ON public.cuentas;
 CREATE POLICY "cuentas_select" ON public.cuentas FOR SELECT
 USING (
   auth.uid() = user_id
-  OR public.user_has_shared_access('cuenta', id)
+  OR public.user_has_shared_access('cuenta', id::text)
 );
 
 -- ─── 7. RLS movimientos: expand con shares (vía cuenta) ────────────────────
@@ -202,8 +208,8 @@ DROP POLICY IF EXISTS "movimientos_select"     ON public.movimientos;
 CREATE POLICY "movimientos_select" ON public.movimientos FOR SELECT
 USING (
   auth.uid() = user_id
-  OR (cuenta_origen  IS NOT NULL AND public.user_has_shared_access('cuenta', cuenta_origen))
-  OR (cuenta_destino IS NOT NULL AND public.user_has_shared_access('cuenta', cuenta_destino))
+  OR (cuenta_origen  IS NOT NULL AND public.user_has_shared_access('cuenta', cuenta_origen::text))
+  OR (cuenta_destino IS NOT NULL AND public.user_has_shared_access('cuenta', cuenta_destino::text))
 );
 
 DROP POLICY IF EXISTS "movimientos_insert_own" ON public.movimientos;
@@ -214,12 +220,12 @@ WITH CHECK (
   AND (
     cuenta_origen IS NULL
     OR EXISTS (SELECT 1 FROM public.cuentas WHERE id = cuenta_origen AND user_id = auth.uid())
-    OR public.user_has_shared_access('cuenta', cuenta_origen, 'editor')
+    OR public.user_has_shared_access('cuenta', cuenta_origen::text, 'editor')
   )
   AND (
     cuenta_destino IS NULL
     OR EXISTS (SELECT 1 FROM public.cuentas WHERE id = cuenta_destino AND user_id = auth.uid())
-    OR public.user_has_shared_access('cuenta', cuenta_destino, 'editor')
+    OR public.user_has_shared_access('cuenta', cuenta_destino::text, 'editor')
   )
 );
 
@@ -239,7 +245,7 @@ DROP POLICY IF EXISTS "gastos_fijos_select"     ON public.gastos_fijos;
 CREATE POLICY "gastos_fijos_select" ON public.gastos_fijos FOR SELECT
 USING (
   auth.uid() = user_id
-  OR public.user_has_shared_access('gasto_fijo', id)
+  OR public.user_has_shared_access('gasto_fijo', id::text)
 );
 
 -- ─── 9. RLS inversiones: expand SELECT con shares ──────────────────────────
@@ -248,7 +254,7 @@ DROP POLICY IF EXISTS "inversiones_select"     ON public.inversiones;
 CREATE POLICY "inversiones_select" ON public.inversiones FOR SELECT
 USING (
   auth.uid() = user_id
-  OR public.user_has_shared_access('inversion', id)
+  OR public.user_has_shared_access('inversion', id::text)
 );
 
 -- ─── 10. RLS categorias / subcategorias: lectura cross-workspace ──────────
