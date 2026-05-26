@@ -7,7 +7,11 @@ import { parseClaudeJSON, recoverPartialArray, recoverObject } from '@/lib/parse
 import { MODEL_PARSEAR_TARJETA_PDF } from '@/lib/claude-models'
 
 const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario
-const CLAUDE_TIMEOUT_MS    = 55_000
+// Mismo razonamiento que parsear-resumen: estamos en Vercel Pro (Fluid),
+// y PDFs grandes con muchas transacciones pueden tardar > 55s.
+const CLAUDE_TIMEOUT_MS    = 240_000
+
+export const maxDuration = 300
 
 // ─── POST /api/parsear-tarjeta-pdf ────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), extrae metadata de la tarjeta

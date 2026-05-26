@@ -9,7 +9,15 @@ import { isPdfEncrypted, extractTextFromPdf } from '@/lib/pdf-decrypt'
 import { encryptSecret, decryptSecret } from '@/lib/crypto'
 
 const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario. PDFs típicos < 2 MB.
-const CLAUDE_TIMEOUT_MS    = 55_000             // Vercel Hobby corta a 60s; dejamos margen
+// Timeout del fetch a Claude. Antes era 55s (limit de Hobby).
+// Ahora estamos en Vercel Pro (Fluid Compute) con maxDuration=300s.
+// Con resúmenes que incluyen adicionales (más transacciones + más campos
+// por tx) Claude puede tardar 60-120s. Dejamos 240s para dar margen.
+const CLAUDE_TIMEOUT_MS    = 240_000
+
+// Le pedimos a Next/Vercel que esta función puede tardar hasta 5 min.
+// Sin esto, Fluid Compute usa el default que en algunos planes corta antes.
+export const maxDuration = 300
 
 // ─── POST /api/parsear-resumen ────────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), lo procesa con Claude y
