@@ -42,6 +42,13 @@ export default async function EditarTarjetaPage({
       )
     : null
 
+  // El cipher de password del resumen vive en la DB pero NUNCA se devuelve
+  // al cliente. Solo exponemos un boolean para que el form sepa si ya hay
+  // una guardada (mostrar "••••" + botón borrar/cambiar) vs vacío (mostrar
+  // input "ingresá nueva").
+  const cuentaRaw = t as unknown as { resumen_password_cipher?: string | null }
+  const hasResumenPassword = !!cuentaRaw.resumen_password_cipher
+
   return (
     <TarjetaFormClient
       inicial={{
@@ -58,6 +65,7 @@ export default async function EditarTarjetaPage({
         fecha_vencimiento: t.fecha_vencimiento_tarjeta ?? '',
         terminacion:       t.terminacion_tarjeta ?? '',
         activa:            t.activa ?? true,
+        has_resumen_password: hasResumenPassword,
       }}
     />
   )

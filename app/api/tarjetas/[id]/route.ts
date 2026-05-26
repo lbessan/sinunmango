@@ -7,6 +7,12 @@ import {
   isString, TERMINACION_4,
   type Validated,
 } from '@/lib/validators'
+import { encryptSecret } from '@/lib/crypto'
+
+// Límite de password del resumen — DNIs argentinos son ~8 dígitos pero
+// algunos bancos usan combinaciones (DNI + algo). 100 chars es generoso
+// y evita abuso por payloads gigantes.
+const RESUMEN_PASSWORD_MAX = 100
 
 const MONEDAS = ['ARS', 'USD'] as const
 
@@ -89,6 +95,23 @@ function validateTarjetaUpdate(raw: unknown): Validated<Record<string, unknown>>
     const v = validateBoolean(b.activa, 'activa')
     if (!v.ok) return v
     updates.activa = v.data
+  }
+  // resumen_password: plaintext del cliente. Lo encriptamos antes de guardar
+  // en resumen_password_cipher. Si viene null o string vacío → borrar
+  // (setear cipher a null). Nunca devolvemos plaintext en respuestas.
+  if (b.resumen_password !== undefined) {
+    if (b.resumen_password === null || b.resumen_password === '') {
+      updates.resumen_password_cipher = null
+    } else {
+      const v = validateString(b.resumen_password, { max: RESUMEN_PASSWORD_MAX, field: 'resumen_password' })
+      if (!v.ok) return v
+      try {
+        updates.resumen_password_cipher = encryptSecret(v.data)
+      } catch (err) {
+        console.error('[tarjetas/PATCH] encryptSecret error:', err)
+        return { ok: false, error: 'No pudimos guardar la password (server mal configurado)' }
+      }
+    }
   }
   // Importante: tipo_cuenta NUNCA se permite cambiar desde aquí
   // (este endpoint es solo para tarjetas)

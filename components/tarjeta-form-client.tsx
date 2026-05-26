@@ -20,6 +20,10 @@ type TarjetaForm = {
   fecha_vencimiento: string
   terminacion: string
   activa: boolean
+  /** True si la tarjeta tiene resumen_password_cipher guardado en DB.
+   *  Nunca exponemos el plaintext al cliente — solo este bool.
+   *  El client setea/cambia/borra la password via PATCH. */
+  has_resumen_password?: boolean
 }
 
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-white'
@@ -31,6 +35,19 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
   const [error, setError]     = useState('')
+
+  // Password del resumen (PDF protegido). `has_resumen_password` viene del
+  // server e indica si ya hay una guardada. Nunca recibimos el plaintext.
+  // El user puede:
+  //   - Ingresar una nueva (plaintext en `resumenPassword`) → reemplaza la guardada
+  //   - Marcar `resumenPasswordClear` para borrar la guardada
+  //   - No tocar nada → no se manda en el PATCH (preserva estado actual)
+  // `editingPassword` controla qué branch se muestra cuando ya hay una
+  // guardada: el chip "•••" con botones, o el input para escribir nueva.
+  const [resumenPassword,      setResumenPassword]      = useState('')
+  const [resumenPasswordClear, setResumenPasswordClear] = useState(false)
+  const [showResumenPassword,  setShowResumenPassword]  = useState(false)
+  const [editingPassword,      setEditingPassword]      = useState(false)
 
   const [selectedBank,    setSelectedBank]    = useState<BankEntry | null>(null)
   const [selectedNetwork, setSelectedNetwork] = useState<CardNetwork | null>(null)
@@ -99,7 +116,7 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
     setSaving(true); setError('')
 
     // Guardamos en la tabla `cuentas` con tipo_cuenta = 'Tarjeta Credito'
-    const body = {
+    const body: Record<string, unknown> = {
       nombre_cuenta:             form.nombre,
       institucion:               form.banco_nombre || null,
       tipo_cuenta:               'Tarjeta Credito',
@@ -112,6 +129,15 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
       fecha_cierre_tarjeta:      form.fecha_cierre || null,
       fecha_vencimiento_tarjeta: form.fecha_vencimiento || null,
       terminacion_tarjeta:       form.terminacion || null,
+    }
+    // Password del resumen: solo incluir si hay cambio.
+    //   - resumenPasswordClear true → mandamos null (= borrar)
+    //   - resumenPassword no vacío → mandamos plaintext (server encripta)
+    //   - Ninguno → no mandamos el campo (preserva valor en DB)
+    if (resumenPasswordClear) {
+      body.resumen_password = null
+    } else if (resumenPassword) {
+      body.resumen_password = resumenPassword
     }
 
     const res = await fetch(
@@ -260,6 +286,87 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
               />
             </div>
           </div>
+        </div>
+
+        {/* ── Password del resumen (opcional) ──
+            Algunos bancos mandan el PDF del resumen protegido con
+            password (típicamente DNI). Si la guardás acá, al subir el
+            PDF en /conciliaciones se descifra solo. Se guarda
+            encriptada at-rest. */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+          <div>
+            <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+              Contraseña del PDF
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Si tu banco manda el resumen protegido (típicamente tu DNI), guardala acá para que el descifrado sea automático.
+            </p>
+          </div>
+
+          {form.has_resumen_password && !editingPassword && !resumenPasswordClear ? (
+            // Estado: ya hay una guardada, el user no la está cambiando.
+            <div className="flex items-center gap-2">
+              <div className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-400 font-mono">
+                ••••••••
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingPassword(true)}
+                className="text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-white"
+              >
+                Cambiar
+              </button>
+              <button
+                type="button"
+                onClick={() => setResumenPasswordClear(true)}
+                className="text-xs px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
+              >
+                Borrar
+              </button>
+            </div>
+          ) : resumenPasswordClear ? (
+            <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-xs text-amber-800">
+                Se borrará al guardar.
+              </p>
+              <button
+                type="button"
+                onClick={() => setResumenPasswordClear(false)}
+                className="text-xs underline text-amber-900"
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            // Input para ingresar nueva (o cambiar la existente).
+            <div className="flex items-center gap-2">
+              <input
+                type={showResumenPassword ? 'text' : 'password'}
+                value={resumenPassword}
+                onChange={e => setResumenPassword(e.target.value)}
+                placeholder="Tu DNI (ej: 30123456)"
+                className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-100"
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                onClick={() => setShowResumenPassword(s => !s)}
+                className="text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-white"
+              >
+                {showResumenPassword ? 'Ocultar' : 'Mostrar'}
+              </button>
+              {form.has_resumen_password && (
+                <button
+                  type="button"
+                  onClick={() => { setResumenPassword(''); setEditingPassword(false) }}
+                  className="text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-white"
+                  title="Volver al estado guardado"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
