@@ -2,12 +2,13 @@ import { createClientForRequest } from '@/lib/supabase/route'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   validateString, validateEnum, validateBoolean, validateHexColor,
-  validateISODate, optional,
+  validateISODate, validateId, optional,
   isString, TERMINACION_4,
   type Validated,
 } from '@/lib/validators'
 
 const MONEDAS = ['ARS', 'USD'] as const
+const NOMBRE_TITULAR_MAX = 100
 
 type TarjetaInsert = {
   nombre_cuenta:             string
@@ -20,6 +21,8 @@ type TarjetaInsert = {
   fecha_cierre_tarjeta:      string | null
   fecha_vencimiento_tarjeta: string | null
   activa:                    boolean
+  tarjeta_principal_id:      string | null
+  nombre_titular:            string | null
 }
 
 function validateTarjeta(raw: unknown): Validated<TarjetaInsert> {
@@ -60,6 +63,26 @@ function validateTarjeta(raw: unknown): Validated<TarjetaInsert> {
   const activaOpt = optional(b.activa, v => validateBoolean(v, 'activa'))
   if (!activaOpt.ok) return activaOpt
 
+  // tarjeta_principal_id: si viene, esta es una ADICIONAL. Acepta string
+  // o null/''. Validamos formato del id en la siguiente etapa, dado que
+  // necesitamos chequear contra la DB (ownership + es Tarjeta Credito +
+  // no es adicional a su vez). Eso se hace en el endpoint, no acá.
+  let tarjetaPrincipalId: string | null = null
+  if (b.tarjeta_principal_id !== undefined && b.tarjeta_principal_id !== null && b.tarjeta_principal_id !== '') {
+    const v = validateId(b.tarjeta_principal_id, 'tarjeta_principal_id')
+    if (!v.ok) return v
+    tarjetaPrincipalId = v.data
+  }
+
+  // nombre_titular: lo que aparece en el PDF (ej: "Celeste Cerono").
+  // Opcional. Se usa para matching al procesar el resumen.
+  let nombreTitular: string | null = null
+  if (b.nombre_titular !== undefined && b.nombre_titular !== null && b.nombre_titular !== '') {
+    const v = validateString(b.nombre_titular, { max: NOMBRE_TITULAR_MAX, field: 'nombre_titular' })
+    if (!v.ok) return v
+    nombreTitular = v.data
+  }
+
   return {
     ok: true,
     data: {
@@ -73,6 +96,43 @@ function validateTarjeta(raw: unknown): Validated<TarjetaInsert> {
       fecha_cierre_tarjeta:      cierreOpt.data,
       fecha_vencimiento_tarjeta: venceOpt.data,
       activa:                    activaOpt.data ?? true,
+      tarjeta_principal_id:      tarjetaPrincipalId,
+      nombre_titular:            nombreTitular,
+    },
+  }
+}
+
+// Valida que `principalId` apunte a una cuenta del user que sea
+// Tarjeta Credito y NO sea ella misma una adicional (depth=1).
+// Si el row no existe, no es del user, no es tarjeta o ya es adicional
+// → devuelve mensaje de error.
+async function assertPrincipalValida(
+  supabase: ReturnType<typeof createClientForRequest> extends Promise<infer T> ? (T extends { supabase: infer S } ? S : never) : never,
+  principalId: string,
+  userId: string,
+): Promise<{ ok: true; principal: { moneda: string; fecha_cierre_tarjeta: string | null; fecha_vencimiento_tarjeta: string | null } } | { ok: false; error: string }> {
+  const { data } = await supabase
+    .from('cuentas')
+    .select('id, tipo_cuenta, tarjeta_principal_id, moneda, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta')
+    .eq('id', principalId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  const row = data as unknown as {
+    tipo_cuenta?: string | null
+    tarjeta_principal_id?: string | null
+    moneda?: string | null
+    fecha_cierre_tarjeta?: string | null
+    fecha_vencimiento_tarjeta?: string | null
+  } | null
+  if (!row) return { ok: false, error: 'La tarjeta principal no existe o no es tuya' }
+  if (row.tipo_cuenta !== 'Tarjeta Credito') return { ok: false, error: 'La principal debe ser una Tarjeta Credito' }
+  if (row.tarjeta_principal_id) return { ok: false, error: 'No podés crear una adicional de otra adicional' }
+  return {
+    ok: true,
+    principal: {
+      moneda:                    row.moneda ?? 'ARS',
+      fecha_cierre_tarjeta:      row.fecha_cierre_tarjeta ?? null,
+      fecha_vencimiento_tarjeta: row.fecha_vencimiento_tarjeta ?? null,
     },
   }
 }
@@ -102,14 +162,29 @@ export async function POST(req: NextRequest) {
   const v = validateTarjeta(body)
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
 
+  // Si es una adicional, validar la principal y heredar campos.
+  let finalData = { ...v.data }
+  if (v.data.tarjeta_principal_id) {
+    const check = await assertPrincipalValida(supabase, v.data.tarjeta_principal_id, user.id)
+    if (!check.ok) return NextResponse.json({ error: check.error }, { status: 400 })
+    // Heredamos moneda + fechas. La password no se guarda en la adicional —
+    // al usarla, /api/parsear-resumen busca la cipher en la principal.
+    finalData = {
+      ...finalData,
+      moneda:                    (check.principal.moneda as 'ARS' | 'USD'),
+      fecha_cierre_tarjeta:      check.principal.fecha_cierre_tarjeta,
+      fecha_vencimiento_tarjeta: check.principal.fecha_vencimiento_tarjeta,
+    }
+  }
+
   // tipo_cuenta forzado a 'Tarjeta Credito' por este endpoint (no del body)
   const id = crypto.randomUUID()
   const { error } = await supabase.from('cuentas').insert({
     id,
-    ...v.data,
+    ...finalData,
     tipo_cuenta: 'Tarjeta Credito',
     user_id:     user.id,
-  })
+  } as never)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   return NextResponse.json({ ok: true, id })

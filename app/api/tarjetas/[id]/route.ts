@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   validateString, validateEnum, validateBoolean, validateHexColor,
-  validateISODate,
+  validateISODate, validateId,
   isString, TERMINACION_4,
   type Validated,
 } from '@/lib/validators'
@@ -13,6 +13,7 @@ import { encryptSecret } from '@/lib/crypto'
 // algunos bancos usan combinaciones (DNI + algo). 100 chars es generoso
 // y evita abuso por payloads gigantes.
 const RESUMEN_PASSWORD_MAX = 100
+const NOMBRE_TITULAR_MAX   = 100
 
 const MONEDAS = ['ARS', 'USD'] as const
 
@@ -96,6 +97,31 @@ function validateTarjetaUpdate(raw: unknown): Validated<Record<string, unknown>>
     if (!v.ok) return v
     updates.activa = v.data
   }
+  // tarjeta_principal_id: si cambia, validamos contra la DB (ownership +
+  // depth=1 + es Tarjeta Credito). Si viene null/'' → setear null (la
+  // adicional pasa a ser principal, hay que decidir qué pasa con campos
+  // heredados — pero el endpoint sigue siendo idempotente). Nota: este
+  // PATCH NO hereda fechas/moneda automáticamente al cambiar a adicional,
+  // el client debería pasar también esos cambios si quiere consistencia.
+  if (b.tarjeta_principal_id !== undefined) {
+    if (b.tarjeta_principal_id === null || b.tarjeta_principal_id === '') {
+      updates.tarjeta_principal_id = null
+    } else {
+      const v = validateId(b.tarjeta_principal_id, 'tarjeta_principal_id')
+      if (!v.ok) return v
+      updates.tarjeta_principal_id = v.data
+    }
+  }
+  // nombre_titular: lo que aparece en el PDF del resumen. Opcional.
+  if (b.nombre_titular !== undefined) {
+    if (b.nombre_titular === null || b.nombre_titular === '') {
+      updates.nombre_titular = null
+    } else {
+      const v = validateString(b.nombre_titular, { max: NOMBRE_TITULAR_MAX, field: 'nombre_titular' })
+      if (!v.ok) return v
+      updates.nombre_titular = v.data
+    }
+  }
   // resumen_password: plaintext del cliente. Lo encriptamos antes de guardar
   // en resumen_password_cipher. Si viene null o string vacío → borrar
   // (setear cipher a null). Nunca devolvemos plaintext en respuestas.
@@ -135,6 +161,27 @@ export async function PATCH(
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
   if (Object.keys(v.data).length === 0) {
     return NextResponse.json({ error: 'Sin campos para actualizar' }, { status: 400 })
+  }
+
+  // Si se está cambiando tarjeta_principal_id a un valor no-null, validar
+  // contra la DB: que la principal exista, sea del user, sea Tarjeta
+  // Credito, NO sea ella misma una adicional, y no sea la misma cuenta
+  // (no podés ser tu propia principal — autorreferencia).
+  if (v.data.tarjeta_principal_id !== undefined && v.data.tarjeta_principal_id !== null) {
+    const principalId = v.data.tarjeta_principal_id as string
+    if (principalId === id) {
+      return NextResponse.json({ error: 'Una tarjeta no puede ser principal de sí misma' }, { status: 400 })
+    }
+    const { data: row } = await supabase
+      .from('cuentas')
+      .select('id, tipo_cuenta, tarjeta_principal_id')
+      .eq('id', principalId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    const p = row as unknown as { tipo_cuenta?: string; tarjeta_principal_id?: string | null } | null
+    if (!p) return NextResponse.json({ error: 'La tarjeta principal no existe o no es tuya' }, { status: 400 })
+    if (p.tipo_cuenta !== 'Tarjeta Credito') return NextResponse.json({ error: 'La principal debe ser Tarjeta Credito' }, { status: 400 })
+    if (p.tarjeta_principal_id) return NextResponse.json({ error: 'No podés ser adicional de otra adicional' }, { status: 400 })
   }
 
   const { error } = await supabase
