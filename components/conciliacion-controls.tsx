@@ -475,13 +475,24 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   onImported: (movs: Mov[]) => void; onClose: () => void
 }) {
   const fileRef   = useRef<HTMLInputElement>(null)
-  const [step,    setStep]   = useState<'upload' | 'review'>('upload')
+  const [step,    setStep]   = useState<'upload' | 'password' | 'review'>('upload')
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
   const [txs,     setTxs]     = useState<Transaccion[]>([])
   const [saving,  setSaving]  = useState(false)
   const [limitInfo, setLimitInfo] = useState<LimitReachedInfo | null>(null)
   const [editingIdx, setEditingIdx] = useState<number | null>(null)  // fila con detalle en edición inline
+
+  // ── Estado del PDF encriptado ───────────────────────────────────────────
+  // Cuando el server devuelve 'requires_password' o 'wrong_password',
+  // entramos a step='password': mostramos input para que el user la ingrese
+  // y un checkbox para guardarla. El base64 del PDF queda en buffer mientras
+  // tanto para no pedirle que re-suba el archivo.
+  const [pdfBase64,        setPdfBase64]        = useState<string | null>(null)
+  const [passwordInput,    setPasswordInput]    = useState('')
+  const [showPwd,          setShowPwd]          = useState(false)
+  const [savePwd,          setSavePwd]          = useState(true)
+  const [pwdWasWrong,      setPwdWasWrong]      = useState(false)
 
   // ── Fechas propuestas de cierre/venc detectadas en el resumen ─────────────
   // Cuando /api/parsear-resumen detecta nuevas fechas distintas de las de la
@@ -514,44 +525,90 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
     return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
   }
 
+  // Llama al endpoint con el base64 del PDF + opcional password. Maneja
+  // los códigos de error específicos de PDF encriptado y devuelve true si
+  // se procesó el resumen (avanzó a review), false si pidió password.
+  const callParsearResumen = async (base64: string, password?: string, savePwdFlag = false): Promise<boolean> => {
+    setLoading(true); setError(''); setFechasPropuestas(null); setFechasError(null)
+    const movsExist = movimientosExistentes.map(m => ({
+      detalle: m.detalle, monto: m.monto_estimado ?? m.monto, fecha: m.fecha,
+    }))
+    const res = await fetch('/api/parsear-resumen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pdf:                   base64,
+        movimientosExistentes: movsExist,
+        cuenta_id:             cuentaId,
+        ...(password ? { resumen_password: password } : {}),
+        ...(savePwdFlag ? { save_password: true } : {}),
+      }),
+    })
+    setLoading(false)
+    const limitReached = await tryParseLimitReached(res)
+    if (limitReached) {
+      setLimitInfo(limitReached)
+      window.dispatchEvent(new Event('usage:changed'))
+      return false
+    }
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      // Códigos específicos del flow de PDF encriptado: cambian de step
+      // en vez de mostrar error fatal — el user puede ingresar password
+      // y retryear sin volver a subir el PDF.
+      if (d?.code === 'requires_password') {
+        setPdfBase64(base64)
+        setPwdWasWrong(false)
+        setStep('password')
+        return false
+      }
+      if (d?.code === 'wrong_password') {
+        setPdfBase64(base64)
+        setPwdWasWrong(true)
+        setStep('password')
+        return false
+      }
+      if (d?.code === 'decrypt_failed') {
+        setError('No pudimos descifrar el PDF. ¿El archivo está bien?')
+        return false
+      }
+      setError(d?.error ?? 'Error al procesar el PDF')
+      return false
+    }
+    window.dispatchEvent(new Event('usage:changed'))
+    const d = await res.json()
+    const parsed: Transaccion[] = (d.transacciones ?? []).map((t: any) => ({
+      ...t,
+      es_descuento: t.es_descuento ?? false,
+      seleccionada: !t.ya_existe,
+      catId: '',
+      subcatId: '',
+    }))
+    setTxs(parsed)
+    if (d.fechas_propuestas) setFechasPropuestas(d.fechas_propuestas)
+    setStep('review')
+    return true
+  }
+
   const handleFile = async (file: File) => {
     if (file.type !== 'application/pdf') { setError('Solo se aceptan archivos PDF'); return }
-    setLoading(true); setError(''); setFechasPropuestas(null); setFechasError(null)
+    setError('')
 
     const reader = new FileReader()
     reader.onload = async (e) => {
       const base64 = (e.target?.result as string).split(',')[1]
-      const movsExist = movimientosExistentes.map(m => ({
-        detalle: m.detalle, monto: m.monto_estimado ?? m.monto, fecha: m.fecha,
-      }))
-      const res = await fetch('/api/parsear-resumen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdf: base64, movimientosExistentes: movsExist, cuenta_id: cuentaId }),
-      })
-      setLoading(false)
-      const limitReached = await tryParseLimitReached(res)
-      if (limitReached) {
-        setLimitInfo(limitReached)
-        window.dispatchEvent(new Event('usage:changed'))
-        return
-      }
-      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al procesar el PDF'); return }
-      window.dispatchEvent(new Event('usage:changed'))
-      const d = await res.json()
-      const parsed: Transaccion[] = (d.transacciones ?? []).map((t: any) => ({
-        ...t,
-        es_descuento: t.es_descuento ?? false,
-        seleccionada: !t.ya_existe,
-        catId: '',
-        subcatId: '',
-      }))
-      setTxs(parsed)
-      // Si el endpoint detectó cambio de fechas, exponemos el preview.
-      if (d.fechas_propuestas) setFechasPropuestas(d.fechas_propuestas)
-      setStep('review')
+      await callParsearResumen(base64)
     }
     reader.readAsDataURL(file)
+  }
+
+  // Retry tras ingresar password en step='password'
+  const handlePasswordRetry = async () => {
+    if (!pdfBase64 || !passwordInput.trim()) {
+      setError('Ingresá la contraseña del PDF')
+      return
+    }
+    await callParsearResumen(pdfBase64, passwordInput.trim(), savePwd)
   }
 
   // Aplica las fechas propuestas a la cuenta. Guarda `fechasUltimoApply` para
@@ -812,6 +869,84 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {step === 'password' && (
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-md mx-auto">
+              <div className="mb-5">
+                <p className="text-sm font-semibold text-slate-800 mb-1">
+                  El PDF está protegido por contraseña
+                </p>
+                <p className="text-xs text-slate-500">
+                  Ingresá la contraseña (típicamente tu DNI). Si la guardás,
+                  el próximo resumen se descifra solo.
+                </p>
+              </div>
+
+              {pwdWasWrong && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4 text-xs text-red-700 flex items-center gap-2">
+                  <AlertCircle size={14} /> La contraseña no era correcta. Intentá de nuevo.
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={passwordInput}
+                  onChange={e => setPasswordInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handlePasswordRetry() }}
+                  placeholder="Tu DNI (ej: 30123456)"
+                  className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-100"
+                  autoFocus
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(s => !s)}
+                  className="text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                >
+                  {showPwd ? 'Ocultar' : 'Mostrar'}
+                </button>
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-slate-600 mb-5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={savePwd}
+                  onChange={e => setSavePwd(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                Guardarla para futuros resúmenes de esta tarjeta
+              </label>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3 text-xs text-red-700">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setStep('upload'); setPdfBase64(null); setPasswordInput(''); setPwdWasWrong(false); setError('') }}
+                  disabled={loading}
+                  className="flex-1 py-2.5 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Volver
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePasswordRetry}
+                  disabled={loading || !passwordInput.trim()}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-60"
+                  style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
+                >
+                  {loading ? 'Descifrando...' : 'Probar contraseña'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

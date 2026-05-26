@@ -5,6 +5,8 @@ import { getUserPlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, isOnboardingActive, usageHeaders } from '@/lib/usage-limits'
 import { parseClaudeJSON, recoverPartialArray } from '@/lib/parse-claude-json'
 import { MODEL_PARSEAR_RESUMEN } from '@/lib/claude-models'
+import { isPdfEncrypted, extractTextFromPdf } from '@/lib/pdf-decrypt'
+import { encryptSecret, decryptSecret } from '@/lib/crypto'
 
 const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario. PDFs típicos < 2 MB.
 const CLAUDE_TIMEOUT_MS    = 55_000             // Vercel Hobby corta a 60s; dejamos margen
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { pdf, movimientosExistentes = [], cuenta_id } = (await req.json()) as {
+  const { pdf, movimientosExistentes = [], cuenta_id, resumen_password, save_password } = (await req.json()) as {
     pdf: string
     movimientosExistentes: { detalle: string | null; monto: number; fecha: string }[]
     /** Opcional. Si viene, intentamos detectar próximas fechas de cierre/venc
@@ -54,6 +56,14 @@ export async function POST(req: NextRequest) {
      *  de la cuenta. Si no viene, ignoramos esa parte (compat con flows que
      *  llaman sin contexto de cuenta). */
     cuenta_id?: string
+    /** Opcional. Password del PDF que mandó el user en el retry tras
+     *  recibir `requires_password`. Si no viene, intentamos leer la
+     *  guardada en cuenta.resumen_password_cipher (si cuenta_id). */
+    resumen_password?: string
+    /** Si true + descifrado OK + cuenta_id, persistimos la password
+     *  (encriptada) en cuenta.resumen_password_cipher para próximos
+     *  resúmenes. Si no, descartamos tras procesar. */
+    save_password?: boolean
   }
 
   if (!pdf) return NextResponse.json({ error: 'No se recibió el PDF.' }, { status: 400 })
@@ -62,6 +72,82 @@ export async function POST(req: NextRequest) {
       { error: `El PDF supera el máximo de ${MAX_PDF_BASE64_BYTES / 1024 / 1024} MB.` },
       { status: 413 }
     )
+  }
+
+  // ── PDF encriptado: descifrar acá antes de mandar a Claude ─────────────
+  // Estados que devolvemos al cliente:
+  //   - requires_password: el PDF está protegido y no tenemos password
+  //   - wrong_password:    probamos una password y no descifró
+  //   - decrypt_failed:    error genérico de la lib (PDF corrupto, etc)
+  // Si descifra OK, mandamos el TEXTO a Claude en vez del PDF binary.
+  const pdfBuffer = Buffer.from(pdf, 'base64')
+  let extractedText: string | null = null   // si !== null, mandar texto en vez de PDF
+
+  if (isPdfEncrypted(pdfBuffer)) {
+    // 1) Determinar qué password probar: el del body (retry del user) o
+    //    la guardada en la cuenta.
+    let passwordToTry = typeof resumen_password === 'string' && resumen_password.length > 0
+      ? resumen_password
+      : null
+
+    if (!passwordToTry && cuenta_id) {
+      const { data: row } = await supabase
+        .from('cuentas')
+        .select('resumen_password_cipher')
+        .eq('id', cuenta_id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+      const cipher = (row as unknown as { resumen_password_cipher?: string | null } | null)?.resumen_password_cipher
+      if (cipher) {
+        passwordToTry = decryptSecret(cipher)
+      }
+    }
+
+    if (!passwordToTry) {
+      return NextResponse.json(
+        { error: 'requires_password', code: 'requires_password' },
+        { status: 422 },
+      )
+    }
+
+    const result = await extractTextFromPdf(pdfBuffer, passwordToTry)
+    if (!result.ok) {
+      if (result.error === 'wrong_password') {
+        return NextResponse.json(
+          { error: 'wrong_password', code: 'wrong_password' },
+          { status: 422 },
+        )
+      }
+      if (result.error === 'requires_password') {
+        // Edge case: pdf.js reportó requires_password aún con password
+        return NextResponse.json(
+          { error: 'requires_password', code: 'requires_password' },
+          { status: 422 },
+        )
+      }
+      console.error('[parsear-resumen] decrypt unknown error:', result.message)
+      return NextResponse.json(
+        { error: 'decrypt_failed', code: 'decrypt_failed', message: result.message },
+        { status: 422 },
+      )
+    }
+
+    extractedText = result.text
+
+    // Guardar la password si el user lo pidió y descifró OK.
+    if (save_password && cuenta_id) {
+      try {
+        const cipher = encryptSecret(passwordToTry)
+        await supabase
+          .from('cuentas')
+          .update({ resumen_password_cipher: cipher } as never)
+          .eq('id', cuenta_id)
+          .eq('user_id', user.id)
+      } catch (err) {
+        console.error('[parsear-resumen] save_password failed:', err)
+        // No bloqueamos el flow — la password sirvió para esta vez.
+      }
+    }
   }
 
   const movsResumen = movimientosExistentes.length > 0
@@ -90,14 +176,23 @@ export async function POST(req: NextRequest) {
         {
           role: 'user',
           content: [
-            {
-              type:   'document',
-              source: {
-                type:       'base64',
-                media_type: 'application/pdf',
-                data:       pdf,
-              },
-            },
+            // Si el PDF era encriptado y descifrado, mandamos TEXTO ya
+            // extraído (pdf.js). Sino, mandamos el PDF binary y dejamos
+            // que Claude lo procese visualmente (mejor para layouts
+            // complejos). El prompt en sí no cambia.
+            ...(extractedText !== null
+              ? [{
+                  type: 'text' as const,
+                  text: `Te paso el TEXTO ya extraído de un resumen de tarjeta de crédito (el PDF estaba protegido por password). El layout puede haberse perdido pero el contenido está completo:\n\n${extractedText}\n\n--- FIN DEL TEXTO DEL PDF ---\n`,
+                }]
+              : [{
+                  type: 'document' as const,
+                  source: {
+                    type:       'base64' as const,
+                    media_type: 'application/pdf' as const,
+                    data:       pdf,
+                  },
+                }]),
             {
               type: 'text',
               text: `Analizá este resumen de tarjeta de crédito y extraé los siguientes items:
