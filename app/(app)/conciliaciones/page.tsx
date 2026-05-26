@@ -29,13 +29,17 @@ export default async function ConciliacionesPage({
   const mesActualStr = primerDiaMesAR()
   const periodoActual = periodoParam ?? mesActualStr
 
-  // 1. Tarjetas de crédito activas
+  // 1. Tarjetas de crédito activas — SOLO principales.
+  // Las adicionales NO aparecen acá: la conciliación se hace contra la
+  // principal y dentro del flow de la principal traemos también los movs
+  // de las adicionales (ver /conciliaciones/[cuentaId]/[periodo]).
   const { data: tarjetas } = await supabase
     .from('cuentas')
     .select('*')
     .eq('tipo_cuenta', 'Tarjeta Credito')
     .eq('activa', true)
     .eq('user_id', wsId)
+    .is('tarjeta_principal_id', null)
     .order('nombre_cuenta')
 
   const tarjetaIds = (tarjetas ?? []).map(t => t.id)
@@ -48,11 +52,39 @@ export default async function ConciliacionesPage({
     )
   }
 
+  // 1.5. Cargar adicionales de esas principales para incluir sus movs en
+  // las stats. Los consumos de adicionales se agrupan bajo la principal
+  // a efectos de conciliación (la principal es la que paga el resumen).
+  const { data: adicionales } = await supabase
+    .from('cuentas')
+    .select('id, tarjeta_principal_id')
+    .eq('tipo_cuenta', 'Tarjeta Credito')
+    .eq('activa', true)
+    .eq('user_id', wsId)
+    .in('tarjeta_principal_id', tarjetaIds)
+
+  // Mapping cuentaId (cualquier) → principalId. Para principales, ellas
+  // mismas; para adicionales, su tarjeta_principal_id. Usado al agregar
+  // movs a movsByTarjeta más abajo.
+  // Cast vía unknown: database.types todavía no tiene tarjeta_principal_id
+  // (migration nueva, types no regenerados); en runtime Supabase devuelve
+  // el campo OK.
+  type AdicRow = { id: string; tarjeta_principal_id: string | null }
+  const adicRows = (adicionales ?? []) as unknown as AdicRow[]
+  const principalByCuentaId = new Map<string, string>()
+  for (const t of tarjetaIds) principalByCuentaId.set(t, t)
+  for (const a of adicRows) {
+    if (a.tarjeta_principal_id) principalByCuentaId.set(a.id, a.tarjeta_principal_id)
+  }
+
+  // Lista completa de cuentaIds para los queries de movs (principales + adic).
+  const allCuentaIds = [...tarjetaIds, ...adicRows.map(a => a.id)]
+
   // 2. Todos los períodos con movimientos de tarjeta (para navegación)
   const { data: todosMovsPeriodos } = await supabase
     .from('movimientos')
     .select('periodo_tarjeta')
-    .in('cuenta_origen', tarjetaIds)
+    .in('cuenta_origen', allCuentaIds)
     .in('tipo_movimiento', ['Gasto', 'Ingreso'])
     .eq('user_id', wsId)
     .not('periodo_tarjeta', 'is', null)
@@ -72,7 +104,7 @@ export default async function ConciliacionesPage({
   const { data: movsVencidos } = await supabase
     .from('movimientos')
     .select('periodo_tarjeta')
-    .in('cuenta_origen', tarjetaIds)
+    .in('cuenta_origen', allCuentaIds)
     .in('tipo_movimiento', ['Gasto', 'Ingreso'])
     .eq('conciliado', false)
     .eq('user_id', wsId)
@@ -82,11 +114,13 @@ export default async function ConciliacionesPage({
 
   const hayMesesVencidos = (movsVencidos ?? []).length > 0
 
-  // 4. Movimientos del período actual (batch único) — incluye Ingresos (descuentos)
+  // 4. Movimientos del período actual (batch único) — incluye Ingresos (descuentos).
+  // Traemos también los de adicionales y los agrupamos bajo su principal
+  // vía principalByCuentaId.
   const { data: movsDelPeriodo } = await supabase
     .from('movimientos')
     .select('cuenta_origen, conciliado, monto, tipo_movimiento, moneda, cotizacion')
-    .in('cuenta_origen', tarjetaIds)
+    .in('cuenta_origen', allCuentaIds)
     .in('tipo_movimiento', ['Gasto', 'Ingreso'])
     .eq('periodo_tarjeta', periodoActual)
     .eq('user_id', wsId)
@@ -95,8 +129,11 @@ export default async function ConciliacionesPage({
   const movsByTarjeta: Record<string, MovIdx[]> = {}
   for (const m of movsDelPeriodo ?? []) {
     if (!m.cuenta_origen || !m.tipo_movimiento) continue
-    if (!movsByTarjeta[m.cuenta_origen]) movsByTarjeta[m.cuenta_origen] = []
-    movsByTarjeta[m.cuenta_origen].push({
+    // Resolvemos a qué PRINCIPAL pertenece este mov: si cuenta_origen es
+    // ya principal, usa esa; si es adicional, sube a la principal.
+    const principalId = principalByCuentaId.get(m.cuenta_origen) ?? m.cuenta_origen
+    if (!movsByTarjeta[principalId]) movsByTarjeta[principalId] = []
+    movsByTarjeta[principalId].push({
       monto: m.monto, conciliado: m.conciliado, tipo: m.tipo_movimiento,
       moneda: m.moneda, cotizacion: m.cotizacion,
     })

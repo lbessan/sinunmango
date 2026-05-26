@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   const { pdf, movimientosExistentes = [], cuenta_id, resumen_password, save_password } = (await req.json()) as {
     pdf: string
-    movimientosExistentes: { detalle: string | null; monto: number; fecha: string }[]
+    movimientosExistentes: { detalle: string | null; monto: number; moneda?: string; fecha: string }[]
     /** Opcional. Si viene, intentamos detectar próximas fechas de cierre/venc
      *  del resumen y devolverlas para que el client confirme la actualización
      *  de la cuenta. Si no viene, ignoramos esa parte (compat con flows que
@@ -158,11 +158,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Listado de movs ya cargados que mandamos a Claude para que detecte
+  // duplicados (campo `ya_existe` en la respuesta). Incluímos la moneda
+  // explícitamente — antes asumíamos $ y los consumos USD del resumen no
+  // matcheaban contra el mismo mov ya cargado en ARS con cotización aplicada.
   const movsResumen = movimientosExistentes.length > 0
     ? `\nMovimientos ya cargados en el sistema (para comparar y NO duplicar):\n${
-        movimientosExistentes.map(m =>
-          `- ${m.fecha} | ${m.detalle ?? '(sin detalle)'} | $${m.monto}`
-        ).join('\n')
+        movimientosExistentes.map(m => {
+          const moneda = m.moneda === 'USD' ? 'U$S' : '$'
+          return `- ${m.fecha} | ${m.detalle ?? '(sin detalle)'} | ${moneda} ${m.monto}`
+        }).join('\n')
       }\n`
     : ''
 

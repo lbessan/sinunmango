@@ -26,15 +26,38 @@ export default async function ConciliacionDetallePage({
 
   const { cuentaId, periodo } = await params
 
-  // Movs scoped por cuenta (no user_id) → RLS permite mis propios movs + movs
-  // en cuentas compartidas, así el invitee ve TODO el período de la tarjeta.
-  const [{ data: cuenta }, { data: movimientos }, { data: categorias }, { data: subcategorias }, { data: familia }] =
+  // 1) Cargamos familia primero (necesaria para saber qué cuenta_origen
+  // ids buscar en los movs). Familia = principal (cuentaId) + adicionales.
+  const { data: familia } = await supabase
+    .from('cuentas')
+    .select('id, nombre_cuenta, nombre_titular, tarjeta_principal_id')
+    .eq('user_id', wsId)
+    .eq('tipo_cuenta', 'Tarjeta Credito')
+    .or(`id.eq.${cuentaId},tarjeta_principal_id.eq.${cuentaId}`)
+
+  type FamiliaRow = { id: string; nombre_cuenta: string | null; nombre_titular: string | null; tarjeta_principal_id: string | null }
+  const familiaRows = (familia ?? []) as unknown as FamiliaRow[]
+  const cuentasFamilia = familiaRows.map(r => ({
+    id:              r.id,
+    nombre_cuenta:   r.nombre_cuenta ?? '',
+    nombre_titular:  r.nombre_titular,
+    isPrincipal:     r.tarjeta_principal_id === null,
+  }))
+  const familiaIds = familiaRows.map(r => r.id)
+
+  // 2) Resto en paralelo. Los movs ahora se traen por TODA la familia —
+  // si el user cargó un mov manualmente con cuenta_origen=adicional,
+  // tiene que aparecer en la conciliación de la principal. RLS asegura
+  // que solo se trae lo que el user puede ver.
+  // Movs scoped por cuenta (no user_id) → RLS permite mis propios movs +
+  // movs en cuentas compartidas (workspace V2).
+  const [{ data: cuenta }, { data: movimientos }, { data: categorias }, { data: subcategorias }] =
     await Promise.all([
       supabase.from('cuentas').select('*').eq('id', cuentaId).eq('user_id', wsId).single(),
       supabase
         .from('movimientos_completos')
         .select('*')
-        .eq('cuenta_origen', cuentaId)
+        .in('cuenta_origen', familiaIds.length > 0 ? familiaIds : [cuentaId])
         .eq('periodo_tarjeta', periodo)
         .in('tipo_movimiento', ['Gasto', 'Ingreso'])
         .order('fecha', { ascending: true }),
@@ -47,28 +70,9 @@ export default async function ConciliacionDetallePage({
         .from('subcategorias')
         .select('id, categoria_padre, nombre_subcategoria')
         .eq('user_id', wsId),
-      // Familia de tarjetas: la principal (cuentaId) + todas sus adicionales.
-      // Las usamos en el ImportarPdfModal para que el user pueda override
-      // la cuenta destino de cada consumo del resumen, y para que el
-      // selector muestre el contexto del titular.
-      supabase
-        .from('cuentas')
-        .select('id, nombre_cuenta, nombre_titular, tarjeta_principal_id')
-        .eq('user_id', wsId)
-        .eq('tipo_cuenta', 'Tarjeta Credito')
-        .or(`id.eq.${cuentaId},tarjeta_principal_id.eq.${cuentaId}`),
     ])
 
   if (!cuenta) notFound()
-
-  type FamiliaRow = { id: string; nombre_cuenta: string | null; nombre_titular: string | null; tarjeta_principal_id: string | null }
-  const cuentasFamilia = ((familia ?? []) as unknown as FamiliaRow[])
-    .map(r => ({
-      id:              r.id,
-      nombre_cuenta:   r.nombre_cuenta ?? '',
-      nombre_titular:  r.nombre_titular,
-      isPrincipal:     r.tarjeta_principal_id === null,
-    }))
 
   // Extraer día de cierre y vencimiento
   const cierreDay = cuenta.fecha_cierre_tarjeta
