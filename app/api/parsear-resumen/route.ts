@@ -9,15 +9,15 @@ import { isPdfEncrypted, extractTextFromPdf } from '@/lib/pdf-decrypt'
 import { encryptSecret, decryptSecret } from '@/lib/crypto'
 
 const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario. PDFs típicos < 2 MB.
-// Timeout del fetch a Claude. Antes era 55s (limit de Hobby).
-// Ahora estamos en Vercel Pro (Fluid Compute) con maxDuration=300s.
-// Con resúmenes que incluyen adicionales (más transacciones + más campos
-// por tx) Claude puede tardar 60-120s. Dejamos 240s para dar margen.
-const CLAUDE_TIMEOUT_MS    = 240_000
+// Vercel Hobby corta a 60s. Dejamos 50s para el fetch a Claude + 10s de
+// margen para el dispatch + commit de usage + response. Con el modelo
+// Haiku (más rápido que Sonnet) y max_tokens reducido, alcanza para
+// resúmenes con adicionales (~20-25s en práctica).
+const CLAUDE_TIMEOUT_MS    = 50_000
 
-// Le pedimos a Next/Vercel que esta función puede tardar hasta 5 min.
-// Sin esto, Fluid Compute usa el default que en algunos planes corta antes.
-export const maxDuration = 300
+// Hobby tope = 60s. Lo dejamos explícito para que cuando migremos a Pro
+// solo subir este número (y opcionalmente CLAUDE_TIMEOUT_MS).
+export const maxDuration = 60
 
 // ─── POST /api/parsear-resumen ────────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), lo procesa con Claude y
@@ -179,7 +179,11 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model:      MODEL_PARSEAR_RESUMEN,
-      max_tokens: 16000,
+      // 10000 tokens cubre ~80 transacciones (un resumen típico tiene
+      // 20-40). Si llegara a cortarse, recoverPartialArray rescata las
+      // que ya entraron en el JSON parcial. Bajar de 16000 acelera
+      // Claude entre 20-30% (genera menos output).
+      max_tokens: 10000,
       messages: [
         {
           role: 'user',

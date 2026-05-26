@@ -33,14 +33,17 @@ describe('claude-models — defaults', () => {
     expect(m.MODEL_ASISTENTE_MOBILE).toBe('claude-sonnet-4-6')
   })
 
-  it('MODEL_PARSEAR_TARJETA_PDF default es Sonnet 4.6 (PDFs jugados)', async () => {
+  it('MODEL_PARSEAR_TARJETA_PDF default es Haiku 4.5 (rápido para Hobby)', async () => {
+    // Haiku tiene buena calidad para parsing y tarda <30s vs >55s de Sonnet,
+    // crítico mientras estemos en Vercel Hobby (60s tope). Cuando pasemos
+    // a Pro podemos volver a Sonnet via env var sin redeploy.
     const m = await import('@/lib/claude-models')
-    expect(m.MODEL_PARSEAR_TARJETA_PDF).toBe('claude-sonnet-4-6')
+    expect(m.MODEL_PARSEAR_TARJETA_PDF).toBe('claude-haiku-4-5-20251001')
   })
 
-  it('MODEL_PARSEAR_RESUMEN default es Sonnet 4.6', async () => {
+  it('MODEL_PARSEAR_RESUMEN default es Haiku 4.5 (rápido para Hobby)', async () => {
     const m = await import('@/lib/claude-models')
-    expect(m.MODEL_PARSEAR_RESUMEN).toBe('claude-sonnet-4-6')
+    expect(m.MODEL_PARSEAR_RESUMEN).toBe('claude-haiku-4-5-20251001')
   })
 
   it('MODEL_LEER_TICKET default es Haiku 4.5 (visual simple)', async () => {
@@ -76,9 +79,9 @@ describe('claude-models — override via env var', () => {
     process.env.CLAUDE_MODEL_ASISTENTE = 'modelo-custom'
     const m = await import('@/lib/claude-models')
     expect(m.MODEL_ASISTENTE).toBe('modelo-custom')
-    // Los otros mantienen defaults
+    // Los otros mantienen defaults — Sonnet asistente, Haiku resto
     expect(m.MODEL_LEER_TICKET).toBe('claude-haiku-4-5-20251001')
-    expect(m.MODEL_PARSEAR_TARJETA_PDF).toBe('claude-sonnet-4-6')
+    expect(m.MODEL_PARSEAR_TARJETA_PDF).toBe('claude-haiku-4-5-20251001')
   })
 
   it('Override de TODOS los modelos a la vez', async () => {

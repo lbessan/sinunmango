@@ -190,15 +190,17 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Load user emails ──────────────────────────────────────────────────────────
+  // Paralelizamos getUserById — antes era secuencial, agregaba ~100-300ms
+  // por user. Con Promise.allSettled corren en paralelo y errores
+  // individuales no rompen el batch.
   const emailFallback = process.env.ALERT_EMAIL ?? 'luchobessan@gmail.com'
-  // Fetch emails from auth.users via admin client
   const userEmailMap = new Map<string, string>()
-  for (const uid of userIds) {
-    try {
-      const { data: { user } } = await adminClient.auth.admin.getUserById(uid)
-      if (user?.email) userEmailMap.set(uid, user.email)
-    } catch {
-      // fallback
+  const emailResults = await Promise.allSettled(
+    userIds.map(uid => adminClient.auth.admin.getUserById(uid).then(r => ({ uid, email: r.data.user?.email })))
+  )
+  for (const r of emailResults) {
+    if (r.status === 'fulfilled' && r.value.email) {
+      userEmailMap.set(r.value.uid, r.value.email)
     }
   }
 

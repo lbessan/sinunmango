@@ -21,13 +21,15 @@ export const MODEL_ASISTENTE_MOBILE = process.env.CLAUDE_MODEL_ASISTENTE_MOBILE
   ?? 'claude-sonnet-4-6'
 
 /** Parsear PDF de resumen de tarjeta (extracción estructurada con
- *  edge cases jugados: cuotas, impuestos, ajustes). */
+ *  edge cases jugados: cuotas, impuestos, ajustes).
+ *  Haiku 4.5: ~3x más rápido que Sonnet, calidad muy buena para
+ *  parsing estructurado. Crítico en Vercel Hobby (60s tope). */
 export const MODEL_PARSEAR_TARJETA_PDF = process.env.CLAUDE_MODEL_PARSEAR_TARJETA_PDF
-  ?? 'claude-sonnet-4-6'
+  ?? 'claude-haiku-4-5-20251001'
 
 /** Idéntica tarea a la anterior — variante histórica que conviene unificar. */
 export const MODEL_PARSEAR_RESUMEN = process.env.CLAUDE_MODEL_PARSEAR_RESUMEN
-  ?? 'claude-sonnet-4-6'
+  ?? 'claude-haiku-4-5-20251001'
 
 /** Leer foto de ticket → JSON con monto + comercio + fecha. Tarea visual
  *  simple, Haiku la maneja igual de bien que Sonnet. */

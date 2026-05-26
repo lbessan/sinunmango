@@ -30,15 +30,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Owner emails para "compartido por X"
+  // Owner emails para "compartido por X" — paralelizado.
   const ownerIds = Array.from(new Set((shares ?? []).map(s => s.owner_user_id)))
   const emailsByOwnerId: Record<string, string> = {}
-  for (const id of ownerIds) {
-    try {
-      const { data: { user: u } } = await adminClient.auth.admin.getUserById(id)
-      if (u?.email) emailsByOwnerId[id] = u.email
-    } catch {
-      // ignorar
+  const lookups = await Promise.allSettled(
+    ownerIds.map(id => adminClient.auth.admin.getUserById(id).then(r => ({ id, email: r.data.user?.email })))
+  )
+  for (const l of lookups) {
+    if (l.status === 'fulfilled' && l.value.email) {
+      emailsByOwnerId[l.value.id] = l.value.email
     }
   }
 

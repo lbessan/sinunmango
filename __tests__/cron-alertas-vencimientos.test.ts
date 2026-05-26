@@ -69,6 +69,11 @@ function mockResendFetch(ok = true) {
 beforeEach(() => {
   adminFromMock.mockReset()
   getUserByIdMock.mockReset()
+  // Default que devuelve un user sin email — los tests que esperan
+  // email override con .mockResolvedValueOnce. Esto evita que el
+  // batch `Promise.allSettled` crashee cuando algún test no setea
+  // explícitamente el mock.
+  getUserByIdMock.mockResolvedValue({ data: { user: null }, error: null })
   process.env.CRON_SECRET    = 'cron-secret'
   process.env.RESEND_API_KEY = 'rk_test'
 })

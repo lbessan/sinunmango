@@ -109,6 +109,16 @@ export async function GET(req: NextRequest) {
   const userIds = prefs.map(p => p.user_id)
   let totalSent = 0
 
+  // Precomputamos emails de TODOS los users en paralelo (ver razonamiento
+  // en cron/resumen-mensual).
+  const emailMap = new Map<string, string>()
+  const emailLookups = await Promise.allSettled(
+    userIds.map(uid => adminClient.auth.admin.getUserById(uid).then(r => ({ uid, email: r.data.user?.email })))
+  )
+  for (const l of emailLookups) {
+    if (l.status === 'fulfilled' && l.value.email) emailMap.set(l.value.uid, l.value.email)
+  }
+
   for (const uid of userIds) {
     // Movimientos de la semana
     const { data: movs } = await adminClient
@@ -134,12 +144,8 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => b.total - a.total)
       .slice(0, 5)
 
-    // Email del usuario
-    let toEmail = process.env.ALERT_EMAIL ?? 'luchobessan@gmail.com'
-    try {
-      const { data: { user } } = await adminClient.auth.admin.getUserById(uid)
-      if (user?.email) toEmail = user.email
-    } catch {}
+    // Email del usuario (precomputado arriba)
+    const toEmail = emailMap.get(uid) ?? process.env.ALERT_EMAIL ?? 'luchobessan@gmail.com'
 
     if (!resendApiKey) {
       console.log(`[resumen-semanal] Sin RESEND_API_KEY. User ${uid}: +${Math.round(ingresos)} / -${Math.round(gastos)}`)

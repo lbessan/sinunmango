@@ -207,16 +207,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Emails de invitees aceptados
+  // Emails de invitees aceptados — paralelizado con Promise.allSettled.
+  // Antes era secuencial dentro de un for(...await...) que en GET /api/shares
+  // (response time del listing del owner) sumaba ~100-300ms por invitee.
   const inviteeIds = (shares ?? [])
     .map(s => s.invitee_user_id).filter((id): id is string => !!id)
   const emailsByUserId: Record<string, string> = {}
-  for (const id of Array.from(new Set(inviteeIds))) {
-    try {
-      const { data: { user: u } } = await adminClient.auth.admin.getUserById(id)
-      if (u?.email) emailsByUserId[id] = u.email
-    } catch {
-      // ignorar
+  const lookups = await Promise.allSettled(
+    Array.from(new Set(inviteeIds)).map(id =>
+      adminClient.auth.admin.getUserById(id).then(r => ({ id, email: r.data.user?.email }))
+    )
+  )
+  for (const l of lookups) {
+    if (l.status === 'fulfilled' && l.value.email) {
+      emailsByUserId[l.value.id] = l.value.email
     }
   }
 
