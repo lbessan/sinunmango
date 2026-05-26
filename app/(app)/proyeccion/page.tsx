@@ -1,4 +1,5 @@
 import { getAuthedClient } from '@/lib/supabase/server'
+import { getCurrentWorkspace } from '@/lib/workspace'
 import { stripCuotaSuffix } from '@/lib/tarjeta-periodo'
 import { primerDiaMesAR } from '@/lib/timezone'
 import Link from 'next/link'
@@ -33,6 +34,8 @@ export default async function ProyeccionMesPage({
 }) {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+  const workspace = await getCurrentWorkspace(user.id)
+  const wsId = workspace.ownerUserId
 
   const { periodo } = await searchParams
   if (!periodo) return <p className="text-slate-400">Periodo no especificado</p>
@@ -43,12 +46,12 @@ export default async function ProyeccionMesPage({
   // ── Datos base ────────────────────────────────────────────────────────────
   const [{ data: resumen }, { data: gastosFijos }, { data: tarjetas }, { data: params }] =
     await Promise.all([
-      supabase.from('dashboard_resumen').select('*').eq('user_id', user.id).single(),
+      supabase.from('dashboard_resumen').select('*').eq('user_id', wsId).single(),
       supabase.from('gastos_fijos')
         .select('*, cuentas(id, nombre_cuenta, tipo_cuenta), categorias(nombre_categoria, icono)')
-        .eq('activo', true).eq('user_id', user.id).order('dia_vencimiento'),
-      supabase.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true).eq('user_id', user.id),
-      supabase.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', user.id).single(),
+        .eq('activo', true).eq('user_id', wsId).order('dia_vencimiento'),
+      supabase.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true).eq('user_id', wsId),
+      supabase.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', wsId).single(),
     ])
 
   const dolar      = params?.valor ?? 1410
@@ -78,10 +81,10 @@ export default async function ProyeccionMesPage({
   while (cursor < periodo) {
     const { data: ingM } = await supabase
       .from('movimientos').select('monto, moneda, cotizacion, conciliado')
-      .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', cursor).eq('user_id', user.id)
+      .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', cursor).eq('user_id', wsId)
     const { data: gasM } = await supabase
       .from('movimientos').select('monto, moneda, cotizacion, conciliado, cuenta_origen')
-      .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', cursor).eq('user_id', user.id)
+      .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', cursor).eq('user_id', wsId)
 
     const ingTotal = (ingM ?? []).reduce((a, m) => a + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
     const tcTotal  = (gasM ?? []).filter(m => m.cuenta_origen != null && tarjetaIds.has(m.cuenta_origen))
@@ -94,9 +97,9 @@ export default async function ProyeccionMesPage({
   // ── Datos del periodo objetivo ────────────────────────────────────────────
   const [{ data: ingresosMes }, { data: gastosTC }] = await Promise.all([
     supabase.from('movimientos_completos').select('*')
-      .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodo).eq('user_id', user.id).order('fecha'),
+      .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodo).eq('user_id', wsId).order('fecha'),
     supabase.from('movimientos_completos').select('*')
-      .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', periodo).eq('user_id', user.id).order('fecha'),
+      .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', periodo).eq('user_id', wsId).order('fecha'),
   ])
 
   const gastosTC_filtrados = (gastosTC ?? []).filter(m => m.cuenta_origen != null && tarjetaIds.has(m.cuenta_origen))

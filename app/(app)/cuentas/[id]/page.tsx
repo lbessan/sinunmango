@@ -32,6 +32,7 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
   if (!user) redirect('/login')
   const workspace = await getCurrentWorkspace(user.id)
   const wsId = workspace.ownerUserId
+  const isOwn = workspace.isOwn
 
   const { id } = await params
   const today   = todayAR()
@@ -40,13 +41,16 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
     await Promise.all([
       supabase.from('saldo_actual_cuentas').select('*').eq('id', id).eq('user_id', wsId).single(),
       supabase.from('cuentas').select('imagen_url, imagen_banner_url, color_primario').eq('id', id).eq('user_id', wsId).single(),
+      // Movs scoped por cuenta (no por user_id). RLS filtra: own movs OR
+      // movs en cuentas a las que tengo acceso. Sacar el filtro user_id
+      // permite que el invitee vea TAMBIÉN sus propios movs cargados en
+      // esta cuenta compartida (sino se "perdían" porque su user_id =
+      // invitee y wsId = owner).
       supabase.from('movimientos_completos').select('*')
         .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
-        .eq('user_id', wsId)
         .lte('fecha', today).order('fecha', { ascending: false }).limit(200),
       supabase.from('movimientos_completos').select('*')
         .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
-        .eq('user_id', wsId)
         .gt('fecha', today)
         .order('periodo_tarjeta', { ascending: true }).order('fecha', { ascending: true }),
       supabase.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', wsId).order('nombre_categoria'),
@@ -85,19 +89,21 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
         style={{ background: 'rgba(255,255,255,0.18)', color: textColor }}>
         <ArrowLeft size={14} />{isTarjeta ? 'Tarjetas' : 'Cuentas'}
       </Link>
-      <div className="flex items-center gap-2">
-        <DeleteButton
-          endpoint={deleteEndpoint}
-          redirectTo={backHref}
-          label={cuenta.nombre_cuenta ?? ''}
-          variant="icon"
-        />
-        <Link href={isTarjeta ? `/tarjetas/${id}/editar` : `/cuentas/${id}/editar`}
-          className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg"
-          style={{ background: 'rgba(255,255,255,0.18)', color: textColor }}>
-          <Pencil size={13} />Editar
-        </Link>
-      </div>
+      {isOwn && (
+        <div className="flex items-center gap-2">
+          <DeleteButton
+            endpoint={deleteEndpoint}
+            redirectTo={backHref}
+            label={cuenta.nombre_cuenta ?? ''}
+            variant="icon"
+          />
+          <Link href={isTarjeta ? `/tarjetas/${id}/editar` : `/cuentas/${id}/editar`}
+            className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg"
+            style={{ background: 'rgba(255,255,255,0.18)', color: textColor }}>
+            <Pencil size={13} />Editar
+          </Link>
+        </div>
+      )}
     </div>
   )
 

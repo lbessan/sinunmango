@@ -5,6 +5,8 @@ import { GastoFijoFormClient } from '@/components/gasto-fijo-form-client'
 
 type Props = ComponentProps<typeof GastoFijoFormClient>
 
+// Crear gasto fijo: owner-only. Invitees no tienen botón "Nuevo gasto fijo"
+// en /gastos-fijos (workspace.isOwn). URL directa muestra picker vacío.
 export default async function NuevoGastoFijoPage() {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')

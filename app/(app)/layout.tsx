@@ -30,14 +30,26 @@ export default async function AppLayout({
   }
 
   // Onboarding gate: si el usuario no tiene cuentas activas, lo mandamos al onboarding.
-  // RLS filtra automático por user_id; el .eq() se mantiene como defensa.
-  const { count } = await supabase
-    .from('cuentas')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('activa', true)
+  // EXCEPCIÓN: si el user es invitee en algún workspace ajeno (tiene shares
+  // aceptados), no lo mandamos al onboarding — su flujo es entrar y switchear
+  // al workspace recibido.
+  const [{ count: ownCuentasCount }, { count: sharesCount }] = await Promise.all([
+    supabase.from('cuentas')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('activa', true),
+    supabase.from('shares')
+      .select('id', { count: 'exact', head: true })
+      .eq('invitee_user_id', user.id)
+      .not('accepted_at', 'is', null)
+      .is('revoked_at', null),
+  ])
 
-  if (!count || count === 0) redirect('/onboarding')
+  const hasOwnCuentas = (ownCuentasCount ?? 0) > 0
+  const hasIncomingShare = (sharesCount ?? 0) > 0
+  if (!hasOwnCuentas && !hasIncomingShare) {
+    redirect('/onboarding')
+  }
 
   // Manguito (asistente IA) NO disponible para invitees en workspaces
   // ajenos — privacy de la data del owner. En V2 podemos agregarlo con

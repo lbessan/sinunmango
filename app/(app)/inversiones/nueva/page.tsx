@@ -7,6 +7,8 @@ import { InversionFormClient } from '@/components/inversion-form-client'
 
 type Props = ComponentProps<typeof InversionFormClient>
 
+// Crear inversión: owner-only. Invitees no tienen botón "Nueva inversión"
+// en /inversiones (workspace.isOwn).
 export default async function NuevaInversionPage() {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')

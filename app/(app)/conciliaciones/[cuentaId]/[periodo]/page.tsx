@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
+import { getCurrentWorkspace } from '@/lib/workspace'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
@@ -20,29 +21,32 @@ export default async function ConciliacionDetallePage({
 }) {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+  const workspace = await getCurrentWorkspace(user.id)
+  const wsId = workspace.ownerUserId
 
   const { cuentaId, periodo } = await params
 
+  // Movs scoped por cuenta (no user_id) → RLS permite mis propios movs + movs
+  // en cuentas compartidas, así el invitee ve TODO el período de la tarjeta.
   const [{ data: cuenta }, { data: movimientos }, { data: categorias }, { data: subcategorias }] =
     await Promise.all([
-      supabase.from('cuentas').select('*').eq('id', cuentaId).eq('user_id', user.id).single(),
+      supabase.from('cuentas').select('*').eq('id', cuentaId).eq('user_id', wsId).single(),
       supabase
         .from('movimientos_completos')
         .select('*')
         .eq('cuenta_origen', cuentaId)
         .eq('periodo_tarjeta', periodo)
         .in('tipo_movimiento', ['Gasto', 'Ingreso'])
-        .eq('user_id', user.id)
         .order('fecha', { ascending: true }),
       supabase
         .from('categorias')
         .select('id, nombre_categoria, icono, tipo_default')
-        .eq('user_id', user.id)
+        .eq('user_id', wsId)
         .order('nombre_categoria'),
       supabase
         .from('subcategorias')
         .select('id, categoria_padre, nombre_subcategoria')
-        .eq('user_id', user.id),
+        .eq('user_id', wsId),
     ])
 
   if (!cuenta) notFound()

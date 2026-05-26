@@ -1,4 +1,5 @@
 import { getAuthedClient } from '@/lib/supabase/server'
+import { getCurrentWorkspace } from '@/lib/workspace'
 import { primerDiaMesAR } from '@/lib/timezone'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -21,6 +22,8 @@ export default async function ConciliacionesPage({
 }) {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+  const workspace = await getCurrentWorkspace(user.id)
+  const wsId = workspace.ownerUserId
 
   const { periodo: periodoParam } = await searchParams
   const mesActualStr = primerDiaMesAR()
@@ -32,7 +35,7 @@ export default async function ConciliacionesPage({
     .select('*')
     .eq('tipo_cuenta', 'Tarjeta Credito')
     .eq('activa', true)
-    .eq('user_id', user.id)
+    .eq('user_id', wsId)
     .order('nombre_cuenta')
 
   const tarjetaIds = (tarjetas ?? []).map(t => t.id)
@@ -51,7 +54,7 @@ export default async function ConciliacionesPage({
     .select('periodo_tarjeta')
     .in('cuenta_origen', tarjetaIds)
     .in('tipo_movimiento', ['Gasto', 'Ingreso'])
-    .eq('user_id', user.id)
+    .eq('user_id', wsId)
     .not('periodo_tarjeta', 'is', null)
 
   const todosPeriodos = [
@@ -72,7 +75,7 @@ export default async function ConciliacionesPage({
     .in('cuenta_origen', tarjetaIds)
     .in('tipo_movimiento', ['Gasto', 'Ingreso'])
     .eq('conciliado', false)
-    .eq('user_id', user.id)
+    .eq('user_id', wsId)
     .lt('periodo_tarjeta', periodoActual)
     .not('periodo_tarjeta', 'is', null)
     .limit(1)
@@ -86,7 +89,7 @@ export default async function ConciliacionesPage({
     .in('cuenta_origen', tarjetaIds)
     .in('tipo_movimiento', ['Gasto', 'Ingreso'])
     .eq('periodo_tarjeta', periodoActual)
-    .eq('user_id', user.id)
+    .eq('user_id', wsId)
 
   type MovIdx = { monto: number; conciliado: boolean; tipo: string; moneda: string; cotizacion: number | null }
   const movsByTarjeta: Record<string, MovIdx[]> = {}

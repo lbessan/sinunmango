@@ -25,6 +25,7 @@ export default async function GastosFijosPage() {
   if (!user) redirect('/login')
   const workspace = await getCurrentWorkspace(user.id)
   const wsId = workspace.ownerUserId
+  const isOwn = workspace.isOwn
 
   const [{ data: gastosRaw }, { data: params }] = await Promise.all([
     supabase.from('gastos_fijos')
@@ -83,11 +84,13 @@ export default async function GastosFijosPage() {
           <span className="text-sm text-slate-500 hidden sm:inline">
             Total mensual: <span className="font-semibold text-slate-800 tabular-nums">${fmt(totalMensual)}</span>
           </span>
-          <Link href="/gastos-fijos/nuevo"
-            className="inline-flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium whitespace-nowrap"
-            style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}>
-            <Plus size={15} />Nuevo
-          </Link>
+          {isOwn && (
+            <Link href="/gastos-fijos/nuevo"
+              className="inline-flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium whitespace-nowrap"
+              style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}>
+              <Plus size={15} />Nuevo
+            </Link>
+          )}
         </div>
       </div>
 
@@ -156,23 +159,28 @@ export default async function GastosFijosPage() {
                       {hoy ? 'vence hoy' : vencido ? 'vencido' : 'pendiente'}
                     </p>
                   </div>
+                  {/* Registrar pago: editor también puede (crea un mov en la cuenta). */}
                   <Link href={`/movimientos/nuevo?${pagoParams.toString()}`}
                     className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg font-medium border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors whitespace-nowrap">
                     <ArrowDownCircle size={14} />Registrar pago
                   </Link>
-                  <Link href={`/gastos-fijos/${g.id}/editar`}
-                    className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
-                    title="Editar"
-                  >
-                    <Pencil size={14} />
-                  </Link>
-                  <DeleteButton
-                    endpoint={`/api/gastos-fijos/${g.id}`}
-                    redirectTo="/gastos-fijos"
-                    label={g.nombre_gasto}
-                    description="El gasto fijo se eliminará permanentemente."
-                    variant="icon"
-                  />
+                  {isOwn && (
+                    <>
+                      <Link href={`/gastos-fijos/${g.id}/editar`}
+                        className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil size={14} />
+                      </Link>
+                      <DeleteButton
+                        endpoint={`/api/gastos-fijos/${g.id}`}
+                        redirectTo="/gastos-fijos"
+                        label={g.nombre_gasto}
+                        description="El gasto fijo se eliminará permanentemente."
+                        variant="icon"
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             )
@@ -212,17 +220,21 @@ export default async function GastosFijosPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-4">
                   <p className="text-sm font-semibold text-slate-400">${fmt(monto)}</p>
-                  <Link href={`/gastos-fijos/${g.id}/editar`}
-                    className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors">
-                    <Pencil size={14} />
-                  </Link>
-                  <DeleteButton
-                    endpoint={`/api/gastos-fijos/${g.id}`}
-                    redirectTo="/gastos-fijos"
-                    label={g.nombre_gasto}
-                    description="El gasto fijo se eliminará permanentemente."
-                    variant="icon"
-                  />
+                  {isOwn && (
+                    <>
+                      <Link href={`/gastos-fijos/${g.id}/editar`}
+                        className="p-1.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors">
+                        <Pencil size={14} />
+                      </Link>
+                      <DeleteButton
+                        endpoint={`/api/gastos-fijos/${g.id}`}
+                        redirectTo="/gastos-fijos"
+                        label={g.nombre_gasto}
+                        description="El gasto fijo se eliminará permanentemente."
+                        variant="icon"
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             )

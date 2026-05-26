@@ -87,6 +87,7 @@ export default async function InversionesPage() {
   if (!user) redirect('/login')
   const workspace = await getCurrentWorkspace(user.id)
   const wsId = workspace.ownerUserId
+  const isOwn = workspace.isOwn
 
   const [{ data: inversiones }, { data: params }] = await Promise.all([
     supabase
@@ -139,30 +140,38 @@ export default async function InversionesPage() {
           <h1 className="text-xl font-semibold text-slate-800">Inversiones</h1>
           <p className="text-xs text-slate-400 mt-0.5">{inv.length} posición{inv.length !== 1 ? 'es' : ''} activa{inv.length !== 1 ? 's' : ''}</p>
         </div>
-        <Link
-          href="/inversiones/nueva"
-          className="inline-flex items-center gap-2 text-sm text-white px-3 sm:px-4 py-2.5 rounded-xl font-medium shrink-0 whitespace-nowrap"
-          style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
-        >
-          <Plus size={16} />
-          <span className="hidden sm:inline">Nueva inversión</span>
-          <span className="sm:hidden">Nueva</span>
-        </Link>
+        {isOwn && (
+          <Link
+            href="/inversiones/nueva"
+            className="inline-flex items-center gap-2 text-sm text-white px-3 sm:px-4 py-2.5 rounded-xl font-medium shrink-0 whitespace-nowrap"
+            style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
+          >
+            <Plus size={16} />
+            <span className="hidden sm:inline">Nueva inversión</span>
+            <span className="sm:hidden">Nueva</span>
+          </Link>
+        )}
       </div>
 
       {inv.length === 0 ? (
         /* Empty state */
         <div className="bg-white rounded-2xl border border-slate-100 py-20 text-center">
           <p className="text-4xl mb-4">📈</p>
-          <p className="text-slate-700 font-semibold text-lg mb-2">Todavía no tenés inversiones cargadas</p>
-          <p className="text-slate-400 text-sm mb-6">Podés registrar plazos fijos, FCI, dólares, crypto y más.</p>
-          <Link
-            href="/inversiones/nueva"
-            className="inline-flex items-center gap-2 text-sm text-white px-6 py-3 rounded-xl font-medium"
-            style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
-          >
-            <Plus size={16} /> Cargar primera inversión
-          </Link>
+          <p className="text-slate-700 font-semibold text-lg mb-2">
+            {isOwn ? 'Todavía no tenés inversiones cargadas' : 'No hay inversiones compartidas en este workspace'}
+          </p>
+          {isOwn && (
+            <>
+              <p className="text-slate-400 text-sm mb-6">Podés registrar plazos fijos, FCI, dólares, crypto y más.</p>
+              <Link
+                href="/inversiones/nueva"
+                className="inline-flex items-center gap-2 text-sm text-white px-6 py-3 rounded-xl font-medium"
+                style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
+              >
+                <Plus size={16} /> Cargar primera inversión
+              </Link>
+            </>
+          )}
         </div>
       ) : (
         <>
@@ -290,13 +299,15 @@ export default async function InversionesPage() {
                               sin hover el opacity-0 dejaba al user sin forma
                               de borrar. En sm+ sigue oculto hasta hover (UI
                               menos cargada). */}
-                          <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                            <DeleteButton
-                              endpoint={`/api/inversiones/${i.id}`}
-                              label="esta inversión"
-                              description="La inversión se marcará como liquidada. El movimiento de origen se conserva."
-                            />
-                          </div>
+                          {isOwn && (
+                            <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                              <DeleteButton
+                                endpoint={`/api/inversiones/${i.id}`}
+                                label="esta inversión"
+                                description="La inversión se marcará como liquidada. El movimiento de origen se conserva."
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )

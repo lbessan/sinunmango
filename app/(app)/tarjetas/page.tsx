@@ -1,4 +1,5 @@
 import { getAuthedClient } from '@/lib/supabase/server'
+import { getCurrentWorkspace } from '@/lib/workspace'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Pencil, CreditCard } from 'lucide-react'
@@ -36,20 +37,23 @@ function CardThumbnailServer({ imagenUrl, color, nombre }: {
 export default async function TarjetasPage() {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+  const workspace = await getCurrentWorkspace(user.id)
+  const wsId = workspace.ownerUserId
+  const isOwn = workspace.isOwn
 
   const { data: tarjetas } = await supabase
     .from('saldo_actual_cuentas')
     .select('*')
     .eq('tipo_cuenta', 'Tarjeta Credito')
     .eq('activa', true)
-    .eq('user_id', user.id)
+    .eq('user_id', wsId)
     .order('nombre_cuenta')
 
   const { data: extras } = await supabase
     .from('cuentas')
     .select('id, imagen_url, color_primario')
     .eq('tipo_cuenta', 'Tarjeta Credito')
-    .eq('user_id', user.id)
+    .eq('user_id', wsId)
 
   const extraMap = Object.fromEntries((extras ?? []).map(c => [c.id, c]))
 
@@ -57,15 +61,17 @@ export default async function TarjetasPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-slate-800 min-w-0 truncate">Tarjetas de crédito</h1>
-        <Link
-          href="/tarjetas/nueva"
-          className="inline-flex items-center gap-2 text-sm text-white px-3 sm:px-4 py-2 rounded-lg font-medium shrink-0 whitespace-nowrap"
-          style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
-        >
-          <Plus size={15} />
-          <span className="hidden sm:inline">Nueva tarjeta</span>
-          <span className="sm:hidden">Nueva</span>
-        </Link>
+        {isOwn && (
+          <Link
+            href="/tarjetas/nueva"
+            className="inline-flex items-center gap-2 text-sm text-white px-3 sm:px-4 py-2 rounded-lg font-medium shrink-0 whitespace-nowrap"
+            style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
+          >
+            <Plus size={15} />
+            <span className="hidden sm:inline">Nueva tarjeta</span>
+            <span className="sm:hidden">Nueva</span>
+          </Link>
+        )}
       </div>
 
       {tarjetas && tarjetas.length > 0 ? (
@@ -107,19 +113,23 @@ export default async function TarjetasPage() {
                     </p>
                     <p className="text-xs text-slate-400 hidden sm:block">acumulado</p>
                   </div>
-                  <Link
-                    href={`/tarjetas/${t.id}/editar`}
-                    className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
-                    title="Editar"
-                  >
-                    <Pencil size={16} />
-                  </Link>
-                  <DeleteButton
-                    endpoint={`/api/tarjetas/${t.id}`}
-                    redirectTo="/tarjetas"
-                    label={t.nombre_cuenta}
-                    variant="icon"
-                  />
+                  {isOwn && (
+                    <>
+                      <Link
+                        href={`/tarjetas/${t.id}/editar`}
+                        className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil size={16} />
+                      </Link>
+                      <DeleteButton
+                        endpoint={`/api/tarjetas/${t.id}`}
+                        redirectTo="/tarjetas"
+                        label={t.nombre_cuenta}
+                        variant="icon"
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             )
@@ -128,10 +138,14 @@ export default async function TarjetasPage() {
       ) : (
         <div className="text-center py-16 text-slate-400">
           <CreditCard size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">Todavía no tenés tarjetas cargadas.</p>
-          <Link href="/tarjetas/nueva" className="mt-3 inline-block text-sm font-medium" style={{ color: 'var(--accent)' }}>
-            Agregar primera tarjeta →
-          </Link>
+          <p className="text-sm">
+            {isOwn ? 'Todavía no tenés tarjetas cargadas.' : 'No hay tarjetas compartidas con vos en este workspace.'}
+          </p>
+          {isOwn && (
+            <Link href="/tarjetas/nueva" className="mt-3 inline-block text-sm font-medium" style={{ color: 'var(--accent)' }}>
+              Agregar primera tarjeta →
+            </Link>
+          )}
         </div>
       )}
     </div>

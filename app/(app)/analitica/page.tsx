@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { getUserPlan } from '@/lib/subscription'
+import { getCurrentWorkspace } from '@/lib/workspace'
 import { redirect } from 'next/navigation'
 import { BarChart2 } from 'lucide-react'
 import { AnaliticaShell } from '@/components/analitica/analitica-shell'
@@ -10,6 +11,8 @@ type ShellProps = ComponentProps<typeof AnaliticaShell>
 export default async function AnaliticaPage() {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+  const workspace = await getCurrentWorkspace(user.id)
+  const wsId = workspace.ownerUserId
 
   // Plan del usuario — feature AI gateada por Pro
   const plan = await getUserPlan(supabase)
@@ -36,7 +39,7 @@ export default async function AnaliticaPage() {
     supabase
       .from('movimientos_completos')
       .select('id, fecha, tipo_movimiento, monto, monto_estimado, detalle, categoria_nombre, categoria_icono, subcategoria, cuotas_total, grupo_cuotas, cuenta_origen_nombre, cuenta_origen_tipo')
-      .eq('user_id', user.id)
+      .eq('user_id', wsId)
       .in('tipo_movimiento', ['Ingreso', 'Gasto'])
       .gte('fecha', desdeISO)
       .order('fecha', { ascending: true })
@@ -44,17 +47,17 @@ export default async function AnaliticaPage() {
     supabase
       .from('subcategorias')
       .select('id, nombre_subcategoria, categoria_padre')
-      .eq('user_id', user.id),
+      .eq('user_id', wsId),
     supabase
       .from('cuentas')
       .select('id, nombre_cuenta, tipo_cuenta')
       .eq('activa', true)
-      .eq('user_id', user.id)
+      .eq('user_id', wsId)
       .order('nombre_cuenta'),
     supabase
       .from('categorias')
       .select('id, nombre_categoria, icono, tipo_default')
-      .eq('user_id', user.id)
+      .eq('user_id', wsId)
       .order('nombre_categoria'),
   ])
 

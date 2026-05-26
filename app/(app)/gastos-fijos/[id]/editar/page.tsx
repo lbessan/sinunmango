@@ -5,6 +5,9 @@ import { notFound, redirect } from 'next/navigation'
 
 type Props = ComponentProps<typeof GastoFijoFormClient>
 
+// Editar gasto fijo: owner-only. Si el invitee llega acá por URL directa, RLS
+// + filtro user.id devuelve notFound. Edit buttons en /gastos-fijos están
+// ocultos para invitees (workspace.isOwn).
 export default async function EditarGastoFijoPage({
   params,
 }: {

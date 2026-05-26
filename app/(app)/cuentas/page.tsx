@@ -70,6 +70,7 @@ export default async function CuentasPage() {
   if (!user) redirect('/login')
   const workspace = await getCurrentWorkspace(user.id)
   const wsId = workspace.ownerUserId
+  const isOwn = workspace.isOwn
 
   const { data: cuentas } = await supabase
     .from('saldo_actual_cuentas')
@@ -107,14 +108,16 @@ export default async function CuentasPage() {
     <div className="max-w-3xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-slate-800">Cuentas</h1>
-        <Link
-          href="/cuentas/nueva"
-          className="flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium"
-          style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
-        >
-          <Plus size={15} />
-          Nueva cuenta
-        </Link>
+        {isOwn && (
+          <Link
+            href="/cuentas/nueva"
+            className="flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium"
+            style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
+          >
+            <Plus size={15} />
+            Nueva cuenta
+          </Link>
+        )}
       </div>
 
       {Object.entries(grupos).map(([tipo, lista]) => {
@@ -156,19 +159,23 @@ export default async function CuentasPage() {
                       <p className="text-sm font-semibold text-slate-800 tabular-nums mr-1 sm:mr-2">
                         {c.moneda === 'USD' ? 'US$' : '$'}{fmt(c.saldo_actual ?? 0)}
                       </p>
-                      <Link
-                        href={`/cuentas/${c.id}/editar`}
-                        className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
-                        title="Editar"
-                      >
-                        <Pencil size={16} />
-                      </Link>
-                      <DeleteButton
-                        endpoint={`/api/cuentas/${c.id}`}
-                        redirectTo="/cuentas"
-                        label={c.nombre_cuenta}
-                        variant="icon"
-                      />
+                      {isOwn && (
+                        <>
+                          <Link
+                            href={`/cuentas/${c.id}/editar`}
+                            className="inline-flex items-center justify-center p-2.5 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+                            title="Editar"
+                          >
+                            <Pencil size={16} />
+                          </Link>
+                          <DeleteButton
+                            endpoint={`/api/cuentas/${c.id}`}
+                            redirectTo="/cuentas"
+                            label={c.nombre_cuenta}
+                            variant="icon"
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
                 )
