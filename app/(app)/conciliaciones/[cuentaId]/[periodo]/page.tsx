@@ -28,7 +28,7 @@ export default async function ConciliacionDetallePage({
 
   // Movs scoped por cuenta (no user_id) → RLS permite mis propios movs + movs
   // en cuentas compartidas, así el invitee ve TODO el período de la tarjeta.
-  const [{ data: cuenta }, { data: movimientos }, { data: categorias }, { data: subcategorias }] =
+  const [{ data: cuenta }, { data: movimientos }, { data: categorias }, { data: subcategorias }, { data: familia }] =
     await Promise.all([
       supabase.from('cuentas').select('*').eq('id', cuentaId).eq('user_id', wsId).single(),
       supabase
@@ -47,9 +47,28 @@ export default async function ConciliacionDetallePage({
         .from('subcategorias')
         .select('id, categoria_padre, nombre_subcategoria')
         .eq('user_id', wsId),
+      // Familia de tarjetas: la principal (cuentaId) + todas sus adicionales.
+      // Las usamos en el ImportarPdfModal para que el user pueda override
+      // la cuenta destino de cada consumo del resumen, y para que el
+      // selector muestre el contexto del titular.
+      supabase
+        .from('cuentas')
+        .select('id, nombre_cuenta, nombre_titular, tarjeta_principal_id')
+        .eq('user_id', wsId)
+        .eq('tipo_cuenta', 'Tarjeta Credito')
+        .or(`id.eq.${cuentaId},tarjeta_principal_id.eq.${cuentaId}`),
     ])
 
   if (!cuenta) notFound()
+
+  type FamiliaRow = { id: string; nombre_cuenta: string | null; nombre_titular: string | null; tarjeta_principal_id: string | null }
+  const cuentasFamilia = ((familia ?? []) as unknown as FamiliaRow[])
+    .map(r => ({
+      id:              r.id,
+      nombre_cuenta:   r.nombre_cuenta ?? '',
+      nombre_titular:  r.nombre_titular,
+      isPrincipal:     r.tarjeta_principal_id === null,
+    }))
 
   // Extraer día de cierre y vencimiento
   const cierreDay = cuenta.fecha_cierre_tarjeta
@@ -84,6 +103,7 @@ export default async function ConciliacionDetallePage({
         subcategorias={(subcategorias ?? []) as ConcProps['subcategorias']}
         cierreDay={cierreDay}
         venceDay={venceDay}
+        cuentasFamilia={cuentasFamilia}
       />
     </div>
   )

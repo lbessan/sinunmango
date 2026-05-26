@@ -66,9 +66,15 @@ afterEach(() => {
 
 // Helper: arma un mock supabase que devuelve `cuenta` cuando se consulta
 // .from('cuentas').select(...).eq('id',...).eq('user_id',...).maybeSingle()
-function buildSupabaseWithCuenta(cuenta: unknown) {
+// y soporta también el path del dispatcher de adicionales que termina con
+// .or() en vez de .maybeSingle() — devolvemos la familia con `or` thenable.
+function buildSupabaseWithCuenta(cuenta: unknown, familia: unknown[] = []) {
   const maybeSingle = vi.fn(() => Promise.resolve({ data: cuenta, error: null }))
-  const eq2 = vi.fn(() => ({ maybeSingle }))
+  const orThenable = {
+    then: (cb: (v: { data: unknown[]; error: null }) => unknown) =>
+      Promise.resolve({ data: familia, error: null }).then(cb),
+  }
+  const eq2 = vi.fn(() => ({ maybeSingle, or: vi.fn(() => orThenable) }))
   const eq1 = vi.fn(() => ({ eq: eq2 }))
   const select = vi.fn(() => ({ eq: eq1 }))
   return { from: vi.fn(() => ({ select })) }

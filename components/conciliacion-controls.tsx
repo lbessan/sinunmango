@@ -435,7 +435,16 @@ type Transaccion = {
   cuotas: number; cuotas_total: number; ya_existe: boolean; seleccionada: boolean
   es_impuesto: boolean; es_descuento: boolean; catId: string
   subcatId: string  // opcional, vacío si la categoría no tiene subcategorías
+  /** Titular extraído del resumen (ej: "Celeste Cerono"). Opcional. */
+  titular?: string | null
+  /** Cuenta a la que va el mov al importar. Default: la sugerencia del
+   *  endpoint, que matchea contra tarjetas adicionales por nombre_titular.
+   *  El user puede override por fila si quiere. */
+  cuentaOrigen?: string
 }
+
+// Tipo del cuentaOption que pasamos al selector (lista de candidatas)
+type CuentaOpcion = { id: string; nombre_cuenta: string; nombre_titular: string | null; isPrincipal: boolean }
 
 // Selector de categoría compacto, inline (sin label exterior)
 function CatSelect({ categorias, value, onChange }: { categorias: Categoria[]; value: string; onChange: (id: string) => void }) {
@@ -467,11 +476,15 @@ function SubCatSelect({ subcategorias, value, onChange }: { subcategorias: Subca
   )
 }
 
-function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosExistentes, categorias, subcategorias, onImported, onClose }: {
+function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosExistentes, categorias, subcategorias, cuentasFamilia, onImported, onClose }: {
   cuentaId: string; periodo: string
   cierreDay?: number | null; venceDay?: number | null
   movimientosExistentes: Mov[]
   categorias: Categoria[]; subcategorias: Subcategoria[]
+  /** Lista de cuentas accesibles para asignar consumos: la principal +
+   *  sus tarjetas adicionales. Si no hay adicionales, queda solo la
+   *  principal y el selector por fila no aparece (no hay nada que elegir). */
+  cuentasFamilia?: CuentaOpcion[]
   onImported: (movs: Mov[]) => void; onClose: () => void
 }) {
   const fileRef   = useRef<HTMLInputElement>(null)
@@ -583,6 +596,9 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       seleccionada: !t.ya_existe,
       catId: '',
       subcatId: '',
+      // El server propone cuenta_origen_sugerida (matcheada por titular).
+      // Si no llegó por algún motivo, fallback al cuenta_id del contexto.
+      cuentaOrigen: typeof t.cuenta_origen_sugerida === 'string' ? t.cuenta_origen_sugerida : cuentaId,
     }))
     setTxs(parsed)
     if (d.fechas_propuestas) setFechasPropuestas(d.fechas_propuestas)
@@ -672,6 +688,9 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const setDetalleForTx = (i: number, detalle: string) =>
     setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, detalle } : t))
 
+  const setCuentaForTx = (i: number, cuentaOrigen: string) =>
+    setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, cuentaOrigen } : t))
+
   const toggleAll = () => {
     const allSel = txs.filter(t => !t.ya_existe).every(t => t.seleccionada)
     setTxs(prev => prev.map(t => t.ya_existe ? t : { ...t, seleccionada: !allSel }))
@@ -701,7 +720,10 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
           monto: montoCuota,
           moneda: tx.monto_usd ? 'USD' : 'ARS',
           tipo_movimiento: tipoMov,
-          cuenta_origen: cuentaId, categoria: tx.catId || null, subcategoria: tx.subcatId || null,
+          // tx.cuentaOrigen viene del dispatcher del server (matcheado por
+          // titular contra adicionales). Si el user lo override en la review,
+          // ese valor sobreescribe la sugerencia. Fallback a cuentaId si no.
+          cuenta_origen: tx.cuentaOrigen ?? cuentaId, categoria: tx.catId || null, subcategoria: tx.subcatId || null,
           cotizacion: null, conciliado: true,
           periodo_tarjeta: periodoCuota,
           cuotas_total: tx.cuotas_total, cuota_actual: i + 1, ciclo_actual: 1,
@@ -755,6 +777,10 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const categoriasGasto   = categorias.filter(c => c.tipo_default !== 'Ingreso')
   const categoriasIngreso = categorias.filter(c => c.tipo_default === 'Ingreso')
 
+  // ¿La principal tiene tarjetas adicionales registradas? Si no, ni
+  // mostramos el selector por fila — todo va a la principal sí o sí.
+  const tienAdicionales = (cuentasFamilia ?? []).length > 1
+
   const TxRow = ({ tx, idx }: { tx: Transaccion; idx: number }) => {
     const montoArs = tx.monto_ars
     const montoUsd = tx.monto_usd
@@ -804,6 +830,19 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
             </div>
             <p className="text-xs text-slate-400">
               {tx.fecha}{tx.cuotas_total > 1 ? ` · Cuota ${tx.cuotas}/${tx.cuotas_total}` : ''}
+              {/* Si la familia tiene más de una cuenta (adicionales) y el
+                  consumo NO va a la principal por default, mostramos un
+                  badge con el nombre de la adicional sugerida. Visual cue
+                  de que el matching automático funcionó. */}
+              {tienAdicionales && tx.cuentaOrigen && tx.cuentaOrigen !== cuentaId && (() => {
+                const target = (cuentasFamilia ?? []).find(c => c.id === tx.cuentaOrigen)
+                if (!target) return null
+                return (
+                  <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium">
+                    → {target.nombre_cuenta}
+                  </span>
+                )
+              })()}
             </p>
           </div>
           <span className={`text-sm font-semibold whitespace-nowrap mt-0.5 ${esDescuento ? 'text-emerald-600' : 'text-slate-700'}`}>{montoLabel}</span>
@@ -821,6 +860,23 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
                 value={tx.subcatId}
                 onChange={id => setSubcatForTx(idx, id)}
               />
+            )}
+            {/* Selector de cuenta destino. Solo aparece si la principal
+                tiene adicionales — sino, no hay nada que elegir y el
+                consumo siempre va a la principal. */}
+            {tienAdicionales && (
+              <select
+                value={tx.cuentaOrigen ?? cuentaId}
+                onChange={e => setCuentaForTx(idx, e.target.value)}
+                onClick={e => e.stopPropagation()}
+                className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-600 outline-none focus:ring-1 focus:ring-blue-200"
+              >
+                {(cuentasFamilia ?? []).map(c => (
+                  <option key={c.id} value={c.id}>
+                    → {c.nombre_cuenta}{c.isPrincipal ? ' (principal)' : c.nombre_titular ? ` (${c.nombre_titular})` : ''}
+                  </option>
+                ))}
+              </select>
             )}
           </div>
         )}
@@ -1126,10 +1182,14 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, categorias, subcategorias, cierreDay, venceDay }: {
+export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, categorias, subcategorias, cierreDay, venceDay, cuentasFamilia }: {
   movimientos: Mov[]; cuentaId: string; periodo: string
   categorias: Categoria[]; subcategorias: Subcategoria[]
   cierreDay?: number | null; venceDay?: number | null
+  /** Tarjeta principal + sus adicionales con nombre_titular. Usado en el
+   *  selector del ImportarPdfModal para que el user pueda override la
+   *  cuenta destino de cada consumo del resumen. */
+  cuentasFamilia?: CuentaOpcion[]
 }) {
   const [movs,        setMovs]       = useState([...inicial])
   const [loading,     setLoading]    = useState<string | null>(null)
@@ -1515,6 +1575,7 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
           cierreDay={cierreDay} venceDay={venceDay}
           movimientosExistentes={movs}
           categorias={categorias} subcategorias={subcategorias}
+          cuentasFamilia={cuentasFamilia}
           onImported={nuevos => setMovs(prev => [...prev, ...nuevos].sort((a, b) => a.fecha.localeCompare(b.fecha)))}
           onClose={() => setImportPdf(false)}
         />

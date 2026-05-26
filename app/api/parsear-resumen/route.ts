@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
               type: 'text',
               text: `Analizá este resumen de tarjeta de crédito y extraé los siguientes items:
 
-1. CONSUMOS del titular principal (sección "Consumos" o similar — NO los de tarjetas adicionales)
+1. CONSUMOS del titular principal Y DE TODAS LAS TARJETAS ADICIONALES. El resumen normalmente tiene secciones separadas tipo "Consumos de [Nombre Titular]" o "Consumos [Nombre Adicional]". Incluí TODOS, identificando el titular de cada uno con el campo "titular".
 2. DESCUENTOS Y CRÉDITOS A FAVOR que aparezcan EN CUALQUIER PARTE del resumen (incluso fuera de la sección de consumos, en el encabezado o en secciones propias). Ejemplos: "CR.RG ...", "BONIF. CONSUMO ...", "REINTEGRO ...", "DESCUENTO ...", ajustes con monto negativo.
 3. TODOS los items INDIVIDUALES de la sección "Impuestos, cargos e intereses" (si existe), cada uno por separado
 4. FECHAS DEL PRÓXIMO PERÍODO si figuran en el resumen (típicamente en el encabezado o pie):
@@ -215,6 +215,7 @@ Para cada item extraé:
 - ya_existe (true si coincide con alguno de los movimientos ya cargados por fecha y monto similar)
 - es_impuesto (true para CADA item de la sección impuestos/cargos/intereses, individualmente)
 - es_descuento (true para bonificaciones, reintegros, descuentos y créditos a favor — siempre monto POSITIVO)
+- titular (string con el NOMBRE DEL TITULAR exacto tal como figura en el resumen en el header de la sección donde está el consumo — ej: "Celeste Cerono", "L Bessan Nofal". Si el consumo es del titular principal y no hay subsección, o si es un descuento/impuesto general sin titular asociado, devolvé null. Es el dato que usamos para dispatchar consumos a la tarjeta adicional correcta.)
 
 Para los impuestos: listá CADA LÍNEA individualmente (no las sumes). Si el PDF tiene varias páginas, asegurate de incluir todos los items de impuestos de todas las páginas. Cada item va con es_impuesto: true.
 Para descuentos: incluílos individualmente con monto POSITIVO y es_descuento: true. Buscalos en TODO el documento, no solo en la sección de consumos.
@@ -233,7 +234,20 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
       "cuotas_total": 1,
       "ya_existe": false,
       "es_impuesto": false,
-      "es_descuento": false
+      "es_descuento": false,
+      "titular": "L Bessan Nofal"
+    },
+    {
+      "fecha": "2026-04-05",
+      "detalle": "Market",
+      "monto_ars": 46261.86,
+      "monto_usd": null,
+      "cuotas": 2,
+      "cuotas_total": 3,
+      "ya_existe": false,
+      "es_impuesto": false,
+      "es_descuento": false,
+      "titular": "Celeste Cerono"
     },
     {
       "fecha": "2026-04-01",
@@ -244,18 +258,8 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
       "cuotas_total": 1,
       "ya_existe": false,
       "es_impuesto": false,
-      "es_descuento": true
-    },
-    {
-      "fecha": "2026-04-14",
-      "detalle": "Bonif. Consumo Openpay Los Cinco Pinos",
-      "monto_ars": 12004.69,
-      "monto_usd": null,
-      "cuotas": 1,
-      "cuotas_total": 1,
-      "ya_existe": false,
-      "es_impuesto": false,
-      "es_descuento": true
+      "es_descuento": true,
+      "titular": null
     },
     {
       "fecha": "2026-04-23",
@@ -266,18 +270,8 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
       "cuotas_total": 1,
       "ya_existe": false,
       "es_impuesto": true,
-      "es_descuento": false
-    },
-    {
-      "fecha": "2026-04-23",
-      "detalle": "DB IVA 21%",
-      "monto_ars": 12842.97,
-      "monto_usd": null,
-      "cuotas": 1,
-      "cuotas_total": 1,
-      "ya_existe": false,
-      "es_impuesto": true,
-      "es_descuento": false
+      "es_descuento": false,
+      "titular": null
     }
   ]
 }
@@ -285,7 +279,7 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
 Notas importantes:
 - Ignorá SOLO los pagos realizados (sección "Pagos" del resumen)
 - SÍ incluí descuentos y créditos a favor aunque estén fuera de la sección de consumos
-- NO incluyas consumos de tarjetas adicionales (titular adicional)
+- INCLUÍ consumos del titular principal Y de tarjetas adicionales — identificando cada uno con su titular en el campo correspondiente
 - Para cuotas: si dice "C.04/12" significa cuota 4 de 12 — extraé SOLO esa cuota tal cual aparece
 - Limpiá el detalle: "CARREFOUR MAR DEL PLATA" → "Carrefour Mar del Plata". NUNCA uses markdown (no links, no asteriscos, solo texto plano)
 - Si no hay sección de impuestos/cargos, no incluyas ningún item con es_impuesto: true
@@ -370,6 +364,48 @@ Notas importantes:
     }
   }
 
+  // Helper para dispatchar consumos según titular detectado por Claude.
+  // Si cuenta_id viene (el user está conciliando una tarjeta principal),
+  // cargamos todas las adicionales de esa principal + ella misma con sus
+  // nombre_titular, y matcheamos case-insensitive + trim. Agregamos un
+  // campo `cuenta_origen_sugerida` a cada transacción.
+  async function dispatchTitulares(transacciones: unknown[]): Promise<unknown[]> {
+    if (!cuenta_id || !Array.isArray(transacciones) || transacciones.length === 0) {
+      return transacciones
+    }
+    // Cargar principal + adicionales de la principal con nombre_titular
+    const { data: candidatas } = await supabase
+      .from('cuentas')
+      .select('id, nombre_titular, tarjeta_principal_id')
+      .eq('user_id', user!.id)
+      .eq('tipo_cuenta', 'Tarjeta Credito')
+      .or(`id.eq.${cuenta_id},tarjeta_principal_id.eq.${cuenta_id}`)
+    type Row = { id: string; nombre_titular: string | null; tarjeta_principal_id: string | null }
+    const rows = (candidatas ?? []) as unknown as Row[]
+    // Index normalizado: lower+trim del nombre_titular → cuenta.id
+    const titularIndex = new Map<string, string>()
+    for (const r of rows) {
+      if (r.nombre_titular) {
+        const key = r.nombre_titular.trim().toLowerCase()
+        if (key) titularIndex.set(key, r.id)
+      }
+    }
+    // Si no hay ninguna cuenta con titular cargado, no hay nada que dispatchar
+    if (titularIndex.size === 0) {
+      return transacciones.map(t => {
+        if (typeof t !== 'object' || t === null) return t
+        return { ...t, cuenta_origen_sugerida: cuenta_id }
+      })
+    }
+    return transacciones.map(t => {
+      if (typeof t !== 'object' || t === null) return t
+      const row = t as Record<string, unknown>
+      const titular = typeof row.titular === 'string' ? row.titular.trim().toLowerCase() : ''
+      const matched = titular ? titularIndex.get(titular) : null
+      return { ...row, cuenta_origen_sugerida: matched ?? cuenta_id }
+    })
+  }
+
   // Intento de parse normal
   const parsed = parseClaudeJSON<{
     transacciones?:        unknown[]
@@ -378,10 +414,11 @@ Notas importantes:
   }>(rawText)
   if (parsed) {
     const fechas_propuestas = await buildFechasPropuestas(parsed.proximo_cierre, parsed.proximo_vencimiento)
+    const transacciones = await dispatchTitulares(parsed.transacciones ?? [])
     const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
     return NextResponse.json({
       ok: true,
-      transacciones: parsed.transacciones ?? [],
+      transacciones,
       fechas_propuestas,
     }, { headers: committed ? usageHeaders(committed) : {} })
   }
@@ -393,10 +430,11 @@ Notas importantes:
   const recovered = recoverPartialArray(rawText, 'transacciones')
   if (recovered) {
     console.warn(`[parsear-resumen] Partial parse recovered ${recovered.length} transactions`)
+    const transacciones = await dispatchTitulares(recovered)
     const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
     return NextResponse.json({
       ok: true,
-      transacciones: recovered,
+      transacciones,
       fechas_propuestas: null,
     }, { headers: committed ? usageHeaders(committed) : {} })
   }
