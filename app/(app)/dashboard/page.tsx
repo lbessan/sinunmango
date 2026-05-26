@@ -9,6 +9,7 @@ import { TourTrigger } from '@/components/tour-trigger'
 import { CargarIngresosCTA } from '@/components/cargar-ingresos-cta'
 import { InstallPWAButton } from '@/components/install-pwa-button'
 import { todayAR, todayPartsAR } from '@/lib/timezone'
+import { getCurrentWorkspace } from '@/lib/workspace'
 import {
   calcularSaldoInicial,
   bifurcarGastosFijos,
@@ -463,6 +464,11 @@ export default async function DashboardPage({
 }) {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+  // Workspace: own o ajeno (si el user aceptó un share y switcheó).
+  // Las queries usan workspace.ownerUserId para que el invitee vea
+  // los datos del owner (filtrados por RLS a lo compartido).
+  const workspace = await getCurrentWorkspace(user.id)
+  const wsId = workspace.ownerUserId
   const params   = await searchParams
   const { year: yAR, month: mAR, day: dAR } = todayPartsAR()
   const today    = new Date(yAR, mAR - 1, dAR)
@@ -477,19 +483,19 @@ export default async function DashboardPage({
     const [{ data: resumen }, { data: cuentas }, { data: gastosFijos }, { data: cuentasExtra },
       { data: categoriasIng }, { data: deudaTarjMovs },
       { saldoBase: proyectadoActual, proyecciones }] = await Promise.all([
-      supabase.from('dashboard_resumen').select('*').eq('user_id', user.id).single(),
-      supabase.from('saldo_actual_cuentas').select('*').eq('activa', true).eq('user_id', user.id),
-      supabase.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta)').eq('activo', true).eq('user_id', user.id).order('dia_vencimiento'),
-      supabase.from('cuentas').select('id, imagen_url, color_primario').eq('user_id', user.id),
-      supabase.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', user.id),
+      supabase.from('dashboard_resumen').select('*').eq('user_id', wsId).single(),
+      supabase.from('saldo_actual_cuentas').select('*').eq('activa', true).eq('user_id', wsId),
+      supabase.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta)').eq('activo', true).eq('user_id', wsId).order('dia_vencimiento'),
+      supabase.from('cuentas').select('id, imagen_url, color_primario').eq('user_id', wsId),
+      supabase.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', wsId),
       // Movs del período actual sobre tarjetas — para desglose ARS/USD nativo en el card
       supabase.from('movimientos_completos')
         .select('monto, moneda, tipo_movimiento, cuenta_origen_tipo')
         .in('tipo_movimiento', ['Gasto', 'Ingreso'])
         .eq('periodo_tarjeta', inicioMesCur)
         .eq('cuenta_origen_tipo', 'Tarjeta Credito')
-        .eq('user_id', user.id),
-      calcularProyecciones(supabase, user.id, cur, 4),
+        .eq('user_id', wsId),
+      calcularProyecciones(supabase, wsId, cur, 4),
     ])
     if (!resumen) return <EmptyState />
 
@@ -686,7 +692,7 @@ export default async function DashboardPage({
 
   // ── PAST MONTH ─────────────────────────────────────────────────────────────
   if (tipo === 'pasado') {
-    const past   = await fetchPastMonth(supabase, user.id, mes)
+    const past   = await fetchPastMonth(supabase, wsId, mes)
     const maxCat = past.topCats[0]?.total ?? 1
 
     return (
@@ -784,8 +790,8 @@ export default async function DashboardPage({
 
   // ── FUTURE MONTH ───────────────────────────────────────────────────────────
   const [future, { saldoBase: saldoMes, saldoInicioMes: saldoInicio, datosDelMes, proyecciones }] = await Promise.all([
-    fetchFutureMonth(supabase, user.id, mes),
-    calcularProyecciones(supabase, user.id, mes, 4),
+    fetchFutureMonth(supabase, wsId, mes),
+    calcularProyecciones(supabase, wsId, mes, 4),
   ])
 
   return (

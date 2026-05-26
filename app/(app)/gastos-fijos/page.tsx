@@ -1,4 +1,5 @@
 import { getAuthedClient } from '@/lib/supabase/server'
+import { getCurrentWorkspace } from '@/lib/workspace'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Pencil, ArrowDownCircle } from 'lucide-react'
@@ -22,13 +23,15 @@ type GastoFijo = {
 export default async function GastosFijosPage() {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+  const workspace = await getCurrentWorkspace(user.id)
+  const wsId = workspace.ownerUserId
 
   const [{ data: gastosRaw }, { data: params }] = await Promise.all([
     supabase.from('gastos_fijos')
       .select('*, cuentas(id, nombre_cuenta, tipo_cuenta), categorias(id, nombre_categoria, icono)')
-      .eq('user_id', user.id)
+      .eq('user_id', wsId)
       .order('dia_vencimiento'),
-    supabase.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', user.id).single(),
+    supabase.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', wsId).single(),
   ])
 
   const dolarBna = params?.valor ?? 1410

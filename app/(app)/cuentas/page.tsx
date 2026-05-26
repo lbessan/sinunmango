@@ -1,4 +1,5 @@
 import { getAuthedClient } from '@/lib/supabase/server'
+import { getCurrentWorkspace } from '@/lib/workspace'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Pencil } from 'lucide-react'
@@ -67,18 +68,20 @@ function Thumbnail({ imagenUrl, colorPrim, tipo, nombre, moneda }: {
 export default async function CuentasPage() {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+  const workspace = await getCurrentWorkspace(user.id)
+  const wsId = workspace.ownerUserId
 
   const { data: cuentas } = await supabase
     .from('saldo_actual_cuentas')
     .select('*')
     .eq('activa', true)
-    .eq('user_id', user.id)
+    .eq('user_id', wsId)
     .order('tipo_cuenta')
 
   const { data: cuentasExtra } = await supabase
     .from('cuentas')
     .select('id, imagen_url, color_primario')
-    .eq('user_id', user.id)
+    .eq('user_id', wsId)
 
   const extraMap = Object.fromEntries((cuentasExtra ?? []).map(c => [c.id, c]))
 

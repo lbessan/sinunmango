@@ -1,4 +1,5 @@
 import { getAuthedClient } from '@/lib/supabase/server'
+import { getCurrentWorkspace } from '@/lib/workspace'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, TrendingUp, TrendingDown, Clock, ChevronRight } from 'lucide-react'
@@ -84,19 +85,21 @@ function subDisplay(inv: Inversion): string {
 export default async function InversionesPage() {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+  const workspace = await getCurrentWorkspace(user.id)
+  const wsId = workspace.ownerUserId
 
   const [{ data: inversiones }, { data: params }] = await Promise.all([
     supabase
       .from('inversiones')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', wsId)
       .neq('estado', 'liquidado')
       .order('fecha_inicio', { ascending: false }),
     supabase
       .from('parametros')
       .select('valor')
       .eq('id', 'Dolar_Tarjeta_BNA')
-      .eq('user_id', user.id)
+      .eq('user_id', wsId)
       .single(),
   ])
 

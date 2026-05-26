@@ -7,6 +7,7 @@ import { Pencil, ArrowLeft } from 'lucide-react'
 import { CuentaSaldoReactivo } from '@/components/cuenta-saldo-reactivo'
 import { CuentaMovimientosTable } from '@/components/cuenta-movimientos-table'
 import { DeleteButton } from '@/components/delete-button'
+import { getCurrentWorkspace } from '@/lib/workspace'
 
 type SaldoProps = ComponentProps<typeof CuentaSaldoReactivo>
 type TableProps = ComponentProps<typeof CuentaMovimientosTable>
@@ -29,26 +30,28 @@ function esColorOscuro(hex: string): boolean {
 export default async function CuentaDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+  const workspace = await getCurrentWorkspace(user.id)
+  const wsId = workspace.ownerUserId
 
   const { id } = await params
   const today   = todayAR()
 
   const [{ data: cuenta }, { data: extra }, { data: movPasados }, { data: movFuturos }, { data: categorias }, { data: subcategorias }, { data: otrasCuentas }] =
     await Promise.all([
-      supabase.from('saldo_actual_cuentas').select('*').eq('id', id).eq('user_id', user.id).single(),
-      supabase.from('cuentas').select('imagen_url, imagen_banner_url, color_primario').eq('id', id).eq('user_id', user.id).single(),
+      supabase.from('saldo_actual_cuentas').select('*').eq('id', id).eq('user_id', wsId).single(),
+      supabase.from('cuentas').select('imagen_url, imagen_banner_url, color_primario').eq('id', id).eq('user_id', wsId).single(),
       supabase.from('movimientos_completos').select('*')
         .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
-        .eq('user_id', user.id)
+        .eq('user_id', wsId)
         .lte('fecha', today).order('fecha', { ascending: false }).limit(200),
       supabase.from('movimientos_completos').select('*')
         .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
-        .eq('user_id', user.id)
+        .eq('user_id', wsId)
         .gt('fecha', today)
         .order('periodo_tarjeta', { ascending: true }).order('fecha', { ascending: true }),
-      supabase.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', user.id).order('nombre_categoria'),
-      supabase.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', user.id),
-      supabase.from('cuentas').select('id, nombre_cuenta').eq('activa', true).eq('user_id', user.id).neq('id', id).order('nombre_cuenta'),
+      supabase.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', wsId).order('nombre_categoria'),
+      supabase.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', wsId),
+      supabase.from('cuentas').select('id, nombre_cuenta').eq('activa', true).eq('user_id', wsId).neq('id', id).order('nombre_cuenta'),
     ])
 
   if (!cuenta) notFound()
