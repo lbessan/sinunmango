@@ -28,23 +28,33 @@ function makeReq(): NextRequest {
   })
 }
 
-// Construye los mocks de Supabase para las dos queries que hace el cron:
+// Construye los mocks de Supabase para las tres queries que hace el cron:
 //   1. .from('gastos_fijos').select(...).eq('activo', true).not('dia_vencimiento', 'is', null)
-//   2. .from('user_preferences').select(...).in('user_id', userIds)
+//   2. .from('cuentas').select(...).eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true).not('fecha_vencimiento_tarjeta', 'is', null)
+//   3. .from('user_preferences').select(...).in('user_id', userIds)
 function setupQueries(opts: {
   gastosFijos:    Array<Record<string, unknown>>
+  tarjetas?:      Array<Record<string, unknown>>
   userPreferences?: Array<Record<string, unknown>>
   gastosError?:   unknown
+  tarjetasError?: unknown
 }) {
   const gastosNot = vi.fn(() => Promise.resolve({ data: opts.gastosFijos, error: opts.gastosError ?? null }))
   const gastosEq = vi.fn(() => ({ not: gastosNot }))
   const gastosSelect = vi.fn(() => ({ eq: gastosEq }))
+
+  // Tarjetas usa dos .eq() encadenados (tipo_cuenta + activa) y después .not()
+  const tarjetasNot = vi.fn(() => Promise.resolve({ data: opts.tarjetas ?? [], error: opts.tarjetasError ?? null }))
+  const tarjetasEq2 = vi.fn(() => ({ not: tarjetasNot }))
+  const tarjetasEq1 = vi.fn(() => ({ eq: tarjetasEq2 }))
+  const tarjetasSelect = vi.fn(() => ({ eq: tarjetasEq1 }))
 
   const prefsIn = vi.fn(() => Promise.resolve({ data: opts.userPreferences ?? [], error: null }))
   const prefsSelect = vi.fn(() => ({ in: prefsIn }))
 
   adminFromMock.mockImplementation((table: string) => {
     if (table === 'gastos_fijos')     return { select: gastosSelect }
+    if (table === 'cuentas')          return { select: tarjetasSelect }
     if (table === 'user_preferences') return { select: prefsSelect }
     return { select: vi.fn() }
   })
@@ -84,7 +94,7 @@ describe('GET /api/cron/alertas-vencimientos — empty cases', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.sent).toBe(0)
-    expect(body.message).toContain('No hay gastos')
+    expect(body.message).toContain('No hay vencimientos')
   })
 
   it('500 si query de gastos falla', async () => {
@@ -216,5 +226,129 @@ describe('GET /api/cron/alertas-vencimientos — alerta de hoy', () => {
     const body = await res.json()
     expect(body.sent).toBe(0)
     expect(fetchFn).not.toHaveBeenCalled()
+  })
+})
+
+describe('GET /api/cron/alertas-vencimientos — tarjetas de crédito', () => {
+  it('200 vacío cuando no hay gastos NI tarjetas', async () => {
+    setupQueries({ gastosFijos: [], tarjetas: [] })
+    const res = await GET(makeReq())
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.sent).toBe(0)
+    expect(body.message).toContain('No hay vencimientos')
+  })
+
+  it('manda email si tarjeta vence hoy (sin gastos fijos)', async () => {
+    const today    = new Date().getDate()
+    const todayStr = `2026-05-${String(today).padStart(2, '0')}`
+    setupQueries({
+      gastosFijos: [],
+      tarjetas: [
+        { id: 'cta_1', user_id: 'u1', nombre_cuenta: 'Visa Galicia',
+          fecha_vencimiento_tarjeta: todayStr },
+      ],
+      userPreferences: [{ user_id: 'u1', alerta_vencimientos_activa: true, alerta_vencimientos_dias: [0, 1, 3] }],
+    })
+    getUserByIdMock.mockResolvedValueOnce({ data: { user: { email: 'u1@test.com' } }, error: null })
+    const fetchFn = mockResendFetch()
+
+    const res = await GET(makeReq())
+    const body = await res.json()
+    expect(body.sent).toBe(1)
+
+    const callBody = JSON.parse(fetchFn.mock.calls[0][1]!.body as string)
+    expect(callBody.subject).toContain('Visa Galicia')
+    expect(callBody.subject).toContain('HOY')
+    expect(callBody.html).toContain('Vencimientos de tarjeta')
+    expect(callBody.html).toContain('Visa Galicia')
+  })
+
+  it('skip tarjeta si su día no matchea alerta_vencimientos_dias', async () => {
+    const today    = new Date().getDate()
+    // venc hoy + 5 días → no está en [0,1,3]
+    const farDay   = ((today + 5 - 1) % 28) + 1   // sigue siendo válido (1-28)
+    const farStr   = `2026-05-${String(farDay).padStart(2, '0')}`
+    setupQueries({
+      gastosFijos: [],
+      tarjetas: [
+        { id: 'cta_1', user_id: 'u1', nombre_cuenta: 'Visa', fecha_vencimiento_tarjeta: farStr },
+      ],
+      userPreferences: [{ user_id: 'u1', alerta_vencimientos_activa: true, alerta_vencimientos_dias: [0, 1, 3] }],
+    })
+    const fetchFn = mockResendFetch()
+
+    const res = await GET(makeReq())
+    const body = await res.json()
+    expect(body.sent).toBe(0)
+    expect(fetchFn).not.toHaveBeenCalled()
+  })
+
+  it('combina gasto fijo + tarjeta del mismo user en un solo email', async () => {
+    const today    = new Date().getDate()
+    const todayStr = `2026-05-${String(today).padStart(2, '0')}`
+    setupQueries({
+      gastosFijos: [
+        { id: 'g1', user_id: 'u1', nombre_gasto: 'Netflix', monto_estimado: 5000,
+          moneda: 'ARS', dia_vencimiento: today, activo: true,
+          cuentas: { nombre_cuenta: 'Galicia', tipo_cuenta: 'banco' }, categorias: null },
+      ],
+      tarjetas: [
+        { id: 'cta_1', user_id: 'u1', nombre_cuenta: 'Visa Galicia', fecha_vencimiento_tarjeta: todayStr },
+      ],
+      userPreferences: [{ user_id: 'u1', alerta_vencimientos_activa: true, alerta_vencimientos_dias: [0, 1, 3] }],
+    })
+    getUserByIdMock.mockResolvedValueOnce({ data: { user: { email: 'u1@test.com' } }, error: null })
+    const fetchFn = mockResendFetch()
+
+    const res = await GET(makeReq())
+    const body = await res.json()
+    expect(body.sent).toBe(1)
+    expect(body.results[0].count).toBe(2)  // gasto + tarjeta
+
+    const callBody = JSON.parse(fetchFn.mock.calls[0][1]!.body as string)
+    // Ambos en el email
+    expect(callBody.html).toContain('Netflix')
+    expect(callBody.html).toContain('Visa Galicia')
+    // Dos secciones distintas
+    expect(callBody.html).toContain('Gastos fijos')
+    expect(callBody.html).toContain('Vencimientos de tarjeta')
+  })
+
+  it('users distintos: cada uno recibe su propio email', async () => {
+    const today    = new Date().getDate()
+    const todayStr = `2026-05-${String(today).padStart(2, '0')}`
+    setupQueries({
+      gastosFijos: [
+        { id: 'g1', user_id: 'u1', nombre_gasto: 'Netflix', monto_estimado: 5000,
+          moneda: 'ARS', dia_vencimiento: today, activo: true, cuentas: null, categorias: null },
+      ],
+      tarjetas: [
+        { id: 'cta_2', user_id: 'u2', nombre_cuenta: 'Visa', fecha_vencimiento_tarjeta: todayStr },
+      ],
+      userPreferences: [
+        { user_id: 'u1', alerta_vencimientos_activa: true, alerta_vencimientos_dias: [0, 1, 3] },
+        { user_id: 'u2', alerta_vencimientos_activa: true, alerta_vencimientos_dias: [0, 1, 3] },
+      ],
+    })
+    getUserByIdMock.mockResolvedValue({ data: { user: { email: 'x@test.com' } }, error: null })
+    const fetchFn = mockResendFetch()
+
+    const res = await GET(makeReq())
+    const body = await res.json()
+    expect(body.sent).toBe(2)
+    expect(fetchFn).toHaveBeenCalledTimes(2)
+  })
+
+  it('500 si query de tarjetas falla', async () => {
+    setupQueries({
+      gastosFijos: [],
+      tarjetas: [],
+      tarjetasError: { message: 'tarjetas table down' },
+    })
+    const res = await GET(makeReq())
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toBe('tarjetas table down')
   })
 })

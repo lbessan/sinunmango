@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { CheckCircle, Circle, Pencil, X, Plus, Save, ArrowUpDown, ArrowUp, ArrowDown, FileText, Upload, AlertCircle, CheckSquare, Square } from 'lucide-react'
 import { NuevoItemModal }  from '@/components/nuevo-item-modal'
 import { IconoCategoria }  from '@/components/icono-categoria'
@@ -483,9 +483,40 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const [limitInfo, setLimitInfo] = useState<LimitReachedInfo | null>(null)
   const [editingIdx, setEditingIdx] = useState<number | null>(null)  // fila con detalle en edición inline
 
+  // ── Fechas propuestas de cierre/venc detectadas en el resumen ─────────────
+  // Cuando /api/parsear-resumen detecta nuevas fechas distintas de las de la
+  // cuenta, las dejamos en `fechasPropuestas` para mostrar el preview con
+  // botón "Aplicar". Tras aplicar, mostramos "fechasUltimoApply" durante 10s
+  // para permitir deshacer (rollback).
+  type FechasPropuestas = {
+    proximo_cierre:      string
+    proximo_vencimiento: string
+    actual_cierre:       string | null
+    actual_vencimiento:  string | null
+  }
+  const [fechasPropuestas,   setFechasPropuestas]   = useState<FechasPropuestas | null>(null)
+  const [fechasApplying,     setFechasApplying]     = useState(false)
+  const [fechasError,        setFechasError]        = useState<string | null>(null)
+  const [fechasUltimoApply,  setFechasUltimoApply]  = useState<FechasPropuestas | null>(null)
+  const [fechasUndoTimer,    setFechasUndoTimer]    = useState(0)
+
+  // Cuenta atrás del toast de "Deshacer" (10s)
+  useEffect(() => {
+    if (!fechasUltimoApply) return
+    if (fechasUndoTimer <= 0) { setFechasUltimoApply(null); return }
+    const t = setTimeout(() => setFechasUndoTimer(n => n - 1), 1000)
+    return () => clearTimeout(t)
+  }, [fechasUltimoApply, fechasUndoTimer])
+
+  const formatFecha = (s: string | null) => {
+    if (!s) return '—'
+    const d = new Date(s + 'T12:00:00')
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })
+  }
+
   const handleFile = async (file: File) => {
     if (file.type !== 'application/pdf') { setError('Solo se aceptan archivos PDF'); return }
-    setLoading(true); setError('')
+    setLoading(true); setError(''); setFechasPropuestas(null); setFechasError(null)
 
     const reader = new FileReader()
     reader.onload = async (e) => {
@@ -496,7 +527,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       const res = await fetch('/api/parsear-resumen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdf: base64, movimientosExistentes: movsExist }),
+        body: JSON.stringify({ pdf: base64, movimientosExistentes: movsExist, cuenta_id: cuentaId }),
       })
       setLoading(false)
       const limitReached = await tryParseLimitReached(res)
@@ -516,9 +547,59 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
         subcatId: '',
       }))
       setTxs(parsed)
+      // Si el endpoint detectó cambio de fechas, exponemos el preview.
+      if (d.fechas_propuestas) setFechasPropuestas(d.fechas_propuestas)
       setStep('review')
     }
     reader.readAsDataURL(file)
+  }
+
+  // Aplica las fechas propuestas a la cuenta. Guarda `fechasUltimoApply` para
+  // habilitar "Deshacer" durante 10s. Si falla, muestra error y mantiene el
+  // preview abierto.
+  const aplicarFechas = async () => {
+    if (!fechasPropuestas) return
+    setFechasApplying(true); setFechasError(null)
+    const res = await fetch(`/api/tarjetas/${cuentaId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fecha_cierre_tarjeta:       fechasPropuestas.proximo_cierre,
+        fecha_vencimiento_tarjeta:  fechasPropuestas.proximo_vencimiento,
+      }),
+    })
+    setFechasApplying(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setFechasError(d?.error ?? 'No pudimos actualizar las fechas.')
+      return
+    }
+    setFechasUltimoApply(fechasPropuestas)
+    setFechasUndoTimer(10)
+    setFechasPropuestas(null)
+  }
+
+  // Revierte el último apply restaurando las fechas previas (actual_*).
+  const deshacerFechas = async () => {
+    if (!fechasUltimoApply) return
+    setFechasApplying(true); setFechasError(null)
+    const res = await fetch(`/api/tarjetas/${cuentaId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fecha_cierre_tarjeta:       fechasUltimoApply.actual_cierre,
+        fecha_vencimiento_tarjeta:  fechasUltimoApply.actual_vencimiento,
+      }),
+    })
+    setFechasApplying(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setFechasError(d?.error ?? 'No pudimos deshacer el cambio.')
+      return
+    }
+    // Tras deshacer, restablecemos el preview por si el user quiere reaplicar.
+    setFechasPropuestas(fechasUltimoApply)
+    setFechasUltimoApply(null)
   }
 
   const toggleTx = (i: number) =>
@@ -737,6 +818,70 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
         {step === 'review' && (
           <>
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
+              {/* ── Fechas propuestas (auto-detectadas en el resumen) ──
+                  Las fechas de cierre/vencimiento de tarjeta cambian mes a
+                  mes (feriados, fines de semana). Si Claude detectó nuevas
+                  fechas distintas de las actuales, las ofrecemos acá para
+                  aplicar de una. El user puede ignorar o aplicar; si aplica,
+                  durante 10s aparece "Deshacer" para rollback inmediato. */}
+              {fechasPropuestas && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-blue-900 mb-2 inline-flex items-center gap-1.5">
+                    <AlertCircle size={14} /> Detectamos nuevas fechas en el resumen
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+                    <div>
+                      <p className="text-blue-700/70 mb-0.5">Cierre</p>
+                      <p className="text-blue-900">
+                        <span className="line-through text-blue-400">{formatFecha(fechasPropuestas.actual_cierre)}</span>
+                        {' → '}
+                        <span className="font-semibold">{formatFecha(fechasPropuestas.proximo_cierre)}</span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-blue-700/70 mb-0.5">Vencimiento</p>
+                      <p className="text-blue-900">
+                        <span className="line-through text-blue-400">{formatFecha(fechasPropuestas.actual_vencimiento)}</span>
+                        {' → '}
+                        <span className="font-semibold">{formatFecha(fechasPropuestas.proximo_vencimiento)}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={aplicarFechas} disabled={fechasApplying}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      {fechasApplying ? 'Aplicando...' : 'Actualizar fechas'}
+                    </button>
+                    <button
+                      onClick={() => setFechasPropuestas(null)} disabled={fechasApplying}
+                      className="text-xs px-3 py-1.5 rounded-lg text-blue-700 hover:bg-blue-100"
+                    >
+                      Ignorar
+                    </button>
+                  </div>
+                  {fechasError && (
+                    <p className="text-xs text-red-600 mt-2">{fechasError}</p>
+                  )}
+                </div>
+              )}
+              {/* Toast de "Fechas aplicadas — Deshacer (10s)" */}
+              {fechasUltimoApply && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-emerald-800">
+                    <span className="font-semibold">Fechas actualizadas</span>
+                    {' '}· Cierre {formatFecha(fechasUltimoApply.proximo_cierre)}, vence {formatFecha(fechasUltimoApply.proximo_vencimiento)}
+                  </p>
+                  <button
+                    onClick={deshacerFechas} disabled={fechasApplying}
+                    className="text-xs font-semibold px-3 py-1 rounded-lg border border-emerald-300 text-emerald-800 hover:bg-emerald-100 disabled:opacity-60 shrink-0"
+                  >
+                    {fechasApplying ? '...' : `Deshacer (${fechasUndoTimer}s)`}
+                  </button>
+                </div>
+              )}
 
               {/* Consumos nuevos */}
               {nuevasConsumos.length > 0 && (

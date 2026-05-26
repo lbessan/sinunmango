@@ -46,9 +46,14 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { pdf, movimientosExistentes = [] } = (await req.json()) as {
+  const { pdf, movimientosExistentes = [], cuenta_id } = (await req.json()) as {
     pdf: string
     movimientosExistentes: { detalle: string | null; monto: number; fecha: string }[]
+    /** Opcional. Si viene, intentamos detectar próximas fechas de cierre/venc
+     *  del resumen y devolverlas para que el client confirme la actualización
+     *  de la cuenta. Si no viene, ignoramos esa parte (compat con flows que
+     *  llaman sin contexto de cuenta). */
+    cuenta_id?: string
   }
 
   if (!pdf) return NextResponse.json({ error: 'No se recibió el PDF.' }, { status: 400 })
@@ -100,6 +105,10 @@ export async function POST(req: NextRequest) {
 1. CONSUMOS del titular principal (sección "Consumos" o similar — NO los de tarjetas adicionales)
 2. DESCUENTOS Y CRÉDITOS A FAVOR que aparezcan EN CUALQUIER PARTE del resumen (incluso fuera de la sección de consumos, en el encabezado o en secciones propias). Ejemplos: "CR.RG ...", "BONIF. CONSUMO ...", "REINTEGRO ...", "DESCUENTO ...", ajustes con monto negativo.
 3. TODOS los items INDIVIDUALES de la sección "Impuestos, cargos e intereses" (si existe), cada uno por separado
+4. FECHAS DEL PRÓXIMO PERÍODO si figuran en el resumen (típicamente en el encabezado o pie):
+   - proximo_cierre: fecha del próximo cierre del resumen (YYYY-MM-DD). Buscá frases como "Próximo cierre", "Próximo resumen cierra el", "Cierre próximo", etc.
+   - proximo_vencimiento: fecha del próximo vencimiento de pago (YYYY-MM-DD). Buscá "Próximo vencimiento", "Vence el", "Pague hasta el". OJO: tiene que ser una fecha FUTURA al cierre.
+   Si no figuran explícitamente, devolvé null en ambos campos. NO infieras ni calcules.
 ${movsResumen}
 Para cada item extraé:
 - fecha (formato YYYY-MM-DD)
@@ -117,6 +126,8 @@ Para descuentos: incluílos individualmente con monto POSITIVO y es_descuento: t
 
 Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni texto adicional:
 {
+  "proximo_cierre": "2026-06-23",
+  "proximo_vencimiento": "2026-07-10",
   "transacciones": [
     {
       "fecha": "2026-04-14",
@@ -209,19 +220,90 @@ Notas importantes:
   const claudeData = await claudeRes.json()
   const rawText    = claudeData.content?.[0]?.text ?? ''
 
-  // Intento de parse normal
-  const parsed = parseClaudeJSON<{ transacciones?: unknown[] }>(rawText)
-  if (parsed) {
-    const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
-    return NextResponse.json({ ok: true, transacciones: parsed.transacciones ?? [] }, { headers: committed ? usageHeaders(committed) : {} })
+  // ── Helper: si vino cuenta_id, calcular fechas_propuestas comparando con la
+  //   cuenta actual. Solo devolvemos algo si las fechas son válidas (futuras,
+  //   coherentes) Y distintas de las actuales. Si Claude no las extrajo o son
+  //   inválidas, devolvemos null (= no proponer cambio).
+  async function buildFechasPropuestas(
+    proxCierreRaw: unknown,
+    proxVencRaw:   unknown,
+  ): Promise<{
+    proximo_cierre:        string
+    proximo_vencimiento:   string
+    actual_cierre:         string | null
+    actual_vencimiento:    string | null
+  } | null> {
+    if (!cuenta_id) return null
+    if (typeof proxCierreRaw !== 'string' && typeof proxVencRaw !== 'string') return null
+
+    // Validar formato ISO y que sean fechas futuras razonables (próximos 60 días)
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const limit = new Date(); limit.setDate(limit.getDate() + 90)
+    const isValid = (s: unknown): s is string => {
+      if (typeof s !== 'string') return false
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
+      const d = new Date(s + 'T12:00:00')
+      return !Number.isNaN(d.getTime()) && d >= today && d <= limit
+    }
+
+    if (!isValid(proxCierreRaw) || !isValid(proxVencRaw)) return null
+
+    // El vencimiento debe ser posterior al cierre (sanity)
+    if (new Date(proxVencRaw + 'T12:00:00') <= new Date(proxCierreRaw + 'T12:00:00')) return null
+
+    // Leer la cuenta actual para comparar
+    const { data: cuentaActual } = await supabase
+      .from('cuentas')
+      .select('id, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta, tipo_cuenta, user_id')
+      .eq('id', cuenta_id)
+      .eq('user_id', user!.id)
+      .maybeSingle()
+
+    if (!cuentaActual || cuentaActual.tipo_cuenta !== 'Tarjeta Credito') return null
+
+    // Si las fechas son iguales a las actuales, no proponemos nada (no es cambio).
+    if (cuentaActual.fecha_cierre_tarjeta === proxCierreRaw
+        && cuentaActual.fecha_vencimiento_tarjeta === proxVencRaw) {
+      return null
+    }
+
+    return {
+      proximo_cierre:      proxCierreRaw,
+      proximo_vencimiento: proxVencRaw,
+      actual_cierre:       cuentaActual.fecha_cierre_tarjeta,
+      actual_vencimiento:  cuentaActual.fecha_vencimiento_tarjeta,
+    }
   }
 
-  // Si el JSON está truncado, intentar rescatar el array de transacciones
+  // Intento de parse normal
+  const parsed = parseClaudeJSON<{
+    transacciones?:        unknown[]
+    proximo_cierre?:       unknown
+    proximo_vencimiento?:  unknown
+  }>(rawText)
+  if (parsed) {
+    const fechas_propuestas = await buildFechasPropuestas(parsed.proximo_cierre, parsed.proximo_vencimiento)
+    const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
+    return NextResponse.json({
+      ok: true,
+      transacciones: parsed.transacciones ?? [],
+      fechas_propuestas,
+    }, { headers: committed ? usageHeaders(committed) : {} })
+  }
+
+  // Si el JSON está truncado, intentar rescatar el array de transacciones.
+  // En este path no intentamos extraer fechas propuestas — si el JSON se
+  // truncó, lo más probable es que las fechas (que están en el encabezado)
+  // estén OK, pero no podemos garantizarlo y preferimos no proponer.
   const recovered = recoverPartialArray(rawText, 'transacciones')
   if (recovered) {
     console.warn(`[parsear-resumen] Partial parse recovered ${recovered.length} transactions`)
     const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
-    return NextResponse.json({ ok: true, transacciones: recovered }, { headers: committed ? usageHeaders(committed) : {} })
+    return NextResponse.json({
+      ok: true,
+      transacciones: recovered,
+      fechas_propuestas: null,
+    }, { headers: committed ? usageHeaders(committed) : {} })
   }
 
   console.error('[parsear-resumen] Could not parse Claude response:', rawText.slice(0, 500))

@@ -15,6 +15,20 @@ type GastoFijo = {
   categorias: { nombre_categoria: string; icono: string | null } | null
 }
 
+type TarjetaParaAlerta = {
+  id: string
+  user_id: string
+  nombre_cuenta: string
+  fecha_vencimiento_tarjeta: string | null
+}
+
+// AlertaItem: union de gasto fijo y tarjeta, con campos comunes para
+// el builder del email. Distinguimos por `kind` para mostrar copy / link
+// distinto sin perder tipado.
+type AlertaItem =
+  | { kind: 'gasto_fijo'; gasto: GastoFijo; diasRestantes: number }
+  | { kind: 'tarjeta';    tarjeta: TarjetaParaAlerta; diaVenc: number; diasRestantes: number }
+
 type UserPreferences = {
   user_id: string
   alerta_vencimientos_activa: boolean
@@ -22,30 +36,71 @@ type UserPreferences = {
 }
 
 // ─── Email builder ─────────────────────────────────────────────────────────────
-function buildEmailHtml(gastos: { gasto: GastoFijo; alerta: string; diasRestantes: number }[], baseUrl: string) {
+function buildEmailHtml(items: AlertaItem[], baseUrl: string) {
   const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 0 })
 
-  const rows = gastos.map(({ gasto, alerta, diasRestantes }) => {
-    const badgeColor   = diasRestantes === 0 ? '#ef4444' : diasRestantes === 1 ? '#f97316' : '#f59e0b'
-    const badgeLabel   = diasRestantes === 0 ? 'Vence HOY' : `Vence en ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}`
-    const monto        = gasto.moneda === 'USD' ? `US$${fmt(gasto.monto_estimado)}` : `$${fmt(gasto.monto_estimado)}`
+  const badgeFor = (diasRestantes: number) => {
+    const color = diasRestantes === 0 ? '#ef4444' : diasRestantes === 1 ? '#f97316' : '#f59e0b'
+    const label = diasRestantes === 0 ? 'Vence HOY' : `Vence en ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}`
+    return `<span style="display:inline-block;background:${color}1a;color:${color};font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap;">${label}</span>`
+  }
 
-    return `
+  // Renderer común: izquierda (título + subtítulo), centro (monto opcional), derecha (badge).
+  const rowFor = (titulo: string, subtitulo: string, monto: string, diasRestantes: number) => `
       <tr>
         <td style="padding:12px 16px;border-bottom:1px solid #f1f5f9;">
-          <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:2px;">${gasto.nombre_gasto}</div>
-          <div style="font-size:12px;color:#64748b;">${gasto.cuentas?.nombre_cuenta ?? ''} · Día ${gasto.dia_vencimiento}</div>
+          <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:2px;">${titulo}</div>
+          <div style="font-size:12px;color:#64748b;">${subtitulo}</div>
         </td>
         <td style="padding:12px 16px;border-bottom:1px solid #f1f5f9;text-align:right;">
           <div style="font-size:15px;font-weight:700;color:#1e293b;">${monto}</div>
         </td>
         <td style="padding:12px 16px;border-bottom:1px solid #f1f5f9;text-align:right;">
-          <span style="display:inline-block;background:${badgeColor}1a;color:${badgeColor};font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;white-space:nowrap;">
-            ${badgeLabel}
-          </span>
+          ${badgeFor(diasRestantes)}
         </td>
       </tr>`
-  }).join('')
+
+  // Split por kind para renderar 2 secciones distintas en el mismo email.
+  // Gastos fijos primero, después tarjetas.
+  const gfRows = items
+    .filter((i): i is Extract<AlertaItem, { kind: 'gasto_fijo' }> => i.kind === 'gasto_fijo')
+    .map(i => {
+      const monto = i.gasto.moneda === 'USD' ? `US$${fmt(i.gasto.monto_estimado)}` : `$${fmt(i.gasto.monto_estimado)}`
+      const sub   = `${i.gasto.cuentas?.nombre_cuenta ?? ''} · Día ${i.gasto.dia_vencimiento}`
+      return rowFor(i.gasto.nombre_gasto, sub, monto, i.diasRestantes)
+    }).join('')
+
+  const tjRows = items
+    .filter((i): i is Extract<AlertaItem, { kind: 'tarjeta' }> => i.kind === 'tarjeta')
+    .map(i => rowFor(i.tarjeta.nombre_cuenta, `Tarjeta · Vence día ${i.diaVenc}`, '—', i.diasRestantes))
+    .join('')
+
+  const sectionTable = (titleLabel: string, headerLabel: string, rowsHtml: string, ctaHref: string, ctaText: string) => `
+    <div style="padding:24px 28px 8px;">
+      <p style="margin:0 0 16px;font-size:14px;color:#64748b;">${titleLabel}</p>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;padding:0 16px 8px;border-bottom:1px solid #f1f5f9;">${headerLabel}</th>
+            <th style="text-align:right;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;padding:0 16px 8px;border-bottom:1px solid #f1f5f9;">Monto</th>
+            <th style="text-align:right;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;padding:0 16px 8px;border-bottom:1px solid #f1f5f9;">Estado</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+    <div style="padding:8px 28px 16px;text-align:center;">
+      <a href="${baseUrl}${ctaHref}" style="display:inline-block;background:linear-gradient(135deg,#5c0f2e,#94184A);color:white;font-size:13px;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">
+        ${ctaText}
+      </a>
+    </div>`
+
+  const gfSection = gfRows
+    ? sectionTable('Gastos fijos próximos a vencer:', 'Gasto', gfRows, '/gastos-fijos', 'Registrar pagos →')
+    : ''
+  const tjSection = tjRows
+    ? sectionTable('Vencimientos de tarjeta:', 'Tarjeta', tjRows, '/tarjetas', 'Ver tarjetas →')
+    : ''
 
   return `
 <!DOCTYPE html>
@@ -58,27 +113,8 @@ function buildEmailHtml(gastos: { gasto: GastoFijo; alerta: string; diasRestante
       <p style="margin:0;color:rgba(255,255,255,0.6);font-size:11px;text-transform:uppercase;letter-spacing:1px;">sinunmango</p>
       <p style="margin:6px 0 0;color:white;font-size:20px;font-weight:700;">Recordatorio de vencimientos</p>
     </div>
-    <!-- Body -->
-    <div style="padding:24px 28px 8px;">
-      <p style="margin:0 0 16px;font-size:14px;color:#64748b;">Estos gastos fijos vencen próximamente:</p>
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr>
-            <th style="text-align:left;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;padding:0 16px 8px;border-bottom:1px solid #f1f5f9;">Gasto</th>
-            <th style="text-align:right;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;padding:0 16px 8px;border-bottom:1px solid #f1f5f9;">Monto</th>
-            <th style="text-align:right;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;padding:0 16px 8px;border-bottom:1px solid #f1f5f9;">Estado</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-    <!-- CTA -->
-    <div style="padding:20px 28px 28px;text-align:center;">
-      <a href="${baseUrl}/gastos-fijos"
-        style="display:inline-block;background:linear-gradient(135deg,#5c0f2e,#94184A);color:white;font-size:14px;font-weight:600;padding:12px 28px;border-radius:10px;text-decoration:none;">
-        Registrar pagos →
-      </a>
-    </div>
+    ${gfSection}
+    ${tjSection}
     <!-- Footer -->
     <div style="padding:16px 28px;border-top:1px solid #f1f5f9;background:#f8fafc;">
       <p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">
@@ -110,12 +146,31 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
 
   const gastos = (gastosRaw ?? []) as unknown as GastoFijo[]
-  if (gastos.length === 0) {
-    return NextResponse.json({ ok: true, sent: 0, message: 'No hay gastos fijos activos con vencimiento.' })
+
+  // ── Load tarjetas activas con vencimiento (cuentas tipo Tarjeta Credito).
+  // El día de venc lo extraemos del DATE como hace el resto de la app.
+  // (TODO: cuando migremos a fechas exactas por ciclo, este parseo sale.)
+  const { data: tarjetasRaw, error: errTj } = await adminClient
+    .from('cuentas')
+    .select('id, user_id, nombre_cuenta, fecha_vencimiento_tarjeta')
+    .eq('tipo_cuenta', 'Tarjeta Credito')
+    .eq('activa', true)
+    .not('fecha_vencimiento_tarjeta', 'is', null)
+
+  if (errTj) return NextResponse.json({ ok: false, error: errTj.message }, { status: 500 })
+  const tarjetas = (tarjetasRaw ?? []) as TarjetaParaAlerta[]
+
+  if (gastos.length === 0 && tarjetas.length === 0) {
+    return NextResponse.json({ ok: true, sent: 0, message: 'No hay vencimientos activos.' })
   }
 
   // ── Load user preferences for all relevant users ─────────────────────────────
-  const userIds = [...new Set(gastos.map(g => g.user_id))]
+  const userIds = [
+    ...new Set([
+      ...gastos.map(g => g.user_id),
+      ...tarjetas.map(t => t.user_id),
+    ]),
+  ]
 
   const { data: prefsRaw } = await adminClient
     .from('user_preferences')
@@ -160,34 +215,48 @@ export async function GET(req: NextRequest) {
 
     const alertarEn = prefs.alerta_vencimientos_dias
 
-    const userGastos = gastos
+    const userGastos: AlertaItem[] = gastos
       .filter(g => g.user_id === uid && g.dia_vencimiento !== null)
-      .map(g => {
+      .map<AlertaItem>(g => {
         const exact = g.dia_vencimiento! - diaHoy
-        return { gasto: g, diasRestantes: exact >= 0 ? exact : -1, alerta: '' }
+        return { kind: 'gasto_fijo', gasto: g, diasRestantes: exact >= 0 ? exact : -1 }
       })
-      .filter(({ diasRestantes }) => alertarEn.includes(diasRestantes))
-      .map(item => ({
-        ...item,
-        alerta: item.diasRestantes === 0 ? 'hoy' : `en ${item.diasRestantes} días`,
-      }))
+      .filter(item => alertarEn.includes(item.diasRestantes))
 
-    if (userGastos.length === 0) {
+    const userTarjetas: AlertaItem[] = tarjetas
+      .filter(t => t.user_id === uid && t.fecha_vencimiento_tarjeta)
+      .map<AlertaItem>(t => {
+        // El DATE viene como YYYY-MM-DD. Tomamos solo el DAY: la lógica de la
+        // app trata el venc como "día del mes". Mismo enfoque que gastos fijos.
+        const diaVenc = new Date(t.fecha_vencimiento_tarjeta! + 'T12:00:00').getDate()
+        const exact   = diaVenc - diaHoy
+        return { kind: 'tarjeta', tarjeta: t, diaVenc, diasRestantes: exact >= 0 ? exact : -1 }
+      })
+      .filter(item => alertarEn.includes(item.diasRestantes))
+
+    const items: AlertaItem[] = [...userGastos, ...userTarjetas]
+
+    if (items.length === 0) {
       results.push({ user: uid, sent: false, count: 0 })
       continue
     }
 
+    // Nombres legibles para el subject (gasto.nombre_gasto o tarjeta.nombre_cuenta)
+    const nombreOf = (i: AlertaItem) =>
+      i.kind === 'gasto_fijo' ? i.gasto.nombre_gasto : i.tarjeta.nombre_cuenta
+
     if (!resendApiKey) {
-      console.log(`[alertas-vencimientos] RESEND_API_KEY no configurada. User ${uid}:`, userGastos.map(p => p.gasto.nombre_gasto))
-      results.push({ user: uid, sent: false, count: userGastos.length })
+      console.log(`[alertas-vencimientos] RESEND_API_KEY no configurada. User ${uid}:`, items.map(nombreOf))
+      results.push({ user: uid, sent: false, count: items.length })
       continue
     }
 
     const toEmail = userEmailMap.get(uid) ?? emailFallback
-    const html    = buildEmailHtml(userGastos, baseUrl)
-    const subject = userGastos.some(p => p.diasRestantes === 0)
-      ? `🔴 Vencen HOY: ${userGastos.filter(p => p.diasRestantes === 0).map(p => p.gasto.nombre_gasto).join(', ')}`
-      : `⏰ Vencimientos próximos: ${userGastos.map(p => p.gasto.nombre_gasto).slice(0, 2).join(', ')}${userGastos.length > 2 ? ' y más' : ''}`
+    const html    = buildEmailHtml(items, baseUrl)
+    const hoyItems = items.filter(p => p.diasRestantes === 0)
+    const subject = hoyItems.length > 0
+      ? `🔴 Vencen HOY: ${hoyItems.map(nombreOf).join(', ')}`
+      : `⏰ Vencimientos próximos: ${items.map(nombreOf).slice(0, 2).join(', ')}${items.length > 2 ? ' y más' : ''}`
 
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -202,9 +271,9 @@ export async function GET(req: NextRequest) {
     if (!emailRes.ok) {
       const body = await emailRes.text()
       console.error(`[alertas-vencimientos] Resend error for ${uid}:`, body)
-      results.push({ user: uid, sent: false, count: userGastos.length })
+      results.push({ user: uid, sent: false, count: items.length })
     } else {
-      results.push({ user: uid, sent: true, count: userGastos.length })
+      results.push({ user: uid, sent: true, count: items.length })
       totalSent++
     }
   }
