@@ -56,13 +56,35 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
   const allowed  = ['fecha', 'monto_estimado', 'periodo_tarjeta', 'categoria']
   const orderCol = allowed.includes(sortCol) ? sortCol : 'fecha'
 
+  // Scoping del listado:
+  // - Owner: filtra por user_id = wsId (sus propios movs).
+  // - Invitee: NO podemos filtrar por user_id porque dejaríamos afuera los
+  //   movs que el propio invitee cargó en cuentas compartidas (user_id =
+  //   invitee.id ≠ wsId). Filtramos por cuenta IN (recursos compartidos),
+  //   y dejamos que RLS valide visibilidad de cada mov.
+  //   Resultado: el invitee ve TODO en las cuentas compartidas (suyo + del
+  //   owner) y solo eso — no se filtra data de otros workspaces.
+  const cuentasAccesibles = workspace.isOwn
+    ? null
+    : Array.from(workspace.resources?.cuentas ?? [])
+
   let query = supabase
     .from('movimientos_completos')
     .select('*', { count: 'exact' })
-    .eq('user_id', wsId)
     .order(orderCol, { ascending: sortDir })
     .order('created_at', { ascending: false })
     .range(from, from + pageSize - 1)
+
+  if (workspace.isOwn) {
+    query = query.eq('user_id', wsId)
+  } else if (cuentasAccesibles && cuentasAccesibles.length > 0) {
+    // .in() en cuenta_origen O cuenta_destino vía .or() de Postgrest.
+    const inList = cuentasAccesibles.map(id => `"${id}"`).join(',')
+    query = query.or(`cuenta_origen.in.(${inList}),cuenta_destino.in.(${inList})`)
+  } else {
+    // Invitee sin cuentas compartidas — devolver vacío sin pegarle a la DB.
+    query = query.eq('id', '__no_match__')
+  }
 
   if (!mostrarFuturos) query = query.lte('fecha', today)
   if (sp.tipo     && sp.tipo !== 'Todos') query = query.eq('tipo_movimiento', sp.tipo)
@@ -70,6 +92,36 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
   if (sp.categoria) query = query.eq('categoria', sp.categoria)
   if (sp.cuenta)    query = query.eq('cuenta_origen', sp.cuenta)
   if (sp.q)         query = query.ilike('detalle', `%${sp.q}%`)
+
+  // Mismo scoping para countFuturos y periodos. Para cuentas y categorias
+  // mostramos los del workspace (sirve para los filtros del picker).
+  const futurosQuery = supabase.from('movimientos').select('*', { count: 'exact', head: true }).gt('fecha', today)
+  const periodosQuery = supabase.from('movimientos').select('periodo_tarjeta').order('periodo_tarjeta', { ascending: false })
+  if (workspace.isOwn) {
+    futurosQuery.eq('user_id', wsId)
+    periodosQuery.eq('user_id', wsId)
+  } else if (cuentasAccesibles && cuentasAccesibles.length > 0) {
+    const inList = cuentasAccesibles.map(id => `"${id}"`).join(',')
+    futurosQuery.or(`cuenta_origen.in.(${inList}),cuenta_destino.in.(${inList})`)
+    periodosQuery.or(`cuenta_origen.in.(${inList}),cuenta_destino.in.(${inList})`)
+  } else {
+    futurosQuery.eq('id', '__no_match__')
+    periodosQuery.eq('id', '__no_match__')
+  }
+
+  // Picker de cuentas: invitee solo ve las cuentas compartidas. Owner ve todas.
+  const cuentasPickerQuery = supabase.from('cuentas')
+    .select('id, nombre_cuenta')
+    .eq('activa', true)
+    .eq('user_id', wsId)
+    .order('nombre_cuenta')
+  if (!workspace.isOwn && cuentasAccesibles) {
+    if (cuentasAccesibles.length > 0) {
+      cuentasPickerQuery.in('id', cuentasAccesibles)
+    } else {
+      cuentasPickerQuery.eq('id', '__no_match__')
+    }
+  }
 
   const [
     { data: movimientos, count },
@@ -79,10 +131,10 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
     { count: countFuturos },
   ] = await Promise.all([
     query,
-    supabase.from('movimientos').select('periodo_tarjeta').eq('user_id', wsId).order('periodo_tarjeta', { ascending: false }),
+    periodosQuery,
     supabase.from('categorias').select('id, nombre_categoria, icono').eq('user_id', wsId).order('nombre_categoria'),
-    supabase.from('cuentas').select('id, nombre_cuenta').eq('activa', true).eq('user_id', wsId).order('nombre_cuenta'),
-    supabase.from('movimientos').select('*', { count: 'exact', head: true }).eq('user_id', wsId).gt('fecha', today),
+    cuentasPickerQuery,
+    futurosQuery,
   ])
 
   const totalPages = Math.ceil((count ?? 0) / pageSize)

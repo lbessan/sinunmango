@@ -3,6 +3,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { AppShell } from '@/components/app-shell'
 import { ManguitoFlotante } from '@/components/manguito-flotante'
 import { IOSInstallBanner } from '@/components/ios-install-banner'
+import { WorkspaceBanner } from '@/components/workspace-banner'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getCurrentWorkspace } from '@/lib/workspace'
@@ -60,6 +61,15 @@ export default async function AppLayout({
   return (
     <ThemeProvider>
       <AppShell sidebar={<Sidebar />}>
+        {!workspace.isOwn && (
+          <div className="-mx-4 -mt-4 lg:-mx-8 lg:-mt-8 mb-4 lg:mb-6">
+            <WorkspaceBanner
+              ownerEmail={workspace.ownerEmail ?? null}
+              role={workspace.role ?? 'viewer'}
+              myUserId={user.id}
+            />
+          </div>
+        )}
         {children}
       </AppShell>
       {showManguito && <ManguitoFlotante />}
