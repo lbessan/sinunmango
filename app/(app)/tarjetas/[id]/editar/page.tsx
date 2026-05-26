@@ -46,8 +46,27 @@ export default async function EditarTarjetaPage({
   // al cliente. Solo exponemos un boolean para que el form sepa si ya hay
   // una guardada (mostrar "••••" + botón borrar/cambiar) vs vacío (mostrar
   // input "ingresá nueva").
-  const cuentaRaw = t as unknown as { resumen_password_cipher?: string | null }
+  const cuentaRaw = t as unknown as {
+    resumen_password_cipher?: string | null
+    tarjeta_principal_id?:   string | null
+    nombre_titular?:         string | null
+  }
   const hasResumenPassword = !!cuentaRaw.resumen_password_cipher
+
+  // Lista de candidatas a "tarjeta principal" para el dropdown del form.
+  // Filtros: del user, tipo Tarjeta Credito, activa, NO es adicional
+  // (depth=1), y NO es esta misma tarjeta. Si esta tarjeta es ya
+  // principal y tiene adicionales, igual la podemos seguir mostrando
+  // en el dropdown como opción para OTRAS — para esta sí filtramos.
+  const { data: candidatas } = await supabase
+    .from('cuentas')
+    .select('id, nombre_cuenta')
+    .eq('user_id', user.id)
+    .eq('tipo_cuenta', 'Tarjeta Credito')
+    .eq('activa', true)
+    .is('tarjeta_principal_id', null)
+    .neq('id', id)
+    .order('nombre_cuenta')
 
   return (
     <TarjetaFormClient
@@ -66,7 +85,10 @@ export default async function EditarTarjetaPage({
         terminacion:       t.terminacion_tarjeta ?? '',
         activa:            t.activa ?? true,
         has_resumen_password: hasResumenPassword,
+        tarjeta_principal_id: cuentaRaw.tarjeta_principal_id ?? '',
+        nombre_titular:       cuentaRaw.nombre_titular ?? '',
       }}
+      candidatasPrincipal={(candidatas ?? []) as Array<{ id: string; nombre_cuenta: string }>}
     />
   )
 }

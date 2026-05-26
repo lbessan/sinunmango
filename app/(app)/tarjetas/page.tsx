@@ -51,11 +51,39 @@ export default async function TarjetasPage() {
 
   const { data: extras } = await supabase
     .from('cuentas')
-    .select('id, imagen_url, color_primario')
+    .select('id, imagen_url, color_primario, tarjeta_principal_id, nombre_titular')
     .eq('tipo_cuenta', 'Tarjeta Credito')
     .eq('user_id', wsId)
 
-  const extraMap = Object.fromEntries((extras ?? []).map(c => [c.id, c]))
+  type ExtraRow = {
+    id: string
+    imagen_url: string | null
+    color_primario: string | null
+    tarjeta_principal_id: string | null
+    nombre_titular: string | null
+  }
+  const extraMap: Record<string, ExtraRow> = Object.fromEntries(
+    ((extras ?? []) as unknown as ExtraRow[]).map(c => [c.id, c])
+  )
+
+  // Agrupamos por principal: cada principal arriba, sus adicionales debajo
+  // (indentadas). Las que están huérfanas (principal_id apunta a algo que
+  // no existe o que está inactivo) se renderean como principales.
+  type Tarjeta = NonNullable<typeof tarjetas>[number]
+  const isPrincipal = (t: Tarjeta) => {
+    const principalId = t.id ? extraMap[t.id]?.tarjeta_principal_id : null
+    return !principalId
+  }
+  const adicionalesDe = (principalId: string): Tarjeta[] =>
+    (tarjetas ?? []).filter(t => t.id && extraMap[t.id]?.tarjeta_principal_id === principalId)
+  const tarjetasPrincipales = (tarjetas ?? []).filter(isPrincipal)
+  const tarjetasHuerfanas = (tarjetas ?? []).filter(t => {
+    if (!t.id) return false
+    const pid = extraMap[t.id]?.tarjeta_principal_id
+    if (!pid) return false
+    // adicional cuya principal NO está en la lista (filtered out)
+    return !tarjetasPrincipales.some(p => p.id === pid)
+  })
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -75,28 +103,75 @@ export default async function TarjetasPage() {
       </div>
 
       {tarjetas && tarjetas.length > 0 ? (
-        <div className="space-y-2">
-          {tarjetas.map(t => {
+        <div className="space-y-4">
+          {/* Por cada principal, su card + las adicionales indentadas. */}
+          {tarjetasPrincipales.concat(tarjetasHuerfanas).map(t => {
             if (!t.id || !t.nombre_cuenta) return null
-            const extra    = extraMap[t.id]
-            const imgUrl   = extra?.imagen_url
-            const color    = extra?.color_primario ?? '#1e293b'
-            const cierre   = t.fecha_cierre_tarjeta
-              ? new Date(t.fecha_cierre_tarjeta + 'T12:00:00').getDate() : null
-            const vence    = t.fecha_vencimiento_tarjeta
-              ? new Date(t.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
-            const saldo    = t.saldo_actual ?? 0
+            const hijas = adicionalesDe(t.id)
 
             return (
+              <div key={t.id} className="space-y-1">
+                {/* Principal */}
+                {renderTarjetaCard(t)}
+                {/* Adicionales indentadas */}
+                {hijas.length > 0 && (
+                  <div className="pl-4 sm:pl-8 space-y-1 border-l-2 border-slate-100 ml-3 sm:ml-6">
+                    {hijas.map(h => h.id ? <div key={h.id}>{renderTarjetaCard(h, true)}</div> : null)}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="text-center py-16 text-slate-400">
+          <CreditCard size={40} className="mx-auto mb-3 opacity-30" />
+          <p className="text-sm">
+            {isOwn ? 'Todavía no tenés tarjetas cargadas.' : 'No hay tarjetas compartidas con vos en este workspace.'}
+          </p>
+          {isOwn && (
+            <Link href="/tarjetas/nueva" className="mt-3 inline-block text-sm font-medium" style={{ color: 'var(--accent)' }}>
+              Agregar primera tarjeta →
+            </Link>
+          )}
+        </div>
+      )}
+    </div>
+  )
+
+  // Render helper para una tarjeta individual (principal o adicional).
+  // Mantenemos la misma estructura visual; solo cambia el contexto en el
+  // que está embebida (la adicional viene dentro de un div indentado).
+  function renderTarjetaCard(t: NonNullable<typeof tarjetas>[number], esAdicional = false) {
+    if (!t.id || !t.nombre_cuenta) return null
+    const extra      = extraMap[t.id]
+    const imgUrl     = extra?.imagen_url
+    const color      = extra?.color_primario ?? '#1e293b'
+    const titular    = extra?.nombre_titular ?? null
+    const cierre     = t.fecha_cierre_tarjeta
+      ? new Date(t.fecha_cierre_tarjeta + 'T12:00:00').getDate() : null
+    const vence      = t.fecha_vencimiento_tarjeta
+      ? new Date(t.fecha_vencimiento_tarjeta + 'T12:00:00').getDate() : null
+    const saldo      = t.saldo_actual ?? 0
+
+    return (
               <div
-                key={t.id}
-                className="bg-white rounded-xl border border-slate-100 flex items-center justify-between hover:border-slate-200 transition-colors overflow-hidden"
+                className={`bg-white rounded-xl border ${esAdicional ? 'border-slate-100' : 'border-slate-100'} flex items-center justify-between hover:border-slate-200 transition-colors overflow-hidden`}
               >
                 <Link href={`/tarjetas/${t.id}`} className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 px-3 sm:px-4 py-3">
                   <CardThumbnailServer imagenUrl={imgUrl} color={color} nombre={t.nombre_cuenta} />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-700 truncate">{t.nombre_cuenta}</p>
-                    {cierre && vence ? (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-sm font-medium text-slate-700 truncate">{t.nombre_cuenta}</p>
+                      {esAdicional && (
+                        <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wide">
+                          adicional
+                        </span>
+                      )}
+                    </div>
+                    {esAdicional && titular ? (
+                      <p className="text-xs text-slate-400 truncate">{titular}</p>
+                    ) : cierre && vence ? (
                       <p className="text-xs text-slate-400">Cierre {cierre} · Vence {vence}</p>
                     ) : (
                       <p className="text-xs text-slate-400">Tarjeta de crédito</p>
@@ -132,22 +207,6 @@ export default async function TarjetasPage() {
                   )}
                 </div>
               </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-16 text-slate-400">
-          <CreditCard size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">
-            {isOwn ? 'Todavía no tenés tarjetas cargadas.' : 'No hay tarjetas compartidas con vos en este workspace.'}
-          </p>
-          {isOwn && (
-            <Link href="/tarjetas/nueva" className="mt-3 inline-block text-sm font-medium" style={{ color: 'var(--accent)' }}>
-              Agregar primera tarjeta →
-            </Link>
-          )}
-        </div>
-      )}
-    </div>
-  )
+    )
+  }
 }

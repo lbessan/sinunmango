@@ -24,17 +24,37 @@ type TarjetaForm = {
    *  Nunca exponemos el plaintext al cliente — solo este bool.
    *  El client setea/cambia/borra la password via PATCH. */
   has_resumen_password?: boolean
+  /** Si es adicional, apunta a la principal. String vacío si es principal. */
+  tarjeta_principal_id?: string
+  /** Lo que figura en el PDF del resumen (ej: "Celeste Cerono"). Usado
+   *  para dispatch automático de consumos al procesar el resumen. */
+  nombre_titular?: string
 }
+
+// Candidata a "tarjeta principal" para el dropdown — solo principales
+// (no adicionales) activas del user, excluyendo la editada.
+type CandidataPrincipal = { id: string; nombre_cuenta: string }
 
 const inputClass = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-white'
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
 
-export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
+export function TarjetaFormClient({
+  inicial,
+  candidatasPrincipal = [],
+}: {
+  inicial: TarjetaForm
+  candidatasPrincipal?: CandidataPrincipal[]
+}) {
   const router = useRouter()
   const [form, setForm]       = useState<TarjetaForm>(inicial)
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
   const [error, setError]     = useState('')
+
+  // ¿Es adicional? Se controla con un toggle. Cuando se prende, mostramos
+  // el dropdown de principales y ocultamos los campos heredados (fechas
+  // de cierre/vencimiento + password del resumen — heredan).
+  const [esAdicional, setEsAdicional] = useState(!!inicial.tarjeta_principal_id)
 
   // Password del resumen (PDF protegido). `has_resumen_password` viene del
   // server e indica si ya hay una guardada. Nunca recibimos el plaintext.
@@ -115,6 +135,11 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
     if (!form.nombre) { setError('Ingresá un nombre para la tarjeta'); return }
     setSaving(true); setError('')
 
+    // Validación: si marcó "es adicional" tiene que haber elegido principal.
+    if (esAdicional && !form.tarjeta_principal_id) {
+      setError('Seleccioná la tarjeta principal'); setSaving(false); return
+    }
+
     // Guardamos en la tabla `cuentas` con tipo_cuenta = 'Tarjeta Credito'
     const body: Record<string, unknown> = {
       nombre_cuenta:             form.nombre,
@@ -126,9 +151,19 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
       imagen_url:                form.imagen_url || null,
       imagen_banner_url:         null,
       color_primario:            form.color_primario || '#1e293b',
-      fecha_cierre_tarjeta:      form.fecha_cierre || null,
-      fecha_vencimiento_tarjeta: form.fecha_vencimiento || null,
       terminacion_tarjeta:       form.terminacion || null,
+      // Si es adicional, NO mandamos fechas — el server las hereda de la
+      // principal. Si después dejá de ser adicional, sí mandamos lo que
+      // tenga el form.
+      ...(esAdicional ? {
+        tarjeta_principal_id:      form.tarjeta_principal_id,
+        nombre_titular:            form.nombre_titular || null,
+      } : {
+        tarjeta_principal_id:      null,
+        nombre_titular:            form.nombre_titular || null,
+        fecha_cierre_tarjeta:      form.fecha_cierre || null,
+        fecha_vencimiento_tarjeta: form.fecha_vencimiento || null,
+      }),
     }
     // Password del resumen: solo incluir si hay cambio.
     //   - resumenPasswordClear true → mandamos null (= borrar)
@@ -243,31 +278,105 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
           </p>
         </div>
 
-        {/* ── Datos de la tarjeta ── */}
+        {/* ── ¿Es tarjeta adicional? ──
+            Si está prendido: dropdown con tarjetas principales del user.
+            Una adicional hereda fechas (cierre/venc) y password del resumen
+            de la principal, así que ocultamos esos campos.
+            Si el user no tiene tarjetas principales (lista vacía) y no es
+            edit de una adicional existente, ocultamos todo el toggle. */}
+        {(candidatasPrincipal.length > 0 || esAdicional) && (
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={esAdicional}
+                onChange={e => {
+                  setEsAdicional(e.target.checked)
+                  if (!e.target.checked) set('tarjeta_principal_id', '')
+                }}
+                className="w-4 h-4 mt-0.5"
+              />
+              <div>
+                <p className="text-sm font-medium text-slate-700">
+                  Esta es una tarjeta adicional
+                </p>
+                <p className="text-xs text-slate-500">
+                  Pertenece a otro titular pero comparte el resumen. Hereda fechas + contraseña del PDF de la principal.
+                </p>
+              </div>
+            </label>
+
+            {esAdicional && (
+              <>
+                <div>
+                  <label className={labelClass}>Tarjeta principal *</label>
+                  <select
+                    value={form.tarjeta_principal_id ?? ''}
+                    onChange={e => set('tarjeta_principal_id', e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">— seleccionar —</option>
+                    {candidatasPrincipal.map(c => (
+                      <option key={c.id} value={c.id}>{c.nombre_cuenta}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Nombre del titular ──
+            Lo que figura en el PDF del resumen (ej: "Celeste Cerono").
+            Para tarjeta principal es opcional. Para adicional es muy
+            recomendado: es la pieza que usamos al procesar el resumen
+            para mandar los consumos a la cuenta correcta. */}
+        <div>
+          <label className={labelClass}>
+            Nombre del titular {esAdicional && <span className="text-amber-600 font-normal">(recomendado para distinguir consumos en el resumen)</span>}
+          </label>
+          <input
+            type="text"
+            value={form.nombre_titular ?? ''}
+            onChange={e => set('nombre_titular', e.target.value)}
+            placeholder={esAdicional ? 'Tal cual aparece en el PDF (ej: Celeste Cerono)' : 'Tu nombre completo (opcional)'}
+            className={inputClass}
+            maxLength={100}
+          />
+        </div>
+
+        {/* ── Datos de la tarjeta ──
+            Las fechas se ocultan si es adicional (hereda de la principal).
+            La terminación SÍ se muestra (cada tarjeta física tiene la suya). */}
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-4">
           <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Datos de la tarjeta</p>
-          {/* En mobile <320px los dos <input type="date"> quedaban apretados.
-              Stack 1col mobile / 2col sm+ da espacio al picker nativo. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-blue-700 mb-1.5">Fecha de cierre</label>
-              <input
-                type="date"
-                value={form.fecha_cierre}
-                onChange={e => set('fecha_cierre', e.target.value)}
-                className="w-full px-3 py-2.5 border border-blue-200 rounded-lg text-sm outline-none bg-white"
-              />
+          {/* Fechas: solo se editan en la principal. La adicional las hereda. */}
+          {esAdicional ? (
+            <p className="text-xs text-blue-700/80 italic">
+              Las fechas de cierre y vencimiento se heredan automáticamente de la tarjeta principal.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-blue-700 mb-1.5">Fecha de cierre</label>
+                <input
+                  type="date"
+                  value={form.fecha_cierre}
+                  onChange={e => set('fecha_cierre', e.target.value)}
+                  className="w-full px-3 py-2.5 border border-blue-200 rounded-lg text-sm outline-none bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-blue-700 mb-1.5">Fecha de vencimiento</label>
+                <input
+                  type="date"
+                  value={form.fecha_vencimiento}
+                  onChange={e => set('fecha_vencimiento', e.target.value)}
+                  className="w-full px-3 py-2.5 border border-blue-200 rounded-lg text-sm outline-none bg-white"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-blue-700 mb-1.5">Fecha de vencimiento</label>
-              <input
-                type="date"
-                value={form.fecha_vencimiento}
-                onChange={e => set('fecha_vencimiento', e.target.value)}
-                className="w-full px-3 py-2.5 border border-blue-200 rounded-lg text-sm outline-none bg-white"
-              />
-            </div>
-          </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-blue-700 mb-1.5">
               Últimos 4 dígitos
@@ -288,11 +397,12 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
           </div>
         </div>
 
-        {/* ── Password del resumen (opcional) ──
+        {/* ── Password del resumen (opcional, solo principal) ──
             Algunos bancos mandan el PDF del resumen protegido con
             password (típicamente DNI). Si la guardás acá, al subir el
             PDF en /conciliaciones se descifra solo. Se guarda
-            encriptada at-rest. */}
+            encriptada at-rest. La adicional la hereda. */}
+        {!esAdicional && (
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
           <div>
             <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
@@ -368,6 +478,7 @@ export function TarjetaFormClient({ inicial }: { inicial: TarjetaForm }) {
             </div>
           )}
         </div>
+        )}
 
         <div className="flex items-center gap-3">
           <input
