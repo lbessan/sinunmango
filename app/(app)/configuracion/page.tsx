@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { getUserPlan } from '@/lib/subscription'
 import { redirect } from 'next/navigation'
@@ -58,7 +59,15 @@ export default async function ConfiguracionPage() {
                 Elegís qué cuentas, tarjetas, gastos fijos e inversiones puede ver
                 — y si puede solo mirar o también cargar movimientos.
               </p>
-              <ShareWorkspaceTrigger />
+              <div className="flex items-center gap-3 flex-wrap">
+                <ShareWorkspaceTrigger />
+                <Link
+                  href="/configuracion/compartidos"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-slate-900 underline-offset-2 hover:underline"
+                >
+                  Gestionar compartidos →
+                </Link>
+              </div>
               {!plan.has_pro_access && (
                 <p className="text-xs text-slate-400 mt-3">
                   Compartir es una feature Pro. Necesitás Pro activo para generar invitaciones.

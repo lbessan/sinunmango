@@ -39,7 +39,22 @@ type ShareItem = {
   status:         'pending' | 'active' | 'expired' | 'revoked'
 }
 
-export function ShareWorkspaceModal({ onClose }: { onClose: () => void }) {
+export function ShareWorkspaceModal({
+  onClose,
+  editShareId,
+  onShareChanged,
+}: {
+  onClose: () => void
+  /** Si viene, el modal entra en modo "editar" para ese share existente:
+   *  pre-carga su role + recursos seleccionados, oculta la lista de
+   *  otros shares y el botón cambia de "Generar link" a "Guardar". */
+  editShareId?: string
+  /** Callback opcional para notificar al caller que el listado cambió
+   *  (creación / edición / revoke) — útil cuando la página de gestión
+   *  necesita refetch. */
+  onShareChanged?: () => void
+}) {
+  const isEditing = !!editShareId
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
 
@@ -106,19 +121,37 @@ export function ShareWorkspaceModal({ onClose }: { onClose: () => void }) {
       setGastosFijos(gf)
       setInversiones(inv)
 
-      // Default: TODO marcado
-      setSelCuentas(new Set(ct.map(c => c.id)))
-      setSelTarjetas(new Set(tj.map(t => t.id)))
-      setSelGF(new Set(gf.map(g => g.id)))
-      setSelInv(new Set(inv.map(i => i.id)))
+      // Si estamos editando un share existente, pre-cargamos su selección
+      // y role; sino default = TODO marcado (caso "crear nuevo").
+      const allShares = (resShares.shares ?? []) as ShareItem[]
+      if (isEditing) {
+        const sh = allShares.find(s => s.id === editShareId)
+        if (sh) {
+          // Las cuentas y tarjetas viven en la misma columna `cuentas` a
+          // nivel DB (tarjetas son cuentas con tipo_cuenta=Tarjeta Credito).
+          // Separamos en el client para mostrar pickers distintos.
+          const cuentaIds = new Set(sh.resources.cuentas)
+          const tarjetaIds = new Set(tj.map(t => t.id))
+          setSelCuentas(new Set([...cuentaIds].filter(id => !tarjetaIds.has(id))))
+          setSelTarjetas(new Set([...cuentaIds].filter(id => tarjetaIds.has(id))))
+          setSelGF(new Set(sh.resources.gastos_fijos))
+          setSelInv(new Set(sh.resources.inversiones))
+          setRole(sh.role)
+        }
+      } else {
+        setSelCuentas(new Set(ct.map(c => c.id)))
+        setSelTarjetas(new Set(tj.map(t => t.id)))
+        setSelGF(new Set(gf.map(g => g.id)))
+        setSelInv(new Set(inv.map(i => i.id)))
+      }
 
-      setShares((resShares.shares ?? []).filter((s: ShareItem) => s.status === 'pending' || s.status === 'active'))
+      setShares(allShares.filter((s: ShareItem) => s.status === 'pending' || s.status === 'active'))
     } catch {
       setError('No pudimos cargar tus recursos.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isEditing, editShareId])
 
   useEffect(() => { void loadAll() }, [loadAll])
 
@@ -150,8 +183,11 @@ export function ShareWorkspaceModal({ onClose }: { onClose: () => void }) {
         setCreating(false)
         return
       }
-      const res = await fetch('/api/shares', {
-        method:  'POST',
+      // POST si es nuevo; PATCH si estamos editando uno existente.
+      const url    = isEditing ? `/api/shares/${editShareId}` : '/api/shares'
+      const method = isEditing ? 'PATCH' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ role, resources }),
       })
@@ -160,12 +196,19 @@ export function ShareWorkspaceModal({ onClose }: { onClose: () => void }) {
         if (data.error === 'requires_pro') {
           setError('Compartir workspace es feature Pro.')
         } else {
-          setError(data.error ?? 'No pudimos crear el share.')
+          setError(data.error ?? (isEditing ? 'No pudimos guardar los cambios.' : 'No pudimos crear el share.'))
         }
         return
       }
-      setNewShare({ url: data.invite_url, role: data.role })
-      await loadAll()
+      // En modo crear: mostramos el link generado en pantalla.
+      // En modo edición: confirmamos guardado y dejamos que el caller refresque.
+      if (!isEditing && data.invite_url) {
+        setNewShare({ url: data.invite_url, role: data.role })
+        await loadAll()
+      } else {
+        onShareChanged?.()
+        onClose()
+      }
     } catch {
       setError('Error de conexión.')
     } finally {
@@ -200,9 +243,13 @@ export function ShareWorkspaceModal({ onClose }: { onClose: () => void }) {
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-slate-100 shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Compartir workspace</h2>
+            <h2 className="text-lg font-bold text-slate-900">
+              {isEditing ? 'Editar acceso compartido' : 'Compartir workspace'}
+            </h2>
             <p className="text-sm text-slate-500 mt-0.5">
-              Elegí qué recursos comparte el invitado. Por default todo marcado.
+              {isEditing
+                ? 'Cambiá el rol o qué recursos puede ver / editar el invitado.'
+                : 'Elegí qué recursos comparte el invitado. Por default todo marcado.'}
             </p>
           </div>
           <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600"
@@ -299,8 +346,9 @@ export function ShareWorkspaceModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
-          {/* Active shares */}
-          {!loading && shares.length > 0 && (
+          {/* Active shares — solo en modo CREAR. En modo edición no
+              mostramos los otros shares; la gestión es por share. */}
+          {!isEditing && !loading && shares.length > 0 && (
             <div className="mt-6">
               <p className="text-sm font-semibold text-slate-800 mb-2">
                 Compartido con {shares.length} persona{shares.length === 1 ? '' : 's'}
@@ -335,7 +383,9 @@ export function ShareWorkspaceModal({ onClose }: { onClose: () => void }) {
           <button onClick={handleCreate} disabled={creating || loading}
                   className="w-full px-5 py-3 rounded-xl text-white font-semibold disabled:opacity-60"
                   style={{ background: 'linear-gradient(135deg, #1B3A6B 0%, #1a6b5a 100%)' }}>
-            {creating ? 'Generando link...' : 'Generar link de invitación'}
+            {creating
+              ? (isEditing ? 'Guardando...' : 'Generando link...')
+              : (isEditing ? 'Guardar cambios' : 'Generar link de invitación')}
           </button>
         </div>
       </div>

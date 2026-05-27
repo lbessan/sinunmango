@@ -20,11 +20,17 @@ export async function DELETE(
 
   const { id } = await params
 
+  // El owner puede revocar (cortar el acceso del invitee) y el invitee
+  // puede "dejar el workspace" (cortar su propio acceso). Ambos terminan
+  // en la misma acción: setear revoked_at. RLS expone la fila al owner
+  // (vía owner_user_id) y al invitee (vía invitee_user_id). Filtramos
+  // por OR de los dos para que el update aplique solo a shares donde el
+  // user actual es una de las dos partes.
   const { data: updated, error } = await supabase
     .from('shares')
     .update({ revoked_at: new Date().toISOString() })
     .eq('id', id)
-    .eq('owner_user_id', user.id)
+    .or(`owner_user_id.eq.${user.id},invitee_user_id.eq.${user.id}`)
     .select('id, revoked_at')
 
   if (error) {
