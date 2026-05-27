@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { todayAR } from '@/lib/timezone'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { getUserPlan } from '@/lib/subscription'
+import { getEffectivePlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, usageHeaders } from '@/lib/usage-limits'
 import { MODEL_LEER_TICKET } from '@/lib/claude-models'
 
@@ -22,7 +22,9 @@ export async function POST(req: NextRequest) {
 
   // Monthly usage gate (free tier): 3 tickets/mes. Pro: ilimitado.
   // CHECK sin incrementar — solo consumimos cupo si la operación resulta exitosa.
-  const plan  = await getUserPlan(supabase)
+  // getEffectivePlan: el invitee Pro-via-share recibe Pro vía workspace
+  // del owner. En workspace propio, su plan normal.
+  const plan  = await getEffectivePlan(supabase, user)
   const usage = await checkMonthlyLimit(supabase, 'ticket', plan.has_pro_access)
   if (!usage.allowed) {
     return NextResponse.json(

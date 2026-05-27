@@ -16,7 +16,13 @@ const { createClientMock, rateLimitMock, getUserPlanMock, checkMonthlyMock, isOn
 
 vi.mock('@/lib/supabase/route', () => ({ createClientForRequest: createClientMock }))
 vi.mock('@/lib/rate-limit', () => ({ checkRateLimit: rateLimitMock }))
-vi.mock('@/lib/subscription', () => ({ getUserPlan: getUserPlanMock }))
+// Los endpoints usan getEffectivePlan (plan del owner del workspace activo).
+// Alias al mismo mock — los tests existentes setean has_pro_access vía
+// getUserPlanMock y eso vale igual como plan efectivo.
+vi.mock('@/lib/subscription', () => ({
+  getUserPlan:      getUserPlanMock,
+  getEffectivePlan: getUserPlanMock,
+}))
 vi.mock('@/lib/usage-limits', async () => {
   const actual = await vi.importActual<typeof import('@/lib/usage-limits')>('@/lib/usage-limits')
   return {

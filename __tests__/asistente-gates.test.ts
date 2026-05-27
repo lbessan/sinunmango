@@ -29,8 +29,12 @@ vi.mock('@/lib/rate-limit', () => ({
   checkRateLimit: rateLimitMock,
 }))
 
+// El endpoint /leer-ticket usa getEffectivePlan (plan del owner del workspace
+// activo). El resto (asistente, asistente-mobile, analitica-insight) usa lo
+// que ya importan. Alias al mismo mock para que los tests no cambien.
 vi.mock('@/lib/subscription', () => ({
-  getUserPlan: getUserPlanMock,
+  getUserPlan:      getUserPlanMock,
+  getEffectivePlan: getUserPlanMock,
 }))
 
 vi.mock('@/lib/usage-limits', async () => {

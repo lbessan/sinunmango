@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { getUserPlan } from '@/lib/subscription'
+import { getEffectivePlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, isOnboardingActive, usageHeaders } from '@/lib/usage-limits'
 import { parseClaudeJSON, recoverPartialArray } from '@/lib/parse-claude-json'
 import { MODEL_PARSEAR_RESUMEN } from '@/lib/claude-models'
@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
   // Monthly usage gate (free tier): 1 resumen/mes. Pro: ilimitado.
   // CHECK sin incrementar — solo consumimos cupo si la operación resulta exitosa.
   // Durante el onboarding, el contador no aplica (ver isOnboardingActive).
-  const plan         = await getUserPlan(supabase)
+  // getEffectivePlan: si el user es invitee de un workspace ajeno, usa
+  // el plan del owner (acceso Pro vía workspace_share). Si está en su
+  // propio workspace, su plan normal.
+  const plan         = await getEffectivePlan(supabase, user)
   const inOnboarding = await isOnboardingActive(supabase, user.id)
   const usage        = inOnboarding
     ? null

@@ -21,12 +21,19 @@ import Link from 'next/link'
 import type { Plan } from '@/lib/subscription'
 
 type Props = {
-  plan:                Plan
-  planExpiresAt:       string | null
-  hasProAccess:        boolean
-  priceArs:            number
-  earlyAccess:         boolean
-  earlySlotsRemaining: number
+  plan:                  Plan
+  planExpiresAt:         string | null
+  hasProAccess:          boolean
+  // Plan EFECTIVO del workspace activo. Cuando el user es invitee Pro-vía-share,
+  // hasProAccess (su plan propio) puede ser false PERO effectiveHasProAccess es
+  // true. En ese caso le mostramos un banner explicando que pagar Pro acá
+  // aplicaría a SU propio workspace, no al del owner.
+  effectiveHasProAccess: boolean
+  effectiveSource:       'own' | 'workspace_share'
+  effectiveOwnerEmail:   string | null
+  priceArs:              number
+  earlyAccess:           boolean
+  earlySlotsRemaining:   number
 }
 
 const FEATURES = [
@@ -87,10 +94,17 @@ export function ProClient({
   plan,
   planExpiresAt,
   hasProAccess,
+  effectiveHasProAccess,
+  effectiveSource,
+  effectiveOwnerEmail,
   priceArs,
   earlyAccess,
   earlySlotsRemaining,
 }: Props) {
+  // Banner para invitee en workspace ajeno: el user accede a Pro vía el
+  // owner, pero ESTA página le ofrece pagar Pro para SU propia cuenta.
+  // Le aclaramos la distinción para que no piense que ya está pagando.
+  const showShareBanner = effectiveSource === 'workspace_share' && effectiveHasProAccess && !hasProAccess
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
 
@@ -125,6 +139,24 @@ export function ProClient({
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
+
+      {/* ── Banner workspace_share: estás usando Pro del owner ────────────── */}
+      {showShareBanner && (
+        <div className="rounded-2xl p-5 bg-gradient-to-br from-indigo-50 via-white to-violet-50 border border-indigo-100 flex items-start gap-4">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white shrink-0">
+            <Sparkles size={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-slate-800">
+              Ya tenés Pro en este workspace{effectiveOwnerEmail ? ` (vía ${effectiveOwnerEmail})` : ''}
+            </p>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              Estás accediendo a las features Pro porque el owner del workspace activo paga Pro.
+              Si suscribís tu cuenta acá, Pro aplicará a TU workspace personal — no afecta el del owner.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Estado: usuario YA es Pro ─────────────────────────────────────── */}
       {hasProAccess && (

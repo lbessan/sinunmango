@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { getUserPlan } from '@/lib/subscription'
+import { getEffectivePlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, isOnboardingActive, usageHeaders } from '@/lib/usage-limits'
 import { parseClaudeJSON, recoverPartialArray, recoverObject } from '@/lib/parse-claude-json'
 import { MODEL_PARSEAR_TARJETA_PDF } from '@/lib/claude-models'
@@ -34,7 +34,9 @@ export async function POST(req: NextRequest) {
   // el contador no aplica — el user todavía está armando su cuenta y queremos
   // dejarlo probar la importación sin gastar el 1/1 antes de empezar a usar
   // la app. Cuando termina el wizard, el contador empieza a correr normal.
-  const plan         = await getUserPlan(supabase)
+  // getEffectivePlan: el invitee Pro-via-share usa cuota del workspace
+  // del owner (que pagó Pro). En workspace propio, su plan normal.
+  const plan         = await getEffectivePlan(supabase, user)
   const inOnboarding = await isOnboardingActive(supabase, user.id)
   const usage        = inOnboarding
     ? null

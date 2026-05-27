@@ -194,4 +194,63 @@ describe('SidebarUsageWidget', () => {
     await new Promise(r => setTimeout(r, 30))
     expect(container.firstChild).toBeNull()
   })
+
+  it('Pro vía workspace ajeno → badge "Pro vía <owner>" + subtítulo "En este workspace"', async () => {
+    global.fetch = vi.fn(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        has_pro_access:   true,
+        plan:             'pro',
+        plan_source:      'workspace_share',
+        plan_owner_email: 'owner@example.com',
+        usage:            null,
+      }),
+    })) as unknown as typeof fetch
+
+    render(<SidebarUsageWidget />)
+    await waitFor(() => {
+      // Usa local-part del email para el badge
+      expect(screen.getByText('Pro vía owner')).toBeTruthy()
+    })
+    expect(screen.getByText('En este workspace')).toBeTruthy()
+    // No muestra "Plan Pro activo" cuando es vía share
+    expect(screen.queryByText('Plan Pro activo')).toBeNull()
+  })
+
+  it('Pro propio (plan_source=own) → badge "Plan Pro activo" (no menciona share)', async () => {
+    global.fetch = vi.fn(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        has_pro_access:   true,
+        plan:             'pro',
+        plan_source:      'own',
+        plan_owner_email: null,
+        usage:            null,
+      }),
+    })) as unknown as typeof fetch
+
+    render(<SidebarUsageWidget />)
+    await waitFor(() => {
+      expect(screen.getByText('Plan Pro activo')).toBeTruthy()
+    })
+    expect(screen.queryByText(/Pro vía/)).toBeNull()
+  })
+
+  it('Pro vía share SIN owner_email → fallback "Pro vía workspace compartido"', async () => {
+    global.fetch = vi.fn(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        has_pro_access:   true,
+        plan:             'pro',
+        plan_source:      'workspace_share',
+        plan_owner_email: null,
+        usage:            null,
+      }),
+    })) as unknown as typeof fetch
+
+    render(<SidebarUsageWidget />)
+    await waitFor(() => {
+      expect(screen.getByText('Pro vía workspace compartido')).toBeTruthy()
+    })
+  })
 })

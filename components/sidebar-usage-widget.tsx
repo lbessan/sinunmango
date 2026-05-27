@@ -20,9 +20,13 @@ import { Sparkles, Crown } from 'lucide-react'
 
 type UsageFeature = { used: number; limit: number; remaining: number }
 type Me = {
-  has_pro_access: boolean
-  plan:           'free' | 'pro' | 'grandfathered'
-  usage:          {
+  has_pro_access:   boolean
+  plan:             'free' | 'pro' | 'grandfathered'
+  // Origen del plan efectivo: 'own' = mi propio plan; 'workspace_share' =
+  // estoy en workspace ajeno y heredo el plan del owner.
+  plan_source?:     'own' | 'workspace_share'
+  plan_owner_email?: string | null
+  usage:            {
     asistente:    UsageFeature
     ticket:       UsageFeature
     resumen:      UsageFeature
@@ -61,14 +65,26 @@ export function SidebarUsageWidget() {
 
   if (!data) return null
 
-  // Pro: badge discreto
+  // Pro: badge discreto. Cuando el Pro viene de un workspace ajeno (invitee
+  // accediendo a un workspace cuyo owner pagó Pro), lo decimos explícito
+  // para que el user entienda de dónde le viene el acceso.
   if (data.has_pro_access) {
+    const viaShare = data.plan_source === 'workspace_share'
+    // Cortamos el local-part del email del owner para que entre en el badge.
+    const ownerLabel = viaShare && data.plan_owner_email
+      ? data.plan_owner_email.split('@')[0]
+      : null
+
     return (
       <div className="px-4 py-2.5 mx-2 mb-3 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-700/10 border border-emerald-500/20 flex items-center gap-2.5">
         <Crown size={14} className="text-emerald-400 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-emerald-300 leading-tight">Plan Pro activo</p>
-          <p className="text-[10px] text-emerald-200/60 leading-tight">Sin límites</p>
+          <p className="text-xs font-semibold text-emerald-300 leading-tight truncate">
+            {viaShare ? `Pro vía ${ownerLabel ?? 'workspace compartido'}` : 'Plan Pro activo'}
+          </p>
+          <p className="text-[10px] text-emerald-200/60 leading-tight">
+            {viaShare ? 'En este workspace' : 'Sin límites'}
+          </p>
         </div>
       </div>
     )

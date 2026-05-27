@@ -14,7 +14,13 @@ const { createClientMock, rateLimitMock, getUserPlanMock } = vi.hoisted(() => ({
 
 vi.mock('@/lib/supabase/route', () => ({ createClientForRequest: createClientMock }))
 vi.mock('@/lib/rate-limit',     () => ({ checkRateLimit: rateLimitMock }))
-vi.mock('@/lib/subscription',   () => ({ getUserPlan: getUserPlanMock }))
+// El endpoint usa getEffectivePlan (plan del owner del workspace activo).
+// Alias al mismo mock — los tests setean has_pro_access vía getUserPlanMock
+// y ese valor sirve igual como plan efectivo (los tests no diferencian).
+vi.mock('@/lib/subscription',   () => ({
+  getUserPlan:      getUserPlanMock,
+  getEffectivePlan: getUserPlanMock,
+}))
 
 import { POST } from '@/app/api/analitica-insight/route'
 

@@ -1,9 +1,9 @@
-import { getAuthedClient } from '@/lib/supabase/server'
-import { adminClient }    from '@/lib/supabase/admin'
-import { getUserPlan }    from '@/lib/subscription'
-import { redirect }       from 'next/navigation'
-import { Sparkles }       from 'lucide-react'
-import { ProClient }      from '@/components/pro-client'
+import { getAuthedClient }           from '@/lib/supabase/server'
+import { adminClient }               from '@/lib/supabase/admin'
+import { getUserPlan, getEffectivePlan } from '@/lib/subscription'
+import { redirect }                  from 'next/navigation'
+import { Sparkles }                  from 'lucide-react'
+import { ProClient }                 from '@/components/pro-client'
 import {
   PRO_PRICE_ARS,
   EARLY_ACCESS_PRICE_ARS,
@@ -14,7 +14,14 @@ export default async function ProPage() {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
 
-  const plan = await getUserPlan(supabase)
+  // El plan PROPIO determina si el user paga Pro (lo que muestra esta página).
+  // El plan EFECTIVO (workspace activo) lo necesitamos para explicarle al
+  // invitee que está accediendo a Pro vía un workspace ajeno y que pagar
+  // acá aplicaría a SU propio workspace, no al del owner.
+  const [plan, effective] = await Promise.all([
+    getUserPlan(supabase),
+    getEffectivePlan(supabase, user),
+  ])
 
   // ── Pricing dinámico — early access vs standard ──────────────────────────
   // Si quedan slots en el early access (primeros 100 suscriptores), el user
@@ -56,6 +63,9 @@ export default async function ProPage() {
         plan={plan.plan}
         planExpiresAt={plan.plan_expires_at}
         hasProAccess={plan.has_pro_access}
+        effectiveHasProAccess={effective.has_pro_access}
+        effectiveSource={effective.source}
+        effectiveOwnerEmail={effective.ownerEmail}
         priceArs={priceArs}
         earlyAccess={earlyAccessAvailable}
         earlySlotsRemaining={earlySlotsRemaining}

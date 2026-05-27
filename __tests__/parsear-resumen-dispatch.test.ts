@@ -10,7 +10,13 @@ import { NextRequest } from 'next/server'
 const { createClientMock } = vi.hoisted(() => ({ createClientMock: vi.fn() }))
 
 vi.mock('@/lib/supabase/route', () => ({ createClientForRequest: createClientMock }))
-vi.mock('@/lib/subscription',   () => ({ getUserPlan: () => Promise.resolve({ has_pro_access: true }) }))
+vi.mock('@/lib/subscription',   () => ({
+  // El endpoint usa getEffectivePlan (plan del owner del workspace activo).
+  // En este test no diferenciamos own vs share — basta con simular Pro
+  // efectivo para que el endpoint pase el gate de cupo.
+  getUserPlan:      () => Promise.resolve({ has_pro_access: true }),
+  getEffectivePlan: () => Promise.resolve({ has_pro_access: true, source: 'own', ownerEmail: null }),
+}))
 vi.mock('@/lib/rate-limit',     () => ({ checkRateLimit: () => Promise.resolve({ allowed: true }) }))
 vi.mock('@/lib/usage-limits',   () => ({
   isOnboardingActive:  () => Promise.resolve(false),

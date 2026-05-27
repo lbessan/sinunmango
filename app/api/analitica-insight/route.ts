@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
-import { getUserPlan } from '@/lib/subscription'
+import { getEffectivePlan } from '@/lib/subscription'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { todayAR } from '@/lib/timezone'
 import { MODEL_ANALITICA_INSIGHT } from '@/lib/claude-models'
@@ -68,8 +68,8 @@ export async function POST(req: NextRequest) {
   const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // ── Plan check: feature Pro ──
-  const plan = await getUserPlan(supabase)
+  // ── Plan check: feature Pro (effective: aplica el plan del owner del workspace activo) ──
+  const plan = await getEffectivePlan(supabase, user)
   if (!plan.has_pro_access) {
     return NextResponse.json(
       { error: 'Requiere plan Pro', requires_pro: true },

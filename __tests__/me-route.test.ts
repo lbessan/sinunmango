@@ -1,20 +1,51 @@
-// Tests para GET /api/me (info user + plan + usage)
+// Tests para GET /api/me (info user + plan EFECTIVO + usage)
 //
 // Cubrimos:
 //   - 401 sin auth
 //   - Free: devuelve usage por feature
 //   - Pro: devuelve usage=null (ilimitado)
 //   - Plan expirado degrada a sin acceso
+//   - Workspace ajeno + owner Pro: devuelve plan efectivo Pro (vía share)
+//     y own_plan separado para mostrar billing personal.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { USAGE_LIMITS_FREE } from '@/lib/usage-limits'
 
-const { createClientMock } = vi.hoisted(() => ({ createClientMock: vi.fn() }))
+const { createClientMock, getCurrentWorkspaceMock, adminFromMock } = vi.hoisted(() => ({
+  createClientMock:         vi.fn(),
+  getCurrentWorkspaceMock:  vi.fn(),
+  adminFromMock:            vi.fn(),
+}))
 
 vi.mock('@/lib/supabase/route', () => ({
   createClientForRequest: createClientMock,
 }))
+
+vi.mock('@/lib/workspace', () => ({
+  getCurrentWorkspace: getCurrentWorkspaceMock,
+}))
+
+vi.mock('@/lib/supabase/admin', () => ({
+  adminClient: { from: adminFromMock },
+}))
+
+// Por defecto, workspace propio (todos los tests legacy siguen pasando sin
+// tocarlos). Los tests específicos de workspace_share overridean esto.
+function defaultOwnWorkspace(userId: string) {
+  getCurrentWorkspaceMock.mockResolvedValue({ ownerUserId: userId, isOwn: true })
+}
+
+// Builder para el admin client cuando getEffectivePlan lee el plan del owner.
+function setAdminOwnerPlan(plan: { plan: string; plan_expires_at: string | null } | null) {
+  adminFromMock.mockImplementationOnce(() => ({
+    select: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        maybeSingle: vi.fn(() => Promise.resolve({ data: plan, error: null })),
+      })),
+    })),
+  }))
+}
 
 import { GET } from '@/app/api/me/route'
 
@@ -37,11 +68,15 @@ function setupSupabase(opts: {
   const rpc = vi.fn(() => Promise.resolve({ data: opts.usage ?? [], error: null }))
   const supabase = { from, rpc }
   createClientMock.mockResolvedValueOnce({ supabase, user: opts.user })
+  // Workspace propio por default — los tests de workspace_share lo overridean.
+  if (opts.user) defaultOwnWorkspace(opts.user.id)
   return { rpc, from }
 }
 
 beforeEach(() => {
   createClientMock.mockReset()
+  getCurrentWorkspaceMock.mockReset()
+  adminFromMock.mockReset()
 })
 
 describe('GET /api/me', () => {
@@ -162,5 +197,81 @@ describe('GET /api/me', () => {
     const body = await res.json()
     expect(body.id).toBe('unique-id')
     expect(body.email).toBe('unique@test.com')
+  })
+
+  it('Workspace propio → plan_source=own y plan_owner_email=null', async () => {
+    setupSupabase({
+      user: { id: 'u' },
+      profile: { plan: 'free', plan_expires_at: null },
+      usage: [],
+    })
+
+    const res = await GET(makeReq())
+    const body = await res.json()
+    expect(body.plan_source).toBe('own')
+    expect(body.plan_owner_email).toBeNull()
+    // own_plan refleja el propio (mismo que top-level cuando es own)
+    expect(body.own_plan).toEqual({
+      plan: 'free',
+      has_pro_access: false,
+      plan_expires_at: null,
+    })
+  })
+
+  it('Workspace ajeno + owner Pro → plan EFECTIVO Pro vía share, own_plan separado Free', async () => {
+    const future = new Date(Date.now() + 30 * 86_400_000).toISOString()
+    // Override workspace mock ANTES de setupSupabase: el helper hace mockResolvedValue,
+    // así que se setea último y gana.
+    setupSupabase({
+      user: { id: 'invitee' },
+      profile: { plan: 'free', plan_expires_at: null },  // own plan Free
+      usage: [],
+    })
+    getCurrentWorkspaceMock.mockReset()
+    getCurrentWorkspaceMock.mockResolvedValueOnce({
+      ownerUserId: 'owner-id', isOwn: false, ownerEmail: 'owner@x.com',
+    })
+    setAdminOwnerPlan({ plan: 'pro', plan_expires_at: future })
+
+    const res = await GET(makeReq())
+    const body = await res.json()
+    // Top-level refleja el plan EFECTIVO (= owner Pro)
+    expect(body.plan).toBe('pro')
+    expect(body.has_pro_access).toBe(true)
+    expect(body.plan_source).toBe('workspace_share')
+    expect(body.plan_owner_email).toBe('owner@x.com')
+    // own_plan refleja el plan PROPIO del invitee (Free)
+    expect(body.own_plan).toEqual({
+      plan: 'free',
+      has_pro_access: false,
+      plan_expires_at: null,
+    })
+    // Pro efectivo → no se devuelve usage (ilimitado)
+    expect(body.usage).toBeNull()
+  })
+
+  it('Workspace ajeno + owner Free → plan efectivo Free, devuelve usage del invitee', async () => {
+    setupSupabase({
+      user: { id: 'invitee' },
+      // own plan Pro vigente (ej: el user tiene Pro propio pero está actuando
+      // en el workspace de otro — en ese contexto manda el owner)
+      profile: { plan: 'pro', plan_expires_at: new Date(Date.now() + 30 * 86_400_000).toISOString() },
+      usage: [{ feature: 'asistente', count: 2 }],
+    })
+    getCurrentWorkspaceMock.mockReset()
+    getCurrentWorkspaceMock.mockResolvedValueOnce({
+      ownerUserId: 'owner-id', isOwn: false, ownerEmail: 'free-owner@x.com',
+    })
+    setAdminOwnerPlan({ plan: 'free', plan_expires_at: null })
+
+    const res = await GET(makeReq())
+    const body = await res.json()
+    // El plan efectivo es Free (del owner), aunque own_plan sea Pro.
+    expect(body.has_pro_access).toBe(false)
+    expect(body.plan_source).toBe('workspace_share')
+    expect(body.own_plan.has_pro_access).toBe(true)  // su propio plan SÍ es Pro
+    // Como efectivo es Free, devolvemos usage del user actual
+    expect(body.usage).not.toBeNull()
+    expect(body.usage.asistente.used).toBe(2)
   })
 })
