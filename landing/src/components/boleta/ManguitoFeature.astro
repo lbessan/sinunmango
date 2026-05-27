@@ -25,7 +25,7 @@ import Sun from './Sun.astro';
     <!-- ─── Top: tag + headline + body, CENTERED (mx-auto + text-center) ── -->
     <div class="max-w-3xl mx-auto text-center">
       <div class="bol-mono text-[10px] uppercase tracking-[0.24em]" style="color: #74ACDF;">
-        Sección II · El asistente
+        Sección III · El asistente
       </div>
       <h2 class="bol-display mt-7 text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.02em] font-medium">
         Decíle qué <em class="font-bold not-italic">gastaste</em>.<br />
@@ -40,18 +40,20 @@ import Sun from './Sun.astro';
     <div class="mt-14 grid grid-cols-12 gap-x-6 items-center">
 
       <!-- LEFT (5/12): Manguito floating + sun behind centered.
-           Sol grande (640) y Manguito más chico (max-w-[340px]) para
-           que el sol "se vea" detrás como pedía el dueño. -->
+           Iteración 2: agrandamos los DOS pero subimos más proporción del
+           sol (de 1.88× → 2.2× el ancho de Manguito) para que el sol gane
+           presencia clara como "fondo motif", no solo borde detrás del
+           mascot. -->
       <div class="col-span-12 lg:col-span-5 relative mb-12 lg:mb-0">
         <div class="relative">
           <!-- Sun gigante detrás del mascot. opacity 0.65 vía .bol-sun-rise. -->
           <div class="absolute inset-0 flex items-center justify-center pointer-events-none bol-sun-rise" aria-hidden="true">
-            <Sun size={640} />
+            <Sun size={780} />
           </div>
           <img
             src="/manguito-hero-billete.webp"
             alt="Manguito con billete"
-            class="bol-float-mascot relative z-10 w-full max-w-[340px] mx-auto"
+            class="bol-float-mascot relative z-10 w-full max-w-[360px] mx-auto"
           />
         </div>
         <p class="bol-serif italic text-center text-[14px] mt-2 max-w-xs mx-auto relative z-10" style="color: rgba(246,241,231,0.55);">
