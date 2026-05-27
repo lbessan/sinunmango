@@ -12,7 +12,10 @@
 import Layout       from "../layouts/Layout.astro";
 import Nav          from "../components/boleta/Nav.astro";
 import Hero         from "../components/boleta/Hero.astro";
-import Promises     from "../components/boleta/Promises.astro";
+// Promises (strip de 3 tags debajo del Hero) removido a pedido del dueño —
+// la sección sentía como "lleno técnico" entre Hero y ParaQuien. ParaQuien
+// ahora arranca directo después del Hero. El componente sigue en disco
+// (landing/src/components/boleta/Promises.astro) por si querés volver atrás.
 import ParaQuien    from "../components/boleta/ParaQuien.astro";
 import ManguitoFeat from "../components/boleta/ManguitoFeature.astro";
 import Features     from "../components/boleta/Features.astro";
@@ -32,7 +35,6 @@ import { faqJsonLd } from "../data/faqs";
   <Nav />
   <main class="bol-body bol-grain">
     <Hero />
-    <Promises />
     <ParaQuien />
     <ManguitoFeat />
     <Features />

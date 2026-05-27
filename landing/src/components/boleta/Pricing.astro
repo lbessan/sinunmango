@@ -54,7 +54,7 @@ const FILAS: ComparadorRow[] = [
 <section id="planes" class="bol-body py-24 bg-[#EDE5D4] border-y border-[#1A1814]/15">
   <div class="max-w-5xl mx-auto px-6 sm:px-8">
 
-    <div class="bol-tag-celeste">Sección VI · Planes</div>
+    <div class="bol-tag-celeste">Sección V · Planes</div>
     <h2 class="bol-display mt-7 text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.02em] font-medium max-w-3xl">
       Empezás <em class="italic" style="color: #3D7BBB;">gratis</em>. Pagás solo<br />
       si <em class="italic" style="color: #E08E2A;">necesitás más IA</em>.
@@ -63,34 +63,56 @@ const FILAS: ComparadorRow[] = [
       Todo lo importante de cargar y revisar tu plata es gratis para siempre. Pro suma los flows con IA sin tope.
     </p>
 
-    <div class="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- ─── Cards de planes — iteración 4 (post-"quedó floja") ────────────
+         Cambios para darle peso visual:
+           · Cards más altas (min-h-[600px]) — forzar verticalidad.
+           · Pro card con scale 1.02 en lg + shadow mango fuerte + halo
+             mango sutil DETRÁS de la card (no inside).
+           · Badge "Early Access" ahora como CINTA DIAGONAL en la esquina
+             top-right del Pro (más dramático que strip horizontal).
+           · Free card con textura de "papel rayado" sutil — refuerza el
+             motif Boleta y evita que se vea "vacía" comparada al Pro.
+           · Sin rounded — look "papel impreso editorial".
+           · Gap más chico (gap-4) para que las cards se "sientan" como
+             díptico apareado, no como dos cosas separadas.
+           · Trust signal al pie debajo del grid: "Cancelás cuando quieras
+             desde la app · sin compromisos a largo plazo". -->
+    <div class="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-4 lg:items-stretch">
 
       <!-- ─── FREE ─────────────────────────────────────────────────────── -->
-      <!-- Card paper-white con border ink/10. El border-top de 2px ink
-           queda EXTERNO al padding para que se vea como "etiqueta" del plan. -->
-      <div class="relative flex flex-col rounded-sm border border-[#1A1814]/10 bg-white shadow-[0_4px_24px_-12px_rgba(26,24,20,0.15)] overflow-hidden">
-        <!-- Border-top fuerte (acento de identidad del plan) -->
+      <div class="relative flex flex-col border border-[#1A1814]/12 bg-white overflow-hidden min-h-[560px] lg:min-h-[600px]">
+        <!-- Border-top 3px de identidad -->
         <div class="h-[3px] bg-[#1A1814]" aria-hidden="true"></div>
 
-        <div class="flex-1 p-8 sm:p-10">
+        <!-- Bg texture sutil — "papel rayado" tenue, igual idea que
+             ParaQuien pero con menos contraste para no competir con la
+             info. Le da personalidad sin gritar. -->
+        <div
+          class="absolute inset-0 pointer-events-none opacity-[0.5]"
+          style="background-image: repeating-linear-gradient(0deg, transparent 0px, transparent 31px, rgba(26,24,20,0.025) 31px, rgba(26,24,20,0.025) 32px); background-size: 100% 32px;"
+          aria-hidden="true"
+        ></div>
+
+        <div class="relative flex-1 p-8 sm:p-10 flex flex-col">
           <div class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mb-4">
             Plan A · Free
           </div>
-          <h3 class="bol-display text-[64px] leading-none font-medium">$0</h3>
-          <p class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mt-2">
+          <h3 class="bol-display text-[72px] leading-[0.9] font-medium">$0</h3>
+          <p class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mt-3">
             para siempre · sin tarjeta
           </p>
-          <ul class="mt-10 space-y-4 bol-serif text-[16px] text-[#1A1814]/80">
+          <ul class="mt-10 space-y-4 bol-serif text-[16px] text-[#1A1814]/85">
             {freeBullets.map(t => (
               <li class="flex gap-3">
-                <span class="mt-0.5" style="color: #0F4D3A;" aria-hidden="true">✦</span>
+                <span class="mt-0.5 text-[18px] leading-none" style="color: #0F4D3A;" aria-hidden="true">✦</span>
                 <span>{t}</span>
               </li>
             ))}
           </ul>
+          <div class="flex-1"></div>
           <a
             href="https://app.sinunmango.com.ar"
-            class="mt-10 inline-flex items-center gap-2 bol-serif text-[16px] italic underline decoration-[#74ACDF] decoration-2 underline-offset-[6px] hover:text-[#3D7BBB] transition-colors"
+            class="mt-10 inline-flex items-center gap-2 bol-serif text-[16px] italic underline decoration-[#74ACDF] decoration-2 underline-offset-[6px] hover:text-[#3D7BBB] transition-colors w-fit"
           >
             Empezar gratis →
           </a>
@@ -98,46 +120,77 @@ const FILAS: ComparadorRow[] = [
       </div>
 
       <!-- ─── PRO ──────────────────────────────────────────────────────── -->
-      <!-- Card más prominente: shadow mango sutil + border-top amber. -->
-      <div class="relative flex flex-col rounded-sm border border-[#E08E2A]/40 bg-white shadow-[0_8px_36px_-12px_rgba(224,142,42,0.30)] overflow-hidden">
-        <div class="h-[3px] bg-[#E08E2A]" aria-hidden="true"></div>
+      <!-- Halo mango DETRÁS de la card (no inside) — efecto "elevación".
+           Pro card con scale ligero en lg para que destaque sin gritar. -->
+      <div class="relative lg:scale-[1.025] lg:origin-center">
+        <!-- Halo amber detrás -->
+        <div
+          class="absolute -inset-4 opacity-30 blur-2xl pointer-events-none"
+          style="background: radial-gradient(circle at 50% 50%, #E08E2A 0%, transparent 70%);"
+          aria-hidden="true"
+        ></div>
 
-        <div class="flex-1 p-8 sm:p-10">
-          <!-- Badge early access absolute top-left, sobresale del padding -->
-          <div class="absolute top-[3px] left-8 -translate-y-1/2 bg-[#E08E2A] text-[#1A1814] bol-mono text-[9px] uppercase tracking-[0.22em] font-bold px-3 py-1">
-            ✦ Early access · 50% off
-          </div>
+        <div class="relative flex flex-col border-2 border-[#E08E2A] bg-white overflow-hidden min-h-[560px] lg:min-h-[600px] shadow-[0_20px_60px_-20px_rgba(224,142,42,0.45)]">
+          <!-- Border-top 3px amber -->
+          <div class="h-[3px] bg-[#E08E2A]" aria-hidden="true"></div>
 
-          <div class="bol-mono text-[10px] uppercase tracking-[0.22em] mt-3 mb-4" style="color: #E08E2A;">
-            Plan B · Pro
-          </div>
-
-          <div class="flex items-end gap-4 flex-wrap">
-            <h3 class="bol-display text-[64px] leading-none font-medium" style="color: #E08E2A;">$3.499</h3>
-            <span class="bol-serif text-[18px] text-[#1A1814]/50 line-through mb-1.5 bol-tabular">$6.999</span>
-          </div>
-          <p class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mt-2">
-            por mes · 7 días gratis
-          </p>
-
-          <ul class="mt-10 space-y-4 bol-serif text-[16px] text-[#1A1814]/80">
-            {proBullets.map(t => (
-              <li class="flex gap-3">
-                <span class="mt-0.5" style="color: #E08E2A;" aria-hidden="true">✦</span>
-                <span>{t}</span>
-              </li>
-            ))}
-          </ul>
-
-          <a
-            href="https://app.sinunmango.com.ar/pro"
-            class="mt-10 inline-flex items-center gap-3 bg-[#E08E2A] text-[#1A1814] px-7 py-3.5 bol-serif text-[16px] font-medium hover:bg-[#1A1814] hover:text-[#F6F1E7] transition-colors"
+          <!-- ── Cinta diagonal "Early Access" en esquina top-right ──────
+               Más dramática que strip horizontal — rompe la card como
+               sello "vintage". -->
+          <div
+            class="absolute -top-2 -right-2 z-10 overflow-hidden pointer-events-none"
+            style="width: 180px; height: 180px;"
+            aria-hidden="true"
           >
-            Probá Pro 7 días gratis <span class="italic" aria-hidden="true">→</span>
-          </a>
+            <div
+              class="absolute bg-[#E08E2A] text-[#1A1814] bol-mono text-[10px] uppercase tracking-[0.18em] font-bold py-1.5 text-center shadow-md"
+              style="width: 240px; top: 32px; right: -65px; transform: rotate(45deg);"
+            >
+              ✦ Early access · 50% off
+            </div>
+          </div>
+
+          <div class="relative flex-1 p-8 sm:p-10 flex flex-col">
+            <div class="bol-mono text-[10px] uppercase tracking-[0.22em] mb-4" style="color: #E08E2A;">
+              Plan B · Pro
+            </div>
+
+            <div class="flex items-end gap-4 flex-wrap">
+              <h3 class="bol-display text-[72px] leading-[0.9] font-medium" style="color: #E08E2A;">$3.499</h3>
+              <span class="bol-serif text-[20px] text-[#1A1814]/45 line-through mb-2 bol-tabular">$6.999</span>
+            </div>
+            <p class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mt-3">
+              por mes · 7 días gratis
+            </p>
+
+            <ul class="mt-10 space-y-4 bol-serif text-[16px] text-[#1A1814]/85">
+              {proBullets.map(t => (
+                <li class="flex gap-3">
+                  <span class="mt-0.5 text-[18px] leading-none" style="color: #E08E2A;" aria-hidden="true">✦</span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div class="flex-1"></div>
+
+            <a
+              href="https://app.sinunmango.com.ar/pro"
+              class="mt-10 inline-flex items-center justify-center gap-3 bg-[#E08E2A] text-[#1A1814] px-7 py-4 bol-serif text-[16px] font-semibold hover:bg-[#1A1814] hover:text-[#F6F1E7] transition-colors w-full sm:w-auto"
+            >
+              Probá Pro 7 días gratis <span class="italic" aria-hidden="true">→</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- Trust signal al pie debajo del grid de planes — refuerza la
+         decisión de probar Pro sin compromiso. Mismo tono mono que el
+         resto de Boleta. -->
+    <p class="mt-8 text-center bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/50">
+      Cancelás cuando quieras desde la app · sin compromisos a largo plazo
+    </p>
 
     <!-- ─── COMPARADOR DETALLADO ───────────────────────────────────────────
          Mismo data que la versión actual. Arranca COLAPSADO — las dos cards
