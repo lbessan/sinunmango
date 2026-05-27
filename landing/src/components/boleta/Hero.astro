@@ -18,10 +18,14 @@
 ---
 
 <section class="bol-body relative overflow-hidden pt-14 pb-24">
+  <!-- Grid layout: 6/6 en lg (era 7/5). Le damos más peso visual al frame
+       de video; el copy sigue siendo protagonista en altura pero el video
+       gana presencia horizontal. El frame además sangra hacia la derecha
+       con `lg:-mr-4 xl:-mr-12` (rompe el container, gana ancho real). -->
   <div class="max-w-6xl mx-auto px-6 sm:px-8 grid grid-cols-12 gap-x-6 items-start">
 
-    <!-- ─── LEFT (7/12) — copy + CTAs ──────────────────────────────────── -->
-    <div class="col-span-12 lg:col-span-7 relative z-10">
+    <!-- ─── LEFT (6/12) — copy + CTAs ──────────────────────────────────── -->
+    <div class="col-span-12 lg:col-span-6 relative z-10">
       <div class="bol-tag-celeste bol-rise-in">v2.0 · Hecho en Argentina</div>
 
       <h1 class="bol-display bol-rise-in-2 mt-7 text-[clamp(3rem,7vw,6.5rem)] leading-[0.92] tracking-[-0.02em] font-medium">
@@ -55,18 +59,16 @@
       </div>
     </div>
 
-    <!-- ─── RIGHT (5/12) — browser frame con video placeholder ─────────── -->
-    <div class="col-span-12 lg:col-span-5 relative mt-12 lg:mt-0">
+    <!-- ─── RIGHT (6/12) — browser frame con video placeholder ─────────── -->
+    <!-- Sangrado a la derecha con -mr-4/-mr-12: el frame se "sale" del
+         container para ganar ~50-100px extra y match the visual weight
+         del Hero original (que también sangra hacia la derecha). -->
+    <div class="col-span-12 lg:col-span-6 relative mt-12 lg:mt-0 lg:-mr-4 xl:-mr-12">
       <div class="relative">
 
-        <!-- Mono caption arriba-izquierda. -top-6 -left-6 lo saca un poco
-             del frame para look "anotación a mano". -->
-        <div
-          class="absolute -top-6 -left-6 bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/45 z-20"
-          aria-hidden="true"
-        >
-          Fig. 1 — la app
-        </div>
+        <!-- Caption "Fig. 1 — la app" REMOVIDO a pedido del dueño:
+             el look editorial "anotación al margen" no le cerró en este
+             contexto — perdía protagonismo el frame del video. -->
 
         <!-- Browser frame paper-style.
              rounded-sm (no rounded-lg) — para look más "papel impreso". -->

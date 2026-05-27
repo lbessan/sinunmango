@@ -4,29 +4,26 @@
 // Es la ÚNICA sección dark de toda la página. Bg #1A1814, text paper.
 //
 // Estructura:
-//   Top (max-w-3xl): tag mono celeste + H2 display + body Fraunces 18px
+//   Top (max-w-3xl mx-auto text-center): tag mono celeste + H2 display + body
 //   Bottom (12-col grid):
 //     Left (5/12):  mascot Manguito flotando + sol gigante centrado detrás
-//                   + caption italic
-//     Right (7/12): chat popup paper-style con 3 burbujas hardcoded
+//     Right (7/12): chat popup VIVO con animación de turnos de voz
+//                   (replica del LiveDemo original de la home, adaptado al
+//                    look paper-cream del popup)
 //
-// El sol gira slow (80s loop), el mascot flota (7s ease loop).
+// El chat reusa el approach del LiveDemo original: ciclea 4 turnos
+// (grabando → transcribiendo → texto en input → send → bot responde
+// letra a letra). IDs prefijados `bol-demo-` para no colisionar si
+// alguna vez se monta junto a la versión original.
 
 import Sun from './Sun.astro';
-
-type ChatLine = { kind: 'bot' | 'user'; text: string };
-const lines: ChatLine[] = [
-  { kind: 'bot',  text: 'Hola 👋 Soy Manguito. Preguntame lo que necesites.' },
-  { kind: 'user', text: 'Gasté cuatro mil quinientos en el súper' },
-  { kind: 'bot',  text: '✓ ARS 4.500 · Supermercado · Galicia débito. Te quedan $137.880 este mes.' },
-];
 ---
 
 <section id="manguito" class="bol-interlude py-24 relative overflow-hidden">
   <div class="max-w-6xl mx-auto px-6 sm:px-8">
 
-    <!-- ─── Top: tag + headline + body, full width pero max-w-3xl ──────── -->
-    <div class="max-w-3xl">
+    <!-- ─── Top: tag + headline + body, CENTERED (mx-auto + text-center) ── -->
+    <div class="max-w-3xl mx-auto text-center">
       <div class="bol-mono text-[10px] uppercase tracking-[0.24em]" style="color: #74ACDF;">
         Sección II · El asistente
       </div>
@@ -34,25 +31,27 @@ const lines: ChatLine[] = [
         Decíle qué <em class="font-bold not-italic">gastaste</em>.<br />
         <span class="italic" style="color: #E08E2A;">Manguito lo anota.</span>
       </h2>
-      <p class="mt-8 bol-serif text-[18px] leading-relaxed max-w-xl" style="color: rgba(246,241,231,0.80);">
+      <p class="mt-8 bol-serif text-[18px] leading-relaxed mx-auto max-w-xl" style="color: rgba(246,241,231,0.80);">
         Mantenés el micrófono, dictás el gasto, y queda registrado al toque. Y de paso, le podés preguntar lo que sea sobre tu plata — te responde con datos reales de tu cuenta.
       </p>
     </div>
 
-    <!-- ─── Bottom: Manguito + sun (left) + chat popup (right) ─────────── -->
+    <!-- ─── Bottom: Manguito + sun (left) + chat popup vivo (right) ────── -->
     <div class="mt-14 grid grid-cols-12 gap-x-6 items-center">
 
-      <!-- LEFT (5/12): Manguito floating + sun behind centered -->
+      <!-- LEFT (5/12): Manguito floating + sun behind centered.
+           Sol grande (640) y Manguito más chico (max-w-[340px]) para
+           que el sol "se vea" detrás como pedía el dueño. -->
       <div class="col-span-12 lg:col-span-5 relative mb-12 lg:mb-0">
         <div class="relative">
           <!-- Sun gigante detrás del mascot. opacity 0.65 vía .bol-sun-rise. -->
           <div class="absolute inset-0 flex items-center justify-center pointer-events-none bol-sun-rise" aria-hidden="true">
-            <Sun size={520} />
+            <Sun size={640} />
           </div>
           <img
             src="/manguito-hero-billete.webp"
             alt="Manguito con billete"
-            class="bol-float-mascot relative z-10 w-full max-w-[420px] mx-auto"
+            class="bol-float-mascot relative z-10 w-full max-w-[340px] mx-auto"
           />
         </div>
         <p class="bol-serif italic text-center text-[14px] mt-2 max-w-xs mx-auto relative z-10" style="color: rgba(246,241,231,0.55);">
@@ -60,52 +59,189 @@ const lines: ChatLine[] = [
         </p>
       </div>
 
-      <!-- RIGHT (7/12): chat popup paper-style -->
+      <!-- RIGHT (7/12): chat popup VIVO (replica del LiveDemo original) -->
       <div class="col-span-12 lg:col-span-7">
-        <div class="relative max-w-[500px] mx-auto">
+        <div class="relative max-w-[520px] mx-auto">
 
-          <!-- Halo celeste sutil detrás del popup. -->
+          <!-- Halo celeste detrás del popup -->
           <div class="absolute -inset-6 bg-[#74ACDF]/8 blur-3xl rounded-full" aria-hidden="true"></div>
 
-          <div class="relative bg-[#F6F1E7] text-[#1A1814] rounded-sm shadow-[0_24px_64px_rgba(0,0,0,0.42)] overflow-hidden">
+          <!-- Popup container: replica del componente Manguito real
+               (mismo look: header gradient navy→verde, body LIGHT con
+               burbujas que se generan vía JS). -->
+          <div class="relative mx-auto overflow-hidden rounded-[20px] border border-white/10 bg-[#f8fafc] shadow-[0_24px_64px_rgba(0,0,0,0.42),0_4px_16px_rgba(0,0,0,0.22)]">
 
-            <!-- Header del popup: avatar Manguito + nombre + caption -->
-            <div class="flex items-center gap-3 px-5 py-4 border-b border-[#1A1814]/10">
-              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#1A1814] to-[#3D7BBB] p-1.5 flex items-center justify-center">
-                <img src="/manguito.png" alt="" class="w-full h-full object-contain" />
+            <!-- Header gradient -->
+            <div
+              class="flex items-center gap-3 px-4 py-3.5"
+              style="background: linear-gradient(135deg, #07192b 0%, #1a6b5a 100%);"
+            >
+              <div
+                class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full"
+                style="background: rgba(255,255,255,0.12); box-shadow: 0 0 0 2px rgba(255,255,255,0.2);"
+              >
+                <img
+                  src="/manguito.png"
+                  alt=""
+                  width="34"
+                  height="34"
+                  class="h-[34px] w-[34px] object-contain"
+                />
               </div>
-              <div>
-                <div class="bol-serif font-bold text-[15px]">Manguito</div>
-                <div class="bol-mono text-[9px] uppercase tracking-[0.22em] text-[#1A1814]/50">
-                  Tu asistente · es-AR
+              <div class="flex-1 min-w-0">
+                <p class="text-base font-bold leading-tight text-white">Manguito</p>
+                <p class="mt-0.5 text-xs text-white/60">Tu asistente financiero</p>
+              </div>
+              <!-- Decorative buttons (trash + minimize) — solo look real -->
+              <div class="flex items-center gap-1.5">
+                <span class="flex h-8 w-8 items-center justify-center rounded-lg text-white/40" aria-hidden="true">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"/>
+                    <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
+                    <path d="M10 11v6M14 11v6"/>
+                    <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                </span>
+                <span class="flex h-8 w-8 items-center justify-center rounded-lg text-white/40" aria-hidden="true">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="4 14 10 14 10 20"/>
+                    <polyline points="20 10 14 10 14 4"/>
+                    <line x1="14" y1="10" x2="21" y2="3"/>
+                    <line x1="3" y1="21" x2="10" y2="14"/>
+                  </svg>
+                </span>
+              </div>
+            </div>
+
+            <!-- Body: área de mensajes -->
+            <div class="space-y-3 px-4 py-4 min-h-[340px] sm:min-h-[380px]">
+              <!-- Mensaje de bienvenida — siempre visible -->
+              <div class="flex items-start gap-2.5">
+                <div class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#07192b] to-[#1a6b5a] p-1">
+                  <img src="/manguito.png" alt="" width="22" height="22" class="h-full w-full object-contain" />
+                </div>
+                <div class="max-w-[85%] rounded-2xl rounded-tl-sm border border-slate-100 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 shadow-sm">
+                  Hola 👋 Soy Manguito, tu asistente financiero. Preguntame
+                  lo que necesites sobre tus finanzas o dictame un gasto para
+                  registrarlo.
+                </div>
+              </div>
+
+              <!-- Mensaje del USER (cambia con cada turno via JS) -->
+              <div class="flex items-start gap-2.5 flex-row-reverse">
+                <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1B3A6B] text-white mt-0.5">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+                <div
+                  id="bol-demo-user-msg"
+                  class="max-w-[85%] min-h-[2.25rem] rounded-2xl rounded-tr-sm bg-[#1B3A6B] px-3.5 py-2.5 text-sm leading-relaxed text-white shadow-sm opacity-0 transition-opacity duration-200"
+                ></div>
+              </div>
+
+              <!-- Mensaje del BOT (tipea letra a letra) -->
+              <div class="flex items-start gap-2.5">
+                <div class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#07192b] to-[#1a6b5a] p-1">
+                  <img src="/manguito.png" alt="" width="22" height="22" class="h-full w-full object-contain" />
+                </div>
+                <div class="max-w-[85%] rounded-2xl rounded-tl-sm border border-slate-100 bg-white px-3.5 py-2.5 text-sm leading-relaxed text-slate-700 shadow-sm">
+                  <span id="bol-demo-bot-text"></span>
+                  <span
+                    id="bol-demo-caret"
+                    class="ml-0.5 inline-block h-3.5 w-[2px] bol-demo-blink bg-[#1a6b5a] align-middle"
+                  ></span>
                 </div>
               </div>
             </div>
 
-            <!-- 3 burbujas: bot / user / bot. -->
-            <div class="px-5 py-5 space-y-3 min-h-[260px]">
-              {lines.map(line => (
-                <div class={`flex ${line.kind === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div class={
-                    `max-w-[80%] px-4 py-2.5 bol-serif text-[14.5px] leading-relaxed ${
-                      line.kind === 'user'
-                        ? 'bg-[#3D7BBB] text-white rounded-2xl rounded-tr-sm'
-                        : 'border border-[#1A1814]/10 bg-white rounded-2xl rounded-tl-sm'
-                    }`
-                  }>
-                    {line.text}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <!-- Input bar (decorativo) con overlays de grabando/transcribiendo -->
+            <div class="relative border-t border-slate-100 bg-white px-4 pb-4 pt-2">
 
-            <!-- Footer: placeholder input + mic button ink -->
-            <div class="border-t border-[#1A1814]/10 px-5 py-4 flex items-center gap-3 bg-[#F6F1E7]/50">
-              <div class="flex-1 bol-serif italic text-[14px] text-[#1A1814]/50">
-                Escribí o mantené el mic…
+              <!-- Overlay GRABANDO (rojo) -->
+              <div
+                id="bol-demo-rec-overlay"
+                class="absolute inset-x-4 -top-1 -translate-y-full z-10 flex items-center gap-3 rounded-xl border border-red-100 bg-red-50/95 px-3 py-2 shadow-lg backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-200"
+                aria-hidden="true"
+              >
+                <span class="relative flex h-2.5 w-2.5 shrink-0">
+                  <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+                  <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
+                </span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-[11px] font-semibold text-red-700 leading-tight">
+                    Grabando · <span id="bol-demo-rec-time">0:00</span>
+                  </p>
+                  <p class="text-[10px] text-red-600/80 mt-0.5">
+                    Soltá el micrófono para enviar
+                  </p>
+                </div>
+                <span class="shrink-0 p-1 rounded-md text-red-500">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6"  y1="6" x2="18" y2="18"/>
+                  </svg>
+                </span>
               </div>
-              <div class="w-9 h-9 rounded-full bg-[#1A1814] text-[#F6F1E7] flex items-center justify-center" aria-hidden="true">
-                🎙
+
+              <!-- Overlay TRANSCRIBIENDO (azul) -->
+              <div
+                id="bol-demo-trans-overlay"
+                class="absolute inset-x-4 -top-1 -translate-y-full z-10 flex items-center gap-2.5 rounded-xl border border-blue-100 bg-blue-50/95 px-3 py-2 shadow-lg backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-200"
+                aria-hidden="true"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 animate-spin">
+                  <line x1="12" y1="2"     x2="12"    y2="6"/>
+                  <line x1="12" y1="18"    x2="12"    y2="22"/>
+                  <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/>
+                  <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+                  <line x1="2"  y1="12"   x2="6"  y2="12"/>
+                  <line x1="18" y1="12"   x2="22" y2="12"/>
+                  <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
+                  <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
+                </svg>
+                <p class="text-[11px] font-semibold text-blue-700 leading-tight">
+                  Transcribiendo audio…
+                </p>
+              </div>
+
+              <div class="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 shadow-sm">
+                <p
+                  id="bol-demo-input-text"
+                  class="flex-1 text-sm leading-relaxed py-1.5 text-slate-400 truncate"
+                >
+                  Escribí o mantené el mic
+                </p>
+
+                <!-- Botón mic (cambia a rojo + pulse cuando .recording) -->
+                <div
+                  id="bol-demo-mic-btn"
+                  class="flex h-9 w-9 items-center justify-center rounded-xl shrink-0 transition-colors"
+                  style="background: #f1f5f9; color: #64748b;"
+                  aria-hidden="true"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="2" width="6" height="12" rx="3"/>
+                    <path d="M5 10v2a7 7 0 0 0 14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="22"/>
+                    <line x1="8"  y1="22" x2="16" y2="22"/>
+                  </svg>
+                </div>
+
+                <!-- Send button decorativo -->
+                <button
+                  type="button"
+                  tabindex="-1"
+                  aria-hidden="true"
+                  class="flex h-9 w-9 items-center justify-center rounded-xl text-white shadow shrink-0"
+                  style="background: linear-gradient(135deg, #1B3A6B 0%, #1a6b5a 100%);"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
@@ -114,3 +250,193 @@ const lines: ChatLine[] = [
     </div>
   </div>
 </section>
+
+<style is:global>
+  /* Caret blink del demo (chat popup vivo). Mismas keyframes que el
+     LiveDemo original pero clase prefijada `bol-demo-` para no chocar
+     con la home si alguien las usa juntas. */
+  @keyframes bol-demo-blink {
+    0%, 49%   { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+  .bol-demo-blink {
+    animation: bol-demo-blink 1s infinite;
+  }
+
+  /* Pulso del botón mic en grabación */
+  @keyframes bol-demo-mic-pulse {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0    rgba(239,68,68,0.4); }
+    50%      { transform: scale(1.05); box-shadow: 0 0 0 8px  rgba(239,68,68,0);    }
+  }
+  #bol-demo-mic-btn.recording {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    animation: bol-demo-mic-pulse 1.2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bol-demo-blink,
+    #bol-demo-mic-btn.recording {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  // Live demo del chat Manguito (Boleta version). Ciclea 4 turnos de
+  // voz: grabando → transcribiendo → texto en input → send → bot
+  // responde letra a letra. Mismo flow que LiveDemo original — los IDs
+  // están prefijados `bol-demo-` para que las dos versiones no choquen
+  // si alguna vez se montan juntas.
+  type Turn = { user: string; bot: string; durationSec: number }
+
+  const turns: Turn[] = [
+    {
+      user: 'Acabo de gastar cuatro mil quinientos en el súper',
+      bot:  '✓ Listo. ARS 4.500 en Supermercado. Cuenta: Galicia débito. Te quedan $137.880 este mes.',
+      durationSec: 3,
+    },
+    {
+      user: '¿Cuánto gasté en delivery este mes?',
+      bot:  '$83.450 en 14 pedidos. Casi 3× tu promedio del año.',
+      durationSec: 2,
+    },
+    {
+      user: 'Pagué mil ochocientos en el kiosco con el Galicia',
+      bot:  '✓ Listo. ARS 1.800 en Esparcimiento. Cuenta: Galicia débito.',
+      durationSec: 4,
+    },
+    {
+      user: '¿Llego a fin de mes?',
+      bot:  'Te quedan $134.580 y faltan 12 días. Vas bien si no aparece nada raro.',
+      durationSec: 2,
+    },
+  ]
+
+  const userEl       = document.getElementById('bol-demo-user-msg')
+  const botEl        = document.getElementById('bol-demo-bot-text')
+  const inputEl      = document.getElementById('bol-demo-input-text')
+  const micEl        = document.getElementById('bol-demo-mic-btn')
+  const recOverlay   = document.getElementById('bol-demo-rec-overlay')
+  const transOverlay = document.getElementById('bol-demo-trans-overlay')
+  const recTimeEl    = document.getElementById('bol-demo-rec-time')
+
+  const PLACEHOLDER = 'Escribí o mantené el mic'
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const ms = (n: number) => (prefersReduced ? Math.min(n, 80) : n)
+  const formatTime = (sec: number) => `0:${String(sec).padStart(2, '0')}`
+
+  if (userEl && botEl && inputEl && micEl && recOverlay && transOverlay && recTimeEl) {
+    let i = 0
+    let typingTimer: ReturnType<typeof setTimeout> | null = null
+    let phaseTimer:  ReturnType<typeof setTimeout> | null = null
+
+    const typeInto = (
+      el: HTMLElement,
+      text: string,
+      speedMs: number,
+      onDone: () => void,
+    ) => {
+      el.textContent = ''
+      let pos = 0
+      const tick = () => {
+        if (document.hidden) {
+          typingTimer = setTimeout(tick, 500)
+          return
+        }
+        el.textContent = text.slice(0, ++pos)
+        if (pos < text.length) {
+          typingTimer = setTimeout(tick, ms(speedMs))
+        } else {
+          onDone()
+        }
+      }
+      tick()
+    }
+
+    const show = (el: HTMLElement) => el.classList.remove('opacity-0')
+    const hide = (el: HTMLElement) => el.classList.add('opacity-0')
+
+    const nextTurn = () => {
+      const t = turns[i]
+
+      // A) RESET
+      hide(recOverlay); hide(transOverlay)
+      micEl.classList.remove('recording')
+      userEl.textContent = ''
+      userEl.classList.add('opacity-0')
+      botEl.textContent = ''
+      inputEl.textContent = PLACEHOLDER
+      inputEl.classList.add('text-slate-400')
+      inputEl.classList.remove('text-slate-800')
+      recTimeEl.textContent = formatTime(0)
+
+      // B) GRABANDO
+      phaseTimer = setTimeout(() => {
+        show(recOverlay)
+        micEl.classList.add('recording')
+
+        let elapsed = 0
+        const tickRec = () => {
+          elapsed++
+          recTimeEl.textContent = formatTime(elapsed)
+          if (elapsed < t.durationSec) {
+            phaseTimer = setTimeout(tickRec, ms(1000))
+          } else {
+            // C) TRANSCRIBIENDO
+            hide(recOverlay)
+            micEl.classList.remove('recording')
+            show(transOverlay)
+
+            phaseTimer = setTimeout(() => {
+              // D) TEXTO CAE EN EL INPUT
+              hide(transOverlay)
+              inputEl.textContent = t.user
+              inputEl.classList.remove('text-slate-400')
+              inputEl.classList.add('text-slate-800')
+
+              phaseTimer = setTimeout(() => {
+                // E) SEND
+                inputEl.textContent = PLACEHOLDER
+                inputEl.classList.add('text-slate-400')
+                inputEl.classList.remove('text-slate-800')
+                userEl.textContent = t.user
+                userEl.classList.remove('opacity-0')
+
+                phaseTimer = setTimeout(() => {
+                  // F) BOT RESPONDE letra a letra
+                  typeInto(botEl, t.bot, 32, () => {
+                    // G) PAUSA + PRÓXIMO TURNO
+                    phaseTimer = setTimeout(() => {
+                      i = (i + 1) % turns.length
+                      nextTurn()
+                    }, ms(4500))
+                  })
+                }, ms(450))
+              }, ms(900))
+            }, ms(700))
+          }
+        }
+        phaseTimer = setTimeout(tickRec, ms(1000))
+      }, ms(400))
+    }
+
+    // Arrancar cuando la sección entra al viewport (ahorra CPU si el
+    // user nunca scrollea hasta acá).
+    const section = document.getElementById('manguito')
+    if (section) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              nextTurn()
+              io.disconnect()
+            }
+          })
+        },
+        { threshold: 0.25 },
+      )
+      io.observe(section)
+    }
+  }
+</script>

@@ -30,13 +30,17 @@
       <a href="#dudas"    class="hover:text-[#3D7BBB] hover:italic transition-colors">Dudas</a>
     </nav>
 
-    <!-- CTA: link italic underlined celeste (no botón sólido) -->
+    <!-- CTA: botón paper-style con border ink, hover invertido (ink → paper).
+         Cambio vs versión inicial del handoff (era link italic underlined) —
+         el dueño quiere botón explícito en lugar de un link estilo editorial.
+         Mantenemos el "look papel": sin rounded-full, sin shadow, solo border
+         hairline. -->
     <a
       href="https://app.sinunmango.com.ar"
-      class="inline-flex items-center gap-2 bol-serif italic text-[15px] underline decoration-[#74ACDF] decoration-2 underline-offset-4 hover:decoration-[#E08E2A] transition-colors"
+      class="inline-flex items-center gap-2 border border-[#1A1814] px-5 py-2.5 bol-serif text-[14px] text-[#1A1814] hover:bg-[#1A1814] hover:text-[#F6F1E7] transition-colors"
     >
       Ir a la app
-      <span aria-hidden="true">→</span>
+      <span class="italic" aria-hidden="true">→</span>
     </a>
   </div>
 </header>
