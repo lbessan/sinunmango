@@ -73,9 +73,11 @@ export async function POST(req: NextRequest) {
       .eq('user_id', user.id),
 
     // Dashboard resumen: disponible, deuda tarjetas, proyectado, etc.
+    // Select explícito — si agregamos columnas internas (ej: deuda
+    // discriminada por cuenta), no se leakean al contexto del LLM.
     supabase
       .from('dashboard_resumen')
-      .select('*')
+      .select('disponible_real, deuda_tarjetas_periodo, pagos_tarjeta_mes, ingresos_futuros_mes')
       .eq('user_id', user.id)
       .single(),
 

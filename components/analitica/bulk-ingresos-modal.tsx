@@ -82,7 +82,8 @@ export function BulkIngresosModal({
         onClose()
         setSuccess(null)
       }, 1500)
-    } catch {
+    } catch (err) {
+      console.error('[bulk-ingresos] error de red:', err)
       setError('Error de red')
       setSaving(false)
     }

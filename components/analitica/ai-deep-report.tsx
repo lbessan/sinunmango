@@ -65,7 +65,8 @@ export function AIDeepReport({
       const data: ReportResponse = await res.json()
       setReport(data.reporte)
       setLoading(false)
-    } catch {
+    } catch (err) {
+      console.error('[ai-deep-report] error de red:', err)
       setError('Error de red al pedir el análisis')
       setLoading(false)
     }

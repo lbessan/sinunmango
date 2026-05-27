@@ -80,7 +80,8 @@ export function CargarIngresosModal({
         onClose()
         setSuccess(null)
       }, 1500)
-    } catch {
+    } catch (err) {
+      console.error('[cargar-ingresos] error de red:', err)
       setError('Error de red')
       setSaving(false)
     }

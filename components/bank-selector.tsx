@@ -83,12 +83,14 @@ export function BankSelector({ value, onChange, label = 'Banco o billetera' }: {
   const [customBanks,  setCustomBanks]  = useState<CustomBank[]>([])
   const ref = useRef<HTMLDivElement>(null)
 
-  // Fetch custom banks once on mount
+  // Fetch custom banks once on mount.
+  // El catch loguea — antes era silencioso y si el user creaba bancos
+  // custom y el endpoint fallaba, la lista quedaba vacía sin pista.
   useEffect(() => {
     fetch('/api/bancos-custom')
       .then(r => r.ok ? r.json() : [])
       .then(data => setCustomBanks(data))
-      .catch(() => {})
+      .catch(err => console.warn('[bank-selector] error cargando custom banks:', err))
   }, [])
 
   // Click outside to close

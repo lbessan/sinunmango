@@ -146,7 +146,8 @@ export function ShareWorkspaceModal({
       }
 
       setShares(allShares.filter((s: ShareItem) => s.status === 'pending' || s.status === 'active'))
-    } catch {
+    } catch (err) {
+      console.error('[share-modal] loadAll error:', err)
       setError('No pudimos cargar tus recursos.')
     } finally {
       setLoading(false)
@@ -209,7 +210,8 @@ export function ShareWorkspaceModal({
         onShareChanged?.()
         onClose()
       }
-    } catch {
+    } catch (err) {
+      console.error('[share-modal] submit error:', err)
       setError('Error de conexión.')
     } finally {
       setCreating(false)
@@ -221,7 +223,8 @@ export function ShareWorkspaceModal({
     try {
       await fetch(`/api/shares/${shareId}`, { method: 'DELETE' })
       await loadAll()
-    } catch {
+    } catch (err) {
+      console.error('[share-modal] revoke error:', err)
       setError('No pudimos revocar el acceso.')
     }
   }

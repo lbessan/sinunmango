@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
       .eq('user_id', user.id),
     supabase
       .from('dashboard_resumen')
-      .select('*')
+      // Select explícito — evita leakear columnas nuevas al contexto del LLM.
+      .select('disponible_real, deuda_tarjetas_periodo, ingresos_futuros_mes')
       .eq('user_id', user.id)
       .single(),
     supabase
