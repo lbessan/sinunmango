@@ -148,8 +148,12 @@ export async function GET(req: NextRequest) {
   const gastos = (gastosRaw ?? []) as unknown as GastoFijo[]
 
   // ── Load tarjetas activas con vencimiento (cuentas tipo Tarjeta Credito).
-  // El día de venc lo extraemos del DATE como hace el resto de la app.
-  // (TODO: cuando migremos a fechas exactas por ciclo, este parseo sale.)
+  // El día de venc lo extraemos del DATE como hace el resto de la app —
+  // no guardamos fechas exactas por ciclo (sería over-engineering hoy:
+  // los bancos argentinos suelen mantener el mismo día de venc todos los
+  // meses, salvo el 31 que cae en feb). Si en el futuro vemos casos donde
+  // el ciclo varía por feriado/clearing, abrimos issue para refactorear
+  // este parseo a fechas explícitas por ciclo en una tabla nueva.
   const { data: tarjetasRaw, error: errTj } = await adminClient
     .from('cuentas')
     .select('id, user_id, nombre_cuenta, fecha_vencimiento_tarjeta')
