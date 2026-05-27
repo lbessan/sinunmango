@@ -52,23 +52,42 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, purged: 0, message: 'No hay cuentas a purgar.' })
   }
 
+  // ── PASO 1: lookup paralelo de emails ────────────────────────────────────
+  // Antes hacíamos getUserById secuencial dentro del loop principal. Con N
+  // users y latencia ~80ms/lookup, N=50 dejaba el cron en 4s sólo por emails.
+  // Ahora corren en paralelo via Promise.allSettled (fail-safe: si uno falla,
+  // los demás siguen).
+  const userIds = pendientes.map(p => p.user_id)
+  const emailLookups = await Promise.allSettled(
+    userIds.map(uid => adminClient.auth.admin.getUserById(uid))
+  )
+  const emailByUserId = new Map<string, string | null>()
+  emailLookups.forEach((res, i) => {
+    const uid = userIds[i]
+    if (res.status === 'fulfilled') {
+      const { data, error } = res.value
+      if (error) {
+        console.warn(`[purge-deleted-users] getUserById failed for ${uid}:`, error.message)
+        emailByUserId.set(uid, null)
+      } else {
+        emailByUserId.set(uid, data.user?.email ?? null)
+      }
+    } else {
+      console.warn(`[purge-deleted-users] getUserById rejected for ${uid}:`, res.reason)
+      emailByUserId.set(uid, null)
+    }
+  })
+
+  // ── PASO 2: hard delete secuencial ───────────────────────────────────────
+  // Mantengo el delete secuencial — Supabase admin API tiene rate limits y
+  // un delete que casca por FK puede tirar todo si los disparamos en paralelo.
+  // Si esto se vuelve un cuello de botella con miles de purges/día, podemos
+  // batchear con un pool limitado (8 en paralelo, por ejemplo).
   const results: Array<{ user_id: string; status: 'purged' | 'error'; error?: string }> = []
 
   for (const row of pendientes) {
     const userId = row.user_id
-
-    // Obtener email ANTES de borrar (después no podremos consultarlo).
-    let userEmail: string | null = null
-    try {
-      const { data: { user }, error: errGet } = await adminClient.auth.admin.getUserById(userId)
-      if (errGet) {
-        console.warn(`[purge-deleted-users] getUserById failed for ${userId}:`, errGet.message)
-      } else {
-        userEmail = user?.email ?? null
-      }
-    } catch (e) {
-      console.warn(`[purge-deleted-users] getUserById exception for ${userId}:`, e)
-    }
+    const userEmail = emailByUserId.get(userId) ?? null
 
     // Hard delete: borra de auth.users. Las FK con ON DELETE CASCADE
     // hacen el cascade automático al resto de tablas.
