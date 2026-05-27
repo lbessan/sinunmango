@@ -21,6 +21,22 @@ function LoginContent() {
   const searchParams = useSearchParams()
   const errorParam   = searchParams.get('error')
 
+  // `next`: a dónde mandar al user después de auth. Lo usa el flow de
+  // invite (/invite/[token]?next=/invite/[token]) para que después de
+  // signup/login vuelva a aceptar la invitación en vez de ir a /dashboard
+  // o /onboarding. Validamos que sea path relativo (no open redirect).
+  const nextParamRaw = searchParams.get('next')
+  const nextParam = nextParamRaw && nextParamRaw.startsWith('/') && !nextParamRaw.startsWith('//')
+    ? nextParamRaw
+    : null
+
+  // Para flujos que pasan por el callback (Google OAuth + signup con email
+  // de confirmación), inyectamos el next en el redirectTo.
+  const callbackUrl = (origin: string) =>
+    nextParam
+      ? `${origin}/auth/callback?next=${encodeURIComponent(nextParam)}`
+      : `${origin}/auth/callback`
+
   const [view, setView]         = useState<View>('choose')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
@@ -33,7 +49,7 @@ function LoginContent() {
     setLoading(true)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callbackUrl(window.location.origin) },
     })
     // El browser redirige solo, no hace falta setLoading(false)
   }
@@ -56,9 +72,10 @@ function LoginContent() {
       }
       return
     }
-    // Sesión creada — el server lee la cookie en el primer fetch al dashboard.
+    // Sesión creada — el server lee la cookie en el primer fetch.
+    // Si vino `next` (ej. flow de invite link), respetarlo. Sino, /dashboard.
     // refresh() fuerza re-render del layout server-side que ya tiene la sesión.
-    router.push('/dashboard')
+    router.push(nextParam ?? '/dashboard')
     router.refresh()
   }
 
@@ -81,8 +98,8 @@ function LoginContent() {
       options: {
         // emailRedirectTo: a donde redirigir cuando el user toque el link del
         // email de confirmación. Va a /auth/callback que hace exchangeCodeForSession
-        // y desde ahí redirige a /onboarding o /dashboard.
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // y desde ahí redirige a /onboarding o /dashboard (o `next` si vino).
+        emailRedirectTo: callbackUrl(window.location.origin),
       },
     })
     setLoading(false)
@@ -359,6 +376,15 @@ function LoginContent() {
                 <h2 className="text-2xl font-bold text-slate-800">Bienvenido</h2>
                 <p className="text-slate-500 mt-1 text-sm">Ingresá a sinunmango</p>
               </div>
+
+              {/* Banner si vienen de un invite link — explica el contexto
+                  ("estás registrándote para aceptar una invitación").
+                  Aplica solo si nextParam apunta a /invite/[token]. */}
+              {nextParam?.startsWith('/invite/') && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
+                  Estás respondiendo a una <strong>invitación a un workspace compartido</strong>. Ingresá con tu cuenta o creá una nueva — después te llevamos a aceptar la invitación.
+                </div>
+              )}
 
               {formError && (
                 <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">

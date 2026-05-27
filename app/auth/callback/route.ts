@@ -22,6 +22,15 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
 
+  // `next`: a dónde mandar al user tras el exchange. Lo usa el flow de
+  // invite link (/invite/[token]) para que el invitee vuelva a la página
+  // de aceptación tras signup/OAuth en vez de ir a /onboarding o /dashboard.
+  // Validamos que sea path relativo (no abrir redirect a dominios externos).
+  const nextParam = searchParams.get('next')
+  const safeNext = nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')
+    ? nextParam
+    : null
+
   if (!code) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
@@ -46,6 +55,14 @@ export async function GET(request: NextRequest) {
   }
 
   const user = session.user
+
+  // Si vino `next` (típicamente /invite/[token]), respetarlo SIEMPRE —
+  // el invitee no debe pasar por onboarding antes de aceptar la invitación.
+  // La página /invite/[token] no está en el group (app) así que no se rige
+  // por su layout (que es el que redirige a /onboarding sin cuentas).
+  if (safeNext) {
+    return NextResponse.redirect(new URL(safeNext, request.url))
+  }
 
   // ── Si el user no tiene cuentas (onboarding incompleto), mandar a onboarding
   // El user_profiles + categorías default ya fueron creadas por el trigger
