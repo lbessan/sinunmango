@@ -145,6 +145,26 @@ body {
   background-size: 7px 7px, 11px 11px;
 }
 
+/* ParaQuien: textura "papel rayado de cuaderno" — mismo bg color que el
+   body (paper #F6F1E7) pero con líneas horizontales tenues cada 32px
+   para darle personalidad sin cambiar la paleta. Combina con el grain
+   global del <main>. Resultado: la sección "se siente" distinta sin que
+   se note un cambio de color. */
+.bol-paraquien-texture {
+  background-color: var(--bol-paper);
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 31px,
+      rgba(26,24,20,0.04) 31px,
+      rgba(26,24,20,0.04) 32px
+    ),
+    radial-gradient(circle at 25% 25%, rgba(26,24,20,0.035) 1px, transparent 1px),
+    radial-gradient(circle at 75% 75%, rgba(26,24,20,0.028) 1px, transparent 1px);
+  background-size: 100% 32px, 7px 7px, 11px 11px;
+}
+
 /* ── Eyebrow tag celeste (mono uppercase con underline celeste) ──────── */
 .bol-tag-celeste {
   font-family: 'Geist Mono', monospace;

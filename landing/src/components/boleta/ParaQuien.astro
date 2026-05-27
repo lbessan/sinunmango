@@ -5,32 +5,32 @@
 // de ver la versión final — funciona como un "beat editorial" entre
 // Promises (statements cortos) y Manguito (dark interlude denso).
 //
-// Decisión de paleta:
-//   - Bg paper-warm (#EDE5D4) — un tono más cálido que el paper base,
-//     diferencia esta sección de Promises arriba y crea la transición
-//     suave hacia el dark de Manguito abajo (papel cálido → dark frío
-//     en lugar de salto brusco desde el cream).
+// Decisión de paleta v2 (post-feedback):
+//   - Bg sigue paper #F6F1E7 (mismo color del body) — el dueño no quiso
+//     el quiebre cromático del paper-warm. Pero la sección necesitaba
+//     SEÑALIZACIÓN visual (no se notaba cuándo arrancaba).
+//   - Solución: textura "papel rayado de cuaderno" sutil — líneas
+//     horizontales tenues cada 32px más el grain habitual. Mismo color,
+//     personalidad distinta.
 //   - Acento italic en amber quemado (#B85C00) — el mismo que usamos en
-//     la versión actual de la home. Se ve bien sobre paper-warm sin
-//     perder peso visual.
-//   - Centered max-w-4xl — el contenido es corto y conceptual, no necesita
-//     ancho ni columnas. Funciona como "página de revista".
+//     la versión actual de la home.
+//   - Centered max-w-4xl.
 ---
 
 <section
   id="para-quien"
-  class="bol-body relative overflow-hidden py-24 bg-[#EDE5D4] border-y border-[#1A1814]/15"
+  class="bol-body bol-paraquien-texture relative overflow-hidden py-24 border-y border-[#1A1814]/12"
 >
   {/* Halos sutiles — mango arriba-derecha + verde profundo abajo-izquierda.
       Opacidad baja porque la sección debe sentirse "respirable", no
       decorada. */}
   <div class="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
     <div
-      class="absolute top-[5%] right-[-8%] h-[440px] w-[440px] rounded-full opacity-[0.08] blur-[110px]"
+      class="absolute top-[5%] right-[-8%] h-[440px] w-[440px] rounded-full opacity-[0.10] blur-[110px]"
       style="background: radial-gradient(circle, #E08E2A 0%, transparent 70%);"
     ></div>
     <div
-      class="absolute bottom-[5%] left-[-10%] h-[380px] w-[380px] rounded-full opacity-[0.06] blur-[110px]"
+      class="absolute bottom-[5%] left-[-10%] h-[380px] w-[380px] rounded-full opacity-[0.08] blur-[110px]"
       style="background: radial-gradient(circle, #0F4D3A 0%, transparent 70%);"
     ></div>
   </div>

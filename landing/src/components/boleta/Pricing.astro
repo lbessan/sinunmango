@@ -1,13 +1,22 @@
 ---
-// Pricing.astro (Boleta) — Sección V · Planes.
+// Pricing.astro (Boleta) — Sección VI · Planes.
 //
-// Bg paper-warm #EDE5D4 con border-y ink/15. Igual fondo que Onboarding —
-// ambas secciones forman un "bloque editorial" central.
+// Iteración 3 (post-feedback):
+//   - Cada plan ahora vive dentro de una CARD bg blanca con border ink/10
+//     + padding generoso (no más "open-top" sin caja). El border-top de 2px
+//     (ink Free / amber Pro) se mantiene como acento de identidad de cada
+//     plan, pero queda ENMARCADO en su card.
+//   - Se sumó el COMPARADOR DETALLADO: tabla colapsable con todas las
+//     features Free vs Pro, igual que en la versión actual de la home.
 //
-// Layout: 2-col grid, gap-10. CADA plan card SIN box — solo border-top
-// 2px (ink para Free, amber para Pro). Diseño abierto, no contained.
-//
-// Renumeré (handoff lo aclara): Onboarding IV, Pricing V.
+// Bg paper-warm #EDE5D4 (queda más claro que Onboarding #E0D4B8 — ahora
+// se diferencian visualmente los dos bloques cream).
+
+type ComparadorRow = {
+  feature: string;
+  free: string | boolean;
+  pro:  string | boolean;
+};
 
 const freeBullets = [
   'Dashboard, proyecciones, analítica básica',
@@ -24,6 +33,22 @@ const proBullets = [
   'Informe completo con IA mensual',
   'Temas de color y modo claro/oscuro',
 ];
+
+// Comparador feature-by-feature, mismo data que la versión actual.
+const FILAS: ComparadorRow[] = [
+  { feature: 'Dashboard, proyecciones y analítica',         free: true,    pro: true            },
+  { feature: 'Cargar movimientos manualmente',              free: true,    pro: true            },
+  { feature: 'Gastos fijos, parámetros y conciliaciones',   free: true,    pro: true            },
+  { feature: 'Asistente Manguito (chat con IA)',            free: '5/mes', pro: 'ilimitado'     },
+  { feature: 'Cargar por foto de ticket',                   free: '3/mes', pro: 'ilimitado'     },
+  { feature: 'Importación automática por mail',             free: '1/mes', pro: 'ilimitado'     },
+  { feature: 'Importar resumen PDF de tarjeta',             free: '1/mes', pro: 'ilimitado'     },
+  { feature: 'Invitar a tu pareja, contador o socio',       free: false,   pro: true            },
+  { feature: 'Insights con IA en Analítica',                free: false,   pro: true            },
+  { feature: 'Informe completo con IA',                     free: false,   pro: true            },
+  { feature: 'Descargar reporte mensual en PDF',            free: false,   pro: true            },
+  { feature: 'Temas de color y modo claro/oscuro',          free: false,   pro: true            },
+];
 ---
 
 <section id="planes" class="bol-body py-24 bg-[#EDE5D4] border-y border-[#1A1814]/15">
@@ -38,69 +63,130 @@ const proBullets = [
       Todo lo importante de cargar y revisar tu plata es gratis para siempre. Pro suma los flows con IA sin tope.
     </p>
 
-    <div class="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-10">
+    <div class="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-6">
 
       <!-- ─── FREE ─────────────────────────────────────────────────────── -->
-      <div class="border-t-2 border-[#1A1814] pt-8 relative">
-        <div class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mb-4">
-          Plan A · Free
+      <!-- Card paper-white con border ink/10. El border-top de 2px ink
+           queda EXTERNO al padding para que se vea como "etiqueta" del plan. -->
+      <div class="relative flex flex-col rounded-sm border border-[#1A1814]/10 bg-white shadow-[0_4px_24px_-12px_rgba(26,24,20,0.15)] overflow-hidden">
+        <!-- Border-top fuerte (acento de identidad del plan) -->
+        <div class="h-[3px] bg-[#1A1814]" aria-hidden="true"></div>
+
+        <div class="flex-1 p-8 sm:p-10">
+          <div class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mb-4">
+            Plan A · Free
+          </div>
+          <h3 class="bol-display text-[64px] leading-none font-medium">$0</h3>
+          <p class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mt-2">
+            para siempre · sin tarjeta
+          </p>
+          <ul class="mt-10 space-y-4 bol-serif text-[16px] text-[#1A1814]/80">
+            {freeBullets.map(t => (
+              <li class="flex gap-3">
+                <span class="mt-0.5" style="color: #0F4D3A;" aria-hidden="true">✦</span>
+                <span>{t}</span>
+              </li>
+            ))}
+          </ul>
+          <a
+            href="https://app.sinunmango.com.ar"
+            class="mt-10 inline-flex items-center gap-2 bol-serif text-[16px] italic underline decoration-[#74ACDF] decoration-2 underline-offset-[6px] hover:text-[#3D7BBB] transition-colors"
+          >
+            Empezar gratis →
+          </a>
         </div>
-        <h3 class="bol-display text-[64px] leading-none font-medium">$0</h3>
-        <p class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mt-2">
-          para siempre · sin tarjeta
-        </p>
-        <ul class="mt-10 space-y-4 bol-serif text-[16px] text-[#1A1814]/80">
-          {freeBullets.map(t => (
-            <li class="flex gap-3">
-              <span class="mt-0.5" style="color: #0F4D3A;" aria-hidden="true">✦</span>
-              <span>{t}</span>
-            </li>
-          ))}
-        </ul>
-        <a
-          href="https://app.sinunmango.com.ar"
-          class="mt-10 inline-flex items-center gap-2 bol-serif text-[16px] italic underline decoration-[#74ACDF] decoration-2 underline-offset-[6px] hover:text-[#3D7BBB] transition-colors"
-        >
-          Empezar gratis →
-        </a>
       </div>
 
       <!-- ─── PRO ──────────────────────────────────────────────────────── -->
-      <div class="border-t-2 border-[#E08E2A] pt-8 relative">
+      <!-- Card más prominente: shadow mango sutil + border-top amber. -->
+      <div class="relative flex flex-col rounded-sm border border-[#E08E2A]/40 bg-white shadow-[0_8px_36px_-12px_rgba(224,142,42,0.30)] overflow-hidden">
+        <div class="h-[3px] bg-[#E08E2A]" aria-hidden="true"></div>
 
-        <!-- Badge early access absolute top-left -->
-        <div class="absolute -top-3 left-0 bg-[#E08E2A] text-[#1A1814] bol-mono text-[9px] uppercase tracking-[0.22em] font-bold px-3 py-1">
-          ✦ Early access · 50% off
+        <div class="flex-1 p-8 sm:p-10">
+          <!-- Badge early access absolute top-left, sobresale del padding -->
+          <div class="absolute top-[3px] left-8 -translate-y-1/2 bg-[#E08E2A] text-[#1A1814] bol-mono text-[9px] uppercase tracking-[0.22em] font-bold px-3 py-1">
+            ✦ Early access · 50% off
+          </div>
+
+          <div class="bol-mono text-[10px] uppercase tracking-[0.22em] mt-3 mb-4" style="color: #E08E2A;">
+            Plan B · Pro
+          </div>
+
+          <div class="flex items-end gap-4 flex-wrap">
+            <h3 class="bol-display text-[64px] leading-none font-medium" style="color: #E08E2A;">$3.499</h3>
+            <span class="bol-serif text-[18px] text-[#1A1814]/50 line-through mb-1.5 bol-tabular">$6.999</span>
+          </div>
+          <p class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mt-2">
+            por mes · 7 días gratis
+          </p>
+
+          <ul class="mt-10 space-y-4 bol-serif text-[16px] text-[#1A1814]/80">
+            {proBullets.map(t => (
+              <li class="flex gap-3">
+                <span class="mt-0.5" style="color: #E08E2A;" aria-hidden="true">✦</span>
+                <span>{t}</span>
+              </li>
+            ))}
+          </ul>
+
+          <a
+            href="https://app.sinunmango.com.ar/pro"
+            class="mt-10 inline-flex items-center gap-3 bg-[#E08E2A] text-[#1A1814] px-7 py-3.5 bol-serif text-[16px] font-medium hover:bg-[#1A1814] hover:text-[#F6F1E7] transition-colors"
+          >
+            Probá Pro 7 días gratis <span class="italic" aria-hidden="true">→</span>
+          </a>
         </div>
-
-        <div class="bol-mono text-[10px] uppercase tracking-[0.22em] mt-3 mb-4" style="color: #E08E2A;">
-          Plan B · Pro
-        </div>
-
-        <div class="flex items-end gap-4 flex-wrap">
-          <h3 class="bol-display text-[64px] leading-none font-medium" style="color: #E08E2A;">$3.499</h3>
-          <span class="bol-serif text-[18px] text-[#1A1814]/50 line-through mb-1.5 bol-tabular">$6.999</span>
-        </div>
-        <p class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mt-2">
-          por mes · 7 días gratis
-        </p>
-
-        <ul class="mt-10 space-y-4 bol-serif text-[16px] text-[#1A1814]/80">
-          {proBullets.map(t => (
-            <li class="flex gap-3">
-              <span class="mt-0.5" style="color: #E08E2A;" aria-hidden="true">✦</span>
-              <span>{t}</span>
-            </li>
-          ))}
-        </ul>
-
-        <a
-          href="https://app.sinunmango.com.ar/pro"
-          class="mt-10 inline-flex items-center gap-3 bg-[#E08E2A] text-[#1A1814] px-7 py-3.5 bol-serif text-[16px] font-medium hover:bg-[#1A1814] hover:text-[#F6F1E7] transition-colors"
-        >
-          Probá Pro 7 días gratis <span class="italic" aria-hidden="true">→</span>
-        </a>
       </div>
     </div>
+
+    <!-- ─── COMPARADOR DETALLADO ───────────────────────────────────────────
+         Mismo data que la versión actual. Arranca COLAPSADO — las dos cards
+         de arriba ya cuentan la historia para el 80% de los visitantes,
+         el detalle queda opt-in para quien lo busque. -->
+    <details class="mt-14 group bol-pricing-details">
+      <summary class="cursor-pointer list-none flex items-center justify-center gap-2 bol-serif text-[15px] text-[#1A1814]/70 hover:text-[#1A1814] transition-colors">
+        <span class="italic">Ver comparación detallada</span>
+        <svg class="h-4 w-4 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd"/>
+        </svg>
+      </summary>
+
+      <div class="mt-8 overflow-hidden rounded-sm border border-[#1A1814]/12 bg-white">
+        <!-- Header de tabla -->
+        <div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-b border-[#1A1814]/12 bg-[#F6F1E7] px-4 py-3 sm:px-6">
+          <p class="bol-mono text-[10px] uppercase tracking-[0.16em] text-[#1A1814]/50">Feature</p>
+          <p class="bol-mono text-[10px] uppercase tracking-[0.16em] text-[#1A1814]/50 min-w-[60px] text-center sm:min-w-[80px]">Free</p>
+          <p class="bol-mono text-[10px] uppercase tracking-[0.16em] min-w-[60px] text-center sm:min-w-[80px]" style="color: #E08E2A;">Pro</p>
+        </div>
+        {FILAS.map(row => (
+          <div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-b border-[#1A1814]/8 px-4 py-3 last:border-0 sm:px-6">
+            <p class="bol-serif text-[14px] sm:text-[15px] text-[#1A1814]">{row.feature}</p>
+            <div class="min-w-[60px] text-center sm:min-w-[80px]">
+              {row.free === true && (
+                <svg class="inline h-4 w-4" style="color: #0F4D3A;" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/>
+                </svg>
+              )}
+              {row.free === false && (
+                <span class="inline-block h-1 w-3 rounded bg-[#1A1814]/20" aria-label="No incluido"></span>
+              )}
+              {typeof row.free === 'string' && (
+                <span class="bol-mono text-[10px] sm:text-xs text-[#1A1814]/65">{row.free}</span>
+              )}
+            </div>
+            <div class="min-w-[60px] text-center sm:min-w-[80px]">
+              {row.pro === true && (
+                <svg class="inline h-4 w-4" style="color: #E08E2A;" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/>
+                </svg>
+              )}
+              {typeof row.pro === 'string' && (
+                <span class="bol-mono text-[10px] sm:text-xs font-semibold" style="color: #E08E2A;">{row.pro}</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </details>
   </div>
 </section>

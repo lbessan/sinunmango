@@ -40,25 +40,23 @@ import Sun from './Sun.astro';
     <div class="mt-14 grid grid-cols-12 gap-x-6 items-center">
 
       <!-- LEFT (5/12): Manguito floating + sun behind centered.
-           Iteración 2: agrandamos los DOS pero subimos más proporción del
-           sol (de 1.88× → 2.2× el ancho de Manguito) para que el sol gane
-           presencia clara como "fondo motif", no solo borde detrás del
-           mascot. -->
+           Iteración 3: Manguito + sol más grandes todavía, mismo ratio
+           (2.2× sun / mascot) — el conjunto gana peso vs el chat popup
+           sin que la mascota tape al sol. Caption italic eliminado a
+           pedido del dueño ("Hold-to-talk..." era over-explicación
+           técnica, agregaba ruido al motif visual). -->
       <div class="col-span-12 lg:col-span-5 relative mb-12 lg:mb-0">
         <div class="relative">
           <!-- Sun gigante detrás del mascot. opacity 0.65 vía .bol-sun-rise. -->
           <div class="absolute inset-0 flex items-center justify-center pointer-events-none bol-sun-rise" aria-hidden="true">
-            <Sun size={780} />
+            <Sun size={900} />
           </div>
           <img
             src="/manguito-hero-billete.webp"
             alt="Manguito con billete"
-            class="bol-float-mascot relative z-10 w-full max-w-[360px] mx-auto"
+            class="bol-float-mascot relative z-10 w-full max-w-[440px] mx-auto"
           />
         </div>
-        <p class="bol-serif italic text-center text-[14px] mt-2 max-w-xs mx-auto relative z-10" style="color: rgba(246,241,231,0.55);">
-          "Hold-to-talk, transcribe, parse, ack —<br />todo en menos de tres segundos."
-        </p>
       </div>
 
       <!-- RIGHT (7/12): chat popup VIVO (replica del LiveDemo original) -->
