@@ -87,3 +87,174 @@ body {
   background-color: var(--color-accent);
   color: white;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * VARIANT B — "Boleta" landing
+ * ════════════════════════════════════════════════════════════════════════════
+ * Estos tokens + utilidades viven en /pages/boleta.astro (segunda versión de
+ * la landing usando la dirección "Boleta": paper cream + Fraunces protagonist).
+ * La home (/) NO los usa — la versión actual sigue intacta hasta que confirmemos
+ * cambiar y hacer el swap.
+ *
+ * Convención: prefijo `--bol-` para tokens y `.bol-*` para utilities, así
+ * jamás chocan con los actuales. Los scope-amos a `[data-boleta]` para que
+ * solo aplique cuando el layout/page setea ese flag — evita FOUC y collisions
+ * accidentales con la home.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --bol-paper:        #F6F1E7;
+  --bol-paper-warm:   #EDE5D4;
+  --bol-ink:          #1A1814;
+  --bol-celeste:      #74ACDF;
+  --bol-celeste-dark: #3D7BBB;
+  --bol-amber:        #E08E2A;
+  --bol-green:        #0F4D3A;
+}
+
+/* Body cuando la página activa la versión Boleta. El selector [data-boleta]
+   lo aplica /pages/boleta.astro vía <body class="bol-body" data-boleta>. */
+.bol-body {
+  background: var(--bol-paper);
+  color: var(--bol-ink);
+  font-family: 'Fraunces', Georgia, serif;
+  font-variation-settings: 'opsz' 14;
+  -webkit-font-smoothing: antialiased;
+}
+
+.bol-body ::selection {
+  background: var(--bol-celeste);
+  color: #fff;
+}
+
+/* ── Type helpers ─────────────────────────────────────────────────────── */
+.bol-serif   { font-family: 'Fraunces', Georgia, serif; }
+.bol-sans    { font-family: 'Inter', system-ui, sans-serif; }
+.bol-mono    { font-family: 'Geist Mono', monospace; }
+.bol-display {
+  font-family: 'Fraunces', Georgia, serif;
+  font-variation-settings: 'opsz' 144;
+}
+.bol-tabular { font-variant-numeric: tabular-nums; }
+
+/* ── Paper grain (background pattern sutil) ──────────────────────────── */
+.bol-grain {
+  background-image:
+    radial-gradient(circle at 25% 25%, rgba(26,24,20,0.025) 1px, transparent 1px),
+    radial-gradient(circle at 75% 75%, rgba(26,24,20,0.018) 1px, transparent 1px);
+  background-size: 7px 7px, 11px 11px;
+}
+
+/* ── Eyebrow tag celeste (mono uppercase con underline celeste) ──────── */
+.bol-tag-celeste {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bol-celeste-dark);
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--bol-celeste);
+  display: inline-block;
+}
+
+/* ── Reglas horizontales ─────────────────────────────────────────────── */
+.bol-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(26,24,20,0.18), transparent);
+}
+.bol-double-rule {
+  border-top: 1px solid rgba(26,24,20,0.18);
+  border-bottom: 1px solid rgba(26,24,20,0.18);
+  height: 5px;
+}
+
+/* ── Dark interlude (Manguito section + Footer) ──────────────────────── */
+.bol-interlude {
+  background: var(--bol-ink);
+  color: var(--bol-paper);
+}
+
+/* ── Drop cap (no se usa todavía pero queda listo) ───────────────────── */
+.bol-dropcap::first-letter {
+  font-family: 'Fraunces', Georgia, serif;
+  font-variation-settings: 'opsz' 144;
+  font-weight: 700;
+  font-size: 4.4em;
+  line-height: 0.85;
+  float: left;
+  margin: 0.05em 0.08em 0 -0.04em;
+  color: var(--bol-amber);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * Animations (Boleta)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* Italic underline draw — usado en frases italic del hero ("En argentino",
+   "30 segundos", etc). Aparece debajo del span al montarse. */
+@keyframes bol-draw-line {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.bol-underline-draw {
+  position: relative;
+}
+.bol-underline-draw::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.08em;
+  height: 4px;
+  background: var(--bol-celeste);
+  transform-origin: left center;
+  animation: bol-draw-line 1.4s cubic-bezier(.65,.05,.36,1) forwards;
+}
+
+/* Float del mascot Manguito — sutil hover continuo */
+@keyframes bol-float-y {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50%      { transform: translateY(-18px) rotate(2deg); }
+}
+.bol-float-mascot {
+  animation: bol-float-y 7s ease-in-out infinite;
+  transform-origin: 50% 80%;
+}
+
+/* Rise-in: fade + slide up. Variantes con stagger para hero (tag → headline → body). */
+@keyframes bol-rise-in {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: none; }
+}
+.bol-rise-in   { animation: bol-rise-in 1s cubic-bezier(.2,.7,.2,1) both; }
+.bol-rise-in-2 { animation: bol-rise-in 1s cubic-bezier(.2,.7,.2,1) 0.18s both; }
+.bol-rise-in-3 { animation: bol-rise-in 1s cubic-bezier(.2,.7,.2,1) 0.36s both; }
+
+/* Sol de mayo — gira continuo en background de Manguito y Footer */
+@keyframes bol-spin-slow { to { transform: rotate(360deg); } }
+.bol-spin-slow { animation: bol-spin-slow 80s linear infinite; }
+
+/* Sun-rise — el sol del Manguito entra desde abajo al cargar */
+@keyframes bol-sun-rise {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: none;              opacity: 0.65; }
+}
+.bol-sun-rise { animation: bol-sun-rise 1.6s cubic-bezier(.2,.7,.2,1) 0.4s both; }
+
+/* prefers-reduced-motion: cortamos todas las animations que loopean o
+   inducen entry motion. El underline-draw final también se salta (queda
+   visible pero sin animar). */
+@media (prefers-reduced-motion: reduce) {
+  .bol-float-mascot,
+  .bol-spin-slow,
+  .bol-sun-rise,
+  .bol-rise-in,
+  .bol-rise-in-2,
+  .bol-rise-in-3 {
+    animation: none;
+  }
+  .bol-underline-draw::after {
+    animation: none;
+    transform: scaleX(1);
+  }
+}

@@ -1,0 +1,151 @@
+---
+// Onboarding.astro (Boleta) — Sección IV · Arrancar es fácil.
+//
+// Bg paper-warm #EDE5D4 con border-y ink/15. Es el primer cambio de
+// bg-color (paper → paper-warm), señala transición.
+//
+// Layout: 2-col 5/7
+//   Left: copy con 3 pasos (roman celeste italic + serif bold título + body)
+//   Right: paper browser frame con video demo.mp4 + sound toggle
+//
+// El sound toggle es vanilla JS — toggle muted del <video> + swap ícono.
+
+const steps: Array<[string, string, string]> = [
+  ['I',   'Iniciá con Google o tu mail', 'Sin formularios largos. Un click — o tu mail — y entrás.'],
+  ['II',  'Agregá tu primera cuenta',    'Banco, billetera o efectivo. Pesos o dólares. Color y logo del banco se completan solos.'],
+  ['III', 'Cargá un par de movimientos', 'A mano, escaneando un ticket, o pegando el PDF del resumen — vos elegís cómo.'],
+];
+---
+
+<section id="onboarding" class="bol-body relative overflow-hidden py-24 bg-[#EDE5D4] border-y border-[#1A1814]/15">
+  <div class="max-w-6xl mx-auto px-6 sm:px-8 grid grid-cols-12 gap-x-10 items-center">
+
+    <!-- ─── LEFT (5/12): copy + steps ──────────────────────────────────── -->
+    <div class="col-span-12 lg:col-span-5">
+      <div class="bol-tag-celeste">Sección IV · Arrancar es fácil</div>
+
+      <h2 class="bol-display mt-7 text-[clamp(2.4rem,5vw,4.3rem)] leading-[0.92] tracking-[-0.02em] font-medium">
+        Tu primera cuenta en
+        <em class="italic" style="color: #E08E2A;">
+          <span class="bol-underline-draw">30 segundos</span>
+        </em>.
+      </h2>
+
+      <ol class="mt-12 space-y-7">
+        {steps.map(([rome, title, blurb]) => (
+          <li class="flex items-start gap-5">
+            <span class="bol-display italic text-[44px] leading-none font-bold shrink-0 w-12 text-center" style="color: #74ACDF;">
+              {rome}
+            </span>
+            <div>
+              <p class="bol-serif font-bold text-[18px] tracking-tight leading-tight">{title}</p>
+              <p class="bol-serif text-[14.5px] leading-relaxed text-[#1A1814]/65 mt-1.5">{blurb}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <a
+        href="https://app.sinunmango.com.ar"
+        class="mt-12 inline-flex items-center gap-3 bg-[#1A1814] text-[#F6F1E7] px-7 py-3.5 bol-serif text-[16px] hover:bg-[#3D7BBB] transition-colors"
+      >
+        Crear mi cuenta ahora <span class="bol-serif italic" aria-hidden="true">→</span>
+      </a>
+    </div>
+
+    <!-- ─── RIGHT (7/12): paper browser frame con video ────────────────── -->
+    <div class="col-span-12 lg:col-span-7 mt-12 lg:mt-0">
+      <div class="relative">
+
+        <div
+          class="absolute -top-6 -left-6 bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/45 z-20"
+          aria-hidden="true"
+        >
+          Fig. 2 — onboarding real
+        </div>
+
+        <div class="relative rounded-sm border border-[#1A1814]/15 bg-[#F6F1E7] shadow-[0_24px_60px_rgba(26,24,20,0.18)] overflow-hidden">
+
+          <!-- URL bar paper-style -->
+          <div class="flex items-center gap-1.5 px-3 py-2.5 border-b border-[#1A1814]/12 bg-[#EDE5D4]/60">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#1A1814]/22"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-[#1A1814]/16"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-[#1A1814]/22"></span>
+            <div class="ml-3 flex h-5 flex-1 items-center justify-center rounded-sm bg-[#F6F1E7] bol-mono text-[10px] tracking-[0.18em] text-[#1A1814]/40 px-3">
+              app.sinunmango.com.ar/onboarding
+            </div>
+          </div>
+
+          <!-- Video + sound toggle button -->
+          <div class="relative aspect-video w-full overflow-hidden bg-[#1A1814]">
+            <video
+              id="bol-onboarding-video"
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              poster="/demo-poster.jpg"
+              class="block h-full w-full object-cover"
+              aria-label="Onboarding de sinunmango: crear cuenta y cargar primer movimiento"
+            >
+              <source src="/demo.mp4" type="video/mp4" />
+            </video>
+
+            <button
+              id="bol-onboarding-mute-btn"
+              type="button"
+              aria-label="Activar audio del video"
+              aria-pressed="false"
+              class="absolute bottom-3 right-3 w-10 h-10 rounded-full border border-white/15 bg-black/55 text-white backdrop-blur flex items-center justify-center hover:bg-black/75 transition-colors"
+            >
+              <!-- Ícono "muted" (default) -->
+              <svg data-icon="muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M11 5 6 9H2v6h4l5 4V5Z"/>
+                <line x1="22" y1="9" x2="16" y2="15"/>
+                <line x1="16" y1="9" x2="22" y2="15"/>
+              </svg>
+              <!-- Ícono "unmuted" (oculto hasta activar) -->
+              <svg data-icon="unmuted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="hidden">
+                <path d="M11 5 6 9H2v6h4l5 4V5Z"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <p class="mt-4 text-center bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/45">
+          Onboarding real · sin acelerar
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Toggle audio del video del onboarding (Boleta version).
+  // Mismo pattern que el original (Onboarding.astro) — autoplay muted +
+  // click activa unmute + swap icon.
+  const video = document.getElementById('bol-onboarding-video') as HTMLVideoElement | null
+  const btn   = document.getElementById('bol-onboarding-mute-btn')
+  if (video && btn) {
+    const iconMuted   = btn.querySelector('[data-icon="muted"]')
+    const iconUnmuted = btn.querySelector('[data-icon="unmuted"]')
+
+    btn.addEventListener('click', () => {
+      const willUnmute = video.muted
+      video.muted = !willUnmute
+      btn.setAttribute('aria-pressed', String(willUnmute))
+      btn.setAttribute(
+        'aria-label',
+        willUnmute ? 'Silenciar audio del video' : 'Activar audio del video',
+      )
+      iconMuted?.classList.toggle('hidden', willUnmute)
+      iconUnmuted?.classList.toggle('hidden', !willUnmute)
+      if (willUnmute && video.paused) {
+        video.play().catch(() => {})
+      }
+    })
+  }
+</script>

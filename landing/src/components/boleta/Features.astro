@@ -1,0 +1,113 @@
+---
+// Features.astro (Boleta) — Sección III · Capacidades.
+//
+// Estructura:
+//   Top: tag celeste + H2 display ("Lo más tedioso es cargar los gastos.")
+//        + subtitle italic
+//   Highlights: 3-col grid con roman numerals display gigantes + título + body
+//   Secondary: 6-item 2-col grid con íconos circulares celeste + título + body
+//
+// Iconografía: Lucide stroke 1.6, viewBox 24x24, line caps round.
+// Los íconos van como string para set:html dentro del SVG.
+
+import { Fragment } from 'astro/jsx-runtime';
+
+const highlights = [
+  { rome: 'I',   title: 'Reenviá los mails del banco',     blurb: 'Tu propia dirección @sinunmango.com.ar. Los movimientos se cargan solos.' },
+  { rome: 'II',  title: 'Subí el resumen, lo lee la IA',   blurb: 'Arrastrás el PDF de tu tarjeta. La IA detecta banco, red, variante, fechas, todos los consumos.' },
+  { rome: 'III', title: 'Habláme, Manguito',                blurb: 'Mantenés el micrófono. Dictás el gasto. Manguito lo registra solo.' },
+];
+
+// Los íconos van inline como markup string — Astro inyecta con set:html
+// dentro del SVG. Lucide-style stroke 1.6.
+const secondary = [
+  {
+    id:    'conciliaciones',
+    title: 'Conciliaciones que cierran',
+    blurb: 'Cada movimiento del resumen contra lo cargado. Lo que falta queda en rojo.',
+    icon:  '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  },
+  {
+    id:    'cambio',
+    title: 'Pesos, dólares y proyección',
+    blurb: 'BNA actualizado. Saldo ARS/USD. Proyección de cómo terminás el mes.',
+    icon:  '<path d="M3 17l5-5 4 4 8-8"/><path d="M14 8h6v6"/>',
+  },
+  {
+    id:    'tarjetas',
+    title: 'Sabé cuándo paga cada tarjeta',
+    blurb: 'Cierre y vencimiento. Cuánto consumiste, cuándo pagás.',
+    icon:  '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  },
+  {
+    id:    'alerta',
+    title: 'Gastos fijos con alerta',
+    blurb: 'Aviso por mail antes de que venza. Semanal y mensual.',
+    icon:  '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+  },
+  {
+    id:    'pareja',
+    title: 'Compartilo con tu pareja',
+    blurb: 'Workspace shared. Si vos pagás Pro, tu pareja también tiene Pro.',
+    icon:  '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  },
+  {
+    id:    'inversiones',
+    title: 'Inversiones de verdad',
+    blurb: 'Plazos fijos, FCI, CEDEARs, Merval, ON, crypto y dólar físico.',
+    icon:  '<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>',
+  },
+];
+---
+
+<section id="qué" class="bol-body py-24">
+  <div class="max-w-6xl mx-auto px-6 sm:px-8">
+
+    <!-- Top -->
+    <div class="bol-tag-celeste">Sección III · Capacidades</div>
+    <h2 class="bol-display mt-7 text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.02em] font-medium max-w-4xl">
+      <span class="whitespace-nowrap">Lo más tedioso es <em class="italic" style="color: #E08E2A;">cargar los gastos</em>.</span><br />
+      Lo hacemos por vos.
+    </h2>
+    <p class="mt-6 bol-serif text-[18px] text-[#1A1814]/65 max-w-xl italic">
+      Tres maneras de que la plata termine ordenada sin que pases media hora con la calculadora.
+    </p>
+
+    <!-- Highlights: 3-col grid con roman display gigantes -->
+    <div class="mt-16 grid lg:grid-cols-3 gap-12">
+      {highlights.map((f, i) => {
+        // Item del medio usa amber/50; los otros celeste/50.
+        const colorRome = i === 1 ? 'rgba(224,142,42,0.5)' : 'rgba(116,172,223,0.5)';
+        return (
+          <div class="relative">
+            <div class="bol-display text-[110px] leading-[0.8] italic font-medium" style={`color: ${colorRome};`}>{f.rome}</div>
+            <h3 class="bol-serif text-[26px] font-bold leading-tight mt-3 tracking-tight">{f.title}</h3>
+            <p class="bol-serif text-[16px] leading-relaxed text-[#1A1814]/65 mt-4">{f.blurb}</p>
+          </div>
+        );
+      })}
+    </div>
+
+    <!-- Rule divider entre highlights y secondary -->
+    <div class="mt-24 bol-rule"></div>
+
+    <!-- Secondary 6-item 2-col grid -->
+    <div class="mt-10 grid md:grid-cols-2 gap-x-12 gap-y-2">
+      {secondary.map(f => (
+        <div class="py-5 border-b border-[#1A1814]/10">
+          <div class="flex gap-5 items-start">
+            <div class="w-10 h-10 rounded-full border border-[#74ACDF]/45 bg-[#74ACDF]/[0.08] flex items-center justify-center shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3D7BBB" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <Fragment set:html={f.icon} />
+              </svg>
+            </div>
+            <div>
+              <h4 class="bol-serif font-bold text-[17px] tracking-tight leading-tight">{f.title}</h4>
+              <p class="bol-serif text-[14.5px] leading-relaxed text-[#1A1814]/65 mt-1.5">{f.blurb}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

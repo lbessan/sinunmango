@@ -1,0 +1,60 @@
+---
+// FAQ.astro (Boleta) — Sección VII · Dudas.
+//
+// Bg paper. Container max-w-3xl. Accordion single-open (click otro item
+// cierra el anterior). Default: primer item abierto.
+//
+// Reusa la fuente de verdad de FAQs en src/data/faqs.ts (la misma que usa
+// FAQ.astro original). El JSON-LD se genera desde pages/boleta.astro.
+//
+// Decisión de número formateado: el handoff dice 01, 02... (padStart 2),
+// no I/II/III en este caso (los romans son del Hero, Manguito, Onboarding).
+// Esto es intencional — los números arábigos son "más TOC", más editorial.
+
+import { FAQS } from '../../data/faqs';
+---
+
+<section id="dudas" class="bol-body py-24">
+  <div class="max-w-3xl mx-auto px-6 sm:px-8">
+
+    <div class="bol-tag-celeste">Sección VII · Dudas</div>
+    <h2 class="bol-display mt-7 text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.02em] font-medium">
+      Preguntas <em class="italic" style="color: #3D7BBB;">frecuentes</em>.
+    </h2>
+
+    <div class="mt-12 border-t border-[#1A1814]/20">
+      {FAQS.map((faq, i) => (
+        <details class="bol-faq border-b border-[#1A1814]/20 group" open={i === 0}>
+          <summary class="bol-faq-summary cursor-pointer list-none w-full text-left py-6 flex items-baseline justify-between gap-5 hover:text-[#3D7BBB] transition-colors">
+            <div class="flex items-baseline gap-5">
+              <span class="bol-display italic text-[34px] leading-none font-medium" style="color: #74ACDF;">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span class="bol-serif text-[19px] font-medium tracking-tight">{faq.q}</span>
+            </div>
+            <span class="bol-serif italic text-[#1A1814]/45 shrink-0">
+              <span class="group-open:hidden">+</span>
+              <span class="hidden group-open:inline">−</span>
+            </span>
+          </summary>
+          <div class="pb-7 pl-[60px] bol-serif text-[16.5px] leading-relaxed text-[#1A1814]/75 max-w-prose">
+            {faq.a}
+          </div>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script>
+  // Single-open accordion: si abrís un item, los demás se cierran.
+  // Usamos <details native> + JS para enforcement de exclusividad.
+  const items = document.querySelectorAll<HTMLDetailsElement>('.bol-faq')
+  items.forEach(item => {
+    item.addEventListener('toggle', () => {
+      if (item.open) {
+        items.forEach(other => { if (other !== item) other.open = false })
+      }
+    })
+  })
+</script>

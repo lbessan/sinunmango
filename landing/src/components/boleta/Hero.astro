@@ -1,0 +1,116 @@
+---
+// Hero.astro (Boleta) — two-column 7/5 grid.
+//
+// Left (7/12):
+//   - Eyebrow tag celeste con "v2.0 · Hecho en Argentina"
+//   - H1 display Fraunces 500 + "entiende" bold 700 + "En argentino"
+//     italic celeste-dark con underline-draw animation + period amber
+//   - Lead paragraph 3 líneas, última en italic celeste
+//   - CTA primario ink + CTA secundario italic underlined celeste
+//
+// Right (5/12):
+//   - Mono caption "Fig. 1 — la app" arriba-izquierda
+//   - Browser frame paper-style con screenshot dashboard + play button
+//   - Caption italic abajo
+//
+// Nota: el screenshot vive en /public/screenshots/dashboard.jpg
+// (NO en /public/dashboard.jpg).
+---
+
+<section class="bol-body relative overflow-hidden pt-14 pb-24">
+  <div class="max-w-6xl mx-auto px-6 sm:px-8 grid grid-cols-12 gap-x-6 items-start">
+
+    <!-- ─── LEFT (7/12) — copy + CTAs ──────────────────────────────────── -->
+    <div class="col-span-12 lg:col-span-7 relative z-10">
+      <div class="bol-tag-celeste bol-rise-in">v2.0 · Hecho en Argentina</div>
+
+      <h1 class="bol-display bol-rise-in-2 mt-7 text-[clamp(3rem,7vw,6.5rem)] leading-[0.92] tracking-[-0.02em] font-medium">
+        La app que <em class="font-bold not-italic">entiende</em><br />
+        tu plata.<br />
+        <span class="bol-display italic font-medium" style="color: #3D7BBB;">
+          <span class="bol-underline-draw">En argentino</span><span style="color: #E08E2A;">.</span>
+        </span>
+      </h1>
+
+      <p class="bol-rise-in-3 mt-10 bol-serif text-[20px] leading-[1.55] text-[#1A1814]/75 max-w-xl">
+        Cuentas, tarjetas, gastos fijos e inversiones —<br />
+        en pesos y en dólares, actualizado en tiempo real.<br />
+        <span class="italic" style="color: #3D7BBB;">Pensado para argentinos.</span>
+      </p>
+
+      <div class="bol-rise-in-3 mt-10 flex flex-wrap items-center gap-6">
+        <a
+          href="https://app.sinunmango.com.ar"
+          class="group inline-flex items-center gap-3 bg-[#1A1814] text-[#F6F1E7] px-8 py-4 bol-serif text-[17px] hover:bg-[#3D7BBB] transition-colors"
+        >
+          Entrar a la app
+          <span class="bol-serif italic" aria-hidden="true">→</span>
+        </a>
+        <a
+          href="#qué"
+          class="bol-serif italic text-[16px] underline decoration-[#74ACDF] decoration-2 underline-offset-[6px] hover:text-[#3D7BBB] transition-colors"
+        >
+          Ver qué hace
+        </a>
+      </div>
+    </div>
+
+    <!-- ─── RIGHT (5/12) — browser frame con video placeholder ─────────── -->
+    <div class="col-span-12 lg:col-span-5 relative mt-12 lg:mt-0">
+      <div class="relative">
+
+        <!-- Mono caption arriba-izquierda. -top-6 -left-6 lo saca un poco
+             del frame para look "anotación a mano". -->
+        <div
+          class="absolute -top-6 -left-6 bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/45 z-20"
+          aria-hidden="true"
+        >
+          Fig. 1 — la app
+        </div>
+
+        <!-- Browser frame paper-style.
+             rounded-sm (no rounded-lg) — para look más "papel impreso". -->
+        <div class="relative rounded-sm border border-[#1A1814]/15 bg-[#FAF7F2] shadow-[0_24px_60px_rgba(26,24,20,0.18)] overflow-hidden">
+
+          <!-- Top bar: 3 dots cream + URL pill mono -->
+          <div class="flex items-center gap-1.5 px-3 py-2.5 border-b border-[#1A1814]/12 bg-[#EDE5D4]/60">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#1A1814]/22"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-[#1A1814]/16"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-[#1A1814]/22"></span>
+            <div class="ml-3 flex h-5 flex-1 items-center justify-center rounded-sm bg-[#F6F1E7] bol-mono text-[10px] tracking-[0.18em] text-[#1A1814]/40 px-3">
+              app.sinunmango.com.ar
+            </div>
+          </div>
+
+          <!-- Screenshot del dashboard + gradient overlay desde abajo +
+               botón play circular cream centrado. Placeholder para video
+               futuro (no es demo.mp4 del onboarding — ese es flow distinto). -->
+          <div class="relative aspect-video w-full overflow-hidden bg-[#1A1814]">
+            <img
+              src="/screenshots/dashboard.jpg"
+              alt="Dashboard de sinunmango"
+              class="absolute inset-0 w-full h-full object-cover object-top opacity-95"
+            />
+            <div class="absolute inset-0" style="background: linear-gradient(to top, rgba(26,24,20,0.35), transparent 45%);"></div>
+
+            <button
+              type="button"
+              class="absolute inset-0 m-auto w-20 h-20 rounded-full bg-[#F6F1E7]/95 backdrop-blur-sm border border-[#1A1814]/20 flex items-center justify-center hover:bg-[#F6F1E7] hover:scale-105 transition-all shadow-[0_8px_24px_rgba(26,24,20,0.35)]"
+              aria-label="Reproducir demo"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="#1A1814" class="ml-1" aria-hidden="true">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Caption italic debajo del frame -->
+        <p class="bol-serif italic text-center text-[14px] text-[#1A1814]/60 mt-4 max-w-xs mx-auto">
+          "La plataforma es la protagonista —<br />
+          acá la ves en uso."
+        </p>
+      </div>
+    </div>
+  </div>
+</section>

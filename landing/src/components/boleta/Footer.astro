@@ -1,0 +1,69 @@
+---
+// Footer.astro (Boleta) — dark interlude final, cierre editorial.
+//
+// Bg #1A1814, text paper. Sol gigante (520) arriba centrado, opacity 0.25
+// (más sutil que el del Manguito section).
+//
+// Layout:
+//   - Big closing display italic centered: 3 líneas, c/u un color
+//     (paper / celeste / amber)
+//   - 3-col link grid: Producto / Soporte / Legal
+//   - Bottom row: copyright + disclaimer mono uppercase
+
+import Sun from './Sun.astro';
+---
+
+<footer class="bol-interlude pt-16 pb-10 relative overflow-hidden">
+
+  <!-- Sun grande arriba centrado, opacity 0.25 -->
+  <div class="absolute left-1/2 -translate-x-1/2 -top-40 opacity-25 pointer-events-none" aria-hidden="true">
+    <Sun size={520} />
+  </div>
+
+  <div class="max-w-6xl mx-auto px-6 sm:px-8 relative">
+
+    <!-- Big closing — 3 líneas en 3 colores. -->
+    <div
+      class="bol-display text-center text-[clamp(2.5rem,7vw,5rem)] italic font-medium leading-[0.95] max-w-4xl mx-auto"
+      style="color: #F6F1E7;"
+    >
+      Una app argentina<br />
+      <span style="color: #74ACDF;">para llevar tus finanzas</span><br />
+      <span style="color: #E08E2A;">sin que te vuelva loco.</span>
+    </div>
+
+    <!-- 3-col link grid -->
+    <div class="mt-16 grid md:grid-cols-3 gap-8 bol-serif text-[15px]" style="color: rgba(246,241,231,0.75);">
+      <div>
+        <div class="bol-mono text-[10px] uppercase tracking-[0.22em] mb-3" style="color: rgba(246,241,231,0.40);">
+          Producto
+        </div>
+        <a href="#qué"    class="block py-1 italic hover:text-[#74ACDF] transition-colors">Qué hace</a>
+        <a href="#planes" class="block py-1 italic hover:text-[#74ACDF] transition-colors">Planes</a>
+        <a href="https://app.sinunmango.com.ar" class="block py-1 italic hover:text-[#74ACDF] transition-colors">Ir a la app</a>
+      </div>
+      <div>
+        <div class="bol-mono text-[10px] uppercase tracking-[0.22em] mb-3" style="color: rgba(246,241,231,0.40);">
+          Soporte
+        </div>
+        <a href="#dudas" class="block py-1 italic hover:text-[#74ACDF] transition-colors">Preguntas</a>
+        <a href="mailto:luchobessan@gmail.com" class="block py-1 italic hover:text-[#74ACDF] transition-colors">Contacto</a>
+      </div>
+      <div>
+        <div class="bol-mono text-[10px] uppercase tracking-[0.22em] mb-3" style="color: rgba(246,241,231,0.40);">
+          Legal
+        </div>
+        <a href="/privacidad" class="block py-1 italic hover:text-[#74ACDF] transition-colors">Privacidad</a>
+      </div>
+    </div>
+
+    <!-- Bottom row: copyright + disclaimer en mono -->
+    <div
+      class="mt-12 pt-6 border-t flex flex-col sm:flex-row justify-between gap-3 bol-mono text-[10px] uppercase tracking-[0.18em]"
+      style="border-color: rgba(246,241,231,0.15); color: rgba(246,241,231,0.45);"
+    >
+      <span>© 2026 sinunmango · Hecho en Buenos Aires, con mate</span>
+      <span>No soy banco · no soy asesor · solo una herramienta</span>
+    </div>
+  </div>
+</footer>

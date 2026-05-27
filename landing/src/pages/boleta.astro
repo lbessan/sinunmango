@@ -1,0 +1,60 @@
+---
+// /boleta — segunda versión de la landing, dirección "Boleta".
+//
+// Esta página convive con la home (/) para hacer A/B. Si confirmamos
+// Boleta, reemplazamos index.astro por este contenido y archivamos los
+// componentes originales.
+//
+// Datos: reusa src/data/faqs.ts (mismo source que la home).
+// Estilo: scoped vía class .bol-body en <body> + tokens --bol-* en
+// global.css. No pisa estilos de la home.
+
+import Layout       from "../layouts/Layout.astro";
+import Nav          from "../components/boleta/Nav.astro";
+import Hero         from "../components/boleta/Hero.astro";
+import Promises     from "../components/boleta/Promises.astro";
+import ManguitoFeat from "../components/boleta/ManguitoFeature.astro";
+import Features     from "../components/boleta/Features.astro";
+import Onboarding   from "../components/boleta/Onboarding.astro";
+import Pricing      from "../components/boleta/Pricing.astro";
+import Testimonials from "../components/boleta/Testimonials.astro";
+import FAQ          from "../components/boleta/FAQ.astro";
+import Footer       from "../components/boleta/Footer.astro";
+import { faqJsonLd } from "../data/faqs";
+---
+
+<Layout
+  title="sinunmango — tus finanzas, en argentino"
+  description="App argentina para llevar tus cuentas, gastos, tarjetas e inversiones. Conciliá el resumen, proyectá las cuotas y preguntale a Manguito."
+  jsonLd={faqJsonLd()}
+>
+  <Nav />
+  <main class="bol-body bol-grain">
+    <Hero />
+    <Promises />
+    <ManguitoFeat />
+    <Features />
+    <Onboarding />
+    <Pricing />
+    <Testimonials />
+    <FAQ />
+  </main>
+  <Footer />
+</Layout>
+
+<style is:global>
+  /* La página Boleta usa fondo paper-cream con grain. El <body> default
+     del Layout puede tener un bg distinto (slate-100 de global.css). Acá
+     forzamos paper en TODA la página Boleta — incluye el área detrás del
+     viewport (overscroll bounce en mobile no muestra slate). */
+  html, body {
+    background: var(--bol-paper);
+  }
+  body {
+    /* Override del color/font del body global de la home — solo cuando
+       la página Boleta carga este style. */
+    color: var(--bol-ink);
+    font-family: 'Fraunces', Georgia, serif;
+    font-variation-settings: 'opsz' 14;
+  }
+</style>

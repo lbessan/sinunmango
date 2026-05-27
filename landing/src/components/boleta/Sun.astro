@@ -1,0 +1,38 @@
+---
+// Sun.astro — sol de mayo / sun motif para Boleta.
+// 16 spokes radiales + 2 círculos concéntricos en el centro.
+// Gira muy lento (80s loop) — apenas perceptible.
+//
+// Usos:
+//   - Manguito section: size 520, opacity 0.65, detrás del mascot
+//   - Footer:           size 520, opacity 0.25, arriba centrado
+//
+// Color: --bol-amber. Opacidad inline para que el caller la pueda overrider.
+
+interface Props {
+  size?: number;
+  /** Color override — default amber */
+  color?: string;
+}
+
+const { size = 320, color = '#E08E2A' } = Astro.props;
+const spokes = Array.from({ length: 16 }, (_, i) => (i * 360) / 16);
+---
+
+<svg
+  viewBox="0 0 200 200"
+  width={size}
+  height={size}
+  class="bol-spin-slow"
+  aria-hidden="true"
+>
+  {spokes.map(angle => (
+    <line
+      x1="100" y1="100" x2="100" y2="20"
+      stroke={color} stroke-width="1.2" opacity="0.55"
+      transform={`rotate(${angle} 100 100)`}
+    />
+  ))}
+  <circle cx="100" cy="100" r="32" fill={color} />
+  <circle cx="100" cy="100" r="38" fill="none" stroke={color} stroke-width="1" opacity="0.5" />
+</svg>

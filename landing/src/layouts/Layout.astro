@@ -99,14 +99,15 @@ const allJsonLd = jsonLd
 
     <!-- Fonts (Google Fonts). preconnect minimiza el handshake TLS;
          display=swap evita FOIT (texto invisible mientras carga el font).
-         Inter para body/UI; Fraunces para display (headlines del hero) —
-         serif moderno con personalidad, mucha presencia en tamaños grandes,
-         soporta itálicas marcadas. */}
+         Inter para body/UI; Fraunces para display (headlines del hero) +
+         italics + ahora body en la variante Boleta. Sumados weights 300/900
+         que usa la versión Boleta para "entiende" (bold 900) y captions
+         livianas. Geist Mono para eyebrows + meta. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500;1,9..144,700&family=Geist+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;0,9..144,900;1,9..144,300;1,9..144,500;1,9..144,700&family=Geist+Mono:wght@400;500;600&display=swap"
     />
 
     {/* El hero ahora muestra un mock dashboard HTML hardcoded — no hay

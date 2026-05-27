@@ -1,0 +1,116 @@
+---
+// ManguitoFeature.astro (Boleta) — dark interlude single.
+//
+// Es la ÚNICA sección dark de toda la página. Bg #1A1814, text paper.
+//
+// Estructura:
+//   Top (max-w-3xl): tag mono celeste + H2 display + body Fraunces 18px
+//   Bottom (12-col grid):
+//     Left (5/12):  mascot Manguito flotando + sol gigante centrado detrás
+//                   + caption italic
+//     Right (7/12): chat popup paper-style con 3 burbujas hardcoded
+//
+// El sol gira slow (80s loop), el mascot flota (7s ease loop).
+
+import Sun from './Sun.astro';
+
+type ChatLine = { kind: 'bot' | 'user'; text: string };
+const lines: ChatLine[] = [
+  { kind: 'bot',  text: 'Hola 👋 Soy Manguito. Preguntame lo que necesites.' },
+  { kind: 'user', text: 'Gasté cuatro mil quinientos en el súper' },
+  { kind: 'bot',  text: '✓ ARS 4.500 · Supermercado · Galicia débito. Te quedan $137.880 este mes.' },
+];
+---
+
+<section id="manguito" class="bol-interlude py-24 relative overflow-hidden">
+  <div class="max-w-6xl mx-auto px-6 sm:px-8">
+
+    <!-- ─── Top: tag + headline + body, full width pero max-w-3xl ──────── -->
+    <div class="max-w-3xl">
+      <div class="bol-mono text-[10px] uppercase tracking-[0.24em]" style="color: #74ACDF;">
+        Sección II · El asistente
+      </div>
+      <h2 class="bol-display mt-7 text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.02em] font-medium">
+        Decíle qué <em class="font-bold not-italic">gastaste</em>.<br />
+        <span class="italic" style="color: #E08E2A;">Manguito lo anota.</span>
+      </h2>
+      <p class="mt-8 bol-serif text-[18px] leading-relaxed max-w-xl" style="color: rgba(246,241,231,0.80);">
+        Mantenés el micrófono, dictás el gasto, y queda registrado al toque. Y de paso, le podés preguntar lo que sea sobre tu plata — te responde con datos reales de tu cuenta.
+      </p>
+    </div>
+
+    <!-- ─── Bottom: Manguito + sun (left) + chat popup (right) ─────────── -->
+    <div class="mt-14 grid grid-cols-12 gap-x-6 items-center">
+
+      <!-- LEFT (5/12): Manguito floating + sun behind centered -->
+      <div class="col-span-12 lg:col-span-5 relative mb-12 lg:mb-0">
+        <div class="relative">
+          <!-- Sun gigante detrás del mascot. opacity 0.65 vía .bol-sun-rise. -->
+          <div class="absolute inset-0 flex items-center justify-center pointer-events-none bol-sun-rise" aria-hidden="true">
+            <Sun size={520} />
+          </div>
+          <img
+            src="/manguito-hero-billete.webp"
+            alt="Manguito con billete"
+            class="bol-float-mascot relative z-10 w-full max-w-[420px] mx-auto"
+          />
+        </div>
+        <p class="bol-serif italic text-center text-[14px] mt-2 max-w-xs mx-auto relative z-10" style="color: rgba(246,241,231,0.55);">
+          "Hold-to-talk, transcribe, parse, ack —<br />todo en menos de tres segundos."
+        </p>
+      </div>
+
+      <!-- RIGHT (7/12): chat popup paper-style -->
+      <div class="col-span-12 lg:col-span-7">
+        <div class="relative max-w-[500px] mx-auto">
+
+          <!-- Halo celeste sutil detrás del popup. -->
+          <div class="absolute -inset-6 bg-[#74ACDF]/8 blur-3xl rounded-full" aria-hidden="true"></div>
+
+          <div class="relative bg-[#F6F1E7] text-[#1A1814] rounded-sm shadow-[0_24px_64px_rgba(0,0,0,0.42)] overflow-hidden">
+
+            <!-- Header del popup: avatar Manguito + nombre + caption -->
+            <div class="flex items-center gap-3 px-5 py-4 border-b border-[#1A1814]/10">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#1A1814] to-[#3D7BBB] p-1.5 flex items-center justify-center">
+                <img src="/manguito.png" alt="" class="w-full h-full object-contain" />
+              </div>
+              <div>
+                <div class="bol-serif font-bold text-[15px]">Manguito</div>
+                <div class="bol-mono text-[9px] uppercase tracking-[0.22em] text-[#1A1814]/50">
+                  Tu asistente · es-AR
+                </div>
+              </div>
+            </div>
+
+            <!-- 3 burbujas: bot / user / bot. -->
+            <div class="px-5 py-5 space-y-3 min-h-[260px]">
+              {lines.map(line => (
+                <div class={`flex ${line.kind === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div class={
+                    `max-w-[80%] px-4 py-2.5 bol-serif text-[14.5px] leading-relaxed ${
+                      line.kind === 'user'
+                        ? 'bg-[#3D7BBB] text-white rounded-2xl rounded-tr-sm'
+                        : 'border border-[#1A1814]/10 bg-white rounded-2xl rounded-tl-sm'
+                    }`
+                  }>
+                    {line.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <!-- Footer: placeholder input + mic button ink -->
+            <div class="border-t border-[#1A1814]/10 px-5 py-4 flex items-center gap-3 bg-[#F6F1E7]/50">
+              <div class="flex-1 bol-serif italic text-[14px] text-[#1A1814]/50">
+                Escribí o mantené el mic…
+              </div>
+              <div class="w-9 h-9 rounded-full bg-[#1A1814] text-[#F6F1E7] flex items-center justify-center" aria-hidden="true">
+                🎙
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

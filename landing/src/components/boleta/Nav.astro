@@ -1,0 +1,42 @@
+---
+// Nav.astro (Boleta) — sticky paper-cream nav con logo + links serif + CTA italic.
+//
+// Diferencias con la versión actual (Nav.astro original):
+//   - Bg paper-cream con backdrop-blur (vs dark navy)
+//   - Border bottom ink/15 (vs ink solid)
+//   - Links serif italic on hover celeste (vs sans-serif normal)
+//   - CTA es link italic underlined celeste (vs button mango sólido)
+//
+// Mobile: links se ocultan < md. El drawer paper-cream para mobile va a
+// requerir un script vanilla aparte (TODO post-merge si vamos con Boleta).
+---
+
+<header class="bol-body border-b border-[#1A1814]/15 bg-[#F6F1E7]/85 backdrop-blur sticky top-0 z-50">
+  <div class="max-w-6xl mx-auto px-6 sm:px-8 py-5 flex items-center justify-between">
+
+    <!-- Brand: logo + wordmark "sinunmango" con "mango" en amber -->
+    <a href="/boleta" class="flex items-center gap-3" aria-label="sinunmango — inicio">
+      <img src="/logo.png" alt="" class="w-9 h-9" />
+      <div class="bol-serif font-bold text-[18px] leading-none tracking-tight">
+        sinun<span style="color: #E08E2A;">mango</span>
+      </div>
+    </a>
+
+    <!-- Links: serif 15px, italic celeste on hover. Solo visibles md+ -->
+    <nav class="hidden md:flex items-center gap-8 bol-serif text-[15px]" aria-label="Secciones">
+      <a href="#qué"      class="hover:text-[#3D7BBB] hover:italic transition-colors">La app</a>
+      <a href="#manguito" class="hover:text-[#3D7BBB] hover:italic transition-colors">Manguito</a>
+      <a href="#planes"   class="hover:text-[#3D7BBB] hover:italic transition-colors">Planes</a>
+      <a href="#dudas"    class="hover:text-[#3D7BBB] hover:italic transition-colors">Dudas</a>
+    </nav>
+
+    <!-- CTA: link italic underlined celeste (no botón sólido) -->
+    <a
+      href="https://app.sinunmango.com.ar"
+      class="inline-flex items-center gap-2 bol-serif italic text-[15px] underline decoration-[#74ACDF] decoration-2 underline-offset-4 hover:decoration-[#E08E2A] transition-colors"
+    >
+      Ir a la app
+      <span aria-hidden="true">→</span>
+    </a>
+  </div>
+</header>
