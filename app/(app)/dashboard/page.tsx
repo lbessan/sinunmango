@@ -25,7 +25,7 @@ type DB = SupabaseClient<Database>
 type CuentaJoin    = { tipo_cuenta?: string | null; nombre_cuenta?: string | null } | null
 type CategoriaJoin = { nombre_categoria?: string | null; icono?: string | null } | null
 
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileDown } from 'lucide-react'
 import { IconoCategoria } from '@/components/icono-categoria'
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
@@ -591,7 +591,21 @@ export default async function DashboardPage({
 
               {/* KPIs */}
               <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3 px-1">Indicadores del mes</p>
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Indicadores del mes</p>
+                  {/* Descarga del reporte PDF del mes (Pro) — generado server-side
+                      con Puppeteer. El download es por <a href>, el browser respeta
+                      Content-Disposition: attachment del endpoint. */}
+                  <a
+                    href={`/api/reportes/mes-pdf?mes=${mes}`}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-slate-700 px-2.5 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 transition-all"
+                    title={`Descargar reporte PDF del mes — requiere Pro`}
+                  >
+                    <FileDown size={12} />
+                    <span className="hidden sm:inline">Descargar PDF</span>
+                    <span className="sm:hidden">PDF</span>
+                  </a>
+                </div>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <KpiCard href="/resumen?tipo=ingresos"   label="Ingresos actuales" value={`$${fmt(resumen.ingresos_actuales ?? 0)}`}      sub="Cobrados este mes"   accent="emerald" />
                   <KpiCard href="/resumen?tipo=gastos"     label="Gastos del mes"    value={`$${fmt(resumen.gastos_actuales ?? 0)}`}        sub="Cash + pagos a tarjetas"   accent="red"     />

@@ -15,7 +15,7 @@
 import { useState } from 'react'
 import {
   Sparkles, Bot, Camera, Mail, FileText, BarChart3, Palette,
-  Check, X, ExternalLink, Crown, Loader2, AlertCircle,
+  Check, X, ExternalLink, Crown, Loader2, AlertCircle, FileDown,
 } from 'lucide-react'
 import Link from 'next/link'
 import type { Plan } from '@/lib/subscription'
@@ -68,6 +68,11 @@ const FEATURES = [
     desc:  'Un reporte largo, escrito, que cruza ingresos, gastos, suscripciones y patrones de los últimos meses. Como tener un analista financiero personal.',
   },
   {
+    icon:  FileDown,
+    title: 'Descargá tu reporte mensual en PDF',
+    desc:  'Bajá el cierre del mes en un PDF prolijo: KPIs, top gastos, distribución por categoría, tarjetas y saldos. Para mandarle al contador o guardar de referencia.',
+  },
+  {
     icon:  Palette,
     title: 'Personalización completa',
     desc:  'Cambiá el color de acento de la app y elegí entre modo claro y oscuro. Hacé que sinunmango se vea como te gusta.',
@@ -84,6 +89,7 @@ const COMPARADOR = [
   { feature: 'Importar resumen PDF de tarjeta',             free: '1/mes',  pro: 'ilimitado' },
   { feature: 'Insights con IA en Analítica',                free: false, pro: true  },
   { feature: 'Informe completo con IA',                     free: false, pro: true  },
+  { feature: 'Descargar reporte mensual en PDF',            free: false, pro: true  },
   { feature: 'Personalización (tema claro/oscuro, colores)',free: false, pro: true  },
 ] as const
 
