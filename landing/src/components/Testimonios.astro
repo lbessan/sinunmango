@@ -1,0 +1,355 @@
+---
+// Testimonios — SPRINT VISUAL, 4 estilos apilados.
+//
+// Igual que el sprint de Features: 4 variantes apiladas con eyebrow
+// "Opción X" para que el dueño elija en vivo. Después sacamos las 3 que
+// no usemos.
+//
+// Datos PLACEHOLDER por ahora — cuando tengamos testimonios reales
+// (entrevistas a los primeros 20 users early access) reemplazamos el
+// array de abajo. Mantengo nombres argentinos y tono coloquial para
+// que se vea consistente con la voz de la app.
+
+type Testimonio = {
+  quote:   string;
+  name:    string;
+  role:    string;
+  initial: string;
+  color:   string;  // hex de fondo del avatar
+};
+
+const testimonios: Testimonio[] = [
+  {
+    quote:
+      "Hace 10 años que llevo las cuentas en Excel. sinunmango me sacó el archivo de encima — y encima entiende cuando le digo 'gasté 4 lukas'.",
+    name:    "Martina G.",
+    role:    "Diseñadora freelance",
+    initial: "M",
+    color:   "#FFB84D",
+  },
+  {
+    quote:
+      "Le reenvío los mails del banco a la dirección de Manguito y se cargan solos. No exagero: me ahorra 2-3 horas por mes.",
+    name:    "Pablo M.",
+    role:    "Product manager",
+    initial: "P",
+    color:   "#4ADE80",
+  },
+  {
+    quote:
+      "Lo de subir el PDF del resumen y que detecte la adicional de mi pareja es lo mejor. Cero spreadsheet manual.",
+    name:    "Sofi L.",
+    role:    "Contadora",
+    initial: "S",
+    color:   "#1B3A6B",
+  },
+  {
+    quote:
+      "Le dicto 'gasté tres mil en el súper' por audio y listo. Mi vieja también lo usa, por eso — es la app más amigable que probé en años.",
+    name:    "Tomás R.",
+    role:    "Médico",
+    initial: "T",
+    color:   "#B85C00",
+  },
+  {
+    quote:
+      "Para saber cuándo paga cada tarjeta era un desastre. Ahora me avisa antes y veo lo del período sin abrir la app del banco.",
+    name:    "Camila V.",
+    role:    "Marketing",
+    initial: "C",
+    color:   "#0F4D3A",
+  },
+  {
+    quote:
+      "Compartí mi workspace con mi contador. Él ve todo, pero solo lo que yo elijo. Cobra menos porque ya tiene los datos cargados.",
+    name:    "Lautaro D.",
+    role:    "Emprendedor",
+    initial: "L",
+    color:   "#FFB84D",
+  },
+];
+---
+
+<section id="testimonios" class="relative isolate overflow-hidden bg-[#0A0E1A] py-24 sm:py-32">
+  {/* Separador superior */}
+  <div
+    class="absolute top-0 left-0 right-0 h-px"
+    style="background: linear-gradient(90deg, transparent, rgba(74,222,128,0.3), transparent);"
+    aria-hidden="true"
+  ></div>
+
+  {/* Halos */}
+  <div class="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    <div
+      class="absolute top-[5%] left-[-10%] h-[460px] w-[460px] rounded-full opacity-[0.14] blur-[120px]"
+      style="background: radial-gradient(circle, #4ADE80 0%, transparent 70%);"
+    ></div>
+    <div
+      class="absolute bottom-[5%] right-[-10%] h-[480px] w-[480px] rounded-full opacity-[0.13] blur-[130px]"
+      style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
+    ></div>
+  </div>
+
+  <div class="mx-auto max-w-6xl px-6">
+    {/* Header */}
+    <div class="max-w-3xl">
+      <div
+        class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 backdrop-blur"
+      >
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#FFB84D]"></span>
+        <span
+          class="text-[10px] uppercase tracking-[0.18em] text-white/60"
+          style="font-family: 'Geist Mono', monospace;"
+        >
+          Lo que dicen
+        </span>
+      </div>
+      <h2
+        class="mt-6 text-[clamp(2rem,4.5vw,3.5rem)] font-bold leading-[0.95] tracking-[-0.03em] text-white"
+        style="font-family: 'Inter', system-ui, sans-serif;"
+      >
+        Gente que ya{" "}
+        <span
+          class="italic font-medium"
+          style="font-family: 'Fraunces', Georgia, serif; font-variation-settings: 'opsz' 144; color: #FFB84D;"
+        >
+          guardó el Excel
+        </span>.
+      </h2>
+      <p class="mt-6 max-w-xl text-base text-white/60 sm:text-lg">
+        Esto es lo que nos cuentan los que ya están usando la app a
+        diario.
+      </p>
+    </div>
+
+    {/* ═══════ OPCIÓN A — CARDS CLÁSICAS ══════════════════════════════════
+        3 cards en grid, quote centrada, avatar con inicial + bg color,
+        nombre y rol abajo. El formato más estándar y limpio — funciona
+        siempre, no destaca pero no falla.
+       ═══════════════════════════════════════════════════════════════════ */}
+    <div class="mt-14 rounded-3xl border border-[#FFB84D]/20 bg-[#FFB84D]/[0.02] p-6 sm:p-8">
+      <p
+        class="mb-6 text-[11px] uppercase tracking-[0.2em] text-[#FFB84D]"
+        style="font-family: 'Geist Mono', monospace;"
+      >
+        Opción A · Cards clásicas
+      </p>
+      <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
+        {testimonios.slice(0, 3).map((t) => (
+          <figure class="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-6 transition-colors hover:border-white/20 hover:bg-white/[0.04]">
+            {/* Quote icon decorativo */}
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-[#FFB84D]/40" aria-hidden="true">
+              <path d="M7 11.5c0-3 2-5 4-5"/>
+              <path d="M7 11.5h3v5H7v-5Z"/>
+              <path d="M14 11.5c0-3 2-5 4-5"/>
+              <path d="M14 11.5h3v5h-3v-5Z"/>
+            </svg>
+            <blockquote class="mt-3 flex-1 text-sm leading-relaxed text-white/85">
+              "{t.quote}"
+            </blockquote>
+            <figcaption class="mt-5 flex items-center gap-3">
+              <span
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-[#0A0E1A]"
+                style={`background-color: ${t.color};`}
+                aria-hidden="true"
+              >
+                {t.initial}
+              </span>
+              <div>
+                <p class="text-sm font-semibold text-white leading-tight">{t.name}</p>
+                <p class="text-xs text-white/55 leading-tight mt-0.5">{t.role}</p>
+              </div>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
+
+    {/* ═══════ OPCIÓN B — TWEET STYLE ═════════════════════════════════════
+        Como posts de redes sociales. Avatar circular con handle, fecha,
+        quote, sin "comilla decorativa". Más casual, juega al social proof.
+       ═══════════════════════════════════════════════════════════════════ */}
+    <div class="mt-10 rounded-3xl border border-[#4ADE80]/20 bg-[#4ADE80]/[0.02] p-6 sm:p-8">
+      <p
+        class="mb-6 text-[11px] uppercase tracking-[0.2em] text-[#4ADE80]"
+        style="font-family: 'Geist Mono', monospace;"
+      >
+        Opción B · Tweet-style
+      </p>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {testimonios.slice(0, 3).map((t, i) => (
+          <article class="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-colors hover:border-white/20 hover:bg-white/[0.05]">
+            <header class="flex items-center gap-3">
+              <span
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-[#0A0E1A]"
+                style={`background-color: ${t.color};`}
+                aria-hidden="true"
+              >
+                {t.initial}
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate text-sm font-semibold text-white leading-tight">{t.name}</p>
+                  {/* Checkmark verificado para mimic vibe de red social */}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#4ADE80" aria-hidden="true">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <path d="M22 4 12 14.01l-3-3" stroke="#0A0E1A" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <p class="text-xs text-white/45 leading-tight mt-0.5">
+                  @{t.name.toLowerCase().replace(/[\s.]/g, '')} · {["hace 2d", "hace 5h", "hace 1sem"][i % 3]}
+                </p>
+              </div>
+            </header>
+            <p class="mt-3 text-sm leading-relaxed text-white/85">{t.quote}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+
+    {/* ═══════ OPCIÓN C — BENTO MIX DE SIZES ══════════════════════════════
+        Un testimonio destacado grande con quote enorme + 4 más chicos en
+        bento. Mezcla jerarquía visual: el principal "venda", los demás
+        refuerzan.
+       ═══════════════════════════════════════════════════════════════════ */}
+    <div class="mt-10 rounded-3xl border border-[#FFB84D]/20 bg-[#FFB84D]/[0.02] p-6 sm:p-8">
+      <p
+        class="mb-6 text-[11px] uppercase tracking-[0.2em] text-[#FFB84D]"
+        style="font-family: 'Geist Mono', monospace;"
+      >
+        Opción C · Bento mix de sizes
+      </p>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-3 md:grid-rows-2">
+        {/* Hero testimonio — col 1-2, row 1-2 */}
+        <figure class="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[#FFB84D]/30 bg-gradient-to-br from-[#FFB84D]/[0.08] to-[#4ADE80]/[0.04] p-7 md:col-span-2 md:row-span-2">
+          <div
+            class="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full opacity-30 blur-3xl"
+            style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
+            aria-hidden="true"
+          ></div>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor" class="text-[#FFB84D]/60" aria-hidden="true">
+            <path d="M7 11.5c0-3 2-5 4-5v2c-1 0-2 1-2 3h2v5H7v-5Z"/>
+            <path d="M14 11.5c0-3 2-5 4-5v2c-1 0-2 1-2 3h2v5h-4v-5Z"/>
+          </svg>
+          <blockquote class="mt-4 text-xl leading-snug text-white sm:text-2xl"
+                      style="font-family: 'Fraunces', Georgia, serif;">
+            {testimonios[3].quote}
+          </blockquote>
+          <figcaption class="mt-6 flex items-center gap-3">
+            <span
+              class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-bold text-[#0A0E1A]"
+              style={`background-color: ${testimonios[3].color};`}
+              aria-hidden="true"
+            >
+              {testimonios[3].initial}
+            </span>
+            <div>
+              <p class="text-base font-semibold text-white">{testimonios[3].name}</p>
+              <p class="text-sm text-white/60">{testimonios[3].role}</p>
+            </div>
+          </figcaption>
+        </figure>
+
+        {/* 4 testimonios chicos en bento */}
+        {[0, 1, 2, 4].map((idx) => {
+          const t = testimonios[idx];
+          return (
+            <figure class="flex flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.04]">
+              <blockquote class="flex-1 text-xs leading-relaxed text-white/80 line-clamp-4">
+                "{t.quote}"
+              </blockquote>
+              <figcaption class="mt-3 flex items-center gap-2">
+                <span
+                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-[#0A0E1A]"
+                  style={`background-color: ${t.color};`}
+                  aria-hidden="true"
+                >
+                  {t.initial}
+                </span>
+                <div class="min-w-0">
+                  <p class="truncate text-xs font-semibold text-white leading-tight">{t.name}</p>
+                  <p class="truncate text-[10px] text-white/50 leading-tight mt-0.5">{t.role}</p>
+                </div>
+              </figcaption>
+            </figure>
+          );
+        })}
+      </div>
+    </div>
+
+    {/* ═══════ OPCIÓN D — MARQUEE SCROLL AUTOMÁTICO ═══════════════════════
+        Carrousel infinito horizontal que scrollea solo. Cool factor:
+        sensación de "todos están hablando". Pausa en hover. Duplica los
+        items para que el loop sea suave.
+       ═══════════════════════════════════════════════════════════════════ */}
+    <div class="mt-10 rounded-3xl border border-[#4ADE80]/20 bg-[#4ADE80]/[0.02] p-6 sm:p-8">
+      <p
+        class="mb-6 text-[11px] uppercase tracking-[0.2em] text-[#4ADE80]"
+        style="font-family: 'Geist Mono', monospace;"
+      >
+        Opción D · Marquee scroll automático
+      </p>
+      {/* El track tiene los testimonios duplicados 2x para hacer el loop
+          continuo (cuando termina la primera tanda, ya está visible la
+          segunda y vuelve a 0 sin salto). */}
+      <div class="testimonio-marquee group/marquee relative overflow-hidden -mx-6 sm:-mx-8" aria-label="Testimonios">
+        {/* Gradients en los extremos para "fade out" suave */}
+        <div class="pointer-events-none absolute left-0 top-0 z-10 h-full w-12 bg-gradient-to-r from-[#0A0E1A] to-transparent"></div>
+        <div class="pointer-events-none absolute right-0 top-0 z-10 h-full w-12 bg-gradient-to-l from-[#0A0E1A] to-transparent"></div>
+
+        <div class="testimonio-marquee-track flex gap-4 py-2">
+          {[...testimonios, ...testimonios].map((t) => (
+            <figure class="min-w-[300px] max-w-[320px] shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:min-w-[340px] sm:max-w-[360px]">
+              <blockquote class="text-sm leading-relaxed text-white/85">
+                "{t.quote}"
+              </blockquote>
+              <figcaption class="mt-4 flex items-center gap-2.5">
+                <span
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-[#0A0E1A]"
+                  style={`background-color: ${t.color};`}
+                  aria-hidden="true"
+                >
+                  {t.initial}
+                </span>
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-semibold text-white leading-tight">{t.name}</p>
+                  <p class="truncate text-xs text-white/50 leading-tight mt-0.5">{t.role}</p>
+                </div>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* Nota al final del sprint visual */}
+    <p class="mt-8 text-center text-[10px] uppercase tracking-[0.2em] text-white/30"
+       style="font-family: 'Geist Mono', monospace;">
+      ↑ Decime cuál te gusta y sacamos las otras 3
+    </p>
+  </div>
+</section>
+
+<style>
+  /* Marquee infinito de la Opción D. Animación CSS pura, sin JS.
+     El track tiene los items duplicados 2x para el loop continuo —
+     animamos translateX de 0 a -50% (que es exactamente una tanda).
+     Pausa en hover sobre el contenedor (.group/marquee). */
+  @keyframes testimonio-marquee-scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .testimonio-marquee-track {
+    width: max-content;
+    animation: testimonio-marquee-scroll 50s linear infinite;
+  }
+  .group\/marquee:hover .testimonio-marquee-track {
+    animation-play-state: paused;
+  }
+  /* Respect prefers-reduced-motion: paramos el scroll */
+  @media (prefers-reduced-motion: reduce) {
+    .testimonio-marquee-track {
+      animation: none;
+    }
+  }
+</style>

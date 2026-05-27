@@ -176,304 +176,38 @@ const features: Feature[] = [
       }
     </ul>
 
-    {/* ═══════════════════════════════════════════════════════════════════
-        SPRINT VISUAL — 4 alternativas de layout para los 8 features
-        compactos. Quedan apiladas para que el dueño elija en vivo, después
-        sacamos las 3 que no usemos. Cada opción precedida por un
-        "OPCIÓN X" en mono para identificarla.
-       ═══════════════════════════════════════════════════════════════════ */}
-
-    {/* ── DIVISOR + nota de "estás eligiendo el layout" ──────────────── */}
-    <div class="mt-20 mb-6 flex items-center gap-4">
+    {/* Divisor sutil */}
+    <div class="mt-20 mb-10 flex items-center gap-4">
       <div class="h-px flex-1 bg-white/10"></div>
       <p
         class="text-[10px] uppercase tracking-[0.2em] text-white/40"
         style="font-family: 'Geist Mono', monospace;"
       >
-        Y lo de siempre, bien hecho · 4 layouts a comparar
+        Y lo de siempre, bien hecho
       </p>
       <div class="h-px flex-1 bg-white/10"></div>
     </div>
 
-    {/* ═══════ OPCIÓN A — CARROUSEL HORIZONTAL ════════════════════════════
-        Scroll horizontal con snap. Cards width fija. Sin JS — scroll
-        nativo del navegador. Indicador "← deslizá →" para mobile y
-        controles de tarjetas visibles para desktop.
-       ═══════════════════════════════════════════════════════════════════ */}
-    <div class="mt-10 rounded-3xl border border-[#FFB84D]/20 bg-[#FFB84D]/[0.02] p-6 sm:p-8">
-      <p
-        class="mb-4 text-[11px] uppercase tracking-[0.2em] text-[#FFB84D]"
-        style="font-family: 'Geist Mono', monospace;"
-      >
-        Opción A · Carrousel horizontal
-      </p>
-      <div class="relative -mx-6 sm:-mx-8">
-        <ul
-          class="flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-4 sm:px-8 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.2)_transparent]"
-        >
-          {
-            features.map((f) => (
-              <li class="group min-w-[270px] max-w-[290px] shrink-0 snap-start rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition-colors hover:border-white/20 hover:bg-white/[0.04] sm:min-w-[300px] sm:max-w-[320px]">
-                <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-[#4ADE80] transition-colors group-hover:border-[#4ADE80]/30 group-hover:bg-[#4ADE80]/10">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <Fragment set:html={f.icon} />
-                  </svg>
-                </div>
-                <h3 class="text-base font-semibold text-white">{f.title}</h3>
-                <p class="mt-1.5 text-sm leading-relaxed text-white/60">
-                  {f.blurb}
-                </p>
-              </li>
-            ))
-          }
-        </ul>
-      </div>
-      <p
-        class="mt-2 text-center text-[10px] uppercase tracking-[0.2em] text-white/30"
-        style="font-family: 'Geist Mono', monospace;"
-      >
-        ← deslizá horizontalmente →
-      </p>
-    </div>
-
-    {/* ═══════ OPCIÓN B — BENTO GRID ASIMÉTRICO ═══════════════════════════
-        Grid 3-col donde algunos cards span 2 col / 2 row. Hace que
-        ciertas features destaquen visualmente sin perder densidad.
-        Distribución elegida: la primera y la del medio son 2-col, el
-        resto regulares.
-       ═══════════════════════════════════════════════════════════════════ */}
-    <div class="mt-10 rounded-3xl border border-[#4ADE80]/20 bg-[#4ADE80]/[0.02] p-6 sm:p-8">
-      <p
-        class="mb-4 text-[11px] uppercase tracking-[0.2em] text-[#4ADE80]"
-        style="font-family: 'Geist Mono', monospace;"
-      >
-        Opción B · Bento grid asimétrico
-      </p>
-      <ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:grid-rows-2">
-        {
-          features.map((f, i) => {
-            // Bento pattern: índices 0 y 5 ocupan 2 columnas; el resto 1.
-            // 0: Conciliaciones (col-span-2)
-            // 1: Pesos+dólares
-            // 2: Sabé cuándo paga tarjeta
-            // 3: Gastos fijos
-            // 4: Compartilo
-            // 5: Tarjetas adicionales (col-span-2)
-            // 6: Inversiones
-            // 7: Analítica
-            const isWide = i === 0 || i === 5;
-            return (
-              <li class={`group rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition-colors hover:border-white/20 hover:bg-white/[0.04] ${isWide ? "lg:col-span-2" : ""}`}>
-                <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-[#4ADE80] transition-colors group-hover:border-[#4ADE80]/30 group-hover:bg-[#4ADE80]/10">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <Fragment set:html={f.icon} />
-                  </svg>
-                </div>
-                <h3 class="text-base font-semibold text-white">{f.title}</h3>
-                <p class="mt-1.5 text-sm leading-relaxed text-white/60">
-                  {f.blurb}
-                </p>
-              </li>
-            );
-          })
-        }
-      </ul>
-    </div>
-
-    {/* ═══════ OPCIÓN C — TABS POR CATEGORÍA ══════════════════════════════
-        3 tabs con grupos: Carga / Plata diaria / Avanzado. Solo una
-        categoría visible por vez. Necesita JS mínimo (toggle de active
-        + display de panels). Achica MÁS que el resto.
-       ═══════════════════════════════════════════════════════════════════ */}
-    <div class="mt-10 rounded-3xl border border-[#FFB84D]/20 bg-[#FFB84D]/[0.02] p-6 sm:p-8">
-      <p
-        class="mb-4 text-[11px] uppercase tracking-[0.2em] text-[#FFB84D]"
-        style="font-family: 'Geist Mono', monospace;"
-      >
-        Opción C · Tabs por categoría
-      </p>
-
-      {/* Tabs */}
-      <div class="flex flex-wrap gap-2" role="tablist" aria-label="Categorías de features">
-        <button
-          type="button"
-          class="features-tab features-tab-active"
-          data-tab="carga"
-          aria-selected="true"
-        >
-          Carga & conciliación
-        </button>
-        <button
-          type="button"
-          class="features-tab"
-          data-tab="diaria"
-          aria-selected="false"
-        >
-          Plata diaria
-        </button>
-        <button
-          type="button"
-          class="features-tab"
-          data-tab="avanzado"
-          aria-selected="false"
-        >
-          Avanzado
-        </button>
-      </div>
-
-      {/* Panels */}
-      <div class="mt-6">
-        {/* Tab 1: Carga & conciliación — features 0, 1, 2 (Conciliaciones, Pesos+USD, Sabé cuándo paga) */}
-        <ul class="features-panel grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-panel="carga">
-          {features.slice(0, 3).map((f) => (
-            <li class="group rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition-colors hover:border-white/20 hover:bg-white/[0.04]">
-              <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-[#4ADE80] transition-colors group-hover:border-[#4ADE80]/30 group-hover:bg-[#4ADE80]/10">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <Fragment set:html={f.icon} />
-                </svg>
-              </div>
-              <h3 class="text-base font-semibold text-white">{f.title}</h3>
-              <p class="mt-1.5 text-sm leading-relaxed text-white/60">{f.blurb}</p>
-            </li>
-          ))}
-        </ul>
-        {/* Tab 2: Plata diaria — features 3, 4, 5 (Gastos fijos, Compartilo, Adicionales) */}
-        <ul class="features-panel hidden grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-panel="diaria">
-          {features.slice(3, 6).map((f) => (
-            <li class="group rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition-colors hover:border-white/20 hover:bg-white/[0.04]">
-              <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-[#4ADE80] transition-colors group-hover:border-[#4ADE80]/30 group-hover:bg-[#4ADE80]/10">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <Fragment set:html={f.icon} />
-                </svg>
-              </div>
-              <h3 class="text-base font-semibold text-white">{f.title}</h3>
-              <p class="mt-1.5 text-sm leading-relaxed text-white/60">{f.blurb}</p>
-            </li>
-          ))}
-        </ul>
-        {/* Tab 3: Avanzado — features 6, 7 (Inversiones, Analítica) */}
-        <ul class="features-panel hidden grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-panel="avanzado">
-          {features.slice(6).map((f) => (
-            <li class="group rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition-colors hover:border-white/20 hover:bg-white/[0.04]">
-              <div class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-[#4ADE80] transition-colors group-hover:border-[#4ADE80]/30 group-hover:bg-[#4ADE80]/10">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <Fragment set:html={f.icon} />
-                </svg>
-              </div>
-              <h3 class="text-base font-semibold text-white">{f.title}</h3>
-              <p class="mt-1.5 text-sm leading-relaxed text-white/60">{f.blurb}</p>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-
-    {/* ═══════ OPCIÓN D — LISTA DENSA MINIMALISTA ═════════════════════════
-        Sin cards. Solo ícono pequeño + título + 1 línea de descripción.
-        Grilla 2-col (3 en desktop). Aspecto "spec sheet". Mucho más
-        compacto, perdiendo peso visual.
-       ═══════════════════════════════════════════════════════════════════ */}
-    <div class="mt-10 rounded-3xl border border-[#4ADE80]/20 bg-[#4ADE80]/[0.02] p-6 sm:p-8">
-      <p
-        class="mb-4 text-[11px] uppercase tracking-[0.2em] text-[#4ADE80]"
-        style="font-family: 'Geist Mono', monospace;"
-      >
-        Opción D · Lista densa minimalista
-      </p>
-      <ul class="divide-y divide-white/5 sm:grid sm:grid-cols-2 sm:gap-x-10 sm:divide-y-0 lg:grid-cols-3">
-        {
-          features.map((f) => (
-            <li class="flex items-start gap-3 py-3 sm:border-b sm:border-white/5">
-              <span class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center text-[#4ADE80]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <Fragment set:html={f.icon} />
-                </svg>
-              </span>
-              <div class="min-w-0 flex-1">
-                <h3 class="text-sm font-semibold text-white leading-tight">{f.title}</h3>
-                <p class="mt-0.5 text-xs leading-snug text-white/55 line-clamp-2">{f.blurb}</p>
-              </div>
-            </li>
-          ))
-        }
-      </ul>
-    </div>
-
-    {/* ── Nota al final del sprint visual ──────────────────────────── */}
-    <p class="mt-8 text-center text-[10px] uppercase tracking-[0.2em] text-white/30"
-       style="font-family: 'Geist Mono', monospace;">
-      ↑ Decime cuál te gusta y sacamos las otras 3
-    </p>
+    {/* Lista densa minimalista — opción D del sprint visual.
+        Sin cards: ícono pequeño + título + 1 línea de descripción.
+        Grilla 2-col (3 en desktop). Aspecto "spec sheet" compacto,
+        deja respirar la página después de los 3 highlights grandes. */}
+    <ul class="divide-y divide-white/5 sm:grid sm:grid-cols-2 sm:gap-x-10 sm:divide-y-0 lg:grid-cols-3">
+      {
+        features.map((f) => (
+          <li class="flex items-start gap-3 py-3 sm:border-b sm:border-white/5">
+            <span class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center text-[#4ADE80]">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <Fragment set:html={f.icon} />
+              </svg>
+            </span>
+            <div class="min-w-0 flex-1">
+              <h3 class="text-sm font-semibold text-white leading-tight">{f.title}</h3>
+              <p class="mt-0.5 text-xs leading-snug text-white/55 line-clamp-2">{f.blurb}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
   </div>
 </section>
-
-{/* ── Script: tabs de Opción C ─────────────────────────────────────────
-    Vanilla JS, sin framework. Toggle visible panel + active tab. */}
-<script>
-  const tabs = document.querySelectorAll<HTMLButtonElement>('.features-tab')
-  const panels = document.querySelectorAll<HTMLElement>('.features-panel')
-
-  tabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      const target = tab.dataset.tab
-      // Update active tab
-      tabs.forEach((t) => {
-        const isActive = t.dataset.tab === target
-        t.classList.toggle('features-tab-active', isActive)
-        t.setAttribute('aria-selected', String(isActive))
-      })
-      // Toggle visible panel
-      panels.forEach((p) => {
-        p.classList.toggle('hidden', p.dataset.panel !== target)
-      })
-    })
-  })
-</script>
-
-<style>
-  /* Tabs de la Opción C. Estado default tenue, activo con borde + bg mango. */
-  .features-tab {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 0.875rem;
-    border-radius: 0.625rem;
-    border: 1px solid rgba(255,255,255,0.10);
-    background: rgba(255,255,255,0.03);
-    color: rgba(255,255,255,0.7);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    transition: all 0.18s ease;
-    cursor: pointer;
-  }
-  .features-tab:hover {
-    border-color: rgba(255,255,255,0.20);
-    color: white;
-  }
-  .features-tab-active {
-    border-color: rgba(255, 184, 77, 0.40);
-    background: rgba(255, 184, 77, 0.10);
-    color: #FFB84D;
-  }
-</style>

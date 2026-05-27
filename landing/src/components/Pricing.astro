@@ -308,10 +308,65 @@ const FILAS: ComparadorRow[] = [
       </div>
     </details>
 
-    <p class="mt-10 text-center text-sm text-[#0A0E1A]/55">
-      La suscripción Pro se cobra vía Mercado Pago — tarjeta, débito,
-      CBU o efectivo. Si pagás y no te sirve, la cancelás desde la app
-      en Configuración → Suscripción y no tenés cargos después del trial.
+    {/* ── Métodos de pago — fila horizontal "logos row" ─────────────────
+        Antes vivía en la sección CTA final que sacamos. Ahora vive acá
+        como "letra chica" de la card Pro: el user ve que puede pagar
+        con cualquier cosa local sin tener que bajar más. */}
+    <div class="mt-12 border-t border-[#0A0E1A]/10 pt-8">
+      <p class="mb-5 text-center text-[10px] uppercase tracking-[0.2em] text-[#0A0E1A]/55"
+         style="font-family: 'Geist Mono', monospace;">
+        Pagás con lo que tengas
+      </p>
+      <div class="mx-auto grid max-w-3xl grid-cols-2 gap-2.5 sm:grid-cols-5 sm:gap-3">
+        <div class="payment-tile-light">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <rect x="2" y="6" width="20" height="14" rx="2" />
+            <path d="M2 11h20" />
+            <path d="M6 16h4" />
+          </svg>
+          <span>Crédito</span>
+        </div>
+        <div class="payment-tile-light">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <rect x="2" y="6" width="20" height="14" rx="2" />
+            <path d="M6 15h4" />
+          </svg>
+          <span>Débito</span>
+        </div>
+        <div class="payment-tile-light">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <path d="M3 21h18" />
+            <path d="M3 10h18" />
+            <path d="M5 6l7-3 7 3" />
+            <path d="M4 10v11" />
+            <path d="M20 10v11" />
+          </svg>
+          <span>CBU / CVU</span>
+        </div>
+        <div class="payment-tile-light">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <rect x="5" y="2" width="14" height="20" rx="2" />
+            <path d="M11 18h2" />
+          </svg>
+          <span>Billeteras</span>
+        </div>
+        <div class="payment-tile-light col-span-2 sm:col-span-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 7h20v10H2z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          <span>Efectivo</span>
+        </div>
+      </div>
+      <p class="mt-5 text-center text-[10px] uppercase tracking-[0.2em] text-[#0A0E1A]/45"
+         style="font-family: 'Geist Mono', monospace;">
+        Procesado por Mercado Pago · Rapipago · PagoFácil
+      </p>
+    </div>
+
+    <p class="mt-8 text-center text-sm text-[#0A0E1A]/55">
+      Si pagás y no te sirve, la cancelás desde la app en Configuración →
+      Suscripción y no tenés cargos después del trial.
     </p>
   </div>
 
@@ -322,3 +377,34 @@ const FILAS: ComparadorRow[] = [
     aria-hidden="true"
   ></div>
 </section>
+
+<style>
+  /* Payment tile en versión LIGHT — usado dentro de Pricing (cream
+     verdoso). Mismo layout que el v2 dark del CTA viejo, pero con
+     colores invertidos. */
+  .payment-tile-light {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem 0.5rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgba(10, 14, 26, 0.10);
+    background: rgba(255, 255, 255, 0.65);
+    color: #B85C00;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  }
+  .payment-tile-light:hover {
+    border-color: rgba(184, 92, 0, 0.35);
+    background: white;
+    transform: translateY(-1px);
+  }
+  .payment-tile-light span {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(10, 14, 26, 0.80);
+    line-height: 1.2;
+    text-align: center;
+  }
+</style>
