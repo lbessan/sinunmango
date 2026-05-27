@@ -16,125 +16,130 @@ const FILAS: ComparadorRow[] = [
   { feature: "Cargar por foto de ticket", free: "3 / mes", pro: "ilimitado" },
   { feature: "Importación automática por mail", free: "1 / mes", pro: "ilimitado" },
   { feature: "Importar resumen PDF de tarjeta", free: "1 / mes", pro: "ilimitado" },
+  { feature: "Invitar a tu pareja, contador o socio", free: false, pro: true },
   { feature: "Insights con IA en Analítica", free: false, pro: true },
   { feature: "Informe completo con IA", free: false, pro: true },
   { feature: "Temas y modo claro/oscuro", free: false, pro: true },
 ];
 ---
 
-<section id="pricing" class="relative isolate overflow-hidden bg-[#0A0E1A] py-24 sm:py-32">
-  {/* Separador superior */}
+<section id="pricing" class="relative isolate overflow-hidden bg-[#EEF3EA] py-24 sm:py-32">
+  {/* LIGHT SECTION #2 — distinto al ParaQuien (cream cálido #FAF7F2):
+      acá vamos a un cream con TINTE VERDE (#EEF3EA), connotación
+      sutil de "dinero/positivo" para la sección de planes. */}
+  {/* Separador superior — fuerte para anunciar cambio de paleta */}
   <div
     class="absolute top-0 left-0 right-0 h-px"
-    style="background: linear-gradient(90deg, transparent, rgba(255,184,77,0.3), transparent);"
+    style="background: linear-gradient(90deg, transparent, rgba(15,77,58,0.45), rgba(255,184,77,0.45), transparent);"
     aria-hidden="true"
   ></div>
 
-  {/* Halos — mango fuerte centro-abajo (donde está la card Pro) +
-      verde sutil arriba-izquierda. La paleta cuenta "el plan estrella
-      cuesta plata" sin necesidad de gritarlo. */}
+  {/* Halos sobre el cream verdoso — mango sutil centro-abajo (donde está
+      la card Pro) + verde profundo arriba-izquierda. Más sutiles que en
+      las secciones dark porque acá el bg ya cuenta. */}
   <div class="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
     <div
-      class="absolute bottom-[5%] left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full opacity-[0.18] blur-[130px]"
+      class="absolute bottom-[5%] left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full opacity-[0.10] blur-[130px]"
       style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
     ></div>
     <div
-      class="absolute top-[5%] left-[-10%] h-[420px] w-[420px] rounded-full opacity-[0.12] blur-[110px]"
-      style="background: radial-gradient(circle, #4ADE80 0%, transparent 70%);"
+      class="absolute top-[5%] left-[-10%] h-[420px] w-[420px] rounded-full opacity-[0.08] blur-[110px]"
+      style="background: radial-gradient(circle, #0F4D3A 0%, transparent 70%);"
     ></div>
   </div>
 
   <div class="mx-auto max-w-5xl px-6">
-    {/* Header */}
+    {/* Header — invertido a dark text sobre cream */}
     <div class="max-w-3xl">
       <div
-        class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 backdrop-blur"
+        class="inline-flex items-center gap-2 rounded-full border border-[#0A0E1A]/12 bg-white/70 px-3 py-1.5 backdrop-blur"
       >
         <span class="inline-block h-1.5 w-1.5 rounded-full bg-[#FFB84D]"></span>
         <span
-          class="text-[10px] uppercase tracking-[0.18em] text-white/60"
+          class="text-[10px] uppercase tracking-[0.18em] text-[#0A0E1A]/70"
           style="font-family: 'Geist Mono', monospace;"
         >
           Planes
         </span>
       </div>
       <h2
-        class="mt-6 text-[clamp(2rem,4.5vw,3.5rem)] font-bold leading-[0.95] tracking-[-0.03em] text-white"
+        class="mt-6 text-[clamp(2rem,4.5vw,3.5rem)] font-bold leading-[0.95] tracking-[-0.03em] text-[#0A0E1A]"
         style="font-family: 'Inter', system-ui, sans-serif;"
       >
         Empezás gratis. Pagás solo si{" "}
         <span
           class="italic font-medium"
-          style="font-family: 'Fraunces', Georgia, serif; font-variation-settings: 'opsz' 144; color: #FFB84D;"
+          style="font-family: 'Fraunces', Georgia, serif; font-variation-settings: 'opsz' 144; color: #B85C00;"
         >
           necesitás más IA
         </span>.
       </h2>
-      <p class="mt-6 max-w-xl text-base text-white/60 sm:text-lg">
+      <p class="mt-6 max-w-xl text-base text-[#0A0E1A]/70 sm:text-lg">
         Todo lo importante de cargar y revisar tu plata es gratis para
         siempre. Pro suma los flows con inteligencia artificial sin
         límites mensuales.
       </p>
     </div>
 
-    {/* Cards de planes */}
+    {/* Cards de planes — invertidas para light bg */}
     <div class="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-2">
-      {/* FREE */}
-      <div class="relative flex flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-8 sm:p-10">
+      {/* FREE — card blanco roto sobre cream, borde sutil */}
+      <div class="relative flex flex-col rounded-2xl border border-[#0A0E1A]/10 bg-white/80 p-8 shadow-[0_4px_24px_-12px_rgba(15,77,58,0.15)] sm:p-10">
         <div class="flex items-center gap-3">
-          <h3 class="text-xl font-bold text-white">Free</h3>
+          <h3 class="text-xl font-bold text-[#0A0E1A]">Free</h3>
           <span
-            class="rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/60"
+            class="rounded-md border border-[#0A0E1A]/10 bg-[#0A0E1A]/[0.04] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#0A0E1A]/60"
             style="font-family: 'Geist Mono', monospace;"
           >
             Para siempre
           </span>
         </div>
-        <p class="mt-2 text-sm text-white/60">
+        <p class="mt-2 text-sm text-[#0A0E1A]/65">
           Sin tarjeta, sin trial, sin reloj. Pensado para que la app sea
           útil aunque nunca pagues nada.
         </p>
 
         <div class="mt-6">
           <span
-            class="text-5xl font-bold tracking-tight text-white"
+            class="text-5xl font-bold tracking-tight text-[#0A0E1A]"
             style="font-variant-numeric: tabular-nums;"
           >
             $0
           </span>
-          <span class="ml-2 text-sm text-white/40">para siempre</span>
+          <span class="ml-2 text-sm text-[#0A0E1A]/45">para siempre</span>
         </div>
 
-        <ul class="mt-7 space-y-3 text-sm text-white/70">
+        <ul class="mt-7 space-y-3 text-sm text-[#0A0E1A]/75">
           <li class="flex items-start gap-2.5">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#4ADE80]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#0F4D3A]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
             <span>Dashboard, proyecciones, analítica básica</span>
           </li>
           <li class="flex items-start gap-2.5">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#4ADE80]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#0F4D3A]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
             <span>Cuentas, tarjetas, gastos fijos, inversiones</span>
           </li>
           <li class="flex items-start gap-2.5">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#4ADE80]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#0F4D3A]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
             <span>Cargar movimientos manualmente (sin límite)</span>
           </li>
           <li class="flex items-start gap-2.5">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#4ADE80]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#0F4D3A]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
             <span>5 mensajes/mes a Manguito + 3 tickets + 1 PDF + 1 mail bancario al mes</span>
           </li>
         </ul>
 
         <a
           href="https://app.sinunmango.com.ar"
-          class="mt-10 inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.06]"
+          class="mt-10 inline-flex items-center justify-center gap-2 rounded-xl border border-[#0A0E1A]/15 bg-white px-6 py-3.5 text-sm font-semibold text-[#0A0E1A] transition-all hover:-translate-y-0.5 hover:border-[#0A0E1A]/30 hover:bg-[#0A0E1A]/[0.03]"
         >
           Empezar gratis
           <span aria-hidden="true">→</span>
         </a>
       </div>
 
-      {/* PRO */}
-      <div class="relative flex flex-col rounded-2xl border border-[#FFB84D]/40 bg-gradient-to-br from-[#FFB84D]/[0.05] to-[#4ADE80]/[0.03] p-8 shadow-[0_0_60px_-30px_#FFB84D] sm:p-10">
+      {/* PRO — card blanca con borde mango fuerte y shadow mango para
+          que destaque sobre el cream verdoso del fondo */}
+      <div class="relative flex flex-col rounded-2xl border-2 border-[#FFB84D] bg-white p-8 shadow-[0_20px_60px_-20px_rgba(255,184,77,0.5)] sm:p-10">
         {/* Badge — Early Access para los primeros 100 suscriptores */}
         <span
           class="absolute -top-3 left-8 inline-flex items-center gap-1.5 rounded-full bg-[#FFB84D] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#0A0E1A] shadow-lg"
@@ -144,15 +149,15 @@ const FILAS: ComparadorRow[] = [
         </span>
 
         <div class="flex items-center gap-3">
-          <h3 class="text-xl font-bold text-white">Pro</h3>
+          <h3 class="text-xl font-bold text-[#0A0E1A]">Pro</h3>
           <span
-            class="rounded-md border border-[#FFB84D]/30 bg-[#FFB84D]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#FFB84D]"
+            class="rounded-md border border-[#FFB84D]/40 bg-[#FFB84D]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#B85C00]"
             style="font-family: 'Geist Mono', monospace;"
           >
             7 días gratis
           </span>
         </div>
-        <p class="mt-2 text-sm text-white/60">
+        <p class="mt-2 text-sm text-[#0A0E1A]/65">
           Sin límites en lo que tiene IA: Manguito ilimitado, importaciones
           ilimitadas, insights y personalización.
         </p>
@@ -161,55 +166,59 @@ const FILAS: ComparadorRow[] = [
             durante 12 meses. Después renuevan al precio normal ($6.999). */}
         <div class="mt-6 flex items-baseline gap-3">
           <span
-            class="text-5xl font-bold tracking-tight text-white"
+            class="text-5xl font-bold tracking-tight text-[#0A0E1A]"
             style="font-variant-numeric: tabular-nums;"
           >
             $3.499
           </span>
-          <span class="text-sm text-white/40">/ mes</span>
+          <span class="text-sm text-[#0A0E1A]/45">/ mes</span>
           <span
-            class="text-sm text-white/30 line-through"
+            class="text-sm text-[#0A0E1A]/35 line-through"
             style="font-variant-numeric: tabular-nums;"
           >
             $6.999
           </span>
         </div>
-        <p class="mt-1 text-xs text-[#FFB84D]">
+        <p class="mt-1 text-xs text-[#B85C00]">
           <strong>50% off</strong> los primeros 12 meses como early adopter
         </p>
 
-        <ul class="mt-7 space-y-3 text-sm text-white/70">
+        <ul class="mt-7 space-y-3 text-sm text-[#0A0E1A]/75">
           <li class="flex items-start gap-2.5">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#FFB84D]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
-            <span><strong class="text-white">Todo lo de Free</strong>, sin tope</span>
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#B85C00]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span><strong class="text-[#0A0E1A]">Todo lo de Free</strong>, sin tope</span>
           </li>
           <li class="flex items-start gap-2.5">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#FFB84D]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
-            <span>Manguito + foto ticket + mail + PDF <strong class="text-white">ilimitados</strong></span>
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#B85C00]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span>Manguito + foto ticket + mail + PDF <strong class="text-[#0A0E1A]">ilimitados</strong></span>
           </li>
           <li class="flex items-start gap-2.5">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#FFB84D]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#B85C00]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <span><strong class="text-[#0A0E1A]">Invitá</strong> a tu pareja, contador o socio al workspace</span>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#B85C00]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
             <span>Insights con IA en Analítica (qué cambió este mes y por qué)</span>
           </li>
           <li class="flex items-start gap-2.5">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#FFB84D]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#B85C00]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
             <span>Informe completo con IA (análisis mes a mes)</span>
           </li>
           <li class="flex items-start gap-2.5">
-            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#FFB84D]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+            <svg class="mt-0.5 h-4 w-4 shrink-0 text-[#B85C00]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
             <span>Temas de color y modo claro/oscuro</span>
           </li>
         </ul>
 
         <a
           href="https://app.sinunmango.com.ar/pro"
-          class="mt-10 inline-flex items-center justify-center gap-2 rounded-xl bg-[#FFB84D] px-6 py-3.5 text-sm font-semibold text-[#0A0E1A] shadow-lg shadow-[#FFB84D]/20 transition-all hover:-translate-y-0.5 hover:bg-[#FFC972] hover:shadow-xl hover:shadow-[#FFB84D]/30"
+          class="mt-10 inline-flex items-center justify-center gap-2 rounded-xl bg-[#FFB84D] px-6 py-3.5 text-sm font-semibold text-[#0A0E1A] shadow-lg shadow-[#FFB84D]/30 transition-all hover:-translate-y-0.5 hover:bg-[#FFC972] hover:shadow-xl hover:shadow-[#FFB84D]/50"
         >
           Probá Pro 7 días gratis
           <span aria-hidden="true">→</span>
         </a>
         <p
-          class="mt-3 text-center text-[10px] uppercase tracking-wider text-white/40"
+          class="mt-3 text-center text-[10px] uppercase tracking-wider text-[#0A0E1A]/45"
           style="font-family: 'Geist Mono', monospace;"
         >
           Cancelás cuando quieras desde la app
@@ -222,7 +231,7 @@ const FILAS: ComparadorRow[] = [
         la historia para el 80% de las personas. */}
     <details class="mt-14 group">
       <summary
-        class="cursor-pointer list-none flex items-center justify-center gap-2 text-sm font-semibold text-white/60 transition-colors hover:text-white"
+        class="cursor-pointer list-none flex items-center justify-center gap-2 text-sm font-semibold text-[#0A0E1A]/70 transition-colors hover:text-[#0A0E1A]"
       >
         <span>Ver comparación detallada</span>
         <svg
@@ -235,22 +244,22 @@ const FILAS: ComparadorRow[] = [
         </svg>
       </summary>
 
-      <div class="mt-8 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
-        <div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-b border-white/10 bg-white/[0.03] px-4 py-3 sm:px-6">
+      <div class="mt-8 overflow-hidden rounded-2xl border border-[#0A0E1A]/10 bg-white/70 backdrop-blur">
+        <div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-b border-[#0A0E1A]/10 bg-white/80 px-4 py-3 sm:px-6">
           <p
-            class="text-[10px] uppercase tracking-[0.16em] text-white/40"
+            class="text-[10px] uppercase tracking-[0.16em] text-[#0A0E1A]/50"
             style="font-family: 'Geist Mono', monospace;"
           >
             Feature
           </p>
           <p
-            class="min-w-[60px] text-center text-[10px] uppercase tracking-[0.16em] text-white/40 sm:min-w-[80px]"
+            class="min-w-[60px] text-center text-[10px] uppercase tracking-[0.16em] text-[#0A0E1A]/50 sm:min-w-[80px]"
             style="font-family: 'Geist Mono', monospace;"
           >
             Free
           </p>
           <p
-            class="min-w-[60px] text-center text-[10px] uppercase tracking-[0.16em] text-[#FFB84D] sm:min-w-[80px]"
+            class="min-w-[60px] text-center text-[10px] uppercase tracking-[0.16em] text-[#B85C00] sm:min-w-[80px]"
             style="font-family: 'Geist Mono', monospace;"
           >
             Pro
@@ -258,20 +267,20 @@ const FILAS: ComparadorRow[] = [
         </div>
         {
           FILAS.map((row) => (
-            <div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-b border-white/5 px-4 py-3 last:border-0 sm:px-6">
-              <p class="text-xs text-white sm:text-sm">{row.feature}</p>
+            <div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-b border-[#0A0E1A]/5 px-4 py-3 last:border-0 sm:px-6">
+              <p class="text-xs text-[#0A0E1A] sm:text-sm">{row.feature}</p>
               <div class="min-w-[60px] text-center sm:min-w-[80px]">
                 {row.free === true && (
-                  <svg class="inline h-4 w-4 text-[#4ADE80]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <svg class="inline h-4 w-4 text-[#0F4D3A]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/>
                   </svg>
                 )}
                 {row.free === false && (
-                  <span class="inline-block h-1 w-3 rounded bg-white/15" aria-label="No incluido" />
+                  <span class="inline-block h-1 w-3 rounded bg-[#0A0E1A]/20" aria-label="No incluido" />
                 )}
                 {typeof row.free === "string" && (
                   <span
-                    class="text-[10px] text-white/60 sm:text-xs"
+                    class="text-[10px] text-[#0A0E1A]/70 sm:text-xs"
                     style="font-family: 'Geist Mono', monospace;"
                   >
                     {row.free}
@@ -280,13 +289,13 @@ const FILAS: ComparadorRow[] = [
               </div>
               <div class="min-w-[60px] text-center sm:min-w-[80px]">
                 {row.pro === true && (
-                  <svg class="inline h-4 w-4 text-[#FFB84D]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <svg class="inline h-4 w-4 text-[#B85C00]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path fill-rule="evenodd" d="M16.7 5.7a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 10a1 1 0 1 1 1.4-1.4L8.5 12.4l6.8-6.7a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/>
                   </svg>
                 )}
                 {typeof row.pro === "string" && (
                   <span
-                    class="text-[10px] font-semibold text-[#FFB84D] sm:text-xs"
+                    class="text-[10px] font-semibold text-[#B85C00] sm:text-xs"
                     style="font-family: 'Geist Mono', monospace;"
                   >
                     {row.pro}
@@ -299,10 +308,17 @@ const FILAS: ComparadorRow[] = [
       </div>
     </details>
 
-    <p class="mt-10 text-center text-sm text-white/40">
+    <p class="mt-10 text-center text-sm text-[#0A0E1A]/55">
       La suscripción Pro se cobra vía Mercado Pago — tarjeta, débito,
       CBU o efectivo. Si pagás y no te sirve, la cancelás desde la app
       en Configuración → Suscripción y no tenés cargos después del trial.
     </p>
   </div>
+
+  {/* Separador inferior — anuncia vuelta a dark */}
+  <div
+    class="absolute bottom-0 left-0 right-0 h-px"
+    style="background: linear-gradient(90deg, transparent, rgba(255,184,77,0.45), rgba(15,77,58,0.45), transparent);"
+    aria-hidden="true"
+  ></div>
 </section>

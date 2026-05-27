@@ -52,20 +52,37 @@ import { faqJsonLd } from "../data/faqs";
 
       <div class="mx-auto max-w-4xl px-6 text-center">
         {/* Counter Early Access — ARRIBA del headline ahora. Es urgency,
-            entra antes que la propuesta. Barra de progreso integrada. */}
+            entra antes que la propuesta. Barra de progreso integrada.
+            Movimiento:
+              · counter-up del "23 / 100" cuando entra en viewport (1.4s)
+              · barra de progreso con shimmer continuo (highlight que
+                cruza de izquierda a derecha cada 3s) */}
         <div class="mx-auto inline-flex flex-col items-center gap-2.5 rounded-2xl border border-[#FFB84D]/25 bg-[#FFB84D]/[0.06] px-5 py-3 backdrop-blur">
           <div class="flex items-center gap-2.5 text-[11px] uppercase tracking-[0.16em]"
                style="font-family: 'Geist Mono', monospace;">
             <span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#FFB84D]"></span>
             <span class="text-[#FFB84D]">Early Access · 50% off durante 12 meses</span>
             <span class="text-white/40">·</span>
-            <span class="text-white/70 tabular-nums">23 / 100</span>
+            <span class="text-white/70 tabular-nums">
+              <span id="early-counter" data-target="23">0</span>
+              <span> / 100</span>
+            </span>
           </div>
-          <div class="h-1 w-full max-w-[280px] overflow-hidden rounded-full bg-white/[0.06]">
+          {/* Barra: la barra de fondo (oscura), el fill mango con width animada
+              al entrar en viewport, y un shimmer que cruza encima del fill. */}
+          <div id="early-progress" class="relative h-1 w-full max-w-[280px] overflow-hidden rounded-full bg-white/[0.06]">
             <div
-              class="h-full rounded-full bg-gradient-to-r from-[#FFB84D] to-[#FFC972]"
-              style="width: 23%;"
+              id="early-progress-fill"
+              class="h-full rounded-full bg-gradient-to-r from-[#FFB84D] to-[#FFC972] transition-[width] duration-[1400ms] ease-out"
+              style="width: 0%;"
+              data-target-width="23%"
             ></div>
+            {/* Shimmer — highlight blanco translúcido que cruza la barra.
+                Solo se activa después que el fill se completó (data-active). */}
+            <div class="absolute inset-0 -translate-x-full opacity-0 [.animated_&]:animate-shimmer pointer-events-none"
+                 style="background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);"
+                 aria-hidden="true">
+            </div>
           </div>
         </div>
 
@@ -190,14 +207,70 @@ import { faqJsonLd } from "../data/faqs";
   <Footer />
 </Layout>
 
-{/* PaymentChip component — chip visual con icono inline + label. Pensado
-    para los métodos de pago de MP. */}
+{/* Early Access counter — anima cuando entra en viewport:
+    1. Number counter-up: 0 → 23 en 1.4s con easing
+    2. Progress bar fill: 0% → 23% (via transition CSS)
+    3. Shimmer animation kicks in tras 1.5s (cuando el fill terminó)
+
+    Respeta prefers-reduced-motion: si el user pide menos movimiento,
+    saltamos a los valores finales sin animar. */}
 <script>
-  // No JS necesario — el componente es estático. Mantenido por si querés
-  // sumar interacción más adelante.
+  const counter  = document.getElementById('early-counter')
+  const fill     = document.getElementById('early-progress-fill')
+  const progress = document.getElementById('early-progress')
+  const target   = parseInt(counter?.dataset.target ?? '23', 10)
+  const targetW  = fill?.dataset.targetWidth ?? '23%'
+
+  if (counter && fill && progress) {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce) {
+      // Saltamos directo a los valores finales sin animar.
+      counter.textContent = String(target)
+      fill.style.width    = targetW
+      progress.classList.add('animated')
+    } else {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return
+          // 1. Counter-up del número con easing easeOutQuart.
+          const duration = 1400
+          const startTime = performance.now()
+          const tick = (now: number) => {
+            const elapsed = now - startTime
+            const t       = Math.min(elapsed / duration, 1)
+            const eased   = 1 - Math.pow(1 - t, 4)
+            counter.textContent = String(Math.round(eased * target))
+            if (t < 1) requestAnimationFrame(tick)
+          }
+          requestAnimationFrame(tick)
+          // 2. Disparamos el width del fill (la transition CSS lo anima).
+          requestAnimationFrame(() => { fill.style.width = targetW })
+          // 3. Tras terminar la barra, activamos el shimmer continuo.
+          setTimeout(() => { progress.classList.add('animated') }, duration + 100)
+          // Solo una vez.
+          observer.disconnect()
+        })
+      }, { threshold: 0.4 })
+      observer.observe(progress)
+    }
+  }
 </script>
 
 <style is:global>
+  /* Shimmer del progress bar del Early Access counter en el CTA final.
+     Un highlight blanco translúcido cruza la barra cada 3s. Solo arranca
+     después que el fill se completó (clase .animated agregada via JS). */
+  @keyframes shimmer {
+    0%   { transform: translateX(-100%); opacity: 0; }
+    20%  { opacity: 1; }
+    80%  { opacity: 1; }
+    100% { transform: translateX(100%); opacity: 0; }
+  }
+  .animate-shimmer {
+    animation: shimmer 3s ease-in-out infinite;
+    animation-delay: 0.8s;  /* respiro entre pasadas */
+  }
+
   /* Payment tile v2 — del CTA final rediseñado. Tile vertical, compacto,
      todos del mismo tamaño en una fila — funciona como "logos row" tipo
      footer de checkout. El ícono va arriba, label corto abajo. */
