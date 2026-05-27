@@ -110,7 +110,7 @@ describe('POST /api/webhooks/mp — input inválido', () => {
 
   it('acepta resource id en root como fallback de data.id', async () => {
     process.env.MP_WEBHOOK_SECRET = 's'
-    const ts = '1700000000'
+    const ts = String(Math.floor(Date.now() / 1000))
     const requestId = 'req-1'
     const resourceId = 'res-x'
     const signature = sign({ secret: 's', ts, resourceId, requestId })
@@ -178,7 +178,7 @@ describe('POST /api/webhooks/mp — type=subscription_preapproval', () => {
     preapprovalId: string
     type?:         string
   }) {
-    const ts = '1700000000'
+    const ts = String(Math.floor(Date.now() / 1000))
     const requestId = 'req-1'
     const signature = sign({
       secret: process.env.MP_WEBHOOK_SECRET!, ts,
@@ -275,7 +275,7 @@ describe('POST /api/webhooks/mp — type=subscription_preapproval', () => {
 // ── POST: payment handler ─────────────────────────────────────────────────
 describe('POST /api/webhooks/mp — type=payment', () => {
   function setupSignedReq(paymentId: string, type: 'payment' | 'subscription_authorized_payment' = 'payment') {
-    const ts = '1700000000'
+    const ts = String(Math.floor(Date.now() / 1000))
     const requestId = 'req-pay'
     const signature = sign({
       secret: process.env.MP_WEBHOOK_SECRET!, ts,
@@ -427,7 +427,7 @@ describe('POST /api/webhooks/mp — type=payment', () => {
 // ── POST: type desconocido ─────────────────────────────────────────────────
 describe('POST /api/webhooks/mp — type desconocido', () => {
   it('type=test → 200, no toca DB, log info', async () => {
-    const ts = '1700000000'
+    const ts = String(Math.floor(Date.now() / 1000))
     const requestId = 'req-1'
     const resourceId = 'rid'
     const signature = sign({
@@ -445,7 +445,7 @@ describe('POST /api/webhooks/mp — type desconocido', () => {
   })
 
   it('type ausente → 200, ignora silenciosamente', async () => {
-    const ts = '1700000000'
+    const ts = String(Math.floor(Date.now() / 1000))
     const requestId = 'req-1'
     const resourceId = 'rid'
     const signature = sign({
@@ -465,7 +465,7 @@ describe('POST /api/webhooks/mp — type desconocido', () => {
 // ── POST: error procesando ────────────────────────────────────────────────
 describe('POST /api/webhooks/mp — errores procesando', () => {
   it('error en getPreapproval → 200 (logueado, MP no reintenta)', async () => {
-    const ts = '1700000000'
+    const ts = String(Math.floor(Date.now() / 1000))
     const requestId = 'req-1'
     const resourceId = 'p1'
     const signature = sign({

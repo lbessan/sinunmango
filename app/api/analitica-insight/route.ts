@@ -77,8 +77,31 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // ── Validar body antes de usarlo ──
+  // El `as RequestBody` es mentira si no validamos. Si falta cualquier
+  // field el prompt a Claude rompe ("Hoy es undefined") o leakea contexto
+  // sucio. Mejor 400 explícito.
+  let body: RequestBody
+  try {
+    const raw = await req.json() as unknown
+    if (
+      !raw ||
+      typeof raw !== 'object' ||
+      typeof (raw as RequestBody).contexto !== 'string' ||
+      (raw as RequestBody).contexto.length === 0 ||
+      !(raw as RequestBody).periodo ||
+      typeof (raw as RequestBody).periodo?.desde !== 'string' ||
+      typeof (raw as RequestBody).periodo?.hasta !== 'string' ||
+      ((raw as RequestBody).type !== 'narrativa' && (raw as RequestBody).type !== 'profundo')
+    ) {
+      return NextResponse.json({ error: 'Body inválido: type, periodo.desde, periodo.hasta y contexto son requeridos.' }, { status: 400 })
+    }
+    body = raw as RequestBody
+  } catch {
+    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
+  }
+
   // ── Rate limit: análisis profundo más caro, límite más bajo ──
-  const body = await req.json() as RequestBody
   const isProfundo = body.type === 'profundo'
 
   const rl = await checkRateLimit(

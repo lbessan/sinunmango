@@ -297,6 +297,26 @@ export function verifyWebhookSignature(opts: {
   const v1 = parts.v1
   if (!ts || !v1) return false
 
+  // ── Replay protection ─────────────────────────────────────────────────
+  // El ts es el timestamp del webhook (segundos epoch). Si la firma fue
+  // capturada por un atacante hace meses, técnicamente el HMAC sigue
+  // siendo válido — pero un evento "viejo" no debería procesarse.
+  // Ventana aceptada: 5 minutos hacia atrás + 1 minuto hacia adelante
+  // (por skew del reloj del server).
+  const tsNum = parseInt(ts, 10)
+  if (!Number.isFinite(tsNum)) {
+    console.warn('[mp] ts no numérico en x-signature:', ts)
+    return false
+  }
+  const nowSec = Math.floor(Date.now() / 1000)
+  const ageSec = nowSec - tsNum
+  const MAX_AGE_SEC    = 300   // 5 min
+  const MAX_FUTURE_SEC = 60    // skew tolerado
+  if (ageSec > MAX_AGE_SEC || ageSec < -MAX_FUTURE_SEC) {
+    console.warn(`[mp] webhook con timestamp fuera de ventana (age=${ageSec}s)`)
+    return false
+  }
+
   const manifest = `id:${opts.resourceId};request-id:${opts.requestIdHeader};ts:${ts};`
   const expected = crypto
     .createHmac('sha256', secret)
@@ -304,12 +324,16 @@ export function verifyWebhookSignature(opts: {
     .digest('hex')
 
   // Comparación constant-time para no leak el tamaño del match parcial.
+  // Si los buffers tienen distinto tamaño (v1 corrupto) `timingSafeEqual`
+  // lanza — lo capturamos pero LOGUEAMOS porque es señal útil (config
+  // mala o intento de inyección).
   try {
     return crypto.timingSafeEqual(
       Buffer.from(expected, 'hex'),
       Buffer.from(v1, 'hex'),
     )
-  } catch {
+  } catch (err) {
+    console.warn('[mp] timingSafeEqual falló (buffers de tamaño distinto?):', err)
     return false
   }
 }

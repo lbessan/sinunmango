@@ -403,6 +403,13 @@ describe('getPayment', () => {
 // Esta es la barrera de seguridad del webhook. Si esto se rompe, cualquiera
 // podría posté­ar al endpoint y mover suscripciones. Lo testeamos a fondo.
 describe('verifyWebhookSignature', () => {
+  // Helper para timestamp actual (segundos epoch). Lo usamos en TODOS los
+  // tests positivos porque la función rechaza webhooks con ts > 5min de
+  // antigüedad (replay protection).
+  function nowTs(): string {
+    return String(Math.floor(Date.now() / 1000))
+  }
+
   // Helper para construir headers válidos (con la misma lógica que MP)
   function signedHeaders(opts: {
     secret:     string
@@ -453,7 +460,7 @@ describe('verifyWebhookSignature', () => {
     process.env.MP_WEBHOOK_SECRET = 'mi-secret-super-largo'
     const { signature, requestId } = signedHeaders({
       secret: 'mi-secret-super-largo',
-      ts: '1700000000', resourceId: 'res-123', requestId: 'req-abc',
+      ts: nowTs(), resourceId: 'res-123', requestId: 'req-abc',
     })
     const ok = verifyWebhookSignature({
       signatureHeader: signature,
@@ -467,7 +474,7 @@ describe('verifyWebhookSignature', () => {
     process.env.MP_WEBHOOK_SECRET = 'el-secret-real'
     const { signature, requestId } = signedHeaders({
       secret: 'OTRO-secret',
-      ts: '1700000000', resourceId: 'res-123', requestId: 'req-abc',
+      ts: nowTs(), resourceId: 'res-123', requestId: 'req-abc',
     })
     const ok = verifyWebhookSignature({
       signatureHeader: signature,
@@ -481,7 +488,7 @@ describe('verifyWebhookSignature', () => {
     process.env.MP_WEBHOOK_SECRET = 's'
     const { signature, requestId } = signedHeaders({
       secret: 's',
-      ts: '1700000000', resourceId: 'res-A', requestId: 'req-abc',
+      ts: nowTs(), resourceId: 'res-A', requestId: 'req-abc',
     })
     const ok = verifyWebhookSignature({
       signatureHeader: signature,
@@ -495,7 +502,7 @@ describe('verifyWebhookSignature', () => {
     process.env.MP_WEBHOOK_SECRET = 's'
     const { signature } = signedHeaders({
       secret: 's',
-      ts: '1700000000', resourceId: 'r', requestId: 'req-A',
+      ts: nowTs(), resourceId: 'r', requestId: 'req-A',
     })
     const ok = verifyWebhookSignature({
       signatureHeader: signature,
@@ -554,8 +561,9 @@ describe('verifyWebhookSignature', () => {
 
   it('v1 con hex inválido → false (no tira excepción)', () => {
     process.env.MP_WEBHOOK_SECRET = 's'
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
     expect(verifyWebhookSignature({
-      signatureHeader: 'ts=1,v1=NOT-HEX-ZZZZ',
+      signatureHeader: `ts=${nowTs()},v1=NOT-HEX-ZZZZ`,
       requestIdHeader: 'req-1',
       resourceId: 'r',
     })).toBe(false)
@@ -563,9 +571,64 @@ describe('verifyWebhookSignature', () => {
 
   it('v1 con longitud distinta a la expected → false (timingSafeEqual tira)', () => {
     process.env.MP_WEBHOOK_SECRET = 's'
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
     // 32 chars hex = 16 bytes; el hmac-sha256 produce 64 chars hex = 32 bytes
     expect(verifyWebhookSignature({
-      signatureHeader: 'ts=1,v1=' + 'a'.repeat(32),
+      signatureHeader: `ts=${nowTs()},v1=` + 'a'.repeat(32),
+      requestIdHeader: 'req-1',
+      resourceId: 'r',
+    })).toBe(false)
+  })
+
+  // ── Replay protection ────────────────────────────────────────────────
+  it('ts mayor a 5min en el pasado → false (replay protection)', () => {
+    process.env.MP_WEBHOOK_SECRET = 'mi-secret'
+    const oldTs = String(Math.floor(Date.now() / 1000) - 600)  // hace 10 min
+    const { signature, requestId } = signedHeaders({
+      secret: 'mi-secret', ts: oldTs, resourceId: 'r', requestId: 'req-1',
+    })
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const ok = verifyWebhookSignature({
+      signatureHeader: signature,
+      requestIdHeader: requestId,
+      resourceId: 'r',
+    })
+    expect(ok).toBe(false)
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('fuera de ventana'))
+  })
+
+  it('ts dentro de los 5min → true (firma válida con ts reciente)', () => {
+    process.env.MP_WEBHOOK_SECRET = 'mi-secret'
+    const recentTs = String(Math.floor(Date.now() / 1000) - 120)  // hace 2min
+    const { signature, requestId } = signedHeaders({
+      secret: 'mi-secret', ts: recentTs, resourceId: 'r', requestId: 'req-1',
+    })
+    expect(verifyWebhookSignature({
+      signatureHeader: signature,
+      requestIdHeader: requestId,
+      resourceId: 'r',
+    })).toBe(true)
+  })
+
+  it('ts muy en el futuro (>60s) → false', () => {
+    process.env.MP_WEBHOOK_SECRET = 'mi-secret'
+    const futureTs = String(Math.floor(Date.now() / 1000) + 600)  // +10min
+    const { signature, requestId } = signedHeaders({
+      secret: 'mi-secret', ts: futureTs, resourceId: 'r', requestId: 'req-1',
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(verifyWebhookSignature({
+      signatureHeader: signature,
+      requestIdHeader: requestId,
+      resourceId: 'r',
+    })).toBe(false)
+  })
+
+  it('ts no numérico → false', () => {
+    process.env.MP_WEBHOOK_SECRET = 'mi-secret'
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(verifyWebhookSignature({
+      signatureHeader: 'ts=NOTANUMBER,v1=abc',
       requestIdHeader: 'req-1',
       resourceId: 'r',
     })).toBe(false)
@@ -586,7 +649,7 @@ describe('verifyWebhookSignature', () => {
     process.env.MP_WEBHOOK_SECRET = 's'
     const { signature, requestId } = signedHeaders({
       secret: 's',
-      ts: '1700000000', resourceId: 'r', requestId: 'req-1',
+      ts: nowTs(), resourceId: 'r', requestId: 'req-1',
     })
     // Reemplazo "v1=" por "v1= " (espacio) — debería trimearse
     const withSpaces = signature.replace('v1=', 'v1= ').replace('ts=', 'ts= ')
