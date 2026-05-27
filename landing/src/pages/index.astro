@@ -23,149 +23,166 @@ import { faqJsonLd } from "../data/faqs";
     <Pricing />
     <FAQ />
 
-    {/* ── CTA final — el ángulo argentino + métodos de pago locales ──── */}
-    <section class="relative isolate overflow-hidden bg-[#0A0E1A] py-24 sm:py-32 lg:py-40">
-      {/* Separador superior */}
+    {/* ── CTA final — el ángulo argentino + métodos de pago locales ────
+        Rediseño v2: layout simétrico, counter early access PROMOVIDO a
+        arriba del headline como urgency badge (ahora antecede a la
+        decisión en lugar de quedar arrumbado), tiles MP en grid 5-col
+        horizontal homogéneo (más "logos row" que "tarjetas dispares"),
+        trust signals al pie de los CTAs. */}
+    <section class="relative isolate overflow-hidden bg-[#0A0E1A] pt-24 pb-28 sm:pt-32 sm:pb-36 lg:pt-40 lg:pb-44">
+      {/* Separador superior — verde+mango para cerrar el gradient del FAQ */}
       <div
         class="absolute top-0 left-0 right-0 h-px"
-        style="background: linear-gradient(90deg, transparent, rgba(255,184,77,0.3), transparent);"
+        style="background: linear-gradient(90deg, transparent, rgba(74,222,128,0.35), rgba(255,184,77,0.35), transparent);"
         aria-hidden="true"
       ></div>
 
-      <div class="mx-auto max-w-4xl px-6">
-        <div class="relative overflow-hidden rounded-3xl border border-[#FFB84D]/30 bg-gradient-to-br from-[#FFB84D]/[0.08] to-[#4ADE80]/[0.04] p-8 sm:p-14 lg:p-16 shadow-[0_0_120px_-30px_#FFB84D]">
-          {/* Halos decorativos */}
-          <div
-            class="pointer-events-none absolute -top-24 -right-24 h-80 w-80 rounded-full opacity-30 blur-3xl"
-            style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
-            aria-hidden="true"
-          ></div>
-          <div
-            class="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full opacity-20 blur-3xl"
-            style="background: radial-gradient(circle, #4ADE80 0%, transparent 70%);"
-            aria-hidden="true"
-          ></div>
+      {/* Halos — más concentrados en el centro para dar foco; el contenido
+          es ahora single-column, no necesita iluminar dos lados */}
+      <div class="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+        <div
+          class="absolute top-[5%] left-1/2 h-[680px] w-[680px] -translate-x-1/2 rounded-full opacity-[0.13] blur-[140px]"
+          style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
+        ></div>
+        <div
+          class="absolute bottom-[-10%] left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full opacity-[0.10] blur-[130px]"
+          style="background: radial-gradient(circle, #4ADE80 0%, transparent 70%);"
+        ></div>
+      </div>
 
-          <div class="relative">
-            <div
-              class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 backdrop-blur"
-            >
-              <span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#FFB84D]"></span>
-              <span
-                class="text-[10px] uppercase tracking-[0.18em] text-white/70"
-                style="font-family: 'Geist Mono', monospace;"
-              >
-                Empezá ahora
-              </span>
-            </div>
-
-            <h2
-              class="mt-6 text-[clamp(2rem,5vw,3.75rem)] font-bold leading-[0.95] tracking-[-0.03em] text-white"
-              style="font-family: 'Inter', system-ui, sans-serif;"
-            >
-              Una app argentina.
-              <br />
-              Hasta para{" "}
-              <span
-                class="italic font-medium"
-                style="font-family: 'Fraunces', Georgia, serif; font-variation-settings: 'opsz' 144; color: #FFB84D;"
-              >
-                pagarla
-              </span>.
-            </h2>
-
-            <p class="mt-6 max-w-2xl text-base text-white/70 sm:text-lg">
-              Sin USD, sin tarjetas internacionales, sin friction.
-              <span class="block mt-2 text-white/60">
-                Pagá Pro como pagás todo lo demás — con lo que te quede cómodo.
-              </span>
-            </p>
-
-            {/* Chips de métodos de pago — visualmente "argentino" */}
-            <div class="mt-8 flex flex-wrap gap-2.5">
-              <span class="payment-chip">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                  <rect x="2" y="6" width="20" height="14" rx="2" />
-                  <path d="M2 11h20" />
-                </svg>
-                Tarjeta de crédito
-              </span>
-              <span class="payment-chip">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                  <rect x="2" y="6" width="20" height="14" rx="2" />
-                  <path d="M6 15h4" />
-                </svg>
-                Débito
-              </span>
-              <span class="payment-chip">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                  <path d="M3 21h18" />
-                  <path d="M3 10h18" />
-                  <path d="M5 6l7-3 7 3" />
-                  <path d="M4 10v11" />
-                  <path d="M20 10v11" />
-                  <path d="M8 14v3" />
-                  <path d="M12 14v3" />
-                  <path d="M16 14v3" />
-                </svg>
-                CBU / CVU
-              </span>
-              <span class="payment-chip">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                  <rect x="5" y="2" width="14" height="20" rx="2" />
-                  <path d="M11 18h2" />
-                </svg>
-                Dinero en MP
-              </span>
-              <span class="payment-chip">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M2 7h20v10H2z" />
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M6 10h.01M18 14h.01" />
-                </svg>
-                Efectivo (Rapipago, PagoFácil)
-              </span>
-            </div>
-
-            {/* CTA principal */}
-            <div class="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-              <a
-                href="https://app.sinunmango.com.ar/pro"
-                class="group inline-flex items-center gap-2 rounded-xl bg-[#FFB84D] px-7 py-4 text-base font-semibold text-[#0A0E1A] shadow-lg shadow-[#FFB84D]/30 transition-all hover:-translate-y-0.5 hover:bg-[#FFC972] hover:shadow-xl hover:shadow-[#FFB84D]/40 sm:text-lg"
-              >
-                Probar Pro — 7 días gratis
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  class="transition-transform group-hover:translate-x-1"
-                  aria-hidden="true"
-                >
-                  <path d="M5 12h14" />
-                  <path d="m12 5 7 7-7 7" />
-                </svg>
-              </a>
-              <a
-                href="https://app.sinunmango.com.ar"
-                class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] px-5 py-3.5 text-sm font-medium text-white transition-all hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.1] sm:text-base"
-              >
-                Seguir en Free
-              </a>
-            </div>
-
-            {/* Pie con info de early access */}
-            <p
-              class="mt-7 text-[11px] uppercase tracking-wider text-white/40"
-              style="font-family: 'Geist Mono', monospace;"
-            >
-              ✦ Early access · 50% off durante 12 meses · 100 plazas disponibles
-            </p>
+      <div class="mx-auto max-w-4xl px-6 text-center">
+        {/* Counter Early Access — ARRIBA del headline ahora. Es urgency,
+            entra antes que la propuesta. Barra de progreso integrada. */}
+        <div class="mx-auto inline-flex flex-col items-center gap-2.5 rounded-2xl border border-[#FFB84D]/25 bg-[#FFB84D]/[0.06] px-5 py-3 backdrop-blur">
+          <div class="flex items-center gap-2.5 text-[11px] uppercase tracking-[0.16em]"
+               style="font-family: 'Geist Mono', monospace;">
+            <span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#FFB84D]"></span>
+            <span class="text-[#FFB84D]">Early Access · 50% off durante 12 meses</span>
+            <span class="text-white/40">·</span>
+            <span class="text-white/70 tabular-nums">23 / 100</span>
           </div>
+          <div class="h-1 w-full max-w-[280px] overflow-hidden rounded-full bg-white/[0.06]">
+            <div
+              class="h-full rounded-full bg-gradient-to-r from-[#FFB84D] to-[#FFC972]"
+              style="width: 23%;"
+            ></div>
+          </div>
+        </div>
+
+        <h2
+          class="mt-10 text-[clamp(2.4rem,6vw,4.75rem)] font-bold leading-[0.92] tracking-[-0.035em] text-white"
+          style="font-family: 'Inter', system-ui, sans-serif;"
+        >
+          Una app argentina.
+          <br class="hidden sm:inline" />
+          <span class="whitespace-nowrap">
+            Hasta para{" "}
+            <span
+              class="italic font-medium"
+              style="font-family: 'Fraunces', Georgia, serif; font-variation-settings: 'opsz' 144; color: #FFB84D;"
+            >
+              pagarla
+            </span>.
+          </span>
+        </h2>
+
+        <p class="mx-auto mt-6 max-w-2xl text-base text-white/70 sm:text-lg">
+          Sin USD, sin tarjetas internacionales, sin friction.
+          Pagás Pro como pagás todo lo demás — con lo que te quede cómodo.
+        </p>
+
+        {/* CTAs centrados con peso visual mayor en el primario */}
+        <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <a
+            href="https://app.sinunmango.com.ar/pro"
+            class="group inline-flex items-center gap-2 rounded-xl bg-[#FFB84D] px-7 py-4 text-base font-semibold text-[#0A0E1A] shadow-lg shadow-[#FFB84D]/30 transition-all hover:-translate-y-0.5 hover:bg-[#FFC972] hover:shadow-xl hover:shadow-[#FFB84D]/40 sm:text-lg"
+          >
+            Probar Pro — 7 días gratis
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="transition-transform group-hover:translate-x-1"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
+          </a>
+          <a
+            href="https://app.sinunmango.com.ar"
+            class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-5 py-3.5 text-sm font-medium text-white transition-all hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.08] sm:text-base"
+          >
+            Seguir en Free
+          </a>
+        </div>
+
+        {/* Trust signals — texto inline, no card. Cosas que el user piensa
+            justo antes de pagar: cancelación + sin compromiso. */}
+        <p class="mt-6 text-[12px] text-white/45">
+          Sin tarjeta hasta el día 7. Cancelás desde la app en un click.
+        </p>
+
+        {/* ── Métodos de pago — fila horizontal "logos row" ─────────────
+            Antes: grid 2-col con tiles dispares (alguno col-span-2 generaba
+            asimetría). Ahora: 5 tiles del mismo tamaño en fila horizontal
+            (en mobile cae a grid 2-col compact). Es la "ficha de pagos"
+            mostrada con el lenguaje visual de un footer de checkout. */}
+        <div class="mt-14 border-t border-white/10 pt-10">
+          <p class="mb-5 text-[10px] uppercase tracking-[0.2em] text-white/40"
+             style="font-family: 'Geist Mono', monospace;">
+            Pagás con lo que tengas
+          </p>
+          <div class="mx-auto grid max-w-3xl grid-cols-2 gap-2.5 sm:grid-cols-5 sm:gap-3">
+            <div class="payment-tile-v2">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+                <rect x="2" y="6" width="20" height="14" rx="2" />
+                <path d="M2 11h20" />
+                <path d="M6 16h4" />
+              </svg>
+              <span>Crédito</span>
+            </div>
+            <div class="payment-tile-v2">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+                <rect x="2" y="6" width="20" height="14" rx="2" />
+                <path d="M6 15h4" />
+              </svg>
+              <span>Débito</span>
+            </div>
+            <div class="payment-tile-v2">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+                <path d="M3 21h18" />
+                <path d="M3 10h18" />
+                <path d="M5 6l7-3 7 3" />
+                <path d="M4 10v11" />
+                <path d="M20 10v11" />
+              </svg>
+              <span>CBU / CVU</span>
+            </div>
+            <div class="payment-tile-v2">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+                <rect x="5" y="2" width="14" height="20" rx="2" />
+                <path d="M11 18h2" />
+              </svg>
+              <span>Billeteras</span>
+            </div>
+            <div class="payment-tile-v2 col-span-2 sm:col-span-1">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 7h20v10H2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <span>Efectivo</span>
+            </div>
+          </div>
+          <p class="mt-5 text-center text-[10px] uppercase tracking-[0.2em] text-white/40"
+             style="font-family: 'Geist Mono', monospace;">
+            Procesado por Mercado Pago · Rapipago · PagoFácil
+          </p>
         </div>
       </div>
     </section>
@@ -181,17 +198,33 @@ import { faqJsonLd } from "../data/faqs";
 </script>
 
 <style is:global>
-  .payment-chip {
-    display: inline-flex;
+  /* Payment tile v2 — del CTA final rediseñado. Tile vertical, compacto,
+     todos del mismo tamaño en una fila — funciona como "logos row" tipo
+     footer de checkout. El ícono va arriba, label corto abajo. */
+  .payment-tile-v2 {
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    padding: 0.5rem 0.875rem;
-    border-radius: 9999px;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.04);
-    color: rgba(255,255,255,0.85);
+    padding: 1rem 0.5rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(8px);
+    color: #FFB84D;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  }
+  .payment-tile-v2:hover {
+    border-color: rgba(255, 184, 77, 0.3);
+    background: rgba(255,255,255,0.05);
+    transform: translateY(-1px);
+  }
+  .payment-tile-v2 span {
     font-size: 0.75rem;
     font-weight: 500;
-    backdrop-filter: blur(8px);
+    color: rgba(255,255,255,0.80);
+    line-height: 1.2;
+    text-align: center;
   }
 </style>

@@ -22,13 +22,27 @@ const FILAS: ComparadorRow[] = [
 ];
 ---
 
-<section id="pricing" class="relative bg-[#0A0E1A] py-24 sm:py-32">
+<section id="pricing" class="relative isolate overflow-hidden bg-[#0A0E1A] py-24 sm:py-32">
   {/* Separador superior */}
   <div
     class="absolute top-0 left-0 right-0 h-px"
     style="background: linear-gradient(90deg, transparent, rgba(255,184,77,0.3), transparent);"
     aria-hidden="true"
   ></div>
+
+  {/* Halos — mango fuerte centro-abajo (donde está la card Pro) +
+      verde sutil arriba-izquierda. La paleta cuenta "el plan estrella
+      cuesta plata" sin necesidad de gritarlo. */}
+  <div class="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    <div
+      class="absolute bottom-[5%] left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full opacity-[0.18] blur-[130px]"
+      style="background: radial-gradient(circle, #FFB84D 0%, transparent 70%);"
+    ></div>
+    <div
+      class="absolute top-[5%] left-[-10%] h-[420px] w-[420px] rounded-full opacity-[0.12] blur-[110px]"
+      style="background: radial-gradient(circle, #4ADE80 0%, transparent 70%);"
+    ></div>
+  </div>
 
   <div class="mx-auto max-w-5xl px-6">
     {/* Header */}
@@ -203,12 +217,14 @@ const FILAS: ComparadorRow[] = [
       </div>
     </div>
 
-    {/* Comparador detallado */}
-    <details class="mt-14 group" open>
+    {/* Comparador detallado — colapsado al cargar. El user lo abre si
+        quiere el detalle fila por fila. Las dos cards de arriba ya cuentan
+        la historia para el 80% de las personas. */}
+    <details class="mt-14 group">
       <summary
         class="cursor-pointer list-none flex items-center justify-center gap-2 text-sm font-semibold text-white/60 transition-colors hover:text-white"
       >
-        <span>Comparación detallada</span>
+        <span>Ver comparación detallada</span>
         <svg
           class="h-4 w-4 transition-transform group-open:rotate-180"
           viewBox="0 0 20 20"
