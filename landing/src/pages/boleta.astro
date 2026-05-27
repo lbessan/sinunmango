@@ -33,7 +33,10 @@ import { faqJsonLd } from "../data/faqs";
   jsonLd={faqJsonLd()}
 >
   <Nav />
-  <main class="bol-body bol-grain">
+  <!-- Sin bol-grain global — ese pattern queda LOCAL a ParaQuien (via
+       .bol-paraquien-texture). Antes lo había puesto al main entero y el
+       grain salía en todas las secciones (Hero, Features, Pricing, etc.). -->
+  <main class="bol-body">
     <Hero />
     <ParaQuien />
     <ManguitoFeat />

@@ -80,7 +80,7 @@ const FILAS: ComparadorRow[] = [
     <div class="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-4 lg:items-stretch">
 
       <!-- ─── FREE ─────────────────────────────────────────────────────── -->
-      <div class="relative flex flex-col border border-[#1A1814]/12 bg-white overflow-hidden min-h-[560px] lg:min-h-[600px]">
+      <div class="relative flex flex-col border border-[#1A1814]/12 bg-white overflow-hidden min-h-[420px]">
         <!-- Border-top 3px de identidad -->
         <div class="h-[3px] bg-[#1A1814]" aria-hidden="true"></div>
 
@@ -93,15 +93,15 @@ const FILAS: ComparadorRow[] = [
           aria-hidden="true"
         ></div>
 
-        <div class="relative flex-1 p-8 sm:p-10 flex flex-col">
+        <div class="relative flex-1 p-6 sm:p-8 flex flex-col">
           <div class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mb-4">
             Plan A · Free
           </div>
-          <h3 class="bol-display text-[72px] leading-[0.9] font-medium">$0</h3>
+          <h3 class="bol-display text-[56px] leading-[0.9] font-medium">$0</h3>
           <p class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mt-3">
             para siempre · sin tarjeta
           </p>
-          <ul class="mt-10 space-y-4 bol-serif text-[16px] text-[#1A1814]/85">
+          <ul class="mt-7 space-y-3 bol-serif text-[15px] text-[#1A1814]/85">
             {freeBullets.map(t => (
               <li class="flex gap-3">
                 <span class="mt-0.5 text-[18px] leading-none" style="color: #0F4D3A;" aria-hidden="true">✦</span>
@@ -130,7 +130,7 @@ const FILAS: ComparadorRow[] = [
           aria-hidden="true"
         ></div>
 
-        <div class="relative flex flex-col border-2 border-[#E08E2A] bg-white overflow-hidden min-h-[560px] lg:min-h-[600px] shadow-[0_20px_60px_-20px_rgba(224,142,42,0.45)]">
+        <div class="relative flex flex-col border-2 border-[#E08E2A] bg-white overflow-hidden min-h-[420px] shadow-[0_20px_60px_-20px_rgba(224,142,42,0.45)]">
           <!-- Border-top 3px amber -->
           <div class="h-[3px] bg-[#E08E2A]" aria-hidden="true"></div>
 
@@ -150,13 +150,13 @@ const FILAS: ComparadorRow[] = [
             </div>
           </div>
 
-          <div class="relative flex-1 p-8 sm:p-10 flex flex-col">
+          <div class="relative flex-1 p-6 sm:p-8 flex flex-col">
             <div class="bol-mono text-[10px] uppercase tracking-[0.22em] mb-4" style="color: #E08E2A;">
               Plan B · Pro
             </div>
 
             <div class="flex items-end gap-4 flex-wrap">
-              <h3 class="bol-display text-[72px] leading-[0.9] font-medium" style="color: #E08E2A;">$3.499</h3>
+              <h3 class="bol-display text-[56px] leading-[0.9] font-medium" style="color: #E08E2A;">$3.499</h3>
               <span class="bol-serif text-[20px] text-[#1A1814]/45 line-through mb-2 bol-tabular">$6.999</span>
             </div>
             <p class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mt-3">
@@ -171,7 +171,7 @@ const FILAS: ComparadorRow[] = [
               Early Access: 50% off por 12 meses para los primeros 100 suscriptores.
             </p>
 
-            <ul class="mt-10 space-y-4 bol-serif text-[16px] text-[#1A1814]/85">
+            <ul class="mt-7 space-y-3 bol-serif text-[15px] text-[#1A1814]/85">
               {proBullets.map(t => (
                 <li class="flex gap-3">
                   <span class="mt-0.5 text-[18px] leading-none" style="color: #E08E2A;" aria-hidden="true">✦</span>

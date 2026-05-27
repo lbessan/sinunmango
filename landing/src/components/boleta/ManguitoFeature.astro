@@ -45,35 +45,35 @@ import Sun from './Sun.astro';
            sin que la mascota tape al sol. Caption italic eliminado a
            pedido del dueño ("Hold-to-talk..." era over-explicación
            técnica, agregaba ruido al motif visual). -->
-      <!-- Iteración 5: el sol no se veía detrás del mascot porque el
-           wrapper que lo contenía heredaba el width del <img max-w-[440px]>
-           y aunque el SVG era 1300px, los rayos quedaban "pegados" a la
-           silueta del manguito.
-           Fix: hacer el container del sol position absolute con
-           dimensiones EXPLÍCITAS (1300×1300), centrado en la columna
-           entera con left/top/translate. Así el sol vive en el espacio
-           de la columna 5/12, no en el bounding box del mascot. La
-           section sigue con overflow-hidden, así que lo que se desborde
-           lateralmente se recorta — pero a esta altura ya se ven los
-           rayos completos a los lados del mascot.
+      <!-- Iteración 6: el sol estaba absolute centrado en la COLUMNA
+           entera (col-span-5). Como la columna es alta, el centro
+           vertical caía muy abajo y los rayos salían en lugares raros.
+           Fix: anclar el sol al BOUNDING BOX DEL MASCOT — wrapper
+           interno con max-w-[440px] mx-auto (el width del manguito),
+           position relative. El sol absolute con left/top 50% se centra
+           ahora exactamente en el mascot. Width/height explícitos
+           (1300×1300) + max-width:none para que el SVG ocupe todo lo
+           pedido sin restricción del Tailwind reset.
 
-           IMPORTANTE: el outer column div NO puede tener overflow-hidden
-           (lo cortaría antes que llegue a la section). -->
+           overflow-visible explícito en el wrapper interno por las
+           dudas; la section sigue con overflow-hidden global. -->
       <div class="col-span-12 lg:col-span-5 relative mb-12 lg:mb-0">
-        <!-- Sun gigante centrado en TODA la columna -->
-        <div
-          class="absolute pointer-events-none bol-sun-rise"
-          aria-hidden="true"
-          style="left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1300px; height: 1300px; max-width: none;"
-        >
-          <Sun size={1300} />
+        <div class="relative w-full max-w-[440px] mx-auto" style="overflow: visible;">
+          <!-- Sol absolute centrado al mascot -->
+          <div
+            class="absolute pointer-events-none bol-sun-rise"
+            aria-hidden="true"
+            style="left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1300px; height: 1300px; max-width: none; z-index: 0;"
+          >
+            <Sun size={1300} />
+          </div>
+          <!-- Mascot encima -->
+          <img
+            src="/manguito-hero-billete.webp"
+            alt="Manguito con billete"
+            class="bol-float-mascot relative z-10 block w-full"
+          />
         </div>
-        <!-- Manguito encima del sol, z-index claro -->
-        <img
-          src="/manguito-hero-billete.webp"
-          alt="Manguito con billete"
-          class="bol-float-mascot relative z-10 w-full max-w-[440px] mx-auto block"
-        />
       </div>
 
       <!-- RIGHT (7/12): chat popup VIVO (replica del LiveDemo original) -->
