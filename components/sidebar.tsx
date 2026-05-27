@@ -2,7 +2,7 @@ import Image from 'next/image'
 import {
   LayoutDashboard, ArrowLeftRight, PlusCircle, CreditCard,
   Receipt, ShieldCheck, BarChart2, Settings,
-  Landmark, Tag, Wallet, TrendingUp, Sparkles,
+  Landmark, Tag, Wallet, TrendingUp, Sparkles, Users2,
 } from 'lucide-react'
 import { NavItem }   from './nav-item'
 import { NavSection } from './nav-section'
@@ -66,9 +66,12 @@ export async function Sidebar() {
         </NavSection>
 
         <NavSection id="configuracion" label="Configuración" collapsible>
-          <NavItem href="/configuracion"        icon={<Settings  size={17} />} label="General"    exact />
-          <NavItem href="/configuracion/bancos" icon={<Landmark  size={17} />} label="Bancos"     exact />
-          <NavItem href="/categorias"           icon={<Tag       size={17} />} label="Categorías" exact />
+          <NavItem href="/configuracion"             icon={<Settings  size={17} />} label="General"     exact />
+          <NavItem href="/configuracion/bancos"      icon={<Landmark  size={17} />} label="Bancos"      exact />
+          <NavItem href="/categorias"                icon={<Tag       size={17} />} label="Categorías"  exact />
+          {/* "Compartidos" — anchor del tour para que el step de compartir
+              workspace tenga dónde apuntar visualmente. */}
+          <NavItem href="/configuracion/compartidos" icon={<Users2    size={17} />} label="Compartidos" exact tourId="tour-compartir" />
         </NavSection>
       </nav>
 

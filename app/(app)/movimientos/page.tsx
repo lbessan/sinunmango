@@ -4,7 +4,7 @@ import { stripCuotaSuffix } from '@/lib/tarjeta-periodo'
 import { todayAR } from '@/lib/timezone'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Pencil, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Pencil, ArrowUpDown, ArrowUp, ArrowDown, FileText, Mail, Plus, X } from 'lucide-react'
 import { Suspense } from 'react'
 import { MovimientosControls } from '@/components/movimientos-controls'
 import { IconoCategoria } from '@/components/icono-categoria'
@@ -140,6 +140,13 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
   const totalPages = Math.ceil((count ?? 0) / pageSize)
   const periodos   = [...new Set((periodosRaw ?? []).map(p => p.periodo_tarjeta).filter(Boolean))] as string[]
 
+  // ── Empty state: ¿el user tiene filtros aplicados o nunca cargó nada? ──
+  // Si hay filtros y count==0 → "no hay resultados con estos filtros" + reset.
+  // Si no hay filtros y count==0 → first-time, mostrar onboarding con 3 métodos.
+  const hasFilters = Boolean(sp.q || sp.tipo || sp.periodo || sp.categoria || sp.cuenta || sp.futuros)
+  const isEmpty    = (movimientos ?? []).length === 0
+  const isFirstUse = isEmpty && !hasFilters
+
   const buildUrl = (overrides: Partial<SP>) => {
     const p = { ...sp, ...overrides }
     const params = new URLSearchParams()
@@ -193,6 +200,56 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
         />
       </Suspense>
 
+      {/* ── EMPTY STATE: first-use (sin filtros) — onboarding visual con
+           3 métodos de carga. Aparece en lugar de la tabla cuando el user
+           NUNCA cargó nada. */}
+      {isFirstUse && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-8 sm:p-12 text-center">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-50 to-emerald-50 border border-amber-100 flex items-center justify-center mb-4">
+            <Plus size={26} className="text-amber-600" />
+          </div>
+          <h2 className="text-lg font-semibold text-slate-800">Empezá a cargar tus movimientos</h2>
+          <p className="mt-2 text-sm text-slate-500 max-w-md mx-auto">
+            Elegí cómo: a mano, importando el PDF del resumen, o reenviando los
+            mails del banco a tu dirección @sinunmango.com.ar.
+          </p>
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
+            <Link
+              href="/movimientos/nuevo"
+              className="group flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-5 hover:border-slate-300 hover:shadow-sm transition-all"
+            >
+              <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center text-slate-600 group-hover:bg-amber-50 group-hover:text-amber-600 transition-colors">
+                <Plus size={20} />
+              </div>
+              <p className="text-sm font-semibold text-slate-700">Cargar uno</p>
+              <p className="text-xs text-slate-400">A mano, 10 segundos</p>
+            </Link>
+            <Link
+              href="/conciliaciones"
+              className="group flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-5 hover:border-slate-300 hover:shadow-sm transition-all"
+            >
+              <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center text-slate-600 group-hover:bg-amber-50 group-hover:text-amber-600 transition-colors">
+                <FileText size={20} />
+              </div>
+              <p className="text-sm font-semibold text-slate-700">Subir PDF</p>
+              <p className="text-xs text-slate-400">Resumen de tarjeta</p>
+            </Link>
+            <Link
+              href="/configuracion"
+              className="group flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-5 hover:border-slate-300 hover:shadow-sm transition-all"
+            >
+              <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center text-slate-600 group-hover:bg-amber-50 group-hover:text-amber-600 transition-colors">
+                <Mail size={20} />
+              </div>
+              <p className="text-sm font-semibold text-slate-700">Por mail</p>
+              <p className="text-xs text-slate-400">Reenviá los del banco</p>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tabla normal — solo cuando NO es first-use (hay datos o hay filtros) */}
+      {!isFirstUse && (
       <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
 
         {/* ── Mobile: card-list ───────────────────────────────────────────────
@@ -203,9 +260,12 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
             cuenta) sin truncar nada crítico. */}
         <div className="sm:hidden">
           {(movimientos ?? []).length === 0 ? (
-            <p className="text-center py-16 text-slate-400 text-sm">
-              No hay movimientos con estos filtros
-            </p>
+            <div className="text-center py-16 px-4">
+              <p className="text-slate-400 text-sm">No hay movimientos con estos filtros</p>
+              <Link href="/movimientos" className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-slate-600 hover:text-slate-800">
+                <X size={12} /> Limpiar filtros
+              </Link>
+            </div>
           ) : (
             <ul className="divide-y divide-slate-50">
               {(movimientos ?? []).map(mov => {
@@ -307,6 +367,14 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
                 <tr>
                   <td colSpan={7} className="text-center py-16 text-slate-400 text-sm">
                     No hay movimientos con estos filtros
+                    {hasFilters && (
+                      <>
+                        {' · '}
+                        <Link href="/movimientos" className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-800 font-medium">
+                          <X size={12} /> Limpiar filtros
+                        </Link>
+                      </>
+                    )}
                   </td>
                 </tr>
               )}
@@ -393,6 +461,7 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

@@ -56,6 +56,12 @@ export function GastoFijoFormClient({
       setError('Completá los campos obligatorios')
       return
     }
+    // Validación monto > 0: gasto fijo de 0 o negativo no tiene sentido.
+    const montoNum = parseFloat(form.monto_estimado)
+    if (!Number.isFinite(montoNum) || montoNum <= 0) {
+      setError('El monto debe ser mayor a cero.')
+      return
+    }
     setSaving(true)
     setError('')
 
@@ -107,7 +113,7 @@ export function GastoFijoFormClient({
             </div>
             <div className="col-span-2">
               <label className={labelClass}>Monto estimado *</label>
-              <input type="number" step="0.01" inputMode="decimal" value={form.monto_estimado} onChange={e => set('monto_estimado', e.target.value)}
+              <input type="number" step="0.01" min="0" inputMode="decimal" value={form.monto_estimado} onChange={e => set('monto_estimado', e.target.value)}
                 placeholder="0.00" className={`${inputClass} font-mono`} />
             </div>
           </div>

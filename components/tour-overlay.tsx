@@ -36,7 +36,7 @@ const STEPS: TourStep[] = [
   {
     tourId: 'tour-tarjetas',
     title:  'Tarjetas de crédito',
-    desc:   'Subí el PDF del resumen y la IA detecta todos los consumos. Seguí el gasto por período, conciliá contra el resumen real, y sabé cuándo vence cada cierre.',
+    desc:   'Subí el PDF del resumen y la IA detecta todos los consumos — incluso los de las tarjetas adicionales (las repartimos por titular). Si el PDF viene con contraseña, la guardás una vez y listo. Conciliá contra el resumen real y sabé cuándo vence cada cierre.',
     emoji:  '💳',
   },
   {
@@ -56,6 +56,12 @@ const STEPS: TourStep[] = [
     title:  'Manguito',
     desc:   'Tu asistente con IA. Preguntale "¿cuánto gasté esta semana?" o dictale un gasto: "gasté $4.500 en el súper" — lo registra solo.',
     image:  '/manguito.png',
+  },
+  {
+    tourId: 'tour-compartir',
+    title:  'Compartilo con quien quieras',
+    desc:   'Tu pareja, tu contador, tu socia. Le pasás un link y entra a ver — o editar, vos decidís — tu workspace. Si vos pagás Pro, ellos también tienen las features Pro mientras usan tus datos.',
+    emoji:  '👥',
   },
 ]
 

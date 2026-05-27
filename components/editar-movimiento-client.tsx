@@ -122,6 +122,12 @@ export function EditarMovimientoClient({
     : null
 
   const handleGuardar = async () => {
+    // Validación monto > 0: misma regla que en /movimientos/nuevo.
+    const montoNum = parseFloat(form.monto)
+    if (!Number.isFinite(montoNum) || montoNum <= 0) {
+      setError('El monto debe ser mayor a cero.')
+      return
+    }
     setSaving(true)
     setError('')
     const periodo = (periodoEfectivo || periodoAuto) + '-01'
@@ -227,7 +233,7 @@ export function EditarMovimientoClient({
           </div>
           <div className="col-span-2">
             <label className={labelClass}>Monto</label>
-            <input type="number" step="0.01" inputMode="decimal" value={form.monto} onChange={e => set('monto', e.target.value)} className={`${inputClass} font-mono text-lg`} />
+            <input type="number" step="0.01" min="0" inputMode="decimal" value={form.monto} onChange={e => set('monto', e.target.value)} className={`${inputClass} font-mono text-lg`} />
           </div>
         </div>
 
@@ -238,7 +244,7 @@ export function EditarMovimientoClient({
           <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex flex-col sm:flex-row sm:gap-4 sm:items-center gap-3">
             <div className="flex-1">
               <label className="block text-xs font-medium text-amber-700 mb-1.5">Cotización histórica</label>
-              <input type="number" step="0.01" inputMode="decimal" value={form.cotizacion} onChange={e => set('cotizacion', e.target.value)} placeholder="Ej: 1410" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm outline-none bg-white" />
+              <input type="number" step="0.01" min="0" inputMode="decimal" value={form.cotizacion} onChange={e => set('cotizacion', e.target.value)} placeholder="Ej: 1410" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm outline-none bg-white" />
             </div>
             <label className="flex items-center gap-2 cursor-pointer sm:mt-5 py-1">
               <input type="checkbox" checked={form.conciliado} onChange={e => set('conciliado', e.target.checked)} className="w-4 h-4" />

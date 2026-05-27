@@ -140,10 +140,18 @@ function NuevoMovimientoContent() {
 
   const handleGuardar = async () => {
     if (!form.monto || !form.cuenta_origen || !form.categoria) return
+    // Validación de monto > 0: data limpia. Antes podías cargar "-500" o "0"
+    // y se guardaba. Para revertir un gasto se usa el botón de eliminar, no
+    // un movimiento negativo.
+    const montoNum = parseFloat(form.monto)
+    if (!Number.isFinite(montoNum) || montoNum <= 0) {
+      alert('El monto debe ser mayor a cero.')
+      return
+    }
     if (isTransferencia && !form.cuenta_destino) { alert('Seleccioná una cuenta destino'); return }
     setSaving(true)
     const cuotas = parseInt(form.cuotas_total) || 1
-    const montoPorCuota = parseFloat(form.monto) / cuotas
+    const montoPorCuota = montoNum / cuotas
     const detalleBase = (form.detalle || '').trim()
     const records = []
     for (let i = 0; i < cuotas; i++) {
@@ -298,7 +306,7 @@ function NuevoMovimientoContent() {
           </div>
           <div className="col-span-2">
             <label className={labelClass}>Monto</label>
-            <input type="number" step="0.01" inputMode="decimal" value={form.monto} onChange={e => set('monto', e.target.value)} placeholder="0.00" className={`${inputClass} text-lg font-mono`} />
+            <input type="number" step="0.01" min="0" inputMode="decimal" value={form.monto} onChange={e => set('monto', e.target.value)} placeholder="0.00" className={`${inputClass} text-lg font-mono`} />
           </div>
         </div>
 
@@ -307,7 +315,7 @@ function NuevoMovimientoContent() {
           <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex flex-col sm:flex-row sm:gap-4 sm:items-center gap-3">
             <div className="flex-1">
               <label className="block text-xs font-medium text-amber-700 mb-1.5">Cotización histórica (opcional)</label>
-              <input type="number" step="0.01" inputMode="decimal" value={form.cotizacion} onChange={e => set('cotizacion', e.target.value)} placeholder="Ej: 1410" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm outline-none bg-white" />
+              <input type="number" step="0.01" min="0" inputMode="decimal" value={form.cotizacion} onChange={e => set('cotizacion', e.target.value)} placeholder="Ej: 1410" className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm outline-none bg-white" />
             </div>
             <label className="flex items-center gap-2 cursor-pointer sm:mt-5 py-1">
               <input type="checkbox" checked={form.conciliado} onChange={e => set('conciliado', e.target.checked)} className="w-4 h-4" />
