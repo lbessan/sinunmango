@@ -529,6 +529,36 @@ export default async function DashboardPage({
           }}
         />
 
+        {/* ── Alerta de saldo proyectado negativo ────────────────────────────
+            Si el cálculo de fin de mes (con gastos fijos + cuotas ya cargadas)
+            queda en rojo, es señal de que llegás corto. Mostramos un banner
+            prominente con CTA a /resumen?tipo=proyectado para que el user vea
+            qué lo está hundiendo (cuotas, gastos fijos pendientes, etc).
+            Una alerta proactiva > una sorpresa el día 28. */}
+        {proyectadoActual < 0 && (
+          <div className="mt-4 mb-6 rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3.5 sm:px-5 sm:py-4 flex items-start gap-3">
+            <div className="shrink-0 w-9 h-9 rounded-xl bg-red-100 text-red-700 flex items-center justify-center text-lg">
+              ⚠️
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-red-900">
+                Tu saldo proyectado a fin de mes queda en{' '}
+                <span className="tabular-nums">-${fmt(Math.abs(proyectadoActual))}</span>
+              </p>
+              <p className="text-xs text-red-700/85 mt-1 leading-relaxed">
+                Considerando gastos fijos pendientes y cuotas ya cargadas. Revisá el detalle
+                para ver qué te está hundiendo y ajustar antes que sea sorpresa.
+              </p>
+              <a
+                href="/resumen?tipo=proyectado"
+                className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-red-700 hover:text-red-900"
+              >
+                Ver detalle →
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Contenido con max-w */}
         <div className="max-w-6xl mx-auto space-y-6">
           {/* Nav de mes — mobile: flechas compactas en línea */}

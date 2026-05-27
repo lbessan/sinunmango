@@ -35,6 +35,35 @@ function NuevoMovimientoContent() {
   const [limitInfo, setLimitInfo]       = useState<LimitReachedInfo | null>(null)
   const fileInputRef                    = useRef<HTMLInputElement>(null)
 
+  // Auto-categoría: sugerencia basada en movs previos con detalle similar.
+  // Se calcula con debounce mientras el user tipea el detalle.
+  type CategoriaSuggestion = {
+    categoria_id:        string
+    categoria_nombre:    string | null
+    subcategoria_id:     string | null
+    subcategoria_nombre: string | null
+    confidence:          'alta' | 'media'
+    matches:             number
+  }
+  const [suggestion, setSuggestion]           = useState<CategoriaSuggestion | null>(null)
+  const [suggestionDismissed, setDismissed]   = useState(false)
+
+  // Sugerencia de "convertir en gasto fijo": se calcula DESPUÉS del save
+  // exitoso. Si el user cargó algo que viene cargando regularmente (Netflix,
+  // Edesur, etc.), ofrecemos un atajo a crear el gasto fijo.
+  type GastoFijoSuggestion = {
+    nombre_sugerido: string
+    monto_promedio:  number
+    dia_vencimiento: number
+    cuenta_origen:   string | null
+    categoria:       string | null
+    subcategoria:    string | null
+    moneda:          string
+    matches:         number
+    meses_distintos: number
+  }
+  const [gastoFijoSuggestion, setGastoFijoSuggestion] = useState<GastoFijoSuggestion | null>(null)
+
   // todayAR() en vez de toISOString — UTC adelanta al día siguiente después
   // de las 21:00 AR, lo que hacía que se guardaran movs con fecha de mañana.
   const today = todayAR()
@@ -74,6 +103,38 @@ function NuevoMovimientoContent() {
   }, [])
 
   const set = (k: string, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
+
+  // ── Sugerencia automática de categoría con debounce ───────────────────────
+  // Mientras el user tipea el detalle, consulto el endpoint que busca movs
+  // previos con detalle similar. Si encuentra 2+ con la misma categoría,
+  // muestra un banner sugerente. Si el user ya seleccionó categoría a mano
+  // o descartó la sugerencia, no insistimos.
+  useEffect(() => {
+    if (form.categoria) { setSuggestion(null); return }
+    if (suggestionDismissed) return
+    if (form.detalle.trim().length < 3) { setSuggestion(null); return }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/sugerir-categoria?detalle=${encodeURIComponent(form.detalle.trim())}`)
+        if (!res.ok) return
+        const data = await res.json()
+        setSuggestion(data.suggestion ?? null)
+      } catch (err) {
+        // Silent — la sugerencia es nice-to-have, no debería romper UX.
+        console.warn('[sugerir-categoria] fetch error:', err)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [form.detalle, form.categoria, suggestionDismissed])
+
+  // Reset de sugerencia + dismissed cuando se borra el detalle (nuevo intento).
+  useEffect(() => {
+    if (form.detalle.trim().length === 0) {
+      setSuggestion(null)
+      setDismissed(false)
+    }
+  }, [form.detalle])
 
   const handleScanTicket = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -187,10 +248,56 @@ function NuevoMovimientoContent() {
       const destino = returnToRaw && returnToRaw.startsWith('/') && !returnToRaw.startsWith('//')
         ? returnToRaw
         : '/movimientos'
+
+      // ── Sugerencia de gasto fijo (post-save) ─────────────────────────────
+      // Llamamos al endpoint que detecta si este movimiento es recurrente.
+      // Si encuentra 2+ ocurrencias previas en meses distintos, mostramos un
+      // banner con CTA a crear gasto fijo en lugar de redirigir directo.
+      // No bloqueante: si el endpoint falla o tarda, redirigimos igual.
+      try {
+        const gfRes = await fetch(
+          `/api/sugerir-gasto-fijo?detalle=${encodeURIComponent(detalleBase)}&monto=${encodeURIComponent(String(montoPorCuota))}`,
+          { signal: AbortSignal.timeout(2500) },
+        )
+        if (gfRes.ok) {
+          const data = await gfRes.json()
+          if (data.suggestion) {
+            setGastoFijoSuggestion(data.suggestion)
+            return  // NO redirigimos — esperamos input del user.
+          }
+        }
+      } catch {
+        // Silent — sugerencia es nice-to-have, no rompe el flow.
+      }
+
       setTimeout(() => router.push(destino), 1000)
     } else {
       const { error } = await res.json(); alert('Error: ' + error)
     }
+  }
+
+  // Handler para crear gasto fijo desde la sugerencia post-save.
+  const handleCrearGastoFijo = () => {
+    if (!gastoFijoSuggestion) return
+    const params = new URLSearchParams({
+      nombre:          gastoFijoSuggestion.nombre_sugerido,
+      monto:           String(gastoFijoSuggestion.monto_promedio),
+      dia:             String(gastoFijoSuggestion.dia_vencimiento),
+      moneda:          gastoFijoSuggestion.moneda,
+    })
+    if (gastoFijoSuggestion.cuenta_origen) params.set('cuenta', gastoFijoSuggestion.cuenta_origen)
+    if (gastoFijoSuggestion.categoria)     params.set('categoria', gastoFijoSuggestion.categoria)
+    if (gastoFijoSuggestion.subcategoria)  params.set('subcategoria', gastoFijoSuggestion.subcategoria)
+    router.push(`/gastos-fijos/nuevo?${params.toString()}`)
+  }
+
+  const handleDescartarSugerenciaGF = () => {
+    setGastoFijoSuggestion(null)
+    const returnToRaw = searchParams.get('returnTo')
+    const destino = returnToRaw && returnToRaw.startsWith('/') && !returnToRaw.startsWith('//')
+      ? returnToRaw
+      : '/movimientos'
+    router.push(destino)
   }
 
   if (!cargado) {
@@ -213,6 +320,44 @@ function NuevoMovimientoContent() {
 
   return (
     <div className="max-w-xl mx-auto">
+
+      {/* ── Modal sugerencia gasto fijo (post-save) ────────────────────────
+          Se muestra DESPUÉS de guardar el movimiento, sólo si el backend
+          detectó que es un patrón recurrente. Da al user la opción de
+          convertir el movimiento en gasto fijo en un click — sino, sigue
+          al destino normal. */}
+      {gastoFijoSuggestion && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl border border-slate-100 max-w-md w-full p-6 shadow-2xl">
+            <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4 text-xl">
+              🔁
+            </div>
+            <h2 className="text-lg font-semibold text-slate-800">¿Lo creamos como gasto fijo?</h2>
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              Detectamos que cargaste <strong>"{gastoFijoSuggestion.nombre_sugerido}"</strong>{' '}
+              <strong>{gastoFijoSuggestion.matches + 1} veces</strong> en{' '}
+              <strong>{gastoFijoSuggestion.meses_distintos + 1} meses</strong> distintos. Si lo
+              convertís en gasto fijo, se carga solo todos los meses y te lo
+              recuerdo antes del vencimiento (día {gastoFijoSuggestion.dia_vencimiento}).
+            </p>
+            <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+              <button
+                onClick={handleDescartarSugerenciaGF}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Ahora no
+              </button>
+              <button
+                onClick={handleCrearGastoFijo}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors"
+              >
+                Crear gasto fijo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6 gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <button
@@ -358,6 +503,48 @@ function NuevoMovimientoContent() {
             onChange={id => { set('categoria', id); set('subcategoria', '') }}
             filtroTipo={tipoMovimiento}
           />
+          {/* Sugerencia automática basada en movs previos con detalle
+              similar. Solo aparece si NO hay categoría seleccionada y la
+              confianza es media o alta (≥2 matches en historial). */}
+          {suggestion && !form.categoria && !suggestionDismissed && (
+            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2.5 flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-amber-900 leading-tight">
+                  <span className="opacity-70">¿Sería</span>{' '}
+                  <strong>{suggestion.categoria_nombre ?? 'esta'}</strong>
+                  {suggestion.subcategoria_nombre && (
+                    <> <span className="opacity-70">·</span> {suggestion.subcategoria_nombre}</>
+                  )}
+                  <span className="opacity-70">?</span>
+                </p>
+                <p className="text-[10px] text-amber-700/70 leading-tight mt-0.5">
+                  Basado en {suggestion.matches} mov{suggestion.matches > 1 ? 's' : ''} previos similares
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    set('categoria', suggestion.categoria_id)
+                    if (suggestion.subcategoria_id) set('subcategoria', suggestion.subcategoria_id)
+                    setSuggestion(null)
+                  }}
+                  className="text-xs font-semibold px-3 py-1.5 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors"
+                >
+                  Usar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setDismissed(true); setSuggestion(null) }}
+                  className="text-amber-700/60 hover:text-amber-900 px-1.5"
+                  title="Descartar sugerencia"
+                  aria-label="Descartar sugerencia"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Subcategoría */}

@@ -5,11 +5,27 @@ import { GastoFijoFormClient } from '@/components/gasto-fijo-form-client'
 
 type Props = ComponentProps<typeof GastoFijoFormClient>
 
+type SP = {
+  nombre?:       string
+  monto?:        string
+  dia?:          string
+  moneda?:       string
+  cuenta?:       string
+  categoria?:    string
+  subcategoria?: string
+}
+
 // Crear gasto fijo: owner-only. Invitees no tienen botón "Nuevo gasto fijo"
 // en /gastos-fijos (workspace.isOwn). URL directa muestra picker vacío.
-export default async function NuevoGastoFijoPage() {
+//
+// Soporta query params pre-llenados desde el flow de "sugerir gasto fijo"
+// (post-save en /movimientos/nuevo): nombre, monto, dia, moneda, cuenta,
+// categoria, subcategoria. Si no vienen, default vacío.
+export default async function NuevoGastoFijoPage({ searchParams }: { searchParams: Promise<SP> }) {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
+
+  const sp = await searchParams
 
   const [{ data: categorias }, { data: subcategorias }, { data: cuentas }] = await Promise.all([
     supabase.from('categorias').select('id, nombre_categoria, icono').eq('user_id', user.id).order('nombre_categoria'),
@@ -20,13 +36,13 @@ export default async function NuevoGastoFijoPage() {
   return (
     <GastoFijoFormClient
       inicial={{
-        nombre_gasto: '',
-        id_categoria: '',
-        id_subcategoria: '',
-        monto_estimado: '',
-        moneda: 'ARS',
-        dia_vencimiento: '',
-        cuenta_pago_default: '',
+        nombre_gasto:        sp.nombre       ?? '',
+        id_categoria:        sp.categoria    ?? '',
+        id_subcategoria:     sp.subcategoria ?? '',
+        monto_estimado:      sp.monto        ?? '',
+        moneda:              (sp.moneda === 'USD' ? 'USD' : 'ARS') as 'ARS' | 'USD',
+        dia_vencimiento:     sp.dia          ?? '',
+        cuenta_pago_default: sp.cuenta       ?? '',
         activo: true,
       }}
       categorias={(categorias ?? []) as Props['categorias']}
