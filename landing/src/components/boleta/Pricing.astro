@@ -162,6 +162,14 @@ const FILAS: ComparadorRow[] = [
             <p class="bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mt-3">
               por mes · 7 días gratis
             </p>
+            <!-- Aclaración del Early Access: el descuento del 50% aplica
+                 SOLO a los primeros 100 suscriptores y por 12 meses. Detalle
+                 importante (pedido del dueño) — la cinta de arriba dice
+                 "50% off" pero el visitante necesita saber el tope de
+                 suscriptores y la duración. -->
+            <p class="bol-serif italic text-[13px] text-[#1A1814]/65 mt-2 max-w-xs">
+              Early Access: 50% off por 12 meses para los primeros 100 suscriptores.
+            </p>
 
             <ul class="mt-10 space-y-4 bol-serif text-[16px] text-[#1A1814]/85">
               {proBullets.map(t => (
@@ -191,6 +199,63 @@ const FILAS: ComparadorRow[] = [
     <p class="mt-8 text-center bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/50">
       Cancelás cuando quieras desde la app · sin compromisos a largo plazo
     </p>
+
+    <!-- ─── Medios de pago — agregados a pedido del dueño ────────────────
+         Recupera el bloque que existía en la versión actual (Pricing
+         actual de la home). Tiles paper-style horizontales con íconos +
+         labels. Caption mono al pie con los procesadores.
+
+         Posicionado DESPUÉS del comparador detallado, antes del cierre
+         de la sección — funciona como "checkout reassurance" final. -->
+    <div class="mt-16 pt-10 border-t border-[#1A1814]/12">
+      <p class="text-center bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/55 mb-6">
+        Pagás con lo que tengas
+      </p>
+      <div class="mx-auto grid max-w-3xl grid-cols-2 gap-2.5 sm:grid-cols-5 sm:gap-3">
+        <div class="bol-payment-tile">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <rect x="2" y="6" width="20" height="14" rx="2"/>
+            <path d="M2 11h20"/>
+            <path d="M6 16h4"/>
+          </svg>
+          <span>Crédito</span>
+        </div>
+        <div class="bol-payment-tile">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <rect x="2" y="6" width="20" height="14" rx="2"/>
+            <path d="M6 15h4"/>
+          </svg>
+          <span>Débito</span>
+        </div>
+        <div class="bol-payment-tile">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <path d="M3 21h18"/>
+            <path d="M3 10h18"/>
+            <path d="M5 6l7-3 7 3"/>
+            <path d="M4 10v11"/>
+            <path d="M20 10v11"/>
+          </svg>
+          <span>CBU / CVU</span>
+        </div>
+        <div class="bol-payment-tile">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <rect x="5" y="2" width="14" height="20" rx="2"/>
+            <path d="M11 18h2"/>
+          </svg>
+          <span>Billeteras</span>
+        </div>
+        <div class="bol-payment-tile col-span-2 sm:col-span-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 7h20v10H2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span>Efectivo</span>
+        </div>
+      </div>
+      <p class="mt-5 text-center bol-mono text-[10px] uppercase tracking-[0.22em] text-[#1A1814]/45">
+        Procesado por Mercado Pago · Rapipago · PagoFácil
+      </p>
+    </div>
 
     <!-- ─── COMPARADOR DETALLADO ───────────────────────────────────────────
          Mismo data que la versión actual. Arranca COLAPSADO — las dos cards

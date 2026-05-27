@@ -45,27 +45,35 @@ import Sun from './Sun.astro';
            sin que la mascota tape al sol. Caption italic eliminado a
            pedido del dueño ("Hold-to-talk..." era over-explicación
            técnica, agregaba ruido al motif visual). -->
+      <!-- Iteración 5: el sol no se veía detrás del mascot porque el
+           wrapper que lo contenía heredaba el width del <img max-w-[440px]>
+           y aunque el SVG era 1300px, los rayos quedaban "pegados" a la
+           silueta del manguito.
+           Fix: hacer el container del sol position absolute con
+           dimensiones EXPLÍCITAS (1300×1300), centrado en la columna
+           entera con left/top/translate. Así el sol vive en el espacio
+           de la columna 5/12, no en el bounding box del mascot. La
+           section sigue con overflow-hidden, así que lo que se desborde
+           lateralmente se recorta — pero a esta altura ya se ven los
+           rayos completos a los lados del mascot.
+
+           IMPORTANTE: el outer column div NO puede tener overflow-hidden
+           (lo cortaría antes que llegue a la section). -->
       <div class="col-span-12 lg:col-span-5 relative mb-12 lg:mb-0">
-        <div class="relative">
-          <!-- Sun gigante detrás del mascot. Iteración 4: SOLO el sol crece
-               (Manguito queda en 440). Antes era 900 y los rayos quedaban
-               muy pegados al mascot; ahora 1300 — sale claramente por
-               todos los lados.
-               El wrapper tiene overflow-visible explícito para no
-               recortar el SVG. -->
-          <div
-            class="absolute inset-0 flex items-center justify-center pointer-events-none bol-sun-rise overflow-visible"
-            aria-hidden="true"
-            style="overflow: visible;"
-          >
-            <Sun size={1300} />
-          </div>
-          <img
-            src="/manguito-hero-billete.webp"
-            alt="Manguito con billete"
-            class="bol-float-mascot relative z-10 w-full max-w-[440px] mx-auto"
-          />
+        <!-- Sun gigante centrado en TODA la columna -->
+        <div
+          class="absolute pointer-events-none bol-sun-rise"
+          aria-hidden="true"
+          style="left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1300px; height: 1300px; max-width: none;"
+        >
+          <Sun size={1300} />
         </div>
+        <!-- Manguito encima del sol, z-index claro -->
+        <img
+          src="/manguito-hero-billete.webp"
+          alt="Manguito con billete"
+          class="bol-float-mascot relative z-10 w-full max-w-[440px] mx-auto block"
+        />
       </div>
 
       <!-- RIGHT (7/12): chat popup VIVO (replica del LiveDemo original) -->
