@@ -45,30 +45,34 @@ import Sun from './Sun.astro';
            sin que la mascota tape al sol. Caption italic eliminado a
            pedido del dueño ("Hold-to-talk..." era over-explicación
            técnica, agregaba ruido al motif visual). -->
-      <!-- Iteración 7: descartamos el approach absolute+translate (los
-           rayos terminaban en cualquier lado porque el "centro" del
-           wrapper interno no coincidía con el centro óptico del
-           manguito). Ahora usamos GRID STACKING — ambos elementos (sol
-           y mascot) viven en la misma grid-area, place-items-center
-           los centra al mismo punto. Es la forma más confiable de
-           apilar dos cosas perfectamente centradas en CSS moderno,
-           sin depender de offsets ni transforms. -->
+      <!-- Iteración 8 — BUG ENCONTRADO:
+           El approach con absolute + transform: translate(-50%, -50%)
+           para centrar el sol fallaba porque la animation `.bol-sun-rise`
+           setea `transform: translateY(40px)` (start) → `transform: none`
+           (end). Esa propiedad PISA el translate(-50%, -50%) → el sol
+           quedaba con su esquina top-left en el punto (50%, 50%) del
+           wrapper, por eso los rayos solo se veían abajo-derecha del
+           manguito.
+
+           Fix: usar margin-top/left NEGATIVOS para centrar (legacy
+           pattern). No es transform, no compite con la animation, y
+           queda perfectamente estable en todos los frames. -->
       <div class="col-span-12 lg:col-span-5 relative mb-12 lg:mb-0">
-        <div class="grid place-items-center" style="overflow: visible;">
-          <!-- Sol (z-index 0): width/height explícitos 1300×1300, max-w:none -->
+        <div class="relative w-full max-w-[440px] mx-auto" style="overflow: visible;">
+          <!-- Sol absolute centered usando margin negativo (no transform).
+               width/height 1300px, margin -650px = mitad del width. -->
           <div
-            class="bol-sun-rise pointer-events-none"
+            class="absolute pointer-events-none bol-sun-rise"
             aria-hidden="true"
-            style="grid-area: 1 / 1; width: 1300px; height: 1300px; max-width: none; z-index: 0;"
+            style="top: 50%; left: 50%; width: 1300px; height: 1300px; margin-top: -650px; margin-left: -650px; max-width: none; z-index: 0;"
           >
             <Sun size={1300} />
           </div>
-          <!-- Mascot encima (z-index 10), grid-area idéntica -->
+          <!-- Mascot encima -->
           <img
             src="/manguito-hero-billete.webp"
             alt="Manguito con billete"
-            class="bol-float-mascot block"
-            style="grid-area: 1 / 1; width: 100%; max-width: 440px; position: relative; z-index: 10;"
+            class="bol-float-mascot relative z-10 block w-full"
           />
         </div>
       </div>
