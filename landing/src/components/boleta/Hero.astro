@@ -86,24 +86,47 @@
             </div>
           </div>
 
-          <!-- Screenshot del dashboard + gradient overlay desde abajo +
-               botón play circular cream centrado. Placeholder para video
-               futuro (no es demo.mp4 del onboarding — ese es flow distinto). -->
+          <!-- Video real de la app — sustituyó el placeholder (screenshot
+               del dashboard + play button decorativo). Autoplay muted loop
+               como pattern típico de hero video. Botón mute/unmute en la
+               esquina inferior-derecha, mismo comportamiento que el video
+               del Onboarding. -->
           <div class="relative aspect-video w-full overflow-hidden bg-[#1A1814]">
-            <img
-              src="/screenshots/dashboard.jpg"
-              alt="Dashboard de sinunmango"
-              class="absolute inset-0 w-full h-full object-cover object-top opacity-95"
-            />
-            <div class="absolute inset-0" style="background: linear-gradient(to top, rgba(26,24,20,0.35), transparent 45%);"></div>
-
-            <button
-              type="button"
-              class="absolute inset-0 m-auto w-20 h-20 rounded-full bg-[#F6F1E7]/95 backdrop-blur-sm border border-[#1A1814]/20 flex items-center justify-center hover:bg-[#F6F1E7] hover:scale-105 transition-all shadow-[0_8px_24px_rgba(26,24,20,0.35)]"
-              aria-label="Reproducir demo"
+            <video
+              id="bol-hero-video"
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              poster="/screenshots/dashboard.jpg"
+              class="absolute inset-0 w-full h-full object-cover"
+              aria-label="Demo de sinunmango: dashboard, movimientos, conciliación y analítica"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="#1A1814" class="ml-1" aria-hidden="true">
-                <path d="M8 5v14l11-7z" />
+              <source src="/sinunmango-hero.mp4" type="video/mp4" />
+            </video>
+
+            <!-- Botón mute/unmute. Default muted (necesario para autoplay
+                 en la mayoría de browsers). Click activa sonido y muestra
+                 el ícono de "unmuted". -->
+            <button
+              id="bol-hero-mute-btn"
+              type="button"
+              aria-label="Activar audio del video"
+              aria-pressed="false"
+              class="absolute bottom-3 right-3 w-10 h-10 rounded-full border border-white/15 bg-black/55 text-white backdrop-blur flex items-center justify-center hover:bg-black/75 transition-colors"
+            >
+              <!-- Ícono "muted" (default) -->
+              <svg data-icon="muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M11 5 6 9H2v6h4l5 4V5Z"/>
+                <line x1="22" y1="9" x2="16" y2="15"/>
+                <line x1="16" y1="9" x2="22" y2="15"/>
+              </svg>
+              <!-- Ícono "unmuted" (oculto hasta activar) -->
+              <svg data-icon="unmuted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="hidden">
+                <path d="M11 5 6 9H2v6h4l5 4V5Z"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
               </svg>
             </button>
           </div>
@@ -118,3 +141,31 @@
     </div>
   </div>
 </section>
+
+<script>
+  // Toggle audio del video del Hero (Boleta). Mismo pattern que el
+  // video del Onboarding: autoplay muted + click activa unmute + swap
+  // ícono. Si el play estaba pausado por algún motivo (mobile bg tab
+  // etc.) lo reproduce de nuevo al activar el sonido.
+  const video = document.getElementById('bol-hero-video') as HTMLVideoElement | null
+  const btn   = document.getElementById('bol-hero-mute-btn')
+  if (video && btn) {
+    const iconMuted   = btn.querySelector('[data-icon="muted"]')
+    const iconUnmuted = btn.querySelector('[data-icon="unmuted"]')
+
+    btn.addEventListener('click', () => {
+      const willUnmute = video.muted
+      video.muted = !willUnmute
+      btn.setAttribute('aria-pressed', String(willUnmute))
+      btn.setAttribute(
+        'aria-label',
+        willUnmute ? 'Silenciar audio del video' : 'Activar audio del video',
+      )
+      iconMuted?.classList.toggle('hidden', willUnmute)
+      iconUnmuted?.classList.toggle('hidden', !willUnmute)
+      if (willUnmute && video.paused) {
+        video.play().catch(() => {})
+      }
+    })
+  }
+</script>
