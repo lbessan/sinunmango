@@ -76,13 +76,26 @@
              rounded-sm (no rounded-lg) — para look más "papel impreso". -->
         <div class="relative rounded-sm border border-[#1A1814]/15 bg-[#FAF7F2] shadow-[0_24px_60px_rgba(26,24,20,0.18)] overflow-hidden">
 
-          <!-- Top bar: 3 dots cream + URL pill mono -->
+          <!-- Top bar: 3 dots cream + ANOTACIÓN sincronizada al currentTime
+               del video. Antes había una URL pill (`app.sinunmango.com.ar`)
+               como decoración estética, después una anotación overlaid encima
+               del video que competía con el contenido. Ahora la anotación
+               vive ACÁ — fuera del video, no obstruye, se lee tranquila.
+               El símbolo ✦ celeste indica que es un caption "vivo" (cambia
+               con el video). -->
           <div class="flex items-center gap-1.5 px-3 py-2.5 border-b border-[#1A1814]/12 bg-[#EDE5D4]/60">
             <span class="w-2.5 h-2.5 rounded-full bg-[#1A1814]/22"></span>
             <span class="w-2.5 h-2.5 rounded-full bg-[#1A1814]/16"></span>
             <span class="w-2.5 h-2.5 rounded-full bg-[#1A1814]/22"></span>
-            <div class="ml-3 flex h-5 flex-1 items-center justify-center rounded-sm bg-[#F6F1E7] bol-mono text-[10px] tracking-[0.18em] text-[#1A1814]/40 px-3">
-              app.sinunmango.com.ar
+            <div
+              id="bol-hero-annotation"
+              class="ml-3 flex h-5 flex-1 items-center justify-center gap-1.5 rounded-sm bg-[#F6F1E7] px-3 transition-opacity duration-300"
+            >
+              <span aria-hidden="true" style="color: #3D7BBB; font-size: 10px;">✦</span>
+              <span
+                id="bol-hero-annotation-text"
+                class="bol-mono text-[10px] tracking-[0.18em] text-[#1A1814]/65"
+              >Dashboard del mes</span>
             </div>
           </div>
 
@@ -114,20 +127,10 @@
               <source src="/sinunmango-hero.mp4" type="video/mp4" />
             </video>
 
-            <!-- Anotación sincronizada — pill mono celeste arriba-izquierda
-                 con un símbolo ✦ y el nombre de la pantalla actual.
-                 JS actualiza textContent según currentTime del video. -->
-            <div
-              id="bol-hero-annotation"
-              class="absolute top-3 left-3 inline-flex items-center gap-2 rounded-sm bg-[#1A1814]/85 backdrop-blur-sm border border-white/10 px-3 py-1.5 pointer-events-none transition-opacity duration-300"
-              aria-hidden="true"
-            >
-              <span class="text-[#74ACDF]" aria-hidden="true">✦</span>
-              <span
-                id="bol-hero-annotation-text"
-                class="bol-mono text-[10px] uppercase tracking-[0.16em] text-white"
-              >Dashboard del mes</span>
-            </div>
+            <!-- (Anotación sincronizada movida a la barra superior del
+                 browser frame — antes estaba aquí overlaid sobre el video
+                 pero competía con el contenido y costaba leer. Ver el
+                 <div id="bol-hero-annotation"> arriba en el top bar.) -->
 
             <!-- Hint "Mirar en grande" arriba-derecha. Se ve siempre pero
                  con opacity baja; al hover del frame sube. Mantiene la
