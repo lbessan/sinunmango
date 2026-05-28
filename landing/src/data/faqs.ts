@@ -11,7 +11,7 @@ export type FAQ = { q: string; a: string };
 export const FAQS: FAQ[] = [
   {
     q: "¿Es gratis?",
-    a: "Sí, hay un plan Free para siempre con todo lo importante: cargar movimientos, cuentas, tarjetas, gastos fijos, inversiones, dashboard y proyecciones. Lo único limitado en Free son los flows con IA (Manguito, importación por mail, PDF de tarjeta, foto de ticket) que tienen un cupo mensual. Si querés esos ilimitados, hay Pro a $6.999/mes con 7 días gratis de prueba. Los primeros 100 suscriptores entran en Early Access a $3.499/mes durante 12 meses (50% off). Mirá la sección de Planes más abajo.",
+    a: "Sí, hay un plan Free con todo lo importante: cargar movimientos, cuentas, tarjetas, gastos fijos, inversiones, dashboard y proyecciones. Lo único limitado en Free son los flows con IA (Manguito, importación por mail, PDF de tarjeta, foto de ticket) que tienen un cupo mensual. Si querés esos ilimitados, hay Pro a $6.999/mes con 7 días gratis de prueba. Los primeros 100 suscriptores entran en Early Access a $3.499/mes durante 12 meses (50% off). Más detalle en la sección de Planes.",
   },
   {
     q: "¿Mis datos están seguros?",

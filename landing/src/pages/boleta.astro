@@ -21,7 +21,9 @@ import ManguitoFeat from "../components/boleta/ManguitoFeature.astro";
 import Features     from "../components/boleta/Features.astro";
 import Onboarding   from "../components/boleta/Onboarding.astro";
 import Pricing      from "../components/boleta/Pricing.astro";
-import Testimonials from "../components/boleta/Testimonials.astro";
+// Testimonials removido del montaje a pedido del dueño — los datos eran
+// placeholder y "no parecía muy real". El componente queda en disco para
+// cuando consigamos testimonios reales de users con permiso.
 import FAQ          from "../components/boleta/FAQ.astro";
 import Footer       from "../components/boleta/Footer.astro";
 import { faqJsonLd } from "../data/faqs";
@@ -43,7 +45,6 @@ import { faqJsonLd } from "../data/faqs";
     <Features />
     <Onboarding />
     <Pricing />
-    <Testimonials />
     <FAQ />
   </main>
   <Footer />
