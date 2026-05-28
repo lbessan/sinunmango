@@ -60,14 +60,16 @@ import Sun from './Sun.astro';
       <div class="col-span-12 lg:col-span-5 relative mb-12 lg:mb-0">
         <div class="relative w-full max-w-[440px] mx-auto" style="overflow: visible;">
           <!-- Sol absolute centered usando margin negativo (no transform).
-               Iteración 9: agrandado de 1300 → 1600 a pedido del dueño.
-               margin -800px = mitad del width. -->
+               Iteración 10: ajustado a 1000 (lo había agrandado a 1600
+               por malentendido — el dueño me dijo "está en el lugar pero
+               muy grande" y leí mal como "agrandalo más"). margin -500
+               = mitad del width. -->
           <div
             class="absolute pointer-events-none bol-sun-rise"
             aria-hidden="true"
-            style="top: 50%; left: 50%; width: 1600px; height: 1600px; margin-top: -800px; margin-left: -800px; max-width: none; z-index: 0;"
+            style="top: 50%; left: 50%; width: 1000px; height: 1000px; margin-top: -500px; margin-left: -500px; max-width: none; z-index: 0;"
           >
-            <Sun size={1600} />
+            <Sun size={1000} />
           </div>
           <!-- Mascot encima -->
           <img
