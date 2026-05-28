@@ -88,10 +88,18 @@
 
           <!-- Video real de la app — sustituyó el placeholder (screenshot
                del dashboard + play button decorativo). Autoplay muted loop
-               como pattern típico de hero video. Botón mute/unmute en la
-               esquina inferior-derecha, mismo comportamiento que el video
-               del Onboarding. -->
-          <div class="relative aspect-video w-full overflow-hidden bg-[#1A1814]">
+               como pattern típico de hero video.
+               Iteración: click en el frame abre lightbox fullscreen para
+               que se pueda leer la app. Encima del video flotan ANOTACIONES
+               SINCRONIZADAS al currentTime que cuentan qué pantalla
+               estás viendo (porque a tamaño chico el texto de la app no
+               se lee). -->
+          <button
+            id="bol-hero-frame-btn"
+            type="button"
+            class="relative aspect-video w-full overflow-hidden bg-[#1A1814] block cursor-zoom-in group"
+            aria-label="Abrir video en pantalla completa"
+          >
             <video
               id="bol-hero-video"
               autoplay
@@ -100,21 +108,56 @@
               playsinline
               preload="metadata"
               poster="/screenshots/dashboard.jpg"
-              class="absolute inset-0 w-full h-full object-cover"
-              aria-label="Demo de sinunmango: dashboard, movimientos, conciliación y analítica"
+              class="absolute inset-0 w-full h-full object-cover pointer-events-none"
+              aria-hidden="true"
             >
               <source src="/sinunmango-hero.mp4" type="video/mp4" />
             </video>
 
+            <!-- Anotación sincronizada — pill mono celeste arriba-izquierda
+                 con un símbolo ✦ y el nombre de la pantalla actual.
+                 JS actualiza textContent según currentTime del video. -->
+            <div
+              id="bol-hero-annotation"
+              class="absolute top-3 left-3 inline-flex items-center gap-2 rounded-sm bg-[#1A1814]/85 backdrop-blur-sm border border-white/10 px-3 py-1.5 pointer-events-none transition-opacity duration-300"
+              aria-hidden="true"
+            >
+              <span class="text-[#74ACDF]" aria-hidden="true">✦</span>
+              <span
+                id="bol-hero-annotation-text"
+                class="bol-mono text-[10px] uppercase tracking-[0.16em] text-white"
+              >Dashboard del mes</span>
+            </div>
+
+            <!-- Hint "Mirar en grande" arriba-derecha. Se ve siempre pero
+                 con opacity baja; al hover del frame sube. Mantiene la
+                 promesa visual de que el frame es clickeable. -->
+            <div
+              class="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-sm bg-[#1A1814]/70 backdrop-blur-sm border border-white/10 px-2.5 py-1.5 text-white opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none"
+              aria-hidden="true"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="15 3 21 3 21 9"/>
+                <polyline points="9 21 3 21 3 15"/>
+                <line x1="21" y1="3" x2="14" y2="10"/>
+                <line x1="3" y1="21" x2="10" y2="14"/>
+              </svg>
+              <span class="bol-mono text-[9px] uppercase tracking-[0.16em]">Mirá en grande</span>
+            </div>
+
             <!-- Botón mute/unmute. Default muted (necesario para autoplay
                  en la mayoría de browsers). Click activa sonido y muestra
-                 el ícono de "unmuted". -->
-            <button
+                 el ícono de "unmuted".
+                 NOTE: este botón está DENTRO del button-frame de open
+                 lightbox; el script intercepta el click para que no
+                 dispare el lightbox cuando el user solo quiere mute. -->
+            <span
               id="bol-hero-mute-btn"
-              type="button"
+              role="button"
+              tabindex="0"
               aria-label="Activar audio del video"
               aria-pressed="false"
-              class="absolute bottom-3 right-3 w-10 h-10 rounded-full border border-white/15 bg-black/55 text-white backdrop-blur flex items-center justify-center hover:bg-black/75 transition-colors"
+              class="absolute bottom-3 right-3 w-10 h-10 rounded-full border border-white/15 bg-black/55 text-white backdrop-blur flex items-center justify-center hover:bg-black/75 transition-colors cursor-pointer"
             >
               <!-- Ícono "muted" (default) -->
               <svg data-icon="muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -128,8 +171,8 @@
                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
               </svg>
-            </button>
-          </div>
+            </span>
+          </button>
         </div>
 
         <!-- Caption italic debajo del frame -->
@@ -142,22 +185,93 @@
   </div>
 </section>
 
-<script>
-  // Toggle audio del video del Hero (Boleta). Mismo pattern que el
-  // video del Onboarding: autoplay muted + click activa unmute + swap
-  // ícono. Si el play estaba pausado por algún motivo (mobile bg tab
-  // etc.) lo reproduce de nuevo al activar el sonido.
-  const video = document.getElementById('bol-hero-video') as HTMLVideoElement | null
-  const btn   = document.getElementById('bol-hero-mute-btn')
-  if (video && btn) {
-    const iconMuted   = btn.querySelector('[data-icon="muted"]')
-    const iconUnmuted = btn.querySelector('[data-icon="unmuted"]')
+<!-- ─── Lightbox para ver el video en pantalla completa ───────────────────
+     Usamos <dialog> nativo (showModal/close) — viene con backdrop free,
+     ESC para cerrar, focus trap y a11y básico. Estilizamos el ::backdrop
+     en el <style>. El video del lightbox arranca desde 0 en cada open. -->
+<dialog
+  id="bol-hero-lightbox"
+  class="bol-hero-lightbox m-0 max-w-none max-h-none w-full h-full bg-transparent p-0"
+  aria-label="Demo de sinunmango en pantalla completa"
+>
+  <div class="relative w-full h-full flex items-center justify-center p-4 sm:p-8 lg:p-12">
+    <!-- Close button arriba-derecha -->
+    <button
+      id="bol-hero-lightbox-close"
+      type="button"
+      aria-label="Cerrar video"
+      class="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 w-11 h-11 rounded-full border border-white/20 bg-black/60 text-white backdrop-blur flex items-center justify-center hover:bg-black/80 transition-colors"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
 
-    btn.addEventListener('click', () => {
+    <!-- Video en grande con controls nativos del browser. preload="none"
+         hasta que abrís el lightbox; cuando se monta el dialog seteamos
+         currentTime=0 + play(). -->
+    <div class="relative w-full max-w-6xl aspect-video bg-[#1A1814] rounded-sm overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.6)]">
+      <video
+        id="bol-hero-video-lightbox"
+        controls
+        playsinline
+        preload="none"
+        poster="/screenshots/dashboard.jpg"
+        class="block w-full h-full object-contain"
+      >
+        <source src="/sinunmango-hero.mp4" type="video/mp4" />
+      </video>
+    </div>
+  </div>
+</dialog>
+
+<style is:global>
+  .bol-hero-lightbox::backdrop {
+    background: rgba(26, 24, 20, 0.88);
+    backdrop-filter: blur(8px);
+  }
+  /* Animación de entrada del lightbox — fade + scale sutil. */
+  .bol-hero-lightbox[open] {
+    animation: bol-hero-lightbox-in 0.28s cubic-bezier(.2,.7,.2,1) both;
+  }
+  @keyframes bol-hero-lightbox-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: none; }
+  }
+</style>
+
+<script>
+  // ─── Video del Hero (Boleta): mute toggle + lightbox + anotaciones ──
+  //
+  // 1) Mute toggle (mismo pattern que video del Onboarding).
+  // 2) Click en el frame abre lightbox fullscreen <dialog>. Click en el
+  //    mute button NO debe disparar el lightbox — interceptamos con
+  //    stopPropagation.
+  // 3) Anotaciones sincronizadas al currentTime del video chico —
+  //    timeupdate listener busca el segmento correspondiente y actualiza
+  //    el texto. Cambio con fade out/in (opacity transition).
+
+  const video           = document.getElementById('bol-hero-video') as HTMLVideoElement | null
+  const muteBtn         = document.getElementById('bol-hero-mute-btn')
+  const frameBtn        = document.getElementById('bol-hero-frame-btn')
+  const lightbox        = document.getElementById('bol-hero-lightbox') as HTMLDialogElement | null
+  const lightboxClose   = document.getElementById('bol-hero-lightbox-close')
+  const lightboxVideo   = document.getElementById('bol-hero-video-lightbox') as HTMLVideoElement | null
+  const annotation      = document.getElementById('bol-hero-annotation')
+  const annotationText  = document.getElementById('bol-hero-annotation-text')
+
+  // ─── 1. Mute toggle ──────────────────────────────────────────────────
+  if (video && muteBtn) {
+    const iconMuted   = muteBtn.querySelector('[data-icon="muted"]')
+    const iconUnmuted = muteBtn.querySelector('[data-icon="unmuted"]')
+
+    const toggleMute = (e: Event) => {
+      e.stopPropagation()  // no abrir el lightbox cuando el user solo cambia mute
       const willUnmute = video.muted
       video.muted = !willUnmute
-      btn.setAttribute('aria-pressed', String(willUnmute))
-      btn.setAttribute(
+      muteBtn.setAttribute('aria-pressed', String(willUnmute))
+      muteBtn.setAttribute(
         'aria-label',
         willUnmute ? 'Silenciar audio del video' : 'Activar audio del video',
       )
@@ -166,6 +280,94 @@
       if (willUnmute && video.paused) {
         video.play().catch(() => {})
       }
+    }
+
+    muteBtn.addEventListener('click', toggleMute)
+    muteBtn.addEventListener('keydown', (e) => {
+      const key = (e as KeyboardEvent).key
+      if (key === 'Enter' || key === ' ') {
+        e.preventDefault()
+        toggleMute(e)
+      }
     })
+  }
+
+  // ─── 2. Lightbox open/close ──────────────────────────────────────────
+  if (frameBtn && lightbox && lightboxVideo) {
+    frameBtn.addEventListener('click', () => {
+      lightbox.showModal()
+      // Arranca desde 0 con audio activo (el user pidió ver bien).
+      // El controls nativo del video maneja el resto.
+      lightboxVideo.currentTime = 0
+      lightboxVideo.muted = false
+      lightboxVideo.play().catch(() => {
+        // Algunos browsers requieren primero un play muted antes de unmute.
+        // Si falla, volver a muted como fallback.
+        lightboxVideo.muted = true
+        lightboxVideo.play().catch(() => {})
+      })
+    })
+
+    // Cerrar: botón close, click en backdrop, ESC (gratis con <dialog>).
+    lightboxClose?.addEventListener('click', () => lightbox.close())
+
+    // Click fuera del video (en el backdrop) cierra.
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) lightbox.close()
+    })
+
+    // Al cerrar, pausamos el video del lightbox para no seguir reproduciendo
+    // en background con audio.
+    lightbox.addEventListener('close', () => {
+      lightboxVideo.pause()
+    })
+  }
+
+  // ─── 3. Anotaciones sincronizadas al currentTime ─────────────────────
+  // Cada segmento del video muestra una pantalla distinta de la app y
+  // a tamaño chico no se lee el detalle. Las anotaciones cuentan qué
+  // estás viendo. Timing facilitado por el dueño:
+  //   0-5:   Dashboard
+  //   5-10:  Movimientos
+  //   10-20: Carga de movimientos (ingresos / gastos / cuotas)
+  //   20-25: Conciliaciones
+  //   25-39: Analítica con IA
+  //   39-41: Cuentas
+  //   41-44: Gastos fijos
+  //   44-48: Inversiones
+  type Segment = { from: number; to: number; label: string }
+  const segments: Segment[] = [
+    { from: 0,  to: 5,  label: 'Dashboard del mes' },
+    { from: 5,  to: 10, label: 'Movimientos · buscá y filtrá' },
+    { from: 10, to: 20, label: 'Cargás ingresos, gastos y cuotas' },
+    { from: 20, to: 25, label: 'Conciliá tu resumen de tarjeta' },
+    { from: 25, to: 39, label: 'Analítica con IA' },
+    { from: 39, to: 41, label: 'Cuentas en pesos y dólares' },
+    { from: 41, to: 44, label: 'Gastos fijos con alerta' },
+    { from: 44, to: 48, label: 'Inversiones de verdad' },
+  ]
+
+  if (video && annotation && annotationText) {
+    let currentLabel = annotationText.textContent ?? ''
+
+    const updateAnnotation = () => {
+      const t = video.currentTime
+      const seg = segments.find(s => t >= s.from && t < s.to)
+      const next = seg?.label ?? currentLabel  // si caemos fuera de rango mantenemos el último
+      if (next !== currentLabel) {
+        // Fade out, swap, fade in
+        annotation.style.opacity = '0'
+        window.setTimeout(() => {
+          annotationText.textContent = next
+          annotation.style.opacity = '1'
+          currentLabel = next
+        }, 150)
+      }
+    }
+
+    video.addEventListener('timeupdate', updateAnnotation)
+    // Forzar el primer update por si el video ya tiene currentTime > 0 al
+    // engancharse (caso del reload con la posición guardada).
+    updateAnnotation()
   }
 </script>
