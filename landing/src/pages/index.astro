@@ -1,35 +1,68 @@
 ---
-import Layout from "../layouts/Layout.astro";
-import Nav from "../components/Nav.astro";
-import Hero from "../components/Hero.astro";
-import LiveDemo from "../components/LiveDemo.astro";
-import ParaQuien from "../components/ParaQuien.astro";
-import Features from "../components/Features.astro";
-import Onboarding from "../components/Onboarding.astro";
-import Pricing from "../components/Pricing.astro";
-import Testimonios from "../components/Testimonios.astro";
-import FAQ from "../components/FAQ.astro";
-import Footer from "../components/Footer.astro";
+// / — Home oficial de sinunmango.com.ar, dirección "Boleta".
+//
+// La versión anterior (dark editorial) quedó archivada en /dark.astro
+// por si alguna vez queremos volver / hacer A/B. Sus componentes viven
+// en src/components/*.astro (sin subcarpeta), separados de los de
+// Boleta que están en src/components/boleta/.
+//
+// Datos: src/data/faqs.ts. Estilo: scoped vía class .bol-body en <body>
+// + tokens --bol-* en global.css.
+
+import Layout       from "../layouts/Layout.astro";
+import Nav          from "../components/boleta/Nav.astro";
+import Hero         from "../components/boleta/Hero.astro";
+// Promises (strip de 3 tags debajo del Hero) removido a pedido del dueño —
+// la sección sentía como "lleno técnico" entre Hero y ParaQuien. ParaQuien
+// ahora arranca directo después del Hero. El componente sigue en disco
+// (landing/src/components/boleta/Promises.astro) por si querés volver atrás.
+import ParaQuien    from "../components/boleta/ParaQuien.astro";
+import ManguitoFeat from "../components/boleta/ManguitoFeature.astro";
+import Features     from "../components/boleta/Features.astro";
+import Onboarding   from "../components/boleta/Onboarding.astro";
+import Pricing      from "../components/boleta/Pricing.astro";
+// Testimonials removido del montaje a pedido del dueño — los datos eran
+// placeholder y "no parecía muy real". El componente queda en disco para
+// cuando consigamos testimonios reales de users con permiso.
+import FAQ          from "../components/boleta/FAQ.astro";
+import Footer       from "../components/boleta/Footer.astro";
 import { faqJsonLd } from "../data/faqs";
 ---
 
-<Layout preloadHero={true} jsonLd={faqJsonLd()}>
+<Layout
+  title="sinunmango — tus finanzas, en argentino"
+  description="App argentina para llevar tus cuentas, gastos, tarjetas e inversiones. Conciliá el resumen, proyectá las cuotas y preguntale a Manguito."
+  jsonLd={faqJsonLd()}
+>
   <Nav />
-  <main>
+  <!-- Sin bol-grain global — ese pattern queda LOCAL a ParaQuien (via
+       .bol-paraquien-texture). Antes lo había puesto al main entero y el
+       grain salía en todas las secciones (Hero, Features, Pricing, etc.). -->
+  <main class="bol-body">
     <Hero />
-    <LiveDemo />
     <ParaQuien />
+    <ManguitoFeat />
     <Features />
     <Onboarding />
     <Pricing />
-    <Testimonios />
     <FAQ />
   </main>
   <Footer />
 </Layout>
 
-{/* CTA final ELIMINADO: los métodos de pago (tiles MP) se movieron a
-    Pricing como "letra chica" de la card Pro; el cierre lo cubren ahora
-    Testimonios + FAQ. Junto con la sección se sacaron el counter-up del
-    Early Access, el shimmer de la progress bar y el CSS payment-tile-v2
-    dark — no había otros consumidores. */}
+<style is:global>
+  /* La página Boleta usa fondo paper-cream con grain. El <body> default
+     del Layout puede tener un bg distinto (slate-100 de global.css). Acá
+     forzamos paper en TODA la página Boleta — incluye el área detrás del
+     viewport (overscroll bounce en mobile no muestra slate). */
+  html, body {
+    background: var(--bol-paper);
+  }
+  body {
+    /* Override del color/font del body global de la home — solo cuando
+       la página Boleta carga este style. */
+    color: var(--bol-ink);
+    font-family: 'Fraunces', Georgia, serif;
+    font-variation-settings: 'opsz' 14;
+  }
+</style>
