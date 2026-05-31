@@ -73,7 +73,12 @@ const allJsonLd = jsonLd
     <meta name="description" content={description} />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <link rel="canonical" href={canonical} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Favicon: usamos el logo real (PNG 658×658, los browsers lo
+         downscale-an cuando lo necesitan). Antes había un favicon.svg
+         programático con una "s" naranja que no era el logo real de marca.
+         Mantengo el .ico como fallback para browsers viejos que no
+         soporten PNG icon o que cacheen la ruta /favicon.ico fija. -->
+    <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/logo.png" />
     <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
