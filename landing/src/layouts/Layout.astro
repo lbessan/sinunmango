@@ -1,5 +1,7 @@
 ---
 import "../styles/global.css";
+import Analytics from "@vercel/analytics/astro";
+import SpeedInsights from "@vercel/speed-insights/astro";
 
 interface Props {
   title?: string;
@@ -136,5 +138,9 @@ const allJsonLd = jsonLd
   </head>
   <body class="min-h-screen antialiased">
     <slot />
+    <!-- Vercel Analytics (visitas) + Speed Insights (Core Web Vitals).
+         Solo trackean en producción (no en dev local). -->
+    <Analytics />
+    <SpeedInsights />
   </body>
 </html>
