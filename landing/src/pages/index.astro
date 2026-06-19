@@ -1,10 +1,5 @@
 ---
-// / — Home oficial de sinunmango.com.ar, dirección "Boleta".
-//
-// La versión anterior (dark editorial) quedó archivada en /dark.astro
-// por si alguna vez queremos volver / hacer A/B. Sus componentes viven
-// en src/components/*.astro (sin subcarpeta), separados de los de
-// Boleta que están en src/components/boleta/.
+// / — Home oficial de sinunmango.com.ar.
 //
 // Datos: src/data/faqs.ts. Estilo: scoped vía class .bol-body en <body>
 // + tokens --bol-* en global.css.
@@ -12,18 +7,11 @@
 import Layout       from "../layouts/Layout.astro";
 import Nav          from "../components/boleta/Nav.astro";
 import Hero         from "../components/boleta/Hero.astro";
-// Promises (strip de 3 tags debajo del Hero) removido a pedido del dueño —
-// la sección sentía como "lleno técnico" entre Hero y ParaQuien. ParaQuien
-// ahora arranca directo después del Hero. El componente sigue en disco
-// (landing/src/components/boleta/Promises.astro) por si querés volver atrás.
 import ParaQuien    from "../components/boleta/ParaQuien.astro";
 import ManguitoFeat from "../components/boleta/ManguitoFeature.astro";
 import Features     from "../components/boleta/Features.astro";
 import Onboarding   from "../components/boleta/Onboarding.astro";
 import Pricing      from "../components/boleta/Pricing.astro";
-// Testimonials removido del montaje a pedido del dueño — los datos eran
-// placeholder y "no parecía muy real". El componente queda en disco para
-// cuando consigamos testimonios reales de users con permiso.
 import FAQ          from "../components/boleta/FAQ.astro";
 import Footer       from "../components/boleta/Footer.astro";
 import { faqJsonLd } from "../data/faqs";

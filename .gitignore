@@ -23,8 +23,19 @@ node_modules/
 /.next/
 /out/
 
+# astro (landing)
+/landing/dist/
+/landing/.astro/
+
 # production
 /build
+
+# tmp / scratch
+/.tmp-frames/
+*.tmp/
+
+# supabase CLI local state (no va al repo)
+supabase/.temp/
 
 # misc
 .DS_Store

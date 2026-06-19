@@ -495,10 +495,9 @@ function NotificacionesSection() {
 // ─── Email Inbound section ────────────────────────────────────────────────────
 const INBOUND_DOMAIN = 'sinunmango.com.ar'
 
-// URL del video tutorial. Archivo en public/ — se sirve con CDN de Vercel
-// y el browser lo cachea. Si en el futuro lo movés a YouTube/Vimeo, cambiá
-// también el <video> de abajo por <iframe>.
-const TUTORIAL_VIDEO_URL: string | null = '/tutorial-mail.mp4'
+// URL del video tutorial. null muestra el placeholder "próximamente". Cuando
+// haya video, poner una ruta absoluta acá (archivo en public/ o URL externa).
+const TUTORIAL_VIDEO_URL: string | null = null
 
 function EmailInboundSection() {
   const [token, setToken]           = useState<string | null>(null)
