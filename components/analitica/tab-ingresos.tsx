@@ -135,6 +135,34 @@ export function TabIngresos({ movimientos }: { movimientos: MovAnalitica[] }) {
     [ingresos]
   )
 
+  // ── Ingresos por descripción (cliente/fuente recurrente) ──
+  // Agrupa por m.detalle normalizado (trim + lowercase) — así "Sueldo SN" y
+  // "sueldo sn " caen en el mismo bucket. El label mostrado es el primer
+  // detalle encontrado (no normalizado) para preservar capitalización.
+  const ingresosPorDescripcion = useMemo(() => {
+    const map: Record<string, {
+      label:       string
+      icono:       string | null
+      total:       number
+      count:       number
+      ultimaFecha: string
+    }> = {}
+    ingresos.forEach(m => {
+      const detalle = (m.detalle ?? '').trim()
+      if (!detalle) return
+      const key = detalle.toLowerCase()
+      if (!map[key]) {
+        map[key] = { label: detalle, icono: m.categoria_icono, total: 0, count: 0, ultimaFecha: m.fecha }
+      }
+      map[key].total += montoOf(m)
+      map[key].count++
+      if (m.fecha > map[key].ultimaFecha) map[key].ultimaFecha = m.fecha
+    })
+    return Object.values(map)
+      .map(v => ({ ...v, pct: totalIngresos > 0 ? (v.total / totalIngresos) * 100 : 0 }))
+      .sort((a, b) => b.total - a.total)
+  }, [ingresos, totalIngresos])
+
   // ── Hero narrative ──
   const heroSub = deltaPct !== null
     ? `${deltaPct >= 0 ? '+' : ''}${Math.round(deltaPct)}% vs período anterior · ${deltaPct >= 0 ? 'crecimiento' : 'caída'}`
@@ -322,6 +350,43 @@ export function TabIngresos({ movimientos }: { movimientos: MovAnalitica[] }) {
                 <span className="text-xs text-slate-400 w-12 text-right shrink-0">{c.pct.toFixed(1)}%</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Ingresos por descripción (cliente/fuente recurrente) ──
+           Útil para comparar clientes cuando NO están separados por categoría —
+           agrupamos por el texto del detalle. Suma + cantidad + última fecha. */}
+      {ingresosPorDescripcion.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-6">
+          <p className="text-sm font-semibold text-slate-700 mb-0.5">Ingresos por descripción</p>
+          <p className="text-xs text-slate-400 mb-5">Agrupa por el detalle del movimiento — ideal para comparar clientes/fuentes recurrentes</p>
+          <div className="space-y-3">
+            {ingresosPorDescripcion.map((d, i) => {
+              const maxTotal = ingresosPorDescripcion[0].total
+              const widthPct = (d.total / maxTotal) * 100
+              return (
+                <div key={d.label + i}>
+                  <div className="flex items-center gap-3 mb-1.5">
+                    <span className="text-xs text-slate-300 w-5 text-right shrink-0">{i + 1}</span>
+                    <IconoCategoria icono={d.icono} size={14} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-800 font-medium truncate">{d.label}</p>
+                      <p className="text-[11px] text-slate-400 truncate">
+                        {d.count} {d.count === 1 ? 'movimiento' : 'movimientos'} · último el {formatFechaCorta(d.ultimaFecha)}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-slate-800">${fmt(d.total)}</p>
+                      <p className="text-[11px] text-slate-400">{d.pct.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                  <div className="ml-10 h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${widthPct}%`, background: COL_INCOME }} />
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
