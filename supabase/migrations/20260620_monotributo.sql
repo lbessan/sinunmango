@@ -23,8 +23,9 @@ CREATE TABLE IF NOT EXISTS monotributo_config (
   costo_mensual               NUMERIC      NOT NULL,                       -- impuesto + jubilación + obra social
   vigente_desde               DATE         NOT NULL DEFAULT CURRENT_DATE,  -- inicio del semestre activo
 
-  -- Link opcional al gasto fijo del monotributo (para mostrar próximo venc.)
-  gasto_fijo_id               UUID         REFERENCES gastos_fijos(id) ON DELETE SET NULL,
+  -- Link opcional al gasto fijo del monotributo (para mostrar próximo venc.).
+  -- gastos_fijos.id es text en esta DB (legacy), no uuid — por eso text acá.
+  gasto_fijo_id               TEXT         REFERENCES gastos_fijos(id) ON DELETE SET NULL,
 
   -- Notas libres del user (ej. "Cambié a cat C en julio 2026")
   notas                       TEXT,
