@@ -353,6 +353,92 @@ export type Database = {
           },
         ]
       }
+      monotributo_config: {
+        Row: {
+          categoria: string
+          actividad: string
+          limite_facturacion_anual: number
+          costo_mensual: number
+          vigente_desde: string
+          gasto_fijo_id: string | null
+          notas: string | null
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          categoria: string
+          actividad?: string
+          limite_facturacion_anual: number
+          costo_mensual: number
+          vigente_desde?: string
+          gasto_fijo_id?: string | null
+          notas?: string | null
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          categoria?: string
+          actividad?: string
+          limite_facturacion_anual?: number
+          costo_mensual?: number
+          vigente_desde?: string
+          gasto_fijo_id?: string | null
+          notas?: string | null
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monotributo_config_gasto_fijo_id_fkey"
+            columns: ["gasto_fijo_id"]
+            isOneToOne: false
+            referencedRelation: "gastos_fijos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facturas_emitidas: {
+        Row: {
+          id: string
+          user_id: string
+          fecha: string
+          cliente: string
+          concepto: string | null
+          monto: number
+          numero_comprobante: string | null
+          tipo_comprobante: string | null
+          notas: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          fecha: string
+          cliente: string
+          concepto?: string | null
+          monto: number
+          numero_comprobante?: string | null
+          tipo_comprobante?: string | null
+          notas?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          fecha?: string
+          cliente?: string
+          concepto?: string | null
+          monto?: number
+          numero_comprobante?: string | null
+          tipo_comprobante?: string | null
+          notas?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       movimientos: {
         Row: {
           categoria: string | null

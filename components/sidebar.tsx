@@ -3,6 +3,7 @@ import {
   LayoutDashboard, ArrowLeftRight, PlusCircle, CreditCard,
   Receipt, ShieldCheck, BarChart2, Settings,
   Landmark, Tag, Wallet, TrendingUp, Sparkles, Users2,
+  FileText,
 } from 'lucide-react'
 import { NavItem }   from './nav-item'
 import { NavSection } from './nav-section'
@@ -30,6 +31,18 @@ export async function Sidebar() {
   const dolarBna = await getDolarBNA()
   const { supabase, user } = await getAuthedClient()
   const hasProAccess = user ? (await getUserPlan(supabase)).has_pro_access : false
+
+  // Monotributo es opt-in: el item solo aparece si el user configuró su régimen.
+  // Evita contaminar el sidebar para users que no son monotributistas.
+  let hasMonotributo = false
+  if (user) {
+    const { data } = await supabase
+      .from('monotributo_config')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    hasMonotributo = !!data
+  }
   return (
     <aside className="w-64 h-screen sticky top-0 flex flex-col shrink-0 overflow-x-hidden" style={{ background: 'var(--sidebar-bg, #0d2137)' }}>
 
@@ -63,6 +76,9 @@ export async function Sidebar() {
           <NavItem href="/tarjetas"     icon={<CreditCard size={17} />}  label="Tarjetas"     tourId="tour-tarjetas" />
           <NavItem href="/gastos-fijos" icon={<Receipt size={17} />}     label="Gastos fijos" tourId="tour-gastos-fijos" />
           <NavItem href="/inversiones"  icon={<TrendingUp size={17} />}  label="Inversiones"  tourId="tour-inversiones" />
+          {hasMonotributo && (
+            <NavItem href="/monotributo" icon={<FileText size={17} />} label="Monotributo" />
+          )}
         </NavSection>
 
         <NavSection id="configuracion" label="Configuración" collapsible>
@@ -72,6 +88,9 @@ export async function Sidebar() {
           {/* "Compartidos" — anchor del tour para que el step de compartir
               workspace tenga dónde apuntar visualmente. */}
           <NavItem href="/configuracion/compartidos" icon={<Users2    size={17} />} label="Compartidos" exact tourId="tour-compartir" />
+          {/* Monotributo siempre listado acá para que cualquier user pueda
+              activarlo. Una vez configurado, también aparece en "Mis cuentas". */}
+          <NavItem href="/configuracion/monotributo" icon={<FileText  size={17} />} label="Monotributo" exact />
         </NavSection>
       </nav>
 
