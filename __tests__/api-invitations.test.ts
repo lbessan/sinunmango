@@ -247,7 +247,10 @@ describe('POST /api/invitations/[token]', () => {
     adminMock._shares = {
       id: 's1', owner_user_id: OWNER, invitee_user_id: ME,
       accepted_at: '2026-05-02', revoked_at: null,
-      expires_at: '2026-06-01',
+      // Fecha dinámica futura — antes era hardcoded '2026-06-01' y el test
+      // empezó a fallar cuando esa fecha pasó (el route entraba al check de
+      // expiración y devolvía 410 antes de llegar al check de "ya aceptada").
+      expires_at: new Date(Date.now() + 86_400_000).toISOString(),
     }
     const res = await POST(makeReq('POST'), { params: Promise.resolve({ token: TOKEN }) })
     expect(res.status).toBe(200)
@@ -262,7 +265,7 @@ describe('POST /api/invitations/[token]', () => {
     adminMock._shares = {
       id: 's1', owner_user_id: OWNER, invitee_user_id: OTHER,
       accepted_at: '2026-05-02', revoked_at: null,
-      expires_at: '2026-06-01',
+      expires_at: new Date(Date.now() + 86_400_000).toISOString(),
     }
     const res = await POST(makeReq('POST'), { params: Promise.resolve({ token: TOKEN }) })
     expect(res.status).toBe(409)
