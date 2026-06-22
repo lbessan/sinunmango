@@ -10,7 +10,7 @@
 
 import Link  from 'next/link'
 import { redirect } from 'next/navigation'
-import { Plus, Pencil, AlertTriangle, TrendingUp, Calendar, Settings, Info, RefreshCw } from 'lucide-react'
+import { Plus, Pencil, AlertTriangle, TrendingUp, Calendar, Settings, Info, RefreshCw, BarChart3 } from 'lucide-react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { DeleteButton } from '@/components/delete-button'
 import { ImportarFacturaButton } from './importar-factura'
@@ -140,6 +140,12 @@ export default async function MonotributoPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/monotributo/analitica"
+            className="inline-flex items-center gap-2 text-sm text-slate-600 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50"
+          >
+            <BarChart3 size={14} />Analítica
+          </Link>
           <Link
             href="/configuracion/monotributo"
             className="inline-flex items-center gap-2 text-sm text-slate-600 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50"

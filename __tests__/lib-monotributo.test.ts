@@ -8,6 +8,11 @@ import {
   facturacionPorMes,
   proximaRecategorizacion,
   generarAlertasMonotributo,
+  facturacionPorAnio,
+  estadisticasFacturacion,
+  estacionalidad,
+  concentracionClientes,
+  proyeccionAnual,
   type FacturaEmitida,
   type MonotributoConfig,
 } from '@/lib/monotributo'
@@ -248,5 +253,120 @@ describe('generarAlertasMonotributo', () => {
     expect(recat?.nivel).toBe('danger')
     // Y NO debe aparecer la versión "info" simultáneamente
     expect(alertas.find(a => a.tipo === 'recategorizacion_proxima')).toBeUndefined()
+  })
+})
+
+describe('facturacionPorAnio', () => {
+  it('agrupa por año, ordena asc y calcula crecimiento YoY', () => {
+    const facturas = [
+      mkFact('2024-03-01', 1_000_000),
+      mkFact('2024-08-01', 1_000_000),  // 2024 total = 2M
+      mkFact('2025-05-01', 3_000_000),  // 2025 total = 3M → +50%
+    ]
+    const anios = facturacionPorAnio(facturas)
+    expect(anios).toHaveLength(2)
+    expect(anios[0]).toMatchObject({ anio: 2024, total: 2_000_000, count: 2, crecimientoPct: null })
+    expect(anios[1].anio).toBe(2025)
+    expect(anios[1].total).toBe(3_000_000)
+    expect(anios[1].crecimientoPct).toBeCloseTo(50)
+  })
+
+  it('lista vacía → []', () => {
+    expect(facturacionPorAnio([])).toEqual([])
+  })
+})
+
+describe('estadisticasFacturacion', () => {
+  it('calcula total, promedio mensual, mejor/peor mes', () => {
+    const facturas = [
+      mkFact('2026-01-15', 1_000_000),
+      mkFact('2026-02-10', 3_000_000),
+      mkFact('2026-03-20', 2_000_000),
+    ]
+    const st = estadisticasFacturacion(facturas, 2026)
+    expect(st.total).toBe(6_000_000)
+    expect(st.mesesConFactura).toBe(3)
+    expect(st.promedioMensual).toBe(2_000_000)
+    expect(st.mejorMes?.total).toBe(3_000_000)
+    expect(st.peorMes?.total).toBe(1_000_000)
+  })
+
+  it('filtra por año cuando se pasa', () => {
+    const facturas = [
+      mkFact('2025-01-15', 5_000_000),
+      mkFact('2026-01-15', 1_000_000),
+    ]
+    expect(estadisticasFacturacion(facturas, 2026).total).toBe(1_000_000)
+    expect(estadisticasFacturacion(facturas).total).toBe(6_000_000)  // sin año = todo
+  })
+
+  it('CV bajo cuando los meses son parejos, alto cuando varían', () => {
+    const parejo = [mkFact('2026-01-15', 1_000_000), mkFact('2026-02-15', 1_000_000)]
+    const dispar = [mkFact('2026-01-15', 100_000),   mkFact('2026-02-15', 5_000_000)]
+    expect(estadisticasFacturacion(parejo, 2026).coefVariacion).toBe(0)
+    expect(estadisticasFacturacion(dispar, 2026).coefVariacion).toBeGreaterThan(50)
+  })
+
+  it('sin facturas → ceros sin romper', () => {
+    const st = estadisticasFacturacion([], 2026)
+    expect(st.total).toBe(0)
+    expect(st.promedioMensual).toBe(0)
+    expect(st.mejorMes).toBeNull()
+  })
+})
+
+describe('estacionalidad', () => {
+  it('promedia cada mes-del-año sobre los años con datos', () => {
+    const facturas = [
+      mkFact('2025-12-15', 2_000_000),
+      mkFact('2026-12-15', 4_000_000),  // diciembre en 2 años → promedio 3M
+      mkFact('2026-06-15', 1_000_000),  // junio en 1 año → promedio 1M
+    ]
+    const est = estacionalidad(facturas)
+    expect(est).toHaveLength(12)
+    const dic = est.find(m => m.mes === 12)!
+    expect(dic.total).toBe(6_000_000)
+    expect(dic.anios).toBe(2)
+    expect(dic.promedio).toBe(3_000_000)
+    const jun = est.find(m => m.mes === 6)!
+    expect(jun.promedio).toBe(1_000_000)
+    const ene = est.find(m => m.mes === 1)!
+    expect(ene.promedio).toBe(0)
+  })
+})
+
+describe('concentracionClientes', () => {
+  it('calcula % del cliente top y top3', () => {
+    const facturas = [
+      mkFact('2026-01-01', 8_000_000, 'Cliente Grande'),
+      mkFact('2026-01-01', 1_000_000, 'Cliente B'),
+      mkFact('2026-01-01', 1_000_000, 'Cliente C'),
+    ]
+    const c = concentracionClientes(facturas)
+    expect(c.totalClientes).toBe(3)
+    expect(c.topCliente?.cliente).toBe('Cliente Grande')
+    expect(c.topCliente?.pct).toBeCloseTo(80)
+    expect(c.top3Pct).toBeCloseTo(100)
+  })
+
+  it('sin facturas → topCliente null', () => {
+    expect(concentracionClientes([]).topCliente).toBeNull()
+  })
+})
+
+describe('proyeccionAnual', () => {
+  it('extrapola el run-rate del año en curso', () => {
+    // HOY junio (mes 6). Acumulado 6M → run-rate (6M/6)*12 = 12M
+    const facturas = [mkFact('2026-03-01', 6_000_000)]
+    expect(proyeccionAnual(facturas, 2026, HOY)).toBe(12_000_000)
+  })
+
+  it('año pasado → null (ya cerrado)', () => {
+    const facturas = [mkFact('2025-03-01', 6_000_000)]
+    expect(proyeccionAnual(facturas, 2025, HOY)).toBeNull()
+  })
+
+  it('sin facturas del año → null', () => {
+    expect(proyeccionAnual([], 2026, HOY)).toBeNull()
   })
 })
