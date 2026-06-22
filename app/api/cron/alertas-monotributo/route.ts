@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron-auth'
 import {
   generarAlertasMonotributo,
-  facturacionUltimos12Meses,
+  facturacionPeriodoEvaluacion,
   proximaRecategorizacion,
   type FacturaEmitida,
   type AlertaMonotributo,
@@ -61,7 +61,7 @@ function buildEmailHtml(
     </div>
 
     <div style="padding:24px 28px 8px;">
-      <p style="margin:0 0 6px;font-size:13px;color:#64748b;">Facturado últimos 12 meses · Categoría ${categoria}</p>
+      <p style="margin:0 0 6px;font-size:13px;color:#64748b;">Facturado del período · Categoría ${categoria}</p>
       <p style="margin:0 0 10px;font-size:24px;font-weight:700;color:#1e293b;">${fmt(facturado12)} <span style="font-size:14px;color:#94a3b8;font-weight:400;">/ ${fmt(limite)}</span></p>
       <div style="height:10px;background:#f1f5f9;border-radius:6px;overflow:hidden;">
         <div style="height:100%;width:${pct.toFixed(1)}%;background:${barColor};border-radius:6px;"></div>
@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
       if (u?.email) toEmail = u.email
     } catch { /* usa fallback */ }
 
-    const facturado12 = facturacionUltimos12Meses(facturas)
+    const facturado12 = facturacionPeriodoEvaluacion(facturas)
     const html = buildEmailHtml(
       accionables, facturado12, config.limite_facturacion_anual,
       config.categoria, recat.mes, recat.diasRestantes, baseUrl,

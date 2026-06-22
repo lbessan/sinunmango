@@ -1,7 +1,8 @@
 // Tests para lib/monotributo — helpers puros de cálculo
 import { describe, it, expect } from 'vitest'
 import {
-  facturacionUltimos12Meses,
+  periodoEvaluacion,
+  facturacionPeriodoEvaluacion,
   gaugeStatus,
   proyeccionMesesHastaLimite,
   facturasAgrupadasPorCliente,
@@ -35,26 +36,39 @@ const mkConfig = (over: Partial<MonotributoConfig> = {}): MonotributoConfig => (
 // Fecha fija para los tests — evita flakiness por now()
 const HOY = new Date('2026-06-20T12:00:00')
 
-describe('facturacionUltimos12Meses', () => {
-  it('suma facturas dentro de la ventana de 12 meses', () => {
-    const facturas = [
-      mkFact('2026-01-15', 100_000),
-      mkFact('2025-08-10', 50_000),
-      mkFact('2025-07-01', 30_000),  // dentro (hace ~11 meses)
-    ]
-    expect(facturacionUltimos12Meses(facturas, HOY)).toBe(180_000)
+describe('periodoEvaluacion', () => {
+  it('en el primer semestre apunta a la recat de julio, desde 1-jul del año anterior', () => {
+    // HOY 20-jun-2026 → recat julio 2026 → período 01/07/2025 al 20/06/2026
+    // (replica exactamente lo que muestra el dashboard de ARCA)
+    const p = periodoEvaluacion(HOY)
+    expect(p.desde).toBe('2025-07-01')
+    expect(p.hasta).toBe('2026-06-20')
+    expect(p.recategorizacion.mes).toBe('julio')
   })
 
-  it('excluye facturas más viejas que 12 meses', () => {
+  it('en el segundo semestre apunta a la recat de enero, desde 1-ene del año en curso', () => {
+    // HOY 15-sep-2026 → recat enero 2027 → período 01/01/2026 al 15/09/2026
+    const p = periodoEvaluacion(new Date('2026-09-15T12:00:00'))
+    expect(p.desde).toBe('2026-01-01')
+    expect(p.hasta).toBe('2026-09-15')
+    expect(p.recategorizacion.mes).toBe('enero')
+  })
+})
+
+describe('facturacionPeriodoEvaluacion', () => {
+  it('suma solo facturas del período alineado al semestre (no 12 meses móviles)', () => {
     const facturas = [
-      mkFact('2026-01-15', 100_000),
-      mkFact('2024-12-15', 999_999),  // fuera (>12m)
+      mkFact('2026-01-15', 100_000),  // dentro
+      mkFact('2025-08-10', 50_000),   // dentro (después del 1-jul-2025)
+      mkFact('2025-07-01', 30_000),   // dentro (justo el inicio)
+      mkFact('2025-06-25', 999_999),  // FUERA — antes del 1-jul-2025 (ARCA no lo cuenta)
     ]
-    expect(facturacionUltimos12Meses(facturas, HOY)).toBe(100_000)
+    // 12 meses móviles SÍ contaría la del 25-jun-2025; el período de ARCA no.
+    expect(facturacionPeriodoEvaluacion(facturas, HOY)).toBe(180_000)
   })
 
   it('lista vacía devuelve 0', () => {
-    expect(facturacionUltimos12Meses([], HOY)).toBe(0)
+    expect(facturacionPeriodoEvaluacion([], HOY)).toBe(0)
   })
 })
 
@@ -186,6 +200,11 @@ describe('proximaRecategorizacion', () => {
     const r = proximaRecategorizacion(new Date('2026-07-20T08:00:00'))
     expect(r.mes).toBe('julio')
     expect(r.diasRestantes).toBe(0)
+  })
+
+  it('primer pago de la nueva categoría: julio→agosto, enero→febrero', () => {
+    expect(proximaRecategorizacion(new Date('2026-06-20T12:00:00')).primerPagoMes).toBe('agosto')
+    expect(proximaRecategorizacion(new Date('2026-09-15T12:00:00')).primerPagoMes).toBe('febrero')
   })
 })
 

@@ -15,7 +15,8 @@ import { getAuthedClient } from '@/lib/supabase/server'
 import { DeleteButton } from '@/components/delete-button'
 import { ImportarFacturaButton } from './importar-factura'
 import {
-  facturacionUltimos12Meses,
+  facturacionPeriodoEvaluacion,
+  periodoEvaluacion,
   gaugeStatus,
   proyeccionMesesHastaLimite,
   facturasAgrupadasPorCliente,
@@ -30,6 +31,12 @@ const fmt = (n: number) =>
 const fmtFecha = (iso: string) => {
   const d = new Date(iso + 'T12:00:00')
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')
+}
+
+// Formato DD/MM/YYYY — para mostrar el período igual que ARCA.
+const fmtSlash = (iso: string) => {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
 }
 
 type Config = {
@@ -89,7 +96,10 @@ export default async function MonotributoPage() {
   }
 
   // ── Cálculos del gauge ──
-  const facturado12  = facturacionUltimos12Meses(facturas)
+  // Período de evaluación = el que usa ARCA (alineado al semestre de recat),
+  // NO 12 meses móviles. Ver lib/monotributo.ts sección 1.
+  const periodo      = periodoEvaluacion()
+  const facturado12  = facturacionPeriodoEvaluacion(facturas)
   const limite       = config.limite_facturacion_anual
   const pct          = limite > 0 ? Math.min((facturado12 / limite) * 100, 100) : 0
   const status       = gaugeStatus(facturado12, limite)
@@ -186,15 +196,17 @@ export default async function MonotributoPage() {
         </div>
       )}
 
-      {/* Gauge facturación 12m vs límite */}
+      {/* Gauge facturación del período de evaluación vs límite */}
       <div className="bg-white rounded-2xl border border-slate-100 p-6">
         <div className="flex items-baseline justify-between mb-1">
-          <p className="text-sm font-semibold text-slate-700">Facturado últimos 12 meses</p>
+          <p className="text-sm font-semibold text-slate-700">Facturado del período</p>
           <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: `${statusColor}15`, color: statusColor }}>
             {statusLabel}
           </span>
         </div>
-        <p className="text-xs text-slate-400 mb-5">AFIP evalúa el techo sobre los últimos 12 meses móviles</p>
+        <p className="text-xs text-slate-400 mb-5">
+          {fmtSlash(periodo.desde)} al {fmtSlash(periodo.hasta)} · lo que ARCA evalúa para la recategorización de {periodo.recategorizacion.mes}
+        </p>
 
         <div className="flex items-baseline gap-2 mb-2">
           <span className="text-3xl font-bold text-slate-800 tabular-nums">${fmt(facturado12)}</span>
@@ -261,7 +273,7 @@ export default async function MonotributoPage() {
           <p className="text-2xl font-bold text-slate-800 capitalize">{recat.mes}</p>
           <p className="text-xs text-slate-500 mt-2">
             <RefreshCw size={11} className="inline mr-1" />
-            {recat.diasRestantes === 0 ? 'Es hoy' : `En ${recat.diasRestantes} días`} · revisión semestral
+            {recat.diasRestantes === 0 ? 'Es hoy' : `En ${recat.diasRestantes} días`} · nuevo costo desde {recat.primerPagoMes}
           </p>
         </div>
       </div>

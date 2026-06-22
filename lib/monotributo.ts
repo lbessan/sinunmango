@@ -20,17 +20,21 @@ export type MonotributoConfig = {
 
 export type GaugeStatus = 'ok' | 'warning' | 'danger'
 
-// ─── 1) Facturación acumulada de los últimos 12 meses móviles ────────────────
-// AFIP/ARCA evalúa el límite sobre los últimos 12 meses, no el año calendario.
-export function facturacionUltimos12Meses(
-  facturas: FacturaEmitida[],
-  hoy:      Date = new Date(),
-): number {
-  const desde = new Date(hoy)
-  desde.setFullYear(desde.getFullYear() - 1)
-  return facturas
-    .filter(f => new Date(f.fecha + 'T12:00:00') >= desde)
-    .reduce((acc, f) => acc + f.monto, 0)
+// ─── 1) Facturación del período de evaluación de recategorización ────────────
+// IMPORTANTE: ARCA NO evalúa "los últimos 12 meses móviles desde hoy". Alinea
+// el período al semestre de recategorización:
+//   - Recat de JULIO  → período 1-jul-(año-1) → hoy
+//   - Recat de ENERO  → período 1-ene-(año-1) → hoy
+// Ej: el 20/06/2026, ARCA muestra "01/07/2025 al 20/06/2026" para la recat de
+// julio 2026 (ver dashboard oficial). El monto facturado de ese período es lo
+// que se compara contra el tope de la categoría.
+//
+// `facturacionPeriodoEvaluacion` y `periodoEvaluacion` viven más abajo, después
+// de proximaRecategorizacion (de la que dependen). Ver sección 6.
+
+// helper: Date → 'YYYY-MM-DD' (local, sin TZ shift)
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 // ─── 2) Status del gauge (verde / amarillo / rojo) ───────────────────────────
@@ -126,10 +130,15 @@ export function facturasAgrupadasPorCliente(facturas: FacturaEmitida[]): Factura
 // El monotributo se recategoriza 2 veces al año: ENERO y JULIO. El plazo
 // suele cerrar alrededor del día 20 (AFIP define la fecha exacta cada año;
 // usamos el 20 como referencia estable). Devolvemos la próxima fecha futura.
+//
+// primerPagoMes: el nuevo costo de la categoría recategorizada se paga recién
+// el mes siguiente — recat de julio → primer pago en AGOSTO; recat de enero →
+// primer pago en FEBRERO.
 export type Recategorizacion = {
   fecha:         string        // 'YYYY-MM-DD' del cierre de plazo (día 20)
   mes:           'enero' | 'julio'
   diasRestantes: number
+  primerPagoMes: 'agosto' | 'febrero'
 }
 
 const DIA_RECATEGORIZACION = 20  // referencia; AFIP confirma el día exacto cada semestre
@@ -147,7 +156,42 @@ export function proximaRecategorizacion(hoy: Date = new Date()): Recategorizacio
   const prox = candidatos.find(c => c.fecha >= hoyMid)!
   const diasRestantes = Math.round((prox.fecha.getTime() - hoyMid.getTime()) / 86_400_000)
   const iso = `${prox.fecha.getFullYear()}-${String(prox.fecha.getMonth() + 1).padStart(2, '0')}-${String(prox.fecha.getDate()).padStart(2, '0')}`
-  return { fecha: iso, mes: prox.mes, diasRestantes }
+  return {
+    fecha: iso,
+    mes: prox.mes,
+    diasRestantes,
+    primerPagoMes: prox.mes === 'julio' ? 'agosto' : 'febrero',
+  }
+}
+
+// ─── 6b) Período de evaluación + facturación acumulada ───────────────────────
+// El período que ARCA evalúa para la próxima recategorización (ver sección 1).
+export type PeriodoEvaluacion = {
+  desde:            string          // 'YYYY-MM-DD' — 1-jul o 1-ene
+  hasta:            string          // 'YYYY-MM-DD' — hoy
+  recategorizacion: Recategorizacion
+}
+
+export function periodoEvaluacion(hoy: Date = new Date()): PeriodoEvaluacion {
+  const recat     = proximaRecategorizacion(hoy)
+  const anioRecat = Number(recat.fecha.slice(0, 4))
+  // Recat julio AAAA → desde 1-jul-(AAAA-1). Recat enero AAAA → desde 1-ene-(AAAA-1).
+  const desde = recat.mes === 'julio'
+    ? `${anioRecat - 1}-07-01`
+    : `${anioRecat - 1}-01-01`
+  return { desde, hasta: isoDate(hoy), recategorizacion: recat }
+}
+
+// Suma de facturas dentro del período de evaluación vigente. Las fechas son
+// strings ISO 'YYYY-MM-DD', así que la comparación lexicográfica es correcta.
+export function facturacionPeriodoEvaluacion(
+  facturas: FacturaEmitida[],
+  hoy:      Date = new Date(),
+): number {
+  const { desde, hasta } = periodoEvaluacion(hoy)
+  return facturas
+    .filter(f => f.fecha >= desde && f.fecha <= hasta)
+    .reduce((acc, f) => acc + f.monto, 0)
 }
 
 // ─── 7) Generador de alertas del monotributo ─────────────────────────────────
@@ -174,7 +218,7 @@ export function generarAlertasMonotributo(
   const limite      = config.limite_facturacion_anual
   if (limite <= 0) return alertas
 
-  const facturado12 = facturacionUltimos12Meses(facturas, hoy)
+  const facturado12 = facturacionPeriodoEvaluacion(facturas, hoy)
   const pct         = (facturado12 / limite) * 100
   const restante    = limite - facturado12
   const recat       = proximaRecategorizacion(hoy)
