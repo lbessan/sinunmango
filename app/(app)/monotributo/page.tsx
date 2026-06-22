@@ -10,14 +10,17 @@
 
 import Link  from 'next/link'
 import { redirect } from 'next/navigation'
-import { Plus, Pencil, AlertTriangle, TrendingUp, Calendar, Settings } from 'lucide-react'
+import { Plus, Pencil, AlertTriangle, TrendingUp, Calendar, Settings, Info, RefreshCw } from 'lucide-react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { DeleteButton } from '@/components/delete-button'
+import { ImportarFacturaButton } from './importar-factura'
 import {
   facturacionUltimos12Meses,
   gaugeStatus,
   proyeccionMesesHastaLimite,
   facturasAgrupadasPorCliente,
+  proximaRecategorizacion,
+  generarAlertasMonotributo,
   type FacturaEmitida,
 } from '@/lib/monotributo'
 
@@ -94,6 +97,13 @@ export default async function MonotributoPage() {
   const porCliente   = facturasAgrupadasPorCliente(facturas)
   const recientes    = facturas.slice(0, 10)
 
+  // ── Asistente: alertas + próxima recategorización ──
+  const recat        = proximaRecategorizacion()
+  const alertas      = generarAlertasMonotributo(
+    { categoria: config.categoria, limite_facturacion_anual: limite, costo_mensual: config.costo_mensual, actividad: config.actividad as 'servicios' | 'venta_bienes' },
+    facturas,
+  )
+
   // ── Próximo vencimiento del gasto fijo asociado ──
   let gastoFijo: GastoFijo | null = null
   if (config.gasto_fijo_id) {
@@ -136,6 +146,7 @@ export default async function MonotributoPage() {
           >
             <Settings size={14} />Config
           </Link>
+          <ImportarFacturaButton />
           <Link
             href="/monotributo/nueva"
             className="inline-flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium whitespace-nowrap"
@@ -145,6 +156,29 @@ export default async function MonotributoPage() {
           </Link>
         </div>
       </div>
+
+      {/* Asistente: alertas activas. Solo se muestra si hay algo que decir. */}
+      {alertas.length > 0 && (
+        <div className="space-y-2">
+          {alertas.map((a, i) => {
+            const tone = {
+              danger:  { bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-800',    icon: 'text-red-500',    Icon: AlertTriangle },
+              warning: { bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-800',  icon: 'text-amber-500',  Icon: AlertTriangle },
+              info:    { bg: 'bg-sky-50',    border: 'border-sky-200',    text: 'text-sky-800',    icon: 'text-sky-500',    Icon: Info },
+            }[a.nivel]
+            const Icon = tone.Icon
+            return (
+              <div key={i} className={`flex items-start gap-3 ${tone.bg} border ${tone.border} rounded-xl p-4`}>
+                <Icon size={16} className={`shrink-0 mt-0.5 ${tone.icon}`} />
+                <div className="min-w-0">
+                  <p className={`text-sm font-semibold ${tone.text}`}>{a.titulo}</p>
+                  <p className={`text-xs mt-0.5 ${tone.text} opacity-90`}>{a.detalle}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Gauge facturación 12m vs límite */}
       <div className="bg-white rounded-2xl border border-slate-100 p-6">
@@ -175,8 +209,8 @@ export default async function MonotributoPage() {
         )}
       </div>
 
-      {/* Costo mensual + Proyección — 2 cards en grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Costo mensual + Proyección + Recategorización — 3 cards en grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
         {/* Costo mensual */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
@@ -194,9 +228,9 @@ export default async function MonotributoPage() {
           )}
         </div>
 
-        {/* Proyección */}
+        {/* Proyección al límite */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Proyección recategorización</p>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Proyección al límite</p>
           {proyeccion === null ? (
             <>
               <p className="text-2xl font-bold text-slate-300">—</p>
@@ -213,6 +247,16 @@ export default async function MonotributoPage() {
               <p className="text-xs text-slate-500 mt-2">A este ritmo (promedio últimos 3 meses)</p>
             </>
           )}
+        </div>
+
+        {/* Próxima recategorización */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Próxima recategorización</p>
+          <p className="text-2xl font-bold text-slate-800 capitalize">{recat.mes}</p>
+          <p className="text-xs text-slate-500 mt-2">
+            <RefreshCw size={11} className="inline mr-1" />
+            {recat.diasRestantes === 0 ? 'Es hoy' : `En ${recat.diasRestantes} días`} · revisión semestral
+          </p>
         </div>
       </div>
 

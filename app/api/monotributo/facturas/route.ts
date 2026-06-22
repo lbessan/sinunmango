@@ -14,6 +14,13 @@ type FacturaInsert = {
   numero_comprobante: string | null
   tipo_comprobante:   string | null
   notas:              string | null
+  // Campos que vienen del parseo de PDF (todos opcionales)
+  cae:                string | null
+  cae_vencimiento:    string | null
+  cliente_cuit:       string | null
+  periodo_desde:      string | null
+  periodo_hasta:      string | null
+  punto_venta:        string | null
 }
 
 function validateFactura(raw: unknown): Validated<FacturaInsert> {
@@ -40,6 +47,25 @@ function validateFactura(raw: unknown): Validated<FacturaInsert> {
   const notasRes = optional(raw.notas, v => validateString(v, { min: 1, max: 500, field: 'notas' }))
   if (!notasRes.ok) return notasRes
 
+  // ── Campos del PDF (opcionales) ──
+  const caeRes = optional(raw.cae, v => validateString(v, { min: 1, max: 20, field: 'CAE' }))
+  if (!caeRes.ok) return caeRes
+
+  const caeVtoRes = optional(raw.cae_vencimiento, v => validateISODate(v, 'vencimiento CAE'))
+  if (!caeVtoRes.ok) return caeVtoRes
+
+  const cuitRes = optional(raw.cliente_cuit, v => validateString(v, { min: 1, max: 20, field: 'CUIT cliente' }))
+  if (!cuitRes.ok) return cuitRes
+
+  const periodoDesdeRes = optional(raw.periodo_desde, v => validateISODate(v, 'período desde'))
+  if (!periodoDesdeRes.ok) return periodoDesdeRes
+
+  const periodoHastaRes = optional(raw.periodo_hasta, v => validateISODate(v, 'período hasta'))
+  if (!periodoHastaRes.ok) return periodoHastaRes
+
+  const pvRes = optional(raw.punto_venta, v => validateString(v, { min: 1, max: 10, field: 'punto de venta' }))
+  if (!pvRes.ok) return pvRes
+
   return {
     ok: true,
     data: {
@@ -50,6 +76,12 @@ function validateFactura(raw: unknown): Validated<FacturaInsert> {
       numero_comprobante: numeroRes.data ?? null,
       tipo_comprobante:   tipoRes.data ?? 'C',
       notas:              notasRes.data ?? null,
+      cae:                caeRes.data ?? null,
+      cae_vencimiento:    caeVtoRes.data ?? null,
+      cliente_cuit:       cuitRes.data ?? null,
+      periodo_desde:      periodoDesdeRes.data ?? null,
+      periodo_hasta:      periodoHastaRes.data ?? null,
+      punto_venta:        pvRes.data ?? null,
     },
   }
 }
@@ -96,6 +128,15 @@ export async function POST(req: NextRequest) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) {
+    // 23505 = unique_violation. Si el CAE ya existe (dedup), damos mensaje claro.
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { error: 'duplicate_cae', message: 'Ya cargaste una factura con este CAE.' },
+        { status: 409 },
+      )
+    }
+    return NextResponse.json({ error: error.message }, { status: 400 })
+  }
   return NextResponse.json(data, { status: 201 })
 }

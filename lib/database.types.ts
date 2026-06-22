@@ -411,6 +411,12 @@ export type Database = {
           numero_comprobante: string | null
           tipo_comprobante: string | null
           notas: string | null
+          cae: string | null
+          cae_vencimiento: string | null
+          cliente_cuit: string | null
+          periodo_desde: string | null
+          periodo_hasta: string | null
+          punto_venta: string | null
           created_at: string
         }
         Insert: {
@@ -423,6 +429,12 @@ export type Database = {
           numero_comprobante?: string | null
           tipo_comprobante?: string | null
           notas?: string | null
+          cae?: string | null
+          cae_vencimiento?: string | null
+          cliente_cuit?: string | null
+          periodo_desde?: string | null
+          periodo_hasta?: string | null
+          punto_venta?: string | null
           created_at?: string
         }
         Update: {
@@ -435,6 +447,12 @@ export type Database = {
           numero_comprobante?: string | null
           tipo_comprobante?: string | null
           notas?: string | null
+          cae?: string | null
+          cae_vencimiento?: string | null
+          cliente_cuit?: string | null
+          periodo_desde?: string | null
+          periodo_hasta?: string | null
+          punto_venta?: string | null
           created_at?: string
         }
         Relationships: []

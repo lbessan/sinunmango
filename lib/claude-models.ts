@@ -31,6 +31,12 @@ export const MODEL_PARSEAR_TARJETA_PDF = process.env.CLAUDE_MODEL_PARSEAR_TARJET
 export const MODEL_PARSEAR_RESUMEN = process.env.CLAUDE_MODEL_PARSEAR_RESUMEN
   ?? 'claude-haiku-4-5-20251001'
 
+/** Parsear PDF de factura emitida (monotributo). Extracción estructurada de
+ *  1 comprobante: cliente, monto, CAE, período, etc. Más simple que un
+ *  resumen de tarjeta (1 doc, pocos campos) — Haiku sobra. */
+export const MODEL_PARSEAR_FACTURA = process.env.CLAUDE_MODEL_PARSEAR_FACTURA
+  ?? 'claude-haiku-4-5-20251001'
+
 /** Leer foto de ticket → JSON con monto + comercio + fecha. Tarea visual
  *  simple, Haiku la maneja igual de bien que Sonnet. */
 export const MODEL_LEER_TICKET = process.env.CLAUDE_MODEL_LEER_TICKET

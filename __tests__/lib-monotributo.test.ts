@@ -6,7 +6,10 @@ import {
   proyeccionMesesHastaLimite,
   facturasAgrupadasPorCliente,
   facturacionPorMes,
+  proximaRecategorizacion,
+  generarAlertasMonotributo,
   type FacturaEmitida,
+  type MonotributoConfig,
 } from '@/lib/monotributo'
 
 const mkFact = (fecha: string, monto: number, cliente = 'Cliente'): FacturaEmitida => ({
@@ -14,6 +17,14 @@ const mkFact = (fecha: string, monto: number, cliente = 'Cliente'): FacturaEmiti
   fecha,
   cliente,
   monto,
+})
+
+const mkConfig = (over: Partial<MonotributoConfig> = {}): MonotributoConfig => ({
+  categoria:                'B',
+  limite_facturacion_anual: 10_000_000,
+  costo_mensual:            35_000,
+  actividad:                'servicios',
+  ...over,
 })
 
 // Fecha fija para los tests — evita flakiness por now()
@@ -143,5 +154,99 @@ describe('facturacionPorMes', () => {
     const facturas = [mkFact('2025-01-15', 9999)]
     const meses = facturacionPorMes(facturas, 3, HOY)
     expect(meses.every(m => m.total === 0)).toBe(true)
+  })
+})
+
+describe('proximaRecategorizacion', () => {
+  it('desde junio apunta a julio del mismo año', () => {
+    const r = proximaRecategorizacion(new Date('2026-06-20T12:00:00'))
+    expect(r.mes).toBe('julio')
+    expect(r.fecha).toBe('2026-07-20')
+    expect(r.diasRestantes).toBe(30)
+  })
+
+  it('desde marzo apunta a julio', () => {
+    const r = proximaRecategorizacion(new Date('2026-03-01T12:00:00'))
+    expect(r.mes).toBe('julio')
+    expect(r.fecha).toBe('2026-07-20')
+  })
+
+  it('desde agosto apunta a enero del año siguiente', () => {
+    const r = proximaRecategorizacion(new Date('2026-08-15T12:00:00'))
+    expect(r.mes).toBe('enero')
+    expect(r.fecha).toBe('2027-01-20')
+  })
+
+  it('el mismo día de recategorización cuenta como hoy (diasRestantes 0)', () => {
+    const r = proximaRecategorizacion(new Date('2026-07-20T08:00:00'))
+    expect(r.mes).toBe('julio')
+    expect(r.diasRestantes).toBe(0)
+  })
+})
+
+describe('generarAlertasMonotributo', () => {
+  // Fecha lejos de enero/julio para aislar el caso "sin alertas" — en HOY
+  // (20-jun) la recategorización de julio cae a 30 días y dispararía un info.
+  const HOY_SIN_RECAT = new Date('2026-10-15T12:00:00')
+
+  it('sin facturas, lejos de recategorización → sin alertas', () => {
+    const alertas = generarAlertasMonotributo(mkConfig(), [], HOY_SIN_RECAT)
+    expect(alertas).toHaveLength(0)
+  })
+
+  it('límite cero → sin alertas (no divide por cero)', () => {
+    const alertas = generarAlertasMonotributo(mkConfig({ limite_facturacion_anual: 0 }), [mkFact('2026-06-01', 999)], HOY)
+    expect(alertas).toHaveLength(0)
+  })
+
+  it('superó el límite → alerta danger limite_superado', () => {
+    const facturas = [mkFact('2026-06-01', 11_000_000)]  // > 10M límite
+    const alertas = generarAlertasMonotributo(mkConfig(), facturas, HOY)
+    const tipos = alertas.map(a => a.tipo)
+    expect(tipos).toContain('limite_superado')
+    expect(alertas.find(a => a.tipo === 'limite_superado')?.nivel).toBe('danger')
+  })
+
+  it('entre 80-95% → alerta warning cerca_limite', () => {
+    const facturas = [mkFact('2026-06-01', 8_500_000)]  // 85% de 10M
+    const alertas = generarAlertasMonotributo(mkConfig(), facturas, HOY)
+    const cerca = alertas.find(a => a.tipo === 'cerca_limite')
+    expect(cerca?.nivel).toBe('warning')
+  })
+
+  it('entre 95-100% → alerta danger cerca_limite', () => {
+    const facturas = [mkFact('2026-06-01', 9_700_000)]  // 97%
+    const alertas = generarAlertasMonotributo(mkConfig(), facturas, HOY)
+    const cerca = alertas.find(a => a.tipo === 'cerca_limite')
+    expect(cerca?.nivel).toBe('danger')
+  })
+
+  it('ritmo alto (proyección <= 3 meses) → alerta ritmo_alto', () => {
+    // 3 facturas de $2M en últimos 3 meses → promedio $2M/mes.
+    // facturado12 = 6M, restante = 4M → 2 meses al límite.
+    const facturas = [
+      mkFact('2026-06-01', 2_000_000),
+      mkFact('2026-05-01', 2_000_000),
+      mkFact('2026-04-01', 2_000_000),
+    ]
+    const alertas = generarAlertasMonotributo(mkConfig(), facturas, HOY)
+    expect(alertas.map(a => a.tipo)).toContain('ritmo_alto')
+  })
+
+  it('recategorización a <=30 días sin exceso → alerta info', () => {
+    // HOY 2026-06-20 → recat julio en 30 días. Facturación baja (10%).
+    const facturas = [mkFact('2026-06-01', 1_000_000)]
+    const alertas = generarAlertasMonotributo(mkConfig(), facturas, HOY)
+    const recat = alertas.find(a => a.tipo === 'recategorizacion_proxima')
+    expect(recat?.nivel).toBe('info')
+  })
+
+  it('recategorización próxima CON exceso → alerta danger recategorizacion_con_exceso', () => {
+    const facturas = [mkFact('2026-06-01', 12_000_000)]  // supera límite
+    const alertas = generarAlertasMonotributo(mkConfig(), facturas, HOY)
+    const recat = alertas.find(a => a.tipo === 'recategorizacion_con_exceso')
+    expect(recat?.nivel).toBe('danger')
+    // Y NO debe aparecer la versión "info" simultáneamente
+    expect(alertas.find(a => a.tipo === 'recategorizacion_proxima')).toBeUndefined()
   })
 })
