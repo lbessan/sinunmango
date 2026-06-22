@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Upload, FileText, X, Check, AlertTriangle, Loader2 } from 'lucide-react'
+import { Upload, X, Check, AlertTriangle, Loader2, FileText, Trash2 } from 'lucide-react'
 
 // Datos que devuelve el parser (todos pueden venir null si la IA no los detectó)
 type FacturaParseada = {
@@ -20,97 +20,143 @@ type FacturaParseada = {
   cae_vencimiento:    string | null
 }
 
-const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+type ItemStatus = 'parsing' | 'ok' | 'duplicate' | 'error' | 'saving' | 'saved' | 'save_error'
+
+type BatchItem = {
+  id:       string
+  fileName: string
+  status:   ItemStatus
+  data:     FacturaParseada | null
+  include:  boolean
+  error:    string | null
+}
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+let _uid = 0
+const nextId = () => `item_${_uid++}`
+
+const fileToBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve((reader.result as string).split(',')[1])
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'))
+    reader.readAsDataURL(file)
+  })
 
 export function ImportarFacturaButton() {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [loading, setLoading]   = useState(false)
-  const [saving, setSaving]     = useState(false)
-  const [error, setError]       = useState<string | null>(null)
-  const [parsed, setParsed]     = useState<FacturaParseada | null>(null)
-  const [duplicado, setDuplicado] = useState(false)
+  const [open, setOpen]       = useState(false)
+  const [items, setItems]     = useState<BatchItem[]>([])
+  const [phase, setPhase]     = useState<'parsing' | 'review' | 'saving' | 'done'>('parsing')
+  const [topError, setTopError] = useState<string | null>(null)
 
-  // Campos editables del preview (el user puede corregir antes de guardar)
-  const [form, setForm] = useState<FacturaParseada | null>(null)
+  const patchItem = (id: string, patch: Partial<BatchItem>) =>
+    setItems(prev => prev.map(it => (it.id === id ? { ...it, ...patch } : it)))
+
+  const patchData = (id: string, patch: Partial<FacturaParseada>) =>
+    setItems(prev => prev.map(it => (it.id === id && it.data ? { ...it, data: { ...it.data, ...patch } } : it)))
 
   const reset = () => {
-    setParsed(null); setForm(null); setError(null); setDuplicado(false)
-    setLoading(false); setSaving(false)
+    setOpen(false); setItems([]); setPhase('parsing'); setTopError(null)
     if (fileRef.current) fileRef.current.value = ''
   }
 
-  const handleFile = async (file: File) => {
-    if (file.type !== 'application/pdf') { setError('Solo se aceptan archivos PDF'); return }
-    setError(null)
-    setLoading(true)
+  // ── Parseo de un PDF con retry en 429 ──
+  const parseOne = async (base64: string, attempt = 0): Promise<{ duplicado: boolean; factura: FacturaParseada }> => {
+    const res = await fetch('/api/monotributo/parsear-factura', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ pdf: base64 }),
+    })
+    if (res.status === 429 && attempt < 3) {
+      await sleep(4000)
+      return parseOne(base64, attempt + 1)
+    }
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message ?? data.error ?? 'No se pudo procesar el PDF')
+    return { duplicado: data.duplicado, factura: data.factura }
+  }
 
-    const reader = new FileReader()
-    reader.onload = async (e) => {
+  // ── Pool con concurrencia limitada ──
+  const handleFiles = async (files: File[]) => {
+    setTopError(null)
+    const pdfs = files.filter(f => f.type === 'application/pdf')
+    if (pdfs.length === 0) { setTopError('Solo se aceptan archivos PDF'); return }
+
+    const initial: BatchItem[] = pdfs.map(f => ({
+      id: nextId(), fileName: f.name, status: 'parsing', data: null, include: true, error: null,
+    }))
+    setItems(initial)
+    setPhase('parsing')
+    setOpen(true)
+
+    // Worker pool (concurrencia 3)
+    let idx = 0
+    const worker = async () => {
+      while (idx < pdfs.length) {
+        const i = idx++
+        const item = initial[i]
+        try {
+          const base64 = await fileToBase64(pdfs[i])
+          const { duplicado, factura } = await parseOne(base64)
+          patchItem(item.id, {
+            status:  duplicado ? 'duplicate' : 'ok',
+            data:    factura,
+            include: !duplicado,  // duplicados arrancan desmarcados
+          })
+        } catch (err) {
+          patchItem(item.id, { status: 'error', include: false, error: err instanceof Error ? err.message : 'Error' })
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(3, pdfs.length) }, worker))
+    setPhase('review')
+  }
+
+  // ── Guardar las facturas seleccionadas ──
+  const handleSaveAll = async () => {
+    setPhase('saving'); setTopError(null)
+    const toSave = items.filter(it => it.include && it.data && (it.status === 'ok' || it.status === 'duplicate'))
+
+    for (const it of toSave) {
+      const d = it.data!
+      if (!d.cliente?.trim() || !d.monto || d.monto <= 0 || !d.fecha) {
+        patchItem(it.id, { status: 'save_error', error: 'Faltan datos (cliente/monto/fecha)' })
+        continue
+      }
+      patchItem(it.id, { status: 'saving' })
       try {
-        const base64 = (e.target?.result as string).split(',')[1]
-        const res = await fetch('/api/monotributo/parsear-factura', {
+        const res = await fetch('/api/monotributo/facturas', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ pdf: base64 }),
+          body: JSON.stringify({
+            fecha: d.fecha, cliente: d.cliente.trim(), concepto: d.concepto?.trim() || null,
+            monto: d.monto, tipo_comprobante: d.tipo_comprobante || 'C',
+            numero_comprobante: d.numero_comprobante || null, punto_venta: d.punto_venta || null,
+            cliente_cuit: d.cliente_cuit || null, periodo_desde: d.periodo_desde || null,
+            periodo_hasta: d.periodo_hasta || null, cae: d.cae || null, cae_vencimiento: d.cae_vencimiento || null,
+          }),
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error === 'rate_limit' ? data.message : (data.message ?? data.error ?? 'No se pudo procesar el PDF'))
-        setParsed(data.factura)
-        setForm(data.factura)
-        setDuplicado(data.duplicado)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error al procesar el PDF')
-      } finally {
-        setLoading(false)
+        if (!res.ok) {
+          patchItem(it.id, { status: 'save_error', error: res.status === 409 ? 'Duplicada (CAE ya existe)' : (data.error ?? 'Error al guardar') })
+        } else {
+          patchItem(it.id, { status: 'saved' })
+        }
+      } catch {
+        patchItem(it.id, { status: 'save_error', error: 'Error de red' })
       }
     }
-    reader.onerror = () => { setError('No se pudo leer el archivo'); setLoading(false) }
-    reader.readAsDataURL(file)
+    setPhase('done')
+    router.refresh()
   }
 
-  const update = <K extends keyof FacturaParseada>(k: K, v: FacturaParseada[K]) =>
-    setForm(p => (p ? { ...p, [k]: v } : p))
-
-  const handleConfirm = async () => {
-    if (!form) return
-    if (!form.cliente?.trim()) { setError('Falta el cliente'); return }
-    if (!form.monto || form.monto <= 0) { setError('Falta el monto'); return }
-    if (!form.fecha) { setError('Falta la fecha'); return }
-
-    setSaving(true); setError(null)
-    try {
-      const res = await fetch('/api/monotributo/facturas', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fecha:              form.fecha,
-          cliente:            form.cliente.trim(),
-          concepto:           form.concepto?.trim() || null,
-          monto:              form.monto,
-          tipo_comprobante:   form.tipo_comprobante || 'C',
-          numero_comprobante: form.numero_comprobante || null,
-          punto_venta:        form.punto_venta || null,
-          cliente_cuit:       form.cliente_cuit || null,
-          periodo_desde:      form.periodo_desde || null,
-          periodo_hasta:      form.periodo_hasta || null,
-          cae:                form.cae || null,
-          cae_vencimiento:    form.cae_vencimiento || null,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        if (res.status === 409) throw new Error(data.message ?? 'Ya cargaste esta factura.')
-        throw new Error(data.error ?? 'No se pudo guardar la factura')
-      }
-      reset()
-      router.refresh()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar')
-      setSaving(false)
-    }
-  }
+  const okItems        = items.filter(it => it.status === 'ok' || it.status === 'duplicate')
+  const selectedCount  = items.filter(it => it.include && it.data && (it.status === 'ok' || it.status === 'duplicate')).length
+  const savedCount     = items.filter(it => it.status === 'saved').length
+  const parsingCount   = items.filter(it => it.status === 'parsing').length
 
   return (
     <>
@@ -118,115 +164,99 @@ export function ImportarFacturaButton() {
         ref={fileRef}
         type="file"
         accept="application/pdf"
+        multiple
         className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+        onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) handleFiles(fs) }}
       />
       <button
         onClick={() => fileRef.current?.click()}
-        disabled={loading}
-        className="inline-flex items-center gap-2 text-sm text-slate-600 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50"
+        className="inline-flex items-center gap-2 text-sm text-slate-600 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50"
       >
-        {loading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-        {loading ? 'Leyendo…' : 'Importar PDF'}
+        <Upload size={14} />Importar PDFs
       </button>
 
-      {/* Error fuera del modal (ej. error de parseo) */}
-      {error && !form && (
+      {topError && !open && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white text-sm px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-          <AlertTriangle size={14} />{error}
-          <button onClick={() => setError(null)} className="ml-2"><X size={14} /></button>
+          <AlertTriangle size={14} />{topError}
+          <button onClick={() => setTopError(null)} className="ml-2"><X size={14} /></button>
         </div>
       )}
 
-      {/* Modal de preview/confirmación */}
-      {form && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={reset}>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={phase !== 'saving' ? reset : undefined}>
           <div
-            className="bg-white rounded-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
+            className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl"
             onClick={e => e.stopPropagation()}
           >
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FileText size={18} className="text-emerald-600" />
-                <h2 className="text-base font-semibold text-slate-800">Revisá los datos</h2>
+                <h2 className="text-base font-semibold text-slate-800">
+                  {phase === 'parsing'  && `Leyendo ${items.length} ${items.length === 1 ? 'factura' : 'facturas'}…`}
+                  {phase === 'review'   && `${okItems.length} de ${items.length} listas`}
+                  {phase === 'saving'   && 'Guardando…'}
+                  {phase === 'done'     && `${savedCount} guardadas`}
+                </h2>
               </div>
-              <button onClick={reset} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500">
-                Extraído del PDF con IA. Revisá y corregí lo que haga falta antes de guardar.
-              </p>
-
-              {duplicado && (
-                <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                  <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                  <span>Ya tenés una factura cargada con este CAE. Si la guardás de nuevo te va a dar error.</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Fecha">
-                  <input type="date" value={form.fecha ?? ''} onChange={e => update('fecha', e.target.value)} className={inputCls} />
-                </Field>
-                <Field label="Tipo">
-                  <input type="text" value={form.tipo_comprobante ?? ''} onChange={e => update('tipo_comprobante', e.target.value)} className={inputCls} maxLength={4} />
-                </Field>
-              </div>
-
-              <Field label="Cliente">
-                <input type="text" value={form.cliente ?? ''} onChange={e => update('cliente', e.target.value)} className={inputCls} />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="CUIT cliente">
-                  <input type="text" value={form.cliente_cuit ?? ''} onChange={e => update('cliente_cuit', e.target.value)} className={inputCls} />
-                </Field>
-                <Field label="Monto">
-                  <input type="number" step="0.01" value={form.monto ?? ''} onChange={e => update('monto', parseFloat(e.target.value) || null)} className={inputCls} />
-                </Field>
-              </div>
-
-              <Field label="Concepto">
-                <input type="text" value={form.concepto ?? ''} onChange={e => update('concepto', e.target.value)} className={inputCls} />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Período desde">
-                  <input type="date" value={form.periodo_desde ?? ''} onChange={e => update('periodo_desde', e.target.value)} className={inputCls} />
-                </Field>
-                <Field label="Período hasta">
-                  <input type="date" value={form.periodo_hasta ?? ''} onChange={e => update('periodo_hasta', e.target.value)} className={inputCls} />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="N° comprobante">
-                  <input type="text" value={form.numero_comprobante ?? ''} onChange={e => update('numero_comprobante', e.target.value)} className={inputCls} />
-                </Field>
-                <Field label="CAE">
-                  <input type="text" value={form.cae ?? ''} onChange={e => update('cae', e.target.value)} className={inputCls} />
-                </Field>
-              </div>
-
-              {error && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">{error}</div>
+              {phase !== 'saving' && (
+                <button onClick={reset} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X size={16} /></button>
               )}
             </div>
 
-            <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between sticky bottom-0 bg-white">
-              <button onClick={reset} className="text-sm text-slate-500 hover:text-slate-700">Cancelar</button>
-              <button
-                onClick={handleConfirm}
-                disabled={saving}
-                className="inline-flex items-center gap-2 text-sm text-white px-5 py-2.5 rounded-lg font-medium disabled:opacity-50"
-                style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
-              >
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                {saving ? 'Guardando…' : 'Guardar factura'}
-              </button>
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {phase === 'parsing' && parsingCount > 0 && (
+                <p className="text-xs text-slate-400 px-2 pb-2">
+                  Extrayendo datos con IA · {items.length - parsingCount}/{items.length}
+                </p>
+              )}
+
+              {items.map(it => (
+                <FacturaRow
+                  key={it.id}
+                  item={it}
+                  editable={phase === 'review'}
+                  onToggle={() => patchItem(it.id, { include: !it.include })}
+                  onPatch={(p) => patchData(it.id, p)}
+                />
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
+              {phase === 'review' && (
+                <>
+                  <span className="text-xs text-slate-400">{selectedCount} seleccionadas para guardar</span>
+                  <div className="flex items-center gap-3">
+                    <button onClick={reset} className="text-sm text-slate-500 hover:text-slate-700">Cancelar</button>
+                    <button
+                      onClick={handleSaveAll}
+                      disabled={selectedCount === 0}
+                      className="inline-flex items-center gap-2 text-sm text-white px-5 py-2.5 rounded-lg font-medium disabled:opacity-50"
+                      style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
+                    >
+                      <Check size={14} />Guardar {selectedCount > 0 ? selectedCount : ''} {selectedCount === 1 ? 'factura' : 'facturas'}
+                    </button>
+                  </div>
+                </>
+              )}
+              {phase === 'saving' && (
+                <span className="text-sm text-slate-500 flex items-center gap-2 mx-auto">
+                  <Loader2 size={14} className="animate-spin" />Guardando facturas…
+                </span>
+              )}
+              {phase === 'parsing' && (
+                <span className="text-sm text-slate-500 flex items-center gap-2 mx-auto">
+                  <Loader2 size={14} className="animate-spin" />Procesando PDFs…
+                </span>
+              )}
+              {phase === 'done' && (
+                <button onClick={reset} className="text-sm text-white px-5 py-2.5 rounded-lg font-medium mx-auto"
+                  style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}>
+                  Listo
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -235,13 +265,77 @@ export function ImportarFacturaButton() {
   )
 }
 
-const inputCls = 'w-full text-sm text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 transition-colors'
+// ─── Fila de una factura en la lista ─────────────────────────────────────────
+function FacturaRow({
+  item, editable, onToggle, onPatch,
+}: {
+  item:     BatchItem
+  editable: boolean
+  onToggle: () => void
+  onPatch:  (p: Partial<FacturaParseada>) => void
+}) {
+  const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  // Estado visual por status
+  const badge = {
+    parsing:    { label: 'Leyendo…',   cls: 'bg-slate-100 text-slate-500' },
+    ok:         { label: 'Lista',      cls: 'bg-emerald-50 text-emerald-700' },
+    duplicate:  { label: 'Duplicada',  cls: 'bg-amber-50 text-amber-700' },
+    error:      { label: 'Error',      cls: 'bg-red-50 text-red-700' },
+    saving:     { label: 'Guardando…', cls: 'bg-slate-100 text-slate-500' },
+    saved:      { label: 'Guardada ✓', cls: 'bg-emerald-100 text-emerald-700' },
+    save_error: { label: 'Falló',      cls: 'bg-red-50 text-red-700' },
+  }[item.status]
+
+  const d = item.data
+  const isProblem = item.status === 'error' || item.status === 'save_error'
+
   return (
-    <div>
-      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
-      {children}
+    <div className={`rounded-xl border p-3 ${isProblem ? 'border-red-200 bg-red-50/40' : item.status === 'duplicate' ? 'border-amber-200 bg-amber-50/30' : 'border-slate-200 bg-white'}`}>
+      <div className="flex items-center gap-3">
+        {/* Checkbox include (solo en review y si hay data) */}
+        {editable && d && (item.status === 'ok' || item.status === 'duplicate') ? (
+          <input type="checkbox" checked={item.include} onChange={onToggle}
+            className="w-4 h-4 rounded accent-emerald-600 shrink-0" />
+        ) : (
+          <div className="w-4 shrink-0">
+            {item.status === 'parsing' || item.status === 'saving'
+              ? <Loader2 size={14} className="animate-spin text-slate-400" /> : null}
+          </div>
+        )}
+
+        {/* Datos */}
+        <div className="flex-1 min-w-0">
+          {d && (item.status !== 'error') ? (
+            editable ? (
+              <div className="grid grid-cols-[110px_1fr_120px] gap-2 items-center">
+                <input type="date" value={d.fecha ?? ''} onChange={e => onPatch({ fecha: e.target.value })}
+                  className="text-xs border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400" />
+                <input type="text" value={d.cliente ?? ''} onChange={e => onPatch({ cliente: e.target.value })}
+                  placeholder="Cliente" className="text-sm border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 truncate" />
+                <input type="number" step="0.01" value={d.monto ?? ''} onChange={e => onPatch({ monto: parseFloat(e.target.value) || null })}
+                  placeholder="Monto" className="text-sm text-right border border-slate-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 tabular-nums" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{d.cliente ?? item.fileName}</p>
+                  <p className="text-[11px] text-slate-400 truncate">{d.fecha ?? '—'}{d.concepto ? ` · ${d.concepto}` : ''}</p>
+                </div>
+                {d.monto != null && <span className="text-sm font-bold text-slate-800 tabular-nums shrink-0">${fmt(d.monto)}</span>}
+              </div>
+            )
+          ) : (
+            <div className="min-w-0">
+              <p className="text-sm text-slate-600 truncate">{item.fileName}</p>
+              {item.error && <p className="text-[11px] text-red-500 truncate">{item.error}</p>}
+            </div>
+          )}
+        </div>
+
+        {/* Badge */}
+        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full shrink-0 ${badge.cls}`}>{badge.label}</span>
+      </div>
     </div>
   )
 }

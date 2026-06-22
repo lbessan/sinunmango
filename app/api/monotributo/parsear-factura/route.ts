@@ -23,8 +23,10 @@ export async function POST(req: NextRequest) {
   const { supabase, user } = await createClientForRequest(req)
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  // Rate limit — PDFs son llamadas caras a Claude.
-  const rl = await checkRateLimit(user.id, '/api/monotributo/parsear-factura', { max: 5, windowSeconds: 60 })
+  // Rate limit — PDFs son llamadas caras a Claude. Límite alto (40/min)
+  // para soportar el import en batch del histórico de facturas; el client
+  // procesa con concurrencia baja + retry, así que rara vez lo toca.
+  const rl = await checkRateLimit(user.id, '/api/monotributo/parsear-factura', { max: 40, windowSeconds: 60 })
   if (!rl.allowed) return NextResponse.json({ error: rl.message }, { status: 429 })
 
   const apiKey = process.env.ANTHROPIC_API_KEY
