@@ -523,6 +523,9 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const [fechasError,        setFechasError]        = useState<string | null>(null)
   const [fechasUltimoApply,  setFechasUltimoApply]  = useState<FechasPropuestas | null>(null)
   const [fechasUndoTimer,    setFechasUndoTimer]    = useState(0)
+  // Si la última aplicación fue diferida (el ciclo actual no venció), las
+  // fechas quedan como pendientes — el toast lo aclara y el deshacer las limpia.
+  const [fechasDiferidas,    setFechasDiferidas]    = useState(false)
 
   // Cuenta atrás del toast de "Deshacer" (10s)
   useEffect(() => {
@@ -641,12 +644,15 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const aplicarFechas = async () => {
     if (!fechasPropuestas) return
     setFechasApplying(true); setFechasError(null)
-    const res = await fetch(`/api/tarjetas/${cuentaId}`, {
-      method: 'PATCH',
+    // Endpoint dedicado: decide solo si aplicar directo o diferir (guardar
+    // como pendiente) según si el ciclo actual ya venció. Así no rompemos la
+    // asignación de período de las compras del ciclo que recién cerró.
+    const res = await fetch(`/api/tarjetas/${cuentaId}/avanzar-ciclo`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        fecha_cierre_tarjeta:       fechasPropuestas.proximo_cierre,
-        fecha_vencimiento_tarjeta:  fechasPropuestas.proximo_vencimiento,
+        proximo_cierre:      fechasPropuestas.proximo_cierre,
+        proximo_vencimiento: fechasPropuestas.proximo_vencimiento,
       }),
     })
     setFechasApplying(false)
@@ -655,22 +661,28 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       setFechasError(d?.error ?? 'No pudimos actualizar las fechas.')
       return
     }
+    const d = await res.json().catch(() => ({}))
+    setFechasDiferidas(!!d.deferred)
     setFechasUltimoApply(fechasPropuestas)
     setFechasUndoTimer(10)
     setFechasPropuestas(null)
   }
 
-  // Revierte el último apply restaurando las fechas previas (actual_*).
+  // Revierte el último apply. Si fue diferido, limpia las pendientes; si fue
+  // directo, restaura las fechas previas (actual_*).
   const deshacerFechas = async () => {
     if (!fechasUltimoApply) return
     setFechasApplying(true); setFechasError(null)
+    const body = fechasDiferidas
+      ? { fecha_cierre_pendiente: null, fecha_vencimiento_pendiente: null }
+      : {
+          fecha_cierre_tarjeta:       fechasUltimoApply.actual_cierre,
+          fecha_vencimiento_tarjeta:  fechasUltimoApply.actual_vencimiento,
+        }
     const res = await fetch(`/api/tarjetas/${cuentaId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fecha_cierre_tarjeta:       fechasUltimoApply.actual_cierre,
-        fecha_vencimiento_tarjeta:  fechasUltimoApply.actual_vencimiento,
-      }),
+      body: JSON.stringify(body),
     })
     setFechasApplying(false)
     if (!res.ok) {
@@ -1066,12 +1078,24 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
                   )}
                 </div>
               )}
-              {/* Toast de "Fechas aplicadas — Deshacer (10s)" */}
+              {/* Toast de "Fechas aplicadas — Deshacer (10s)".
+                  Si fue diferido, aclaramos que se aplican tras el vencimiento
+                  actual (para no romper el período del ciclo en curso). */}
               {fechasUltimoApply && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-3">
                   <p className="text-xs text-emerald-800">
-                    <span className="font-semibold">Fechas actualizadas</span>
-                    {' '}· Cierre {formatFecha(fechasUltimoApply.proximo_cierre)}, vence {formatFecha(fechasUltimoApply.proximo_vencimiento)}
+                    {fechasDiferidas ? (
+                      <>
+                        <span className="font-semibold">Próximo ciclo programado</span>
+                        {' '}· Cierre {formatFecha(fechasUltimoApply.proximo_cierre)}, vence {formatFecha(fechasUltimoApply.proximo_vencimiento)}.
+                        {' '}Se aplican después de que venza el ciclo actual{fechasUltimoApply.actual_vencimiento ? ` (${formatFecha(fechasUltimoApply.actual_vencimiento)})` : ''}.
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-semibold">Fechas actualizadas</span>
+                        {' '}· Cierre {formatFecha(fechasUltimoApply.proximo_cierre)}, vence {formatFecha(fechasUltimoApply.proximo_vencimiento)}
+                      </>
+                    )}
                   </p>
                   <button
                     onClick={deshacerFechas} disabled={fechasApplying}

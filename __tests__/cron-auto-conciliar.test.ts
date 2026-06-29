@@ -28,10 +28,15 @@ function makeReq(): NextRequest {
   })
 }
 
-function setTarjetasQuery(opts: {
-  data?: Array<{ id: string; nombre_cuenta: string; fecha_vencimiento_tarjeta: string | null }>
-  error?: unknown
-}) {
+type TarjetaRow = {
+  id: string
+  nombre_cuenta: string
+  fecha_vencimiento_tarjeta: string | null
+  fecha_cierre_pendiente?: string | null
+  fecha_vencimiento_pendiente?: string | null
+}
+
+function setTarjetasQuery(opts: { data?: TarjetaRow[]; error?: unknown }) {
   // chain: .from('cuentas').select(...).eq('tipo_cuenta', x).eq('activa', true)
   const eq2 = vi.fn(() => Promise.resolve({ data: opts.data ?? [], error: opts.error ?? null }))
   const eq1 = vi.fn(() => ({ eq: eq2 }))
@@ -48,6 +53,14 @@ function setConciliarUpdate(result: { error?: unknown } = {}) {
   const update = vi.fn(() => ({ eq: eq1 }))
   adminFromMock.mockReturnValueOnce({ update })
   return { update, lt }
+}
+
+function setRotacionUpdate(result: { error?: unknown } = {}) {
+  // chain: .from('cuentas').update({...}).eq('id', x)
+  const eq = vi.fn(() => Promise.resolve({ error: result.error ?? null }))
+  const update = vi.fn(() => ({ eq }))
+  adminFromMock.mockReturnValueOnce({ update })
+  return { update, eq }
 }
 
 beforeEach(() => {
@@ -173,5 +186,74 @@ describe('GET /api/cron/auto-conciliar — matching de día', () => {
 
     await GET(makeReq())
     expect(lt).toHaveBeenCalledWith('periodo_tarjeta', '2026-03-01')
+  })
+})
+
+describe('GET /api/cron/auto-conciliar — rotación de fechas pendientes', () => {
+  it('rota pendiente → activa cuando el venc activo ya pasó', async () => {
+    // Hoy 8-jul; ciclo activo venció el 6-jul; hay próximo ciclo pendiente.
+    todayPartsMock.mockReturnValue({ year: 2026, month: 7, day: 8 })
+    setTarjetasQuery({ data: [{
+      id: 't1', nombre_cuenta: 'Visa',
+      fecha_vencimiento_tarjeta: '2026-07-06',
+      fecha_cierre_pendiente: '2026-07-23',
+      fecha_vencimiento_pendiente: '2026-08-03',
+    }]})
+    // venceDay 6 != hoy 8 → no concilia; solo rota.
+    const { update } = setRotacionUpdate()
+
+    const res = await GET(makeReq())
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.rotadas).toHaveLength(1)
+    expect(update).toHaveBeenCalledWith({
+      fecha_cierre_tarjeta:        '2026-07-23',
+      fecha_vencimiento_tarjeta:   '2026-08-03',
+      fecha_cierre_pendiente:      null,
+      fecha_vencimiento_pendiente: null,
+    })
+  })
+
+  it('NO rota si el venc activo todavía no pasó', async () => {
+    // Hoy 30-jun; el ciclo activo vence el 6-jul (futuro) → no rotar.
+    todayPartsMock.mockReturnValue({ year: 2026, month: 6, day: 30 })
+    setTarjetasQuery({ data: [{
+      id: 't1', nombre_cuenta: 'Visa',
+      fecha_vencimiento_tarjeta: '2026-07-06',
+      fecha_cierre_pendiente: '2026-07-23',
+      fecha_vencimiento_pendiente: '2026-08-03',
+    }]})
+    // venceDay 6 != hoy 30 → no concilia; venc futuro → no rota. Sin updates.
+    const res = await GET(makeReq())
+    const body = await res.json()
+    expect(body.rotadas).toEqual([])
+  })
+
+  it('el día del vencimiento concilia Y rota', async () => {
+    todayPartsMock.mockReturnValue({ year: 2026, month: 7, day: 6 })
+    setTarjetasQuery({ data: [{
+      id: 't1', nombre_cuenta: 'Visa',
+      fecha_vencimiento_tarjeta: '2026-07-06',
+      fecha_cierre_pendiente: '2026-07-23',
+      fecha_vencimiento_pendiente: '2026-08-03',
+    }]})
+    setConciliarUpdate()       // venceDay 6 == hoy 6 → concilia
+    const { update } = setRotacionUpdate()  // venc 6 <= hoy 6 → rota
+
+    const res = await GET(makeReq())
+    const body = await res.json()
+    expect(body.procesadas).toHaveLength(1)
+    expect(body.rotadas).toHaveLength(1)
+    expect(update).toHaveBeenCalled()
+  })
+
+  it('sin pendiente no rota (tarjetas viejas sin columnas)', async () => {
+    todayPartsMock.mockReturnValue({ year: 2026, month: 7, day: 8 })
+    setTarjetasQuery({ data: [{
+      id: 't1', nombre_cuenta: 'Visa', fecha_vencimiento_tarjeta: '2026-07-06',
+    }]})
+    const res = await GET(makeReq())
+    const body = await res.json()
+    expect(body.rotadas).toEqual([])
   })
 })

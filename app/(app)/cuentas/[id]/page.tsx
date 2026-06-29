@@ -7,6 +7,7 @@ import { Pencil, ArrowLeft } from 'lucide-react'
 import { CuentaSaldoReactivo } from '@/components/cuenta-saldo-reactivo'
 import { CuentaMovimientosTable } from '@/components/cuenta-movimientos-table'
 import { DeleteButton } from '@/components/delete-button'
+import { RecalcularPeriodosButton } from '@/components/recalcular-periodos-button'
 import { getCurrentWorkspace } from '@/lib/workspace'
 
 type SaldoProps = ComponentProps<typeof CuentaSaldoReactivo>
@@ -17,6 +18,12 @@ function formatPeriodo(p: string | null): string {
   return new Date(p + 'T12:00:00')
     .toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
     .replace(/^\w/, c => c.toUpperCase())
+}
+
+// 'YYYY-MM-DD' → 'DD/MM'
+function fmtDDMM(iso: string): string {
+  const [, m, d] = iso.split('-')
+  return `${d}/${m}`
 }
 
 function esColorOscuro(hex: string): boolean {
@@ -40,7 +47,7 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
   const [{ data: cuenta }, { data: extra }, { data: movPasados }, { data: movFuturos }, { data: categorias }, { data: subcategorias }, { data: otrasCuentas }] =
     await Promise.all([
       supabase.from('saldo_actual_cuentas').select('*').eq('id', id).eq('user_id', wsId).single(),
-      supabase.from('cuentas').select('imagen_url, imagen_banner_url, color_primario').eq('id', id).eq('user_id', wsId).single(),
+      supabase.from('cuentas').select('imagen_url, imagen_banner_url, color_primario, fecha_cierre_pendiente, fecha_vencimiento_pendiente').eq('id', id).eq('user_id', wsId).single(),
       // Movs scoped por cuenta (no por user_id). RLS filtra: own movs OR
       // movs en cuentas a las que tengo acceso. Sacar el filtro user_id
       // permite que el invitee vea TAMBIÉN sus propios movs cargados en
@@ -164,6 +171,31 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
             }
           </div>
           <CuentaSaldoReactivo {...saldoProps} />
+        </div>
+      )}
+
+      {/* Tarjeta: ciclo pendiente + recalcular períodos.
+          - El ciclo pendiente aparece cuando conciliaste un resumen pero el
+            ciclo actual todavía no venció: las fechas nuevas esperan a rotar.
+          - El botón recalcula los períodos de compras no conciliadas (por si
+            quedaron mal asignadas al avanzar fechas antes de tiempo). */}
+      {isTarjeta && isOwn && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-3">
+          {extra?.fecha_cierre_pendiente && extra?.fecha_vencimiento_pendiente && (
+            <div className="flex items-start gap-2 text-xs text-blue-800 bg-blue-50 border border-blue-100 rounded-lg p-3">
+              <span className="font-semibold shrink-0">Próximo ciclo programado:</span>
+              <span>
+                cierra {fmtDDMM(extra.fecha_cierre_pendiente)}, vence {fmtDDMM(extra.fecha_vencimiento_pendiente)}.
+                {' '}Se aplica automáticamente cuando venza el ciclo actual.
+              </span>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-xs text-slate-400">
+              Cierre día {cierre ?? '—'} · vence día {vence ?? '—'}
+            </p>
+            <RecalcularPeriodosButton cuentaId={id} />
+          </div>
         </div>
       )}
 

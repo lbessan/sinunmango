@@ -4,6 +4,7 @@ import {
   calcularPeriodoCuenta,
   addMonths,
   stripCuotaSuffix,
+  debeDeferirFechas,
 } from '@/lib/tarjeta-periodo'
 
 describe('calcularPeriodo', () => {
@@ -197,5 +198,28 @@ describe('stripCuotaSuffix', () => {
   it('saca espacios extra antes del sufijo', () => {
     expect(stripCuotaSuffix('COTO   (Cuota 5/12)')).toBe('COTO')
     expect(stripCuotaSuffix('COTO\t(Cuota 5/12)')).toBe('COTO')
+  })
+})
+
+describe('debeDeferirFechas', () => {
+  // Ciclo actual cerró 25-jun, vence 6-jul. Las fechas del próximo ciclo
+  // (cierre 23-jul) deben diferirse hasta que pase el vencimiento del 6-jul.
+  const VENC_ACTUAL = '2026-07-06'
+
+  it('difiere si hoy es anterior al vencimiento actual', () => {
+    // Concilio el 26-jun (apenas cerró el resumen) → diferir
+    expect(debeDeferirFechas(VENC_ACTUAL, new Date('2026-06-26T12:00:00'))).toBe(true)
+    // Un día antes del venc → todavía diferir
+    expect(debeDeferirFechas(VENC_ACTUAL, new Date('2026-07-05T12:00:00'))).toBe(true)
+  })
+
+  it('aplica directo el día del vencimiento o después', () => {
+    expect(debeDeferirFechas(VENC_ACTUAL, new Date('2026-07-06T12:00:00'))).toBe(false)
+    expect(debeDeferirFechas(VENC_ACTUAL, new Date('2026-07-10T12:00:00'))).toBe(false)
+  })
+
+  it('sin vencimiento actual → aplica directo (no hay ciclo que proteger)', () => {
+    expect(debeDeferirFechas(null,      new Date('2026-06-26T12:00:00'))).toBe(false)
+    expect(debeDeferirFechas(undefined, new Date('2026-06-26T12:00:00'))).toBe(false)
   })
 })

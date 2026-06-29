@@ -166,6 +166,8 @@ export type Database = {
           created_at: string | null
           fecha_cierre_tarjeta: string | null
           fecha_vencimiento_tarjeta: string | null
+          fecha_cierre_pendiente: string | null
+          fecha_vencimiento_pendiente: string | null
           id: string
           imagen_banner_url: string | null
           imagen_url: string | null
@@ -183,6 +185,8 @@ export type Database = {
           created_at?: string | null
           fecha_cierre_tarjeta?: string | null
           fecha_vencimiento_tarjeta?: string | null
+          fecha_cierre_pendiente?: string | null
+          fecha_vencimiento_pendiente?: string | null
           id: string
           imagen_banner_url?: string | null
           imagen_url?: string | null
@@ -200,6 +204,8 @@ export type Database = {
           created_at?: string | null
           fecha_cierre_tarjeta?: string | null
           fecha_vencimiento_tarjeta?: string | null
+          fecha_cierre_pendiente?: string | null
+          fecha_vencimiento_pendiente?: string | null
           id?: string
           imagen_banner_url?: string | null
           imagen_url?: string | null

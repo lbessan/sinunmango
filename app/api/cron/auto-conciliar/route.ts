@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   // Buscar tarjetas cuyo vencimiento es hoy
   const { data: tarjetas, error: errTarjetas } = await adminClient
     .from('cuentas')
-    .select('id, nombre_cuenta, fecha_vencimiento_tarjeta')
+    .select('id, nombre_cuenta, fecha_vencimiento_tarjeta, fecha_cierre_pendiente, fecha_vencimiento_pendiente')
     .eq('tipo_cuenta', 'Tarjeta Credito')
     .eq('activa', true)
 
@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
   }
 
   const resultados = []
+  const rotadas: { tarjeta: string; error: string | null }[] = []
 
   for (const tarjeta of tarjetas ?? []) {
     const venceDay = tarjeta.fecha_vencimiento_tarjeta
@@ -53,9 +54,39 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  // ── Rotación de fechas pendientes ────────────────────────────────────────
+  // Cuando el ciclo actual vence, las fechas del próximo ciclo (guardadas como
+  // pendientes al conciliar) pasan a ser las activas. Comparamos por FECHA
+  // completa (no solo el día) para ser robustos a días que el cron no corrió:
+  // rotamos toda tarjeta cuyo vencimiento activo ya pasó y tiene pendiente.
+  const inicioHoy = `${yAR}-${String(mAR).padStart(2, '0')}-${String(dAR).padStart(2, '0')}`
+  for (const tarjeta of tarjetas ?? []) {
+    const t = tarjeta as typeof tarjeta & {
+      fecha_cierre_pendiente: string | null
+      fecha_vencimiento_pendiente: string | null
+    }
+    if (!t.fecha_cierre_pendiente || !t.fecha_vencimiento_pendiente) continue
+    if (!t.fecha_vencimiento_tarjeta) continue
+    // Rotar solo si el vencimiento activo ya ocurrió (hoy >= venc activo).
+    if (t.fecha_vencimiento_tarjeta > inicioHoy) continue
+
+    const { error } = await adminClient
+      .from('cuentas')
+      .update({
+        fecha_cierre_tarjeta:        t.fecha_cierre_pendiente,
+        fecha_vencimiento_tarjeta:   t.fecha_vencimiento_pendiente,
+        fecha_cierre_pendiente:      null,
+        fecha_vencimiento_pendiente: null,
+      })
+      .eq('id', t.id)
+
+    rotadas.push({ tarjeta: t.nombre_cuenta, error: error?.message ?? null })
+  }
+
   return NextResponse.json({
     ok: true,
     fecha: today.toISOString(),
     procesadas: resultados,
+    rotadas,
   })
 }

@@ -92,6 +92,26 @@ function validateTarjetaUpdate(raw: unknown): Validated<Record<string, unknown>>
       updates.fecha_vencimiento_tarjeta = v.data
     }
   }
+  // Fechas "pendientes" del próximo ciclo (las setea avanzar-ciclo; acá solo
+  // permitimos limpiarlas a null — usado por el "deshacer" de la conciliación).
+  if (b.fecha_cierre_pendiente !== undefined) {
+    if (b.fecha_cierre_pendiente === null || b.fecha_cierre_pendiente === '') {
+      updates.fecha_cierre_pendiente = null
+    } else {
+      const v = validateISODate(b.fecha_cierre_pendiente, 'fecha_cierre_pendiente')
+      if (!v.ok) return v
+      updates.fecha_cierre_pendiente = v.data
+    }
+  }
+  if (b.fecha_vencimiento_pendiente !== undefined) {
+    if (b.fecha_vencimiento_pendiente === null || b.fecha_vencimiento_pendiente === '') {
+      updates.fecha_vencimiento_pendiente = null
+    } else {
+      const v = validateISODate(b.fecha_vencimiento_pendiente, 'fecha_vencimiento_pendiente')
+      if (!v.ok) return v
+      updates.fecha_vencimiento_pendiente = v.data
+    }
+  }
   if (b.activa !== undefined) {
     const v = validateBoolean(b.activa, 'activa')
     if (!v.ok) return v

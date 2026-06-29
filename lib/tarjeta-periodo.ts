@@ -86,6 +86,31 @@ export function stripCuotaSuffix(detalle: string | null | undefined): string {
 }
 
 /**
+ * Decide si las fechas del PRÓXIMO ciclo deben diferirse (guardarse como
+ * pendientes) en vez de aplicarse de inmediato.
+ *
+ * Se difiere mientras el ciclo actual NO venció: si hoy es anterior al
+ * vencimiento actual, todavía estamos operando en el ciclo viejo (compras
+ * tardías que le pertenecen + alerta de pago pendiente), así que avanzar las
+ * fechas ahora reclasificaría compras y rompería el aviso de vencimiento.
+ *
+ * - Sin vencimiento actual (tarjeta recién configurada) → NO diferir (aplicar
+ *   directo, no hay ciclo que proteger).
+ * - hoy < vencimiento actual → diferir.
+ * - hoy >= vencimiento actual → aplicar directo (el ciclo ya venció / vence hoy).
+ */
+export function debeDeferirFechas(
+  vencActualISO: string | null | undefined,
+  hoy: Date = new Date()
+): boolean {
+  if (!vencActualISO) return false
+  const venc   = new Date(vencActualISO + 'T12:00:00')
+  const hoyMid = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
+  const vencMid = new Date(venc.getFullYear(), venc.getMonth(), venc.getDate())
+  return hoyMid < vencMid
+}
+
+/**
  * Variante de `calcularPeriodo` que recibe el objeto cuenta directamente
  * (extrae los días de cierre/vencimiento internamente). Cómodo para los
  * formularios donde ya tenés la cuenta cargada.
