@@ -4,6 +4,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 import { getEffectivePlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, isOnboardingActive, usageHeaders } from '@/lib/usage-limits'
 import { parseClaudeJSON, recoverPartialArray } from '@/lib/parse-claude-json'
+import { dedupTransaccionesCuotas } from '@/lib/dedup-transacciones'
 import { MODEL_PARSEAR_RESUMEN } from '@/lib/claude-models'
 import { isPdfEncrypted, extractTextFromPdf } from '@/lib/pdf-decrypt'
 import { encryptSecret, decryptSecret } from '@/lib/crypto'
@@ -218,6 +219,7 @@ export async function POST(req: NextRequest) {
               text: `Analizá este resumen de tarjeta de crédito y extraé los siguientes items:
 
 1. CONSUMOS del titular principal Y DE TODAS LAS TARJETAS ADICIONALES. El resumen normalmente tiene secciones separadas tipo "Consumos de [Nombre Titular]" o "Consumos [Nombre Adicional]". Incluí TODOS, identificando el titular de cada uno con el campo "titular".
+   IMPORTANTE — NO DUPLIQUES: cada consumo va UNA SOLA VEZ. Muchos resúmenes listan las compras en cuotas en DOS lugares: en los consumos del mes Y en una sección aparte de "Detalle de cuotas", "Plan de cuotas", "Cuotas a vencer", "Financiación" o "Próximas cuotas". Tomá la cuota SOLO de los consumos del período (la que efectivamente se cobra este mes, ej. "C.05/12"). IGNORÁ por completo las secciones que proyectan cuotas futuras / a vencer — esas NO son consumos de este resumen.
 2. DESCUENTOS Y CRÉDITOS A FAVOR que aparezcan EN CUALQUIER PARTE del resumen (incluso fuera de la sección de consumos, en el encabezado o en secciones propias). Ejemplos: "CR.RG ...", "BONIF. CONSUMO ...", "REINTEGRO ...", "DESCUENTO ...", ajustes con monto negativo.
 3. TODOS los items INDIVIDUALES de la sección "Impuestos, cargos e intereses" (si existe), cada uno por separado
 4. FECHAS DEL PRÓXIMO PERÍODO si figuran en el resumen (típicamente en el encabezado o pie):
@@ -434,7 +436,10 @@ Notas importantes:
   }>(rawText)
   if (parsed) {
     const fechas_propuestas = await buildFechasPropuestas(parsed.proximo_cierre, parsed.proximo_vencimiento)
-    const transacciones = await dispatchTitulares(parsed.transacciones ?? [])
+    // Dedup defensivo: Claude a veces repite una cuota que el resumen lista en
+    // dos secciones (consumos + plan de cuotas). Colapsamos antes de dispatch.
+    const sinDuplicados = dedupTransaccionesCuotas(parsed.transacciones ?? [])
+    const transacciones = await dispatchTitulares(sinDuplicados)
     const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
     return NextResponse.json({
       ok: true,
@@ -450,7 +455,8 @@ Notas importantes:
   const recovered = recoverPartialArray(rawText, 'transacciones')
   if (recovered) {
     console.warn(`[parsear-resumen] Partial parse recovered ${recovered.length} transactions`)
-    const transacciones = await dispatchTitulares(recovered)
+    const sinDuplicados = dedupTransaccionesCuotas(recovered)
+    const transacciones = await dispatchTitulares(sinDuplicados)
     const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
     return NextResponse.json({
       ok: true,
