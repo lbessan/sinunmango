@@ -84,11 +84,12 @@ function NuevoMovimientoContent() {
         setSubcategorias(sub ?? [])
 
         // Pre-llenar desde query params (viene de "Registrar pago" en gastos fijos)
-        const paramDetalle   = searchParams.get('detalle')   ?? ''
-        const paramMonto     = searchParams.get('monto')     ?? ''
-        const paramMoneda    = searchParams.get('moneda')    ?? 'ARS'
-        const paramCuenta    = searchParams.get('cuenta')    ?? ''
-        const paramCategoria = searchParams.get('categoria') ?? ''
+        const paramDetalle      = searchParams.get('detalle')      ?? ''
+        const paramMonto        = searchParams.get('monto')        ?? ''
+        const paramMoneda       = searchParams.get('moneda')       ?? 'ARS'
+        const paramCuenta       = searchParams.get('cuenta')       ?? ''
+        const paramCategoria    = searchParams.get('categoria')    ?? ''
+        const paramSubcategoria = searchParams.get('subcategoria') ?? ''
 
         setForm(f => ({
           ...f,
@@ -97,6 +98,11 @@ function NuevoMovimientoContent() {
           moneda:        paramMoneda,
           cuenta_origen: paramCuenta   || (c?.length > 0 ? c[0].id : f.cuenta_origen),
           categoria:     paramCategoria || (cat?.length > 0 ? cat[0].id : f.categoria),
+          // Heredá la subcategoría solo si pertenece a la categoría pasada
+          // (evita dejar una subcat colgada de otra categoría).
+          subcategoria:  paramSubcategoria && (sub ?? []).some(
+            (s: Subcategoria) => s.id === paramSubcategoria && s.categoria_padre === paramCategoria,
+          ) ? paramSubcategoria : f.subcategoria,
         }))
         setCargado(true)
       })

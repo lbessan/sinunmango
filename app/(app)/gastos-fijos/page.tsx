@@ -16,6 +16,7 @@ type GastoFijo = {
   moneda: string | null
   dia_vencimiento: number | null
   activo: boolean
+  id_subcategoria: string | null
   cuentas: { id: string; nombre_cuenta: string; tipo_cuenta: string } | null
   categorias: { id: string; nombre_categoria: string; icono: string | null } | null
 }
@@ -114,12 +115,15 @@ export default async function GastosFijosPage() {
             const vencido = (g.dia_vencimiento ?? 0) < today
             const hoy     = g.dia_vencimiento === today
             const pagoParams = new URLSearchParams({
-              detalle:   g.nombre_gasto,
-              monto:     String(g.monto_estimado),
-              moneda:    g.moneda ?? 'ARS',
-              cuenta:    cuenta?.id ?? '',
-              categoria: g.categorias?.id ?? '',
-              returnTo:  '/gastos-fijos',  // volver acá tras guardar (no a /movimientos)
+              detalle:      g.nombre_gasto,
+              monto:        String(g.monto_estimado),
+              moneda:       g.moneda ?? 'ARS',
+              cuenta:       cuenta?.id ?? '',
+              categoria:    g.categorias?.id ?? '',
+              // Heredá la subcategoría del gasto fijo — sin esto los pagos
+              // caían en "Sin subcategoría" en la analítica.
+              subcategoria: g.id_subcategoria ?? '',
+              returnTo:     '/gastos-fijos',  // volver acá tras guardar (no a /movimientos)
             })
             return (
               // En mobile las acciones (Registrar pago + lápiz + delete) van
