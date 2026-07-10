@@ -13,135 +13,12 @@
 
 import { useState, useMemo } from 'react'
 import { X, Search } from 'lucide-react'
+import { EMOJIS, GRUPOS, type EmojiEntry } from '@/lib/emojis-catalogo'
 
 // Normaliza: lowercase + sin tildes
 const norm = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 
-type EmojiEntry = {
-  emoji: string
-  keywords: string[]   // términos de búsqueda (sin tildes)
-  grupo: string
-}
-
-// Catálogo de emojis curado para finanzas personales AR.
-// Mantenemos un set acotado (~120) en lugar del Unicode completo (~3000)
-// para que sea relevante y rápido de scrolear.
-const EMOJIS: EmojiEntry[] = [
-  // ── Comida y delivery ────────────────────────────────────────────────────
-  { emoji: '🛒', keywords: ['supermercado', 'super', 'almacen', 'compras', 'mercado'], grupo: 'Comida' },
-  { emoji: '🍔', keywords: ['hamburguesa', 'fast food', 'comida rapida', 'mcdonald'], grupo: 'Comida' },
-  { emoji: '🍕', keywords: ['pizza', 'pizzeria', 'italiana'], grupo: 'Comida' },
-  { emoji: '🍣', keywords: ['sushi', 'japonesa', 'asiatica'], grupo: 'Comida' },
-  { emoji: '🥘', keywords: ['restaurante', 'cena', 'almuerzo', 'comida', 'plato'], grupo: 'Comida' },
-  { emoji: '🍴', keywords: ['restaurante', 'cubiertos', 'comer afuera'], grupo: 'Comida' },
-  { emoji: '☕', keywords: ['cafe', 'starbucks', 'desayuno', 'merienda'], grupo: 'Comida' },
-  { emoji: '🍺', keywords: ['cerveza', 'bar', 'alcohol', 'birra'], grupo: 'Comida' },
-  { emoji: '🍷', keywords: ['vino', 'bar', 'alcohol', 'bodega'], grupo: 'Comida' },
-  { emoji: '🥐', keywords: ['panaderia', 'medialunas', 'desayuno', 'pan'], grupo: 'Comida' },
-  { emoji: '🍦', keywords: ['helado', 'heladeria', 'postre', 'dulce'], grupo: 'Comida' },
-  { emoji: '🛍️', keywords: ['delivery', 'pedidos ya', 'rappi', 'comida online'], grupo: 'Comida' },
-  // ── Transporte ────────────────────────────────────────────────────────────
-  { emoji: '🚗', keywords: ['auto', 'transporte', 'nafta', 'combustible'], grupo: 'Transporte' },
-  { emoji: '⛽', keywords: ['nafta', 'combustible', 'ypf', 'shell', 'gasolina'], grupo: 'Transporte' },
-  { emoji: '🚌', keywords: ['colectivo', 'bondi', 'omnibus', 'transporte publico', 'sube'], grupo: 'Transporte' },
-  { emoji: '🚇', keywords: ['subte', 'tren', 'metro'], grupo: 'Transporte' },
-  { emoji: '🚕', keywords: ['taxi', 'uber', 'cabify', 'didi'], grupo: 'Transporte' },
-  { emoji: '🚲', keywords: ['bici', 'bicicleta', 'monopatin'], grupo: 'Transporte' },
-  { emoji: '🛵', keywords: ['moto', 'motocicleta'], grupo: 'Transporte' },
-  { emoji: '✈️', keywords: ['avion', 'vuelo', 'pasaje', 'viaje', 'aeropuerto'], grupo: 'Transporte' },
-  { emoji: '🅿️', keywords: ['estacionamiento', 'parking', 'cochera'], grupo: 'Transporte' },
-  { emoji: '🛣️', keywords: ['peaje', 'autopista', 'ruta'], grupo: 'Transporte' },
-  // ── Hogar y servicios ────────────────────────────────────────────────────
-  { emoji: '🏠', keywords: ['casa', 'hogar', 'vivienda'], grupo: 'Hogar' },
-  { emoji: '🏘️', keywords: ['alquiler', 'expensas', 'vivienda'], grupo: 'Hogar' },
-  { emoji: '🔑', keywords: ['alquiler', 'llaves', 'inmobiliaria'], grupo: 'Hogar' },
-  { emoji: '⚡', keywords: ['luz', 'electricidad', 'edenor', 'edesur'], grupo: 'Hogar' },
-  { emoji: '💧', keywords: ['agua', 'aysa', 'servicios'], grupo: 'Hogar' },
-  { emoji: '🔥', keywords: ['gas', 'metrogas', 'servicios'], grupo: 'Hogar' },
-  { emoji: '📡', keywords: ['internet', 'wifi', 'fibertel', 'telecentro', 'movistar'], grupo: 'Hogar' },
-  { emoji: '📱', keywords: ['telefono', 'celular', 'movil', 'claro', 'personal'], grupo: 'Hogar' },
-  { emoji: '🛠️', keywords: ['mantenimiento', 'reparacion', 'plomero', 'electricista'], grupo: 'Hogar' },
-  { emoji: '🛋️', keywords: ['muebles', 'decoracion', 'easy', 'home'], grupo: 'Hogar' },
-  { emoji: '🧺', keywords: ['limpieza', 'lavanderia', 'productos limpieza'], grupo: 'Hogar' },
-  // ── Salud ────────────────────────────────────────────────────────────────
-  { emoji: '💊', keywords: ['salud', 'medicamento', 'farmacia', 'remedios'], grupo: 'Salud' },
-  { emoji: '🏥', keywords: ['hospital', 'medico', 'consulta', 'salud'], grupo: 'Salud' },
-  { emoji: '💉', keywords: ['vacuna', 'inyeccion', 'salud'], grupo: 'Salud' },
-  { emoji: '🦷', keywords: ['dentista', 'odontologo', 'odontologia'], grupo: 'Salud' },
-  { emoji: '🩺', keywords: ['medico', 'prepaga', 'osde', 'swiss', 'medicus'], grupo: 'Salud' },
-  { emoji: '🧘', keywords: ['yoga', 'meditacion', 'pilates', 'bienestar'], grupo: 'Salud' },
-  { emoji: '🏋️', keywords: ['gimnasio', 'gym', 'entrenamiento', 'fitness'], grupo: 'Salud' },
-  { emoji: '👓', keywords: ['anteojos', 'lentes', 'optica'], grupo: 'Salud' },
-  // ── Educación y trabajo ──────────────────────────────────────────────────
-  { emoji: '🎓', keywords: ['educacion', 'universidad', 'facultad', 'estudios'], grupo: 'Educación' },
-  { emoji: '📚', keywords: ['libros', 'lectura', 'libreria', 'apuntes'], grupo: 'Educación' },
-  { emoji: '✏️', keywords: ['estudios', 'utiles', 'escolares', 'colegio'], grupo: 'Educación' },
-  { emoji: '🎒', keywords: ['colegio', 'escuela', 'mochila', 'utiles'], grupo: 'Educación' },
-  { emoji: '💻', keywords: ['compu', 'computadora', 'tecnologia', 'software'], grupo: 'Educación' },
-  { emoji: '🎨', keywords: ['arte', 'pintura', 'curso', 'taller'], grupo: 'Educación' },
-  { emoji: '💼', keywords: ['trabajo', 'oficina', 'empresa'], grupo: 'Trabajo' },
-  { emoji: '👔', keywords: ['ropa de trabajo', 'oficina', 'formal'], grupo: 'Trabajo' },
-  // ── Entretenimiento ──────────────────────────────────────────────────────
-  { emoji: '🎬', keywords: ['cine', 'pelicula', 'film', 'entrada'], grupo: 'Entretenimiento' },
-  { emoji: '📺', keywords: ['netflix', 'streaming', 'tv', 'cable', 'disney'], grupo: 'Entretenimiento' },
-  { emoji: '🎵', keywords: ['musica', 'spotify', 'apple music'], grupo: 'Entretenimiento' },
-  { emoji: '🎮', keywords: ['videojuegos', 'gaming', 'playstation', 'xbox', 'steam'], grupo: 'Entretenimiento' },
-  { emoji: '🎸', keywords: ['musica', 'instrumento', 'rock'], grupo: 'Entretenimiento' },
-  { emoji: '🎤', keywords: ['recital', 'concierto', 'show', 'evento'], grupo: 'Entretenimiento' },
-  { emoji: '🎟️', keywords: ['entradas', 'tickets', 'evento'], grupo: 'Entretenimiento' },
-  { emoji: '⚽', keywords: ['futbol', 'deporte', 'cancha', 'partido'], grupo: 'Entretenimiento' },
-  { emoji: '🎉', keywords: ['salida', 'fiesta', 'cumple', 'evento'], grupo: 'Entretenimiento' },
-  { emoji: '🍻', keywords: ['salida', 'bar', 'amigos', 'birra'], grupo: 'Entretenimiento' },
-  { emoji: '🎪', keywords: ['evento', 'show', 'entretenimiento'], grupo: 'Entretenimiento' },
-  // ── Compras y belleza ────────────────────────────────────────────────────
-  { emoji: '👕', keywords: ['ropa', 'indumentaria', 'shopping'], grupo: 'Compras' },
-  { emoji: '👖', keywords: ['ropa', 'jeans', 'pantalon'], grupo: 'Compras' },
-  { emoji: '👟', keywords: ['zapatillas', 'calzado', 'zapatos'], grupo: 'Compras' },
-  { emoji: '👜', keywords: ['cartera', 'bolso', 'accesorios'], grupo: 'Compras' },
-  { emoji: '💄', keywords: ['belleza', 'maquillaje', 'cosmetica'], grupo: 'Compras' },
-  { emoji: '🧴', keywords: ['cosmetica', 'cuidado personal', 'farmacia'], grupo: 'Compras' },
-  { emoji: '💅', keywords: ['belleza', 'manicura', 'salon'], grupo: 'Compras' },
-  { emoji: '💇', keywords: ['peluqueria', 'pelo', 'cabello'], grupo: 'Compras' },
-  { emoji: '🎁', keywords: ['regalo', 'cumple', 'evento'], grupo: 'Compras' },
-  { emoji: '💎', keywords: ['joyas', 'lujo', 'regalo'], grupo: 'Compras' },
-  // ── Mascotas y familia ───────────────────────────────────────────────────
-  { emoji: '🐶', keywords: ['perro', 'mascota', 'veterinario'], grupo: 'Mascotas' },
-  { emoji: '🐱', keywords: ['gato', 'mascota', 'veterinario'], grupo: 'Mascotas' },
-  { emoji: '🐾', keywords: ['mascota', 'veterinario', 'pet shop'], grupo: 'Mascotas' },
-  { emoji: '🍼', keywords: ['bebe', 'hijo', 'familia'], grupo: 'Familia' },
-  { emoji: '👶', keywords: ['bebe', 'hijo', 'familia', 'panales'], grupo: 'Familia' },
-  { emoji: '👨‍👩‍👧', keywords: ['familia', 'hijos', 'casa'], grupo: 'Familia' },
-  // ── Viajes ───────────────────────────────────────────────────────────────
-  { emoji: '🏖️', keywords: ['vacaciones', 'playa', 'turismo'], grupo: 'Viajes' },
-  { emoji: '🏨', keywords: ['hotel', 'alojamiento', 'hospedaje', 'airbnb'], grupo: 'Viajes' },
-  { emoji: '🧳', keywords: ['viaje', 'maleta', 'turismo'], grupo: 'Viajes' },
-  { emoji: '🗺️', keywords: ['turismo', 'viaje', 'aventura'], grupo: 'Viajes' },
-  // ── Dinero (Ingresos) ────────────────────────────────────────────────────
-  { emoji: '💰', keywords: ['plata', 'dinero', 'ingreso', 'ganancia'], grupo: 'Dinero' },
-  { emoji: '💵', keywords: ['efectivo', 'sueldo', 'pago'], grupo: 'Dinero' },
-  { emoji: '💸', keywords: ['gasto', 'pago', 'transferencia'], grupo: 'Dinero' },
-  { emoji: '🏦', keywords: ['banco', 'cuenta', 'transferencia'], grupo: 'Dinero' },
-  { emoji: '📈', keywords: ['inversion', 'inversiones', 'rentabilidad', 'ganancia'], grupo: 'Dinero' },
-  { emoji: '💳', keywords: ['tarjeta', 'credito', 'debito'], grupo: 'Dinero' },
-  { emoji: '🎯', keywords: ['ahorro', 'objetivo', 'meta'], grupo: 'Dinero' },
-  { emoji: '💼', keywords: ['sueldo', 'trabajo', 'salario'], grupo: 'Dinero' },
-  { emoji: '🤝', keywords: ['comision', 'venta', 'freelance', 'extra'], grupo: 'Dinero' },
-  { emoji: '🎰', keywords: ['premio', 'juego', 'extra'], grupo: 'Dinero' },
-  // ── Generales / otros ────────────────────────────────────────────────────
-  { emoji: '🏷️', keywords: ['etiqueta', 'categoria', 'otros'], grupo: 'Otros' },
-  { emoji: '📦', keywords: ['paquete', 'envio', 'correo'], grupo: 'Otros' },
-  { emoji: '🔧', keywords: ['herramientas', 'reparacion'], grupo: 'Otros' },
-  { emoji: '📝', keywords: ['nota', 'otros', 'varios'], grupo: 'Otros' },
-  { emoji: '⭐', keywords: ['favorito', 'destacado'], grupo: 'Otros' },
-  { emoji: '🚀', keywords: ['proyecto', 'meta', 'lanzamiento'], grupo: 'Otros' },
-  { emoji: '🌱', keywords: ['planta', 'ecologia', 'medio ambiente'], grupo: 'Otros' },
-  { emoji: '🌍', keywords: ['donacion', 'caridad', 'beneficencia'], grupo: 'Otros' },
-  { emoji: '🧠', keywords: ['terapia', 'psicologo', 'salud mental'], grupo: 'Otros' },
-  { emoji: '💡', keywords: ['idea', 'proyecto', 'creativo'], grupo: 'Otros' },
-]
-
-const GRUPOS = Array.from(new Set(EMOJIS.map(e => e.grupo)))
 
 type Props = {
   open:     boolean
@@ -246,12 +123,19 @@ export function EmojiPickerModal({ open, current, onPick, onClose }: Props) {
                     key={e.emoji + e.grupo}
                     onClick={() => pickAndClose(e.emoji)}
                     title={e.keywords[0]}
-                    className="aspect-square flex items-center justify-center rounded-xl text-2xl transition-all hover:scale-110"
+                    data-emoji={e.emoji}
+                    className="aspect-square flex items-center justify-center rounded-xl p-1.5 transition-all hover:scale-110"
                     style={isActive
                       ? { background: 'color-mix(in srgb, var(--accent) 12%, white)', outline: '2px solid var(--accent)', outlineOffset: '1px' }
                       : { background: '#f8fafc' }}
                   >
-                    {e.emoji}
+                    <img
+                      src={`/emojis/${e.slug}.svg`}
+                      alt=""
+                      aria-hidden="true"
+                      className="w-full h-full object-contain"
+                      draggable={false}
+                    />
                   </button>
                 )
               })}

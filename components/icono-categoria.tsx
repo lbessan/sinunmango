@@ -1,45 +1,52 @@
-'use client'
-
-// ─── IconoCategoria — render robusto de iconos de categorías ────────────────
+// ─── IconoCategoria — render de iconos de categorías ────────────────────────
 //
-// Soporta 3 tipos de valores en el campo `icono`:
-//   1. PascalCase Lucide (ej: "ShoppingCart") → renderiza el componente Lucide
-//   2. Emoji Unicode (ej: "🛒") → renderiza el emoji
-//   3. legacy Icons8 (ej: "shopping-cart") → fallback a emoji genérico 🏷️
-//   4. null / undefined → emoji genérico 🏷️
+// Renderiza el icono 3D (Fluent Emoji de Microsoft) como imagen desde
+// /public/emojis/{slug}.svg. Resuelve el slug así:
+//   1. Lucide legacy PascalCase (ej "ShoppingCart") → LUCIDE_TO_EMOJI → imagen
+//      (o genérico 🏷️ si no está mapeado)
+//   2. kebab-case legacy / null → genérico 🏷️
+//   3. Emoji Unicode con imagen en el catálogo → imagen Fluent
+//   4. Emoji Unicode sin imagen (custom pegado por el user) → emoji del sistema
 //
-// El sistema nuevo usa Lucide. Los legacy emojis siguen funcionando para no
-// romper categorías existentes ni el seed default que usa emojis.
+// Es server-safe (no usa hooks): solo <img> / <span>.
 
-import * as Icons from 'lucide-react'
+import { EMOJI_TO_SLUG, LUCIDE_TO_EMOJI } from '@/lib/emojis-catalogo'
 
 type Props = {
   icono: string | null
   size?: number
   className?: string
-  color?: string
 }
 
-export function IconoCategoria({ icono, size = 20, className = '', color }: Props) {
-  if (!icono) {
-    return <span style={{ fontSize: size * 0.85, lineHeight: 1 }}>🏷️</span>
+const GENERIC_SLUG = EMOJI_TO_SLUG['🏷️']
+
+export function IconoCategoria({ icono, size = 24, className = '' }: Props) {
+  const img = (slug: string) => (
+    <img
+      src={`/emojis/${slug}.svg`}
+      alt=""
+      aria-hidden="true"
+      width={size}
+      height={size}
+      className={`inline-block object-contain ${className}`}
+      style={{ width: size, height: size }}
+      draggable={false}
+    />
+  )
+
+  // Lucide legacy (PascalCase) → emoji mapeado o genérico
+  if (icono && /^[A-Z][a-zA-Z0-9]+$/.test(icono)) {
+    const emoji = LUCIDE_TO_EMOJI[icono]
+    return img(emoji ? EMOJI_TO_SLUG[emoji] ?? GENERIC_SLUG : GENERIC_SLUG)
   }
 
-  // Intentar como Lucide (PascalCase)
-  if (/^[A-Z][a-zA-Z0-9]+$/.test(icono)) {
-    const Icon = (Icons as Record<string, unknown>)[icono] as React.ComponentType<{ size?: number; className?: string; color?: string; strokeWidth?: number }> | undefined
-    if (Icon) {
-      return <Icon size={size} className={`inline-block ${className}`} color={color} strokeWidth={1.75} />
-    }
+  // null o kebab-case legacy → genérico
+  if (!icono || /^[a-z][a-z0-9-]+$/.test(icono)) {
+    return img(GENERIC_SLUG)
   }
 
-  // Legacy Icons8 (kebab-case): ya no se renderiza, va a emoji generico.
-  // Para forzar la migración, cualquier categoría que tenga un icono kebab-case
-  // muestra el genérico hasta que el user lo cambie con el picker.
-  if (/^[a-z][a-z0-9-]+$/.test(icono)) {
-    return <span style={{ fontSize: size * 0.85, lineHeight: 1 }}>🏷️</span>
-  }
-
-  // Emoji o texto: render directo
-  return <span style={{ fontSize: size * 0.85, lineHeight: 1 }}>{icono}</span>
+  // Emoji: si está en el catálogo, imagen Fluent; sino, el emoji del sistema
+  const slug = EMOJI_TO_SLUG[icono]
+  if (slug) return img(slug)
+  return <span style={{ fontSize: size * 0.85, lineHeight: 1 }} className={className}>{icono}</span>
 }

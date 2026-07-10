@@ -73,7 +73,7 @@ export function NuevoItemModal({ tipo, categorias, categoriaActual, onCreado, on
               onClick={() => setPickerOpen(true)}
               className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 hover:border-[color:var(--accent)] hover:shadow-md transition-all flex items-center justify-center shrink-0 group relative"
             >
-              <IconoCategoria icono={icono} size={28} color="#475569" />
+              <IconoCategoria icono={icono} size={28} />
               {/* Badge "editar": visible siempre en mobile, hover-only en sm+.
                   Color de marca (accent) en lugar del indigo legacy. */}
               <span

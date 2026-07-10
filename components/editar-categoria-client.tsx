@@ -62,7 +62,7 @@ export function EditarCategoriaClient({ categoria }: { categoria: CategoriaProp 
             onClick={() => setPickerOpen(true)}
             className="w-16 h-16 rounded-2xl bg-white border-2 border-slate-200 hover:border-[color:var(--accent)] hover:shadow-md transition-all flex items-center justify-center shrink-0 group relative"
           >
-            <IconoCategoria icono={icono} size={32} color="#475569" />
+            <IconoCategoria icono={icono} size={32} />
             {/* Badge "editar": visible siempre en mobile (no hay hover en touch);
                 en sm+ aparece solo en hover para UI más limpia.
                 Color de marca (accent) en lugar del indigo legacy. */}

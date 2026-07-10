@@ -66,7 +66,7 @@ function EditarSubcatModal({ sub, categorias, onGuardado, onClose }: {
               onClick={() => setPickerOpen(true)}
               className="w-12 h-12 rounded-xl bg-white border-2 border-slate-200 hover:border-[color:var(--accent)] hover:shadow-sm transition-all flex items-center justify-center shrink-0 group relative"
             >
-              <IconoCategoria icono={icono} size={24} color="#475569" />
+              <IconoCategoria icono={icono} size={24} />
               {/* Badge "editar": siempre visible en mobile, hover-only en sm+.
                   Color de marca (accent) en lugar del indigo legacy. */}
               <span
