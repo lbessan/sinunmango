@@ -13,7 +13,7 @@
 
 import { useState, useMemo } from 'react'
 import { X, Search } from 'lucide-react'
-import { EMOJIS, GRUPOS, type EmojiEntry } from '@/lib/emojis-catalogo'
+import { EMOJIS, GRUPOS, GRUPO_COLOR, type EmojiEntry } from '@/lib/emojis-catalogo'
 
 // Normaliza: lowercase + sin tildes
 const norm = (s: string) =>
@@ -124,16 +124,16 @@ export function EmojiPickerModal({ open, current, onPick, onClose }: Props) {
                     onClick={() => pickAndClose(e.emoji)}
                     title={e.keywords[0]}
                     data-emoji={e.emoji}
-                    className="aspect-square flex items-center justify-center rounded-xl p-1.5 transition-all hover:scale-110"
+                    className="aspect-square flex items-center justify-center rounded-xl transition-all hover:scale-110"
                     style={isActive
-                      ? { background: 'color-mix(in srgb, var(--accent) 12%, white)', outline: '2px solid var(--accent)', outlineOffset: '1px' }
-                      : { background: '#f8fafc' }}
+                      ? { background: GRUPO_COLOR[e.grupo] ?? '#eef1f4', outline: '2px solid var(--accent)', outlineOffset: '1px' }
+                      : { background: GRUPO_COLOR[e.grupo] ?? '#eef1f4' }}
                   >
                     <img
-                      src={`/emojis/${e.slug}.svg`}
+                      src={`/iconos/${e.slug}.svg`}
                       alt=""
                       aria-hidden="true"
-                      className="w-full h-full object-contain"
+                      className="w-[74%] h-[74%] object-contain"
                       draggable={false}
                     />
                   </button>

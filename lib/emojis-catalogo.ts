@@ -2,13 +2,14 @@
 //
 // Fuente única de verdad para el picker y el render. Cada entrada tiene:
 //   - emoji: el carácter Unicode (lo que se guarda en DB como `icono`)
-//   - slug:  el nombre en el set `fluent-emoji` de Iconify (Microsoft, MIT).
-//            Renderizamos la imagen 3D desde /public/emojis/{slug}.svg — así se
-//            ve igual en todos los dispositivos (no depende del emoji del OS).
-//   - keywords + grupo: para el buscador del picker.
+//   - slug:  identificador estable del ícono (lo usamos como filename). El
+//            render nuevo muestra un glifo SÓLIDO monocromo desde
+//            /public/iconos/{slug}.svg (set Phosphor) sobre una pastilla pastel
+//            por grupo — se ve igual en todos los dispositivos.
+//   - keywords + grupo: para el buscador del picker + el color de la pastilla.
 //
-// Los SVG se bajan con scripts/download-emojis.mjs. Si un emoji no tiene
-// imagen local, IconoCategoria cae al emoji Unicode como fallback.
+// Los SVG sólidos se bajan con scripts/download-iconos-solidos.mjs. Si un emoji
+// custom no tiene ícono local, IconoCategoria cae al emoji Unicode como fallback.
 
 export type EmojiEntry = {
   emoji:    string
@@ -128,6 +129,97 @@ export const EMOJIS: EmojiEntry[] = [
   { emoji: '🌍', slug: 'globe-showing-europe-africa', keywords: ['donacion', 'caridad', 'beneficencia'], grupo: 'Otros' },
   { emoji: '🧠', slug: 'brain',                keywords: ['terapia', 'psicologo', 'salud mental'], grupo: 'Otros' },
   { emoji: '💡', slug: 'light-bulb',           keywords: ['idea', 'proyecto', 'creativo'], grupo: 'Otros' },
+
+  // ── Ampliación: variantes ──────────────────────────────────────────────────
+  { emoji: '🎂', slug: 'cake',            keywords: ['torta', 'cumpleanos', 'postre', 'festejo'], grupo: 'Comida' },
+  { emoji: '🍪', slug: 'cookie',          keywords: ['galleta', 'galletitas', 'dulce', 'snack'], grupo: 'Comida' },
+  { emoji: '🥗', slug: 'ensalada',        keywords: ['ensalada', 'saludable', 'dieta', 'verde'], grupo: 'Comida' },
+  { emoji: '🍿', slug: 'popcorn',         keywords: ['pochoclo', 'pop', 'snack', 'cine'], grupo: 'Comida' },
+  { emoji: '🥕', slug: 'verduras',        keywords: ['verdura', 'verduleria', 'dietetica', 'sano'], grupo: 'Comida' },
+
+  { emoji: '🚚', slug: 'camion',          keywords: ['camion', 'mudanza', 'flete', 'envio'], grupo: 'Transporte' },
+  { emoji: '🛴', slug: 'monopatin',       keywords: ['monopatin', 'scooter', 'electrico'], grupo: 'Transporte' },
+  { emoji: '⛴️', slug: 'barco',           keywords: ['barco', 'ferry', 'buque', 'crucero'], grupo: 'Transporte' },
+  { emoji: '🚦', slug: 'semaforo',        keywords: ['semaforo', 'transito', 'trafico', 'peaje'], grupo: 'Transporte' },
+
+  { emoji: '🚿', slug: 'ducha',           keywords: ['ducha', 'bano', 'agua', 'aysa'], grupo: 'Hogar' },
+  { emoji: '🧹', slug: 'escoba',          keywords: ['escoba', 'limpieza', 'limpiar', 'orden'], grupo: 'Hogar' },
+  { emoji: '🔨', slug: 'martillo',        keywords: ['martillo', 'arreglos', 'reparacion', 'herramienta'], grupo: 'Hogar' },
+  { emoji: '🪑', slug: 'sillon',          keywords: ['muebles', 'silla', 'sillon', 'deco'], grupo: 'Hogar' },
+
+  { emoji: '💓', slug: 'latido',          keywords: ['cardiologo', 'presion', 'cardio', 'corazon'], grupo: 'Salud' },
+  { emoji: '🩹', slug: 'curita',          keywords: ['curita', 'herida', 'botiquin', 'primeros auxilios'], grupo: 'Salud' },
+  { emoji: '🦠', slug: 'virus',           keywords: ['virus', 'gripe', 'infeccion', 'covid'], grupo: 'Salud' },
+  { emoji: '🚑', slug: 'ambulancia',      keywords: ['ambulancia', 'emergencia', 'urgencia'], grupo: 'Salud' },
+
+  { emoji: '🖥️', slug: 'monitor',         keywords: ['monitor', 'pc', 'oficina', 'escritorio'], grupo: 'Trabajo' },
+  { emoji: '📁', slug: 'carpeta',         keywords: ['carpeta', 'archivos', 'documentos'], grupo: 'Trabajo' },
+  { emoji: '✉️', slug: 'sobre',           keywords: ['sobre', 'correo', 'carta', 'email'], grupo: 'Trabajo' },
+  { emoji: '📊', slug: 'grafico-barras',  keywords: ['grafico', 'reporte', 'estadistica', 'informe'], grupo: 'Trabajo' },
+  { emoji: '🖊️', slug: 'lapicera',        keywords: ['lapicera', 'firma', 'birome'], grupo: 'Trabajo' },
+
+  { emoji: '🎧', slug: 'auriculares',     keywords: ['auriculares', 'musica', 'podcast', 'spotify'], grupo: 'Entretenimiento' },
+  { emoji: '📸', slug: 'camara',          keywords: ['camara', 'fotos', 'foto'], grupo: 'Entretenimiento' },
+  { emoji: '🎲', slug: 'dados',           keywords: ['dados', 'juego', 'azar', 'apuesta'], grupo: 'Entretenimiento' },
+  { emoji: '📖', slug: 'libro-abierto',   keywords: ['libro', 'lectura', 'leer', 'novela'], grupo: 'Entretenimiento' },
+  { emoji: '🕹️', slug: 'joystick',        keywords: ['arcade', 'juego', 'retro', 'consola'], grupo: 'Entretenimiento' },
+
+  { emoji: '👗', slug: 'vestido',         keywords: ['vestido', 'ropa', 'mujer', 'indumentaria'], grupo: 'Compras' },
+  { emoji: '👠', slug: 'tacos',           keywords: ['tacos', 'zapatos', 'calzado', 'mujer'], grupo: 'Compras' },
+  { emoji: '⌚', slug: 'reloj',           keywords: ['reloj', 'relojeria', 'accesorio'], grupo: 'Compras' },
+  { emoji: '🕶️', slug: 'lentes-sol',      keywords: ['lentes', 'sol', 'optica', 'anteojos'], grupo: 'Compras' },
+  { emoji: '🧢', slug: 'gorra',           keywords: ['gorra', 'cap', 'accesorio'], grupo: 'Compras' },
+
+  { emoji: '🐦', slug: 'pajaro',          keywords: ['pajaro', 'ave', 'mascota'], grupo: 'Mascotas' },
+  { emoji: '🦴', slug: 'hueso',           keywords: ['hueso', 'perro', 'alimento mascota'], grupo: 'Mascotas' },
+  { emoji: '🐠', slug: 'pecera',          keywords: ['pez', 'pecera', 'acuario', 'mascota'], grupo: 'Mascotas' },
+
+  { emoji: '🫶', slug: 'carino',          keywords: ['carino', 'familia', 'cuidado', 'amor'], grupo: 'Familia' },
+  { emoji: '🎈', slug: 'globo',           keywords: ['globo', 'cumple', 'fiesta', 'festejo'], grupo: 'Familia' },
+  { emoji: '🚼', slug: 'cochecito',       keywords: ['cochecito', 'bebe', 'paseo', 'hijo'], grupo: 'Familia' },
+
+  { emoji: '🧭', slug: 'brujula',         keywords: ['brujula', 'turismo', 'aventura', 'orientacion'], grupo: 'Viajes' },
+  { emoji: '🏔️', slug: 'montana',         keywords: ['montana', 'nieve', 'ski', 'trekking'], grupo: 'Viajes' },
+  { emoji: '📍', slug: 'ubicacion',       keywords: ['ubicacion', 'lugar', 'mapa', 'pin'], grupo: 'Viajes' },
+  { emoji: '🛫', slug: 'despegue',        keywords: ['vuelo', 'avion', 'despegue', 'aeropuerto'], grupo: 'Viajes' },
+
+  { emoji: '🪙', slug: 'monedas',         keywords: ['monedas', 'ahorro', 'cambio', 'efectivo'], grupo: 'Dinero' },
+  { emoji: '🐷', slug: 'alcancia',        keywords: ['alcancia', 'ahorro', 'chanchito'], grupo: 'Dinero' },
+  { emoji: '🧾', slug: 'recibo',          keywords: ['recibo', 'factura', 'comprobante', 'ticket'], grupo: 'Dinero' },
+  { emoji: '👛', slug: 'billetera',       keywords: ['billetera', 'cartera', 'monedero'], grupo: 'Dinero' },
+  { emoji: '📉', slug: 'perdida',         keywords: ['perdida', 'baja', 'caida', 'deuda'], grupo: 'Dinero' },
+
+  { emoji: '❤️', slug: 'corazon',         keywords: ['favorito', 'amor', 'me gusta'], grupo: 'Otros' },
+  { emoji: '🔔', slug: 'campana',         keywords: ['recordatorio', 'alerta', 'aviso', 'notificacion'], grupo: 'Otros' },
+  { emoji: '⚙️', slug: 'engranaje',       keywords: ['config', 'servicio', 'ajuste', 'mantenimiento'], grupo: 'Otros' },
+  { emoji: '🔒', slug: 'candado',         keywords: ['seguridad', 'privado', 'clave'], grupo: 'Otros' },
+  { emoji: '📅', slug: 'calendario',      keywords: ['calendario', 'fecha', 'agenda', 'evento'], grupo: 'Otros' },
+  { emoji: '🚩', slug: 'bandera',         keywords: ['meta', 'objetivo', 'importante'], grupo: 'Otros' },
+
+  // ── Ampliación: grupos nuevos ──────────────────────────────────────────────
+  { emoji: '🔌', slug: 'enchufe',         keywords: ['enchufe', 'electro', 'cargador', 'luz'], grupo: 'Tecnología' },
+  { emoji: '🖨️', slug: 'impresora',       keywords: ['impresora', 'imprimir', 'oficina'], grupo: 'Tecnología' },
+  { emoji: '⌨️', slug: 'teclado',         keywords: ['teclado', 'compu', 'gaming', 'tecnologia'], grupo: 'Tecnología' },
+  { emoji: '🤖', slug: 'robot',           keywords: ['robot', 'ia', 'tecnologia', 'app'], grupo: 'Tecnología' },
+  { emoji: '💾', slug: 'guardar',         keywords: ['guardar', 'software', 'disco', 'backup'], grupo: 'Tecnología' },
+
+  { emoji: '🏀', slug: 'basquet',         keywords: ['basquet', 'basket', 'pelota', 'deporte'], grupo: 'Deportes' },
+  { emoji: '🎾', slug: 'tenis',           keywords: ['tenis', 'padel', 'raqueta', 'deporte'], grupo: 'Deportes' },
+  { emoji: '🏃', slug: 'correr',          keywords: ['correr', 'running', 'maraton', 'gym'], grupo: 'Deportes' },
+  { emoji: '🏊', slug: 'natacion',        keywords: ['natacion', 'pileta', 'nadar', 'deporte'], grupo: 'Deportes' },
+  { emoji: '🏆', slug: 'trofeo',          keywords: ['trofeo', 'logro', 'torneo', 'premio'], grupo: 'Deportes' },
+
+  { emoji: '📄', slug: 'documento',       keywords: ['documento', 'formulario', 'tramite', 'papel'], grupo: 'Trámites' },
+  { emoji: '⚖️', slug: 'balanza',         keywords: ['impuestos', 'afip', 'arca', 'legal', 'justicia'], grupo: 'Trámites' },
+  { emoji: '📋', slug: 'planilla',        keywords: ['planilla', 'tramite', 'checklist', 'formulario'], grupo: 'Trámites' },
+  { emoji: '🪪', slug: 'dni',             keywords: ['dni', 'documento', 'identidad'], grupo: 'Trámites' },
+  { emoji: '✒️', slug: 'sello',           keywords: ['sello', 'firma', 'oficial', 'tramite'], grupo: 'Trámites' },
+
+  { emoji: '▶️', slug: 'play',            keywords: ['streaming', 'netflix', 'ver', 'reproducir'], grupo: 'Suscripciones' },
+  { emoji: '🔁', slug: 'repetir',         keywords: ['recurrente', 'suscripcion', 'mensual', 'renovacion'], grupo: 'Suscripciones' },
+  { emoji: '👑', slug: 'corona',          keywords: ['premium', 'pro', 'vip', 'plan'], grupo: 'Suscripciones' },
+  { emoji: '☁️', slug: 'nube',            keywords: ['nube', 'cloud', 'almacenamiento', 'backup'], grupo: 'Suscripciones' },
+  { emoji: '📽️', slug: 'streaming',       keywords: ['streaming', 'series', 'disney', 'hbo', 'prime'], grupo: 'Suscripciones' },
 ]
 
 // Mapa emoji → slug (para que IconoCategoria resuelva la imagen desde el emoji
@@ -173,3 +265,35 @@ export const LUCIDE_TO_EMOJI: Record<string, string> = {
 }
 
 export const GRUPOS = Array.from(new Set(EMOJIS.map(e => e.grupo)))
+
+// ─── Iconos sólidos sobre pastel ─────────────────────────────────────────────
+// El render nuevo (IconoCategoria) muestra un glifo sólido monocromo
+// (set Phosphor, en /public/iconos/{slug}.svg) sobre una pastilla de color
+// pastel según el grupo de la categoría. Los assets se bajan con
+// scripts/download-iconos-solidos.mjs.
+
+// Color pastel de fondo por grupo (la pastilla del ícono).
+export const GRUPO_COLOR: Record<string, string> = {
+  Comida:          '#f8e3d2', // durazno
+  Transporte:      '#d9e6f7', // celeste
+  Hogar:           '#e7e0f7', // lavanda
+  Salud:           '#f8dee4', // rosa
+  'Educación':     '#e4eed3', // verde
+  Trabajo:         '#dde3ef', // gris azulado
+  Entretenimiento: '#f8ecd0', // manteca
+  Compras:         '#efe0f6', // lila
+  Mascotas:        '#ece7d6', // arena
+  Familia:         '#d6eee1', // menta
+  Viajes:          '#d4edf3', // cyan
+  Dinero:          '#d9f0d5', // verde fresco
+  Otros:           '#eae9ec', // gris
+  'Tecnología':    '#dde7ef', // azul grisáceo
+  Deportes:        '#e3edd5', // lima
+  'Trámites':      '#e8e3da', // arena
+  Suscripciones:   '#e6dff2', // periwinkle
+}
+
+// emoji → grupo (para que IconoCategoria resuelva el color desde el emoji guardado).
+export const EMOJI_TO_GRUPO: Record<string, string> = Object.fromEntries(
+  EMOJIS.map(e => [e.emoji, e.grupo]),
+)
