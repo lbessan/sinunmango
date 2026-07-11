@@ -297,3 +297,8 @@ export const GRUPO_COLOR: Record<string, string> = {
 export const EMOJI_TO_GRUPO: Record<string, string> = Object.fromEntries(
   EMOJIS.map(e => [e.emoji, e.grupo]),
 )
+
+// Versión de los assets de íconos. Se agrega como ?v= a la URL para bustear
+// el caché (navegador + service worker de la PWA + CDN) cuando cambia el trazo
+// de los SVG sin cambiar el nombre del archivo. Subir este número al regenerar.
+export const ICONOS_VERSION = '2'

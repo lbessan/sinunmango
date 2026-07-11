@@ -11,7 +11,8 @@ import { render } from '@testing-library/react'
 import { IconoCategoria } from '@/components/icono-categoria'
 import { GRUPO_COLOR } from '@/lib/emojis-catalogo'
 
-const imgSrc = (c: HTMLElement) => c.querySelector('img')?.getAttribute('src') ?? ''
+// Ignora el ?v= de cache-busting al comparar el path.
+const imgSrc = (c: HTMLElement) => (c.querySelector('img')?.getAttribute('src') ?? '').split('?')[0]
 const tile = (c: HTMLElement) => c.firstChild as HTMLElement
 
 describe('IconoCategoria', () => {

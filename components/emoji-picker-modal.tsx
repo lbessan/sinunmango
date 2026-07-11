@@ -13,7 +13,7 @@
 
 import { useState, useMemo } from 'react'
 import { X, Search } from 'lucide-react'
-import { EMOJIS, GRUPOS, GRUPO_COLOR, type EmojiEntry } from '@/lib/emojis-catalogo'
+import { EMOJIS, GRUPOS, GRUPO_COLOR, ICONOS_VERSION, type EmojiEntry } from '@/lib/emojis-catalogo'
 
 // Normaliza: lowercase + sin tildes
 const norm = (s: string) =>
@@ -130,7 +130,7 @@ export function EmojiPickerModal({ open, current, onPick, onClose }: Props) {
                       : { background: GRUPO_COLOR[e.grupo] ?? '#eef1f4' }}
                   >
                     <img
-                      src={`/iconos/${e.slug}.svg`}
+                      src={`/iconos/${e.slug}.svg?v=${ICONOS_VERSION}`}
                       alt=""
                       aria-hidden="true"
                       className="w-[74%] h-[74%] object-contain"

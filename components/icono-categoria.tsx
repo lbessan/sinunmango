@@ -12,7 +12,7 @@
 
 import type { ReactNode } from 'react'
 import {
-  EMOJI_TO_SLUG, LUCIDE_TO_EMOJI, EMOJI_TO_GRUPO, GRUPO_COLOR,
+  EMOJI_TO_SLUG, LUCIDE_TO_EMOJI, EMOJI_TO_GRUPO, GRUPO_COLOR, ICONOS_VERSION,
 } from '@/lib/emojis-catalogo'
 
 type Props = {
@@ -42,7 +42,7 @@ export function IconoCategoria({ icono, size = 24, className = '' }: Props) {
   )
   const glyphImg = (slug: string) => (
     <img
-      src={`/iconos/${slug}.svg`}
+      src={`/iconos/${slug}.svg?v=${ICONOS_VERSION}`}
       alt=""
       width={glyph}
       height={glyph}
