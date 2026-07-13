@@ -299,7 +299,7 @@ export default async function ResumenPage({
                         <p className="text-sm font-medium text-slate-700 max-w-xs truncate">{stripCuotaSuffix(m.detalle) || '—'}</p>
                         {(m.cuotas_total ?? 0) > 1 && <p className="text-xs text-slate-400">Cuota {Math.min(m.cuota_actual ?? 1, m.cuotas_total ?? 1)}/{Math.max(m.cuota_actual ?? 1, m.cuotas_total ?? 1)}</p>}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
+                      <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={20} /> {m.categoria_nombre ?? '—'}</span></td>
                       <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{m.cuenta_origen_nombre ?? '—'}</td>
                       <td className="px-4 py-3 font-semibold text-right whitespace-nowrap tabular-nums" style={{ color: meta.color }}>
                         ${fmt(m.monto_estimado ?? m.monto)}

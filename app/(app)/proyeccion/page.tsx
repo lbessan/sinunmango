@@ -206,7 +206,7 @@ export default async function ProyeccionMesPage({
                   <tr key={m.id} className="border-b border-slate-50 hover:bg-slate-50">
                     <td className="px-4 py-3 text-xs text-slate-400">{m.fecha}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{m.detalle ?? '—'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-500"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
+                    <td className="px-4 py-3 text-sm text-slate-500"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={20} /> {m.categoria_nombre ?? '—'}</span></td>
                     <td className="px-4 py-3 text-xs text-slate-400">{m.cuenta_origen_nombre ?? '—'}</td>
                     <td className="px-4 py-3 font-semibold text-right text-emerald-600 tabular-nums">${fmt(m.monto_estimado ?? m.monto ?? 0)}</td>
                   </tr>
@@ -321,7 +321,7 @@ export default async function ProyeccionMesPage({
                             <p className="text-sm text-slate-700 max-w-xs truncate">{stripCuotaSuffix(m.detalle) || '—'}</p>
                             {(m.cuotas_total ?? 0) > 1 && <p className="text-xs text-slate-400">Cuota {Math.min(m.cuota_actual ?? 0, m.cuotas_total ?? 0)}/{Math.max(m.cuota_actual ?? 0, m.cuotas_total ?? 0)}</p>}
                           </td>
-                          <td className="px-4 py-2.5 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={16} /> {m.categoria_nombre ?? '—'}</span></td>
+                          <td className="px-4 py-2.5 text-sm text-slate-500 whitespace-nowrap"><span className="flex items-center gap-1.5"><IconoCategoria icono={m.categoria_icono} size={20} /> {m.categoria_nombre ?? '—'}</span></td>
                           <td className="px-4 py-2.5 font-semibold text-right text-amber-700 whitespace-nowrap tabular-nums">${fmt(m.monto_estimado ?? m.monto ?? 0)}</td>
                         </tr>
                       ))}

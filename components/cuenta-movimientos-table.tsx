@@ -518,7 +518,7 @@ export function CuentaMovimientosTable({
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap">
                         <span className="flex items-center gap-1.5">
-                          <IconoCategoria icono={mov.categoria_icono} size={16} />
+                          <IconoCategoria icono={mov.categoria_icono} size={20} />
                           {mov.categoria_nombre ?? '—'}
                         </span>
                       </td>

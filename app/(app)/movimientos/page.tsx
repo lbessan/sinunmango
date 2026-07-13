@@ -408,7 +408,7 @@ export default async function MovimientosPage({ searchParams }: { searchParams: 
                     </td>
                     <td className="hidden sm:table-cell px-4 py-3 text-slate-600 whitespace-nowrap text-sm">
                       <span className="flex items-center gap-1.5">
-                        <IconoCategoria icono={mov.categoria_icono} size={16} />
+                        <IconoCategoria icono={mov.categoria_icono} size={20} />
                         {mov.categoria_nombre ?? '—'}
                       </span>
                     </td>
