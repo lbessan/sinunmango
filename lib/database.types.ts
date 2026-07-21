@@ -359,6 +359,51 @@ export type Database = {
           },
         ]
       }
+      afip_conexion: {
+        Row: {
+          id: string
+          user_id: string
+          cuit: string
+          alias: string | null
+          ambiente: string
+          estado: string
+          key_cipher: string | null
+          cert_cipher: string | null
+          cert_not_after: string | null
+          ultima_sync: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          cuit: string
+          alias?: string | null
+          ambiente?: string
+          estado?: string
+          key_cipher?: string | null
+          cert_cipher?: string | null
+          cert_not_after?: string | null
+          ultima_sync?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          cuit?: string
+          alias?: string | null
+          ambiente?: string
+          estado?: string
+          key_cipher?: string | null
+          cert_cipher?: string | null
+          cert_not_after?: string | null
+          ultima_sync?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       monotributo_config: {
         Row: {
           categoria: string

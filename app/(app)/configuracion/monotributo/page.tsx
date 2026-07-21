@@ -31,6 +31,18 @@ export default async function MonotributoConfigPage() {
         </p>
       </div>
 
+      <Link
+        href="/configuracion/monotributo/conectar"
+        className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4 hover:bg-emerald-100/60 transition-colors"
+      >
+        <span className="text-2xl">🔗</span>
+        <span className="flex-1">
+          <span className="block text-sm font-semibold text-slate-800">Conectar con AFIP <span className="ml-1 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">beta</span></span>
+          <span className="block text-xs text-slate-500">Traé tu categoría y facturación automáticamente, sin cargar nada a mano ni dar tu clave fiscal.</span>
+        </span>
+        <span className="text-slate-400">→</span>
+      </Link>
+
       <MonotributoConfigForm
         initialConfig={configRaw}
         gastosFijos={(gastosFijosRaw ?? []) as { id: string; nombre_gasto: string; dia_vencimiento: number | null }[]}
