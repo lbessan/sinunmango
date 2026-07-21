@@ -26,8 +26,8 @@ export default async function MonotributoConfigPage() {
         </Link>
         <h1 className="text-xl font-semibold text-slate-800">Configurar monotributo</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Ajustá tu categoría, límite anual y costo mensual. Los valores los actualizás
-          a mano cada semestre cuando ARCA los modifica.
+          Ajustá tu categoría, límite anual y costo mensual — o traelos solos desde ARCA
+          con <b>Conectar con AFIP</b>.
         </p>
       </div>
 

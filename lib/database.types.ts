@@ -367,9 +367,14 @@ export type Database = {
           alias: string | null
           ambiente: string
           estado: string
+          metodo: string
           key_cipher: string | null
           cert_cipher: string | null
           cert_not_after: string | null
+          clave_cipher: string | null
+          sync_job_id: string | null
+          sync_data: Json | null
+          sync_error: string | null
           ultima_sync: string | null
           created_at: string
           updated_at: string
@@ -381,9 +386,14 @@ export type Database = {
           alias?: string | null
           ambiente?: string
           estado?: string
+          metodo?: string
           key_cipher?: string | null
           cert_cipher?: string | null
           cert_not_after?: string | null
+          clave_cipher?: string | null
+          sync_job_id?: string | null
+          sync_data?: Json | null
+          sync_error?: string | null
           ultima_sync?: string | null
           created_at?: string
           updated_at?: string
@@ -395,9 +405,14 @@ export type Database = {
           alias?: string | null
           ambiente?: string
           estado?: string
+          metodo?: string
           key_cipher?: string | null
           cert_cipher?: string | null
           cert_not_after?: string | null
+          clave_cipher?: string | null
+          sync_job_id?: string | null
+          sync_data?: Json | null
+          sync_error?: string | null
           ultima_sync?: string | null
           created_at?: string
           updated_at?: string
