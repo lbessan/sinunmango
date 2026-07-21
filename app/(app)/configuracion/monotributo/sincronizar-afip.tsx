@@ -36,16 +36,21 @@ export function SincronizarAfip({
   cuitInicial,
   claveGuardada,
   ultimaSync,
+  estadoError = false,
+  syncError = null,
 }: {
   cuitInicial: string
   claveGuardada: boolean
   ultimaSync: string | null
+  estadoError?: boolean
+  syncError?: string | null
 }) {
   const router = useRouter()
   const [cuit, setCuit] = useState(cuitInicial)
   const [clave, setClave] = useState('')
   const [recordar, setRecordar] = useState(true)
-  const [cambiarClave, setCambiarClave] = useState(false)
+  // En estado de error (clave probablemente rotada) forzamos reingresar la clave.
+  const [cambiarClave, setCambiarClave] = useState(estadoError)
   const [fase, setFase] = useState<Fase>('form')
   const [snap, setSnap] = useState<Snapshot | null>(null)
   const [configOk, setConfigOk] = useState(false)
@@ -157,6 +162,19 @@ export function SincronizarAfip({
   // ── Form (y error) ─────────────────────────────────────────────────────────
   return (
     <div className="max-w-2xl space-y-5">
+      {estadoError && (
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={20} />
+          <div className="text-sm text-amber-900">
+            <p className="font-semibold">Pausamos la sincronización automática</p>
+            <p className="text-amber-800/90 mt-0.5">
+              Tu clave fiscal dejó de funcionar — casi siempre es porque AFIP te obligó a cambiarla.
+              Reingresá tu clave nueva para reconectar.{syncError ? ` (${syncError})` : ''}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 rounded-xl p-4">
         <ShieldCheck className="text-emerald-600 shrink-0 mt-0.5" size={20} />
         <p className="text-sm text-slate-600">

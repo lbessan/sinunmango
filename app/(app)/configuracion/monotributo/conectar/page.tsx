@@ -10,7 +10,7 @@ export default async function ConectarAfipPage() {
 
   const { data: conexion } = await supabase
     .from('afip_conexion')
-    .select('cuit, clave_cipher, ultima_sync')
+    .select('cuit, clave_cipher, ultima_sync, estado, sync_error')
     .eq('user_id', user.id)
     .maybeSingle()
 
@@ -27,6 +27,8 @@ export default async function ConectarAfipPage() {
         cuitInicial={conexion?.cuit ?? ''}
         claveGuardada={!!conexion?.clave_cipher}
         ultimaSync={conexion?.ultima_sync ?? null}
+        estadoError={conexion?.estado === 'error'}
+        syncError={conexion?.sync_error ?? null}
       />
     </div>
   )

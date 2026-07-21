@@ -143,6 +143,24 @@ export function jobConError(job: AfipSdkJob): boolean {
   return s === 'error' || s === 'failed' || s === 'fail'
 }
 
+/**
+ * Heurística: ¿el error viene de credenciales (clave fiscal mal / cambiada /
+ * bloqueada) y NO de un problema transitorio de ARCA? Sirve para que el cron
+ * frene la sync automática (y avise al usuario) en vez de reintentar a ciegas
+ * con una clave vieja — reintentar podría bloquear la cuenta en AFIP.
+ *
+ * Ante la duda devuelve false (lo tratamos como transitorio y reintentamos);
+ * la baja frecuencia del cron acota el riesgo si nos equivocamos.
+ */
+export function errorEsDeCredenciales(mensaje: string | null | undefined): boolean {
+  if (!mensaje) return false
+  const m = mensaje.toLowerCase()
+  return [
+    'clave', 'contrase', 'password', 'usuario', 'incorrect', 'inválid', 'invalid',
+    'credencial', 'bloque', 'autenticaci', 'no coincide', 'login',
+  ].some(p => m.includes(p))
+}
+
 /** Mensaje de error amigable a partir de un job fallido. */
 export function mensajeErrorJob(job: AfipSdkJob): string {
   if (typeof job.message === 'string' && job.message.trim()) return job.message.trim()

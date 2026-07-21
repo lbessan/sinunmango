@@ -8,6 +8,7 @@ import {
   jobEnProceso,
   jobConError,
   mensajeErrorJob,
+  errorEsDeCredenciales,
   AfipSdkError,
 } from '@/lib/afipsdk'
 
@@ -83,6 +84,21 @@ describe('jobEnProceso / jobConError', () => {
     expect(jobConError({ status: 'error' })).toBe(true)
     expect(jobConError({ status: 'failed' })).toBe(true)
     expect(jobConError({ status: 'complete' })).toBe(false)
+  })
+})
+
+describe('errorEsDeCredenciales', () => {
+  it('detecta errores de clave/usuario', () => {
+    expect(errorEsDeCredenciales('Clave o usuario incorrecto')).toBe(true)
+    expect(errorEsDeCredenciales('La contraseña es inválida')).toBe(true)
+    expect(errorEsDeCredenciales('Su cuenta fue bloqueada')).toBe(true)
+    expect(errorEsDeCredenciales('Error de autenticación')).toBe(true)
+  })
+  it('trata lo transitorio/desconocido como NO-credenciales', () => {
+    expect(errorEsDeCredenciales('La página de ARCA no responde')).toBe(false)
+    expect(errorEsDeCredenciales('timeout')).toBe(false)
+    expect(errorEsDeCredenciales(null)).toBe(false)
+    expect(errorEsDeCredenciales('')).toBe(false)
   })
 })
 
