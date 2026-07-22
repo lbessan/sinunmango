@@ -43,18 +43,6 @@ export default async function MonotributoConfigPage() {
         <span className="text-slate-400">→</span>
       </Link>
 
-      <Link
-        href="/monotributo/emitir"
-        className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 hover:bg-slate-50 transition-colors"
-      >
-        <span className="text-2xl">🧾</span>
-        <span className="flex-1">
-          <span className="block text-sm font-semibold text-slate-800">Emitir factura</span>
-          <span className="block text-xs text-slate-500">Generá una Factura C con CAE directo por AFIP, sin salir de acá.</span>
-        </span>
-        <span className="text-slate-400">→</span>
-      </Link>
-
       <MonotributoConfigForm
         initialConfig={configRaw}
         gastosFijos={(gastosFijosRaw ?? []) as { id: string; nombre_gasto: string; dia_vencimiento: number | null }[]}

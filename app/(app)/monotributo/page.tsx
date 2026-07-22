@@ -168,7 +168,7 @@ export default async function MonotributoPage() {
           {afipConectado && <TraerFacturasAfip />}
           <ImportarFacturaButton />
           <Link
-            href="/monotributo/nueva"
+            href={afipConectado ? '/monotributo/emitir' : '/monotributo/nueva'}
             className="inline-flex items-center gap-2 text-sm text-white px-4 py-2 rounded-lg font-medium whitespace-nowrap"
             style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}
           >

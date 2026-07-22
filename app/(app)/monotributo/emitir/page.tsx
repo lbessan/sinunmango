@@ -23,11 +23,19 @@ export default async function EmitirPage() {
       </p>
 
       {conectado ? (
-        <EmitirFacturaForm />
+        <>
+          <EmitirFacturaForm />
+          <p className="text-xs text-slate-400 mt-6">
+            ¿La factura ya la hiciste en otro lado?{' '}
+            <Link href="/monotributo/nueva" className="text-slate-500 hover:underline">Cargala a mano</Link> (no la emite, solo la registra).
+          </p>
+        </>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
-          Primero conectá tu certificado en{' '}
+          Para emitir necesitás conectar tu certificado en{' '}
           <Link href="/configuracion/monotributo/conectar" className="text-[color:var(--accent)] font-medium hover:underline">Conectar con AFIP</Link>.
+          <br />
+          <span className="text-slate-500">O <Link href="/monotributo/nueva" className="text-[color:var(--accent)] hover:underline">cargá una factura a mano</Link> sin emitirla.</span>
         </div>
       )}
     </div>

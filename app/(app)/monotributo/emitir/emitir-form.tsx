@@ -116,27 +116,30 @@ export function EmitirFacturaForm() {
         </label>
       </div>
 
-      <label className="text-sm block">
-        <span className="block font-medium text-slate-700 mb-1">Cliente</span>
-        <input value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Nombre o razón social (opcional)"
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
-      </label>
-
       <div className="grid grid-cols-2 gap-3">
         <label className="text-sm">
-          <span className="block font-medium text-slate-700 mb-1">Tipo doc.</span>
+          <span className="block font-medium text-slate-700 mb-1">Tipo doc. del cliente</span>
           <select value={docTipo} onChange={e => setDocTipo(Number(e.target.value))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
             {DOC_TIPOS.map(d => <option key={d.v} value={d.v}>{d.label}</option>)}
           </select>
         </label>
         {docTipo !== 99 && (
           <label className="text-sm">
-            <span className="block font-medium text-slate-700 mb-1">Nº documento</span>
+            <span className="block font-medium text-slate-700 mb-1">{docTipo === 80 ? 'CUIT' : docTipo === 96 ? 'DNI' : 'Nº documento'}</span>
             <input value={docNro} onChange={e => setDocNro(e.target.value.replace(/\D/g, ''))} inputMode="numeric"
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
           </label>
         )}
       </div>
+
+      <label className="text-sm block">
+        <span className="block font-medium text-slate-700 mb-1">Nombre <span className="font-normal text-slate-400">(para tu resumen)</span></span>
+        <input value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Nombre o razón social"
+          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+        <span className="block text-[11px] text-slate-400 mt-1">
+          AFIP identifica al cliente por su {docTipo === 99 ? 'documento' : 'CUIT/DNI'} y pone el nombre legal solo. Este campo es para tu resumen “por cliente”.
+        </span>
+      </label>
 
       <div className="grid grid-cols-2 gap-3">
         <label className="text-sm">
