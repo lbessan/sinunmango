@@ -30,15 +30,27 @@ export async function POST(req: NextRequest) {
 
   const concepto = Number(raw.concepto)
   const ptoVta = Number(raw.ptoVta)
-  const importe = Number(raw.importe)
   const docTipo = Number(raw.docTipo ?? 99)
   const docNro = Number(raw.docNro ?? 0)
 
+  // Ítems: [{ descripcion, cantidad, precio }]. Si no hay, cae a `importe`.
+  const rawItems = Array.isArray(raw.items) ? raw.items : []
+  const items = rawItems
+    .map(it => {
+      const o = (it ?? {}) as Record<string, unknown>
+      return { descripcion: String(o.descripcion ?? '').trim(), cantidad: Number(o.cantidad) || 0, precio: Number(o.precio) || 0 }
+    })
+    .filter(it => it.precio > 0 && it.cantidad > 0)
+  const importe = Number(raw.importe)
+  const total = items.length
+    ? items.reduce((s, it) => s + it.cantidad * it.precio, 0)
+    : importe
+
   if (![1, 2, 3].includes(concepto)) return NextResponse.json({ error: 'Concepto inválido' }, { status: 400 })
   if (!Number.isInteger(ptoVta) || ptoVta <= 0) return NextResponse.json({ error: 'Punto de venta inválido' }, { status: 400 })
-  if (!Number.isFinite(importe) || importe <= 0) return NextResponse.json({ error: 'El importe debe ser mayor a 0' }, { status: 400 })
+  if (!Number.isFinite(total) || total <= 0) return NextResponse.json({ error: 'Cargá al menos un ítem con importe' }, { status: 400 })
   if (docTipo !== 99 && (!Number.isFinite(docNro) || docNro <= 0)) {
-    return NextResponse.json({ error: 'Falta el documento del cliente' }, { status: 400 })
+    return NextResponse.json({ error: 'Falta el CUIT/documento del cliente' }, { status: 400 })
   }
 
   const input: EmitirInput = {
@@ -46,8 +58,10 @@ export async function POST(req: NextRequest) {
     concepto: concepto as 1 | 2 | 3,
     docTipo,
     docNro,
-    importe: Number(importe.toFixed(2)),
     cliente: String(raw.cliente ?? ''),
+    condicionIvaReceptor: raw.condicionIvaReceptor != null ? Number(raw.condicionIvaReceptor) : undefined,
+    items: items.length ? items : undefined,
+    importe: items.length ? undefined : Number(total.toFixed(2)),
     fecha: typeof raw.fecha === 'string' && raw.fecha ? raw.fecha : undefined,
     fchServDesde: typeof raw.fchServDesde === 'string' ? raw.fchServDesde : undefined,
     fchServHasta: typeof raw.fchServHasta === 'string' ? raw.fchServHasta : undefined,
@@ -55,8 +69,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { cae, numero } = await emitirYGuardar(supabase, user.id, input)
-    return NextResponse.json({ ok: true, cae: cae.cae, caeVto: cae.caeVto, numero })
+    const { cae, numero, id } = await emitirYGuardar(supabase, user.id, input)
+    return NextResponse.json({ ok: true, cae: cae.cae, caeVto: cae.caeVto, numero, id })
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message || 'AFIP rechazó el comprobante' }, { status: 400 })
   }

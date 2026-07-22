@@ -24,9 +24,10 @@ export async function POST(req: NextRequest) {
   if (!nombre) return NextResponse.json({ error: 'Falta el nombre del cliente' }, { status: 400 })
   const doc_tipo = raw.doc_tipo != null && raw.doc_tipo !== '' ? Number(raw.doc_tipo) : null
   const doc_nro = raw.doc_nro != null ? (String(raw.doc_nro).replace(/\D/g, '') || null) : null
+  const condicion_iva = raw.condicion_iva != null && raw.condicion_iva !== '' ? Number(raw.condicion_iva) : null
 
   const { data, error } = await supabase.from('clientes').upsert(
-    { user_id: user.id, nombre, doc_tipo, doc_nro, updated_at: new Date().toISOString() },
+    { user_id: user.id, nombre, doc_tipo, doc_nro, condicion_iva, updated_at: new Date().toISOString() },
     { onConflict: 'user_id,nombre' },
   ).select().maybeSingle()
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })

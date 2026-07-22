@@ -6,7 +6,7 @@ import {
 } from '@/lib/afip/wsaa'
 import {
   parseConstancia, construirSoapConstancia, consultarConstancia, PadronError,
-  parseNombrePersona, consultarPersona,
+  parseNombrePersona, consultarPersona, parseEmisor,
 } from '@/lib/afip/padron'
 
 // Keypair + cert self-signed para firmar (una vez).
@@ -133,6 +133,16 @@ describe('parseNombrePersona', () => {
   })
   it('sin datos → null', () => {
     expect(parseNombrePersona('<x/>').nombre).toBeNull()
+  })
+})
+
+describe('parseEmisor', () => {
+  it('extrae nombre, domicilio e inicio de actividades', () => {
+    const xml = '<datosGenerales><apellido>BESSAN NOFAL</apellido><nombre>LUCIANO FEDERICO</nombre><domicilioFiscal><direccion>CORRIENTES 3315</direccion><localidad>MAR DEL PLATA</localidad><descripcionProvincia>BUENOS AIRES</descripcionProvincia></domicilioFiscal></datosGenerales><datosMonotributo><actividadMonotributista><periodo>202308</periodo></actividadMonotributista></datosMonotributo>'
+    const e = parseEmisor(xml)
+    expect(e.nombre).toBe('LUCIANO FEDERICO BESSAN NOFAL')
+    expect(e.domicilio).toContain('CORRIENTES 3315')
+    expect(e.inicioActividades).toBe('01/08/2023')
   })
 })
 

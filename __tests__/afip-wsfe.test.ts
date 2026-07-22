@@ -58,6 +58,18 @@ describe('construirFECAESolicitar', () => {
     const xml = construirFECAESolicitar(TA, CUIT, factura({ concepto: 1 }), 8)
     expect(xml).not.toContain('FchServDesde')
   })
+  it('incluye CondicionIVAReceptorId y respeta el orden del XSD', () => {
+    const xml = construirFECAESolicitar(TA, CUIT, factura({ concepto: 2, docTipo: 80, condicionIvaReceptor: 1 }), 8)
+    expect(xml).toContain('<ar:CondicionIVAReceptorId>1</ar:CondicionIVAReceptorId>')
+    // ImpTrib antes de ImpIVA; fechas de servicio antes de MonId; CondIVA al final
+    expect(xml.indexOf('ImpTrib')).toBeLessThan(xml.indexOf('ImpIVA'))
+    expect(xml.indexOf('FchServDesde')).toBeLessThan(xml.indexOf('MonId'))
+    expect(xml.indexOf('MonCotiz')).toBeLessThan(xml.indexOf('CondicionIVAReceptorId'))
+  })
+  it('consumidor final → CondIVA 5 por defecto', () => {
+    const xml = construirFECAESolicitar(TA, CUIT, factura({ concepto: 1, docTipo: 99 }), 8)
+    expect(xml).toContain('<ar:CondicionIVAReceptorId>5</ar:CondicionIVAReceptorId>')
+  })
 })
 
 describe('parseCaeResult', () => {

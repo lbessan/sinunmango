@@ -97,6 +97,36 @@ export async function consultarPersona(opts: {
   return parseNombrePersona(text)
 }
 
+export type EmisorAfip = { nombre: string | null; domicilio: string | null; inicioActividades: string | null }
+
+/** Datos del emisor (uno mismo) para el PDF: nombre, domicilio fiscal, inicio de actividades. */
+export function parseEmisor(xml: string): EmisorAfip {
+  const dg = xml.match(/<datosGenerales>([\s\S]*?)<\/datosGenerales>/i)?.[1] ?? ''
+  const razon = extraerTag(dg, 'razonSocial')
+  const nombre = razon || ([extraerTag(dg, 'nombre'), extraerTag(dg, 'apellido')].filter(Boolean).join(' ').trim() || null)
+  const dom = dg.match(/<domicilioFiscal>([\s\S]*?)<\/domicilioFiscal>/i)?.[1] ?? ''
+  const domicilio = [extraerTag(dom, 'direccion'), extraerTag(dom, 'localidad'), extraerTag(dom, 'descripcionProvincia')]
+    .filter(Boolean).join(', ') || null
+  const mono = xml.match(/<datosMonotributo>([\s\S]*?)<\/datosMonotributo>/i)?.[1] ?? ''
+  const per = extraerTag(mono.match(/<actividadMonotributista>([\s\S]*?)<\/actividadMonotributista>/i)?.[1] ?? '', 'periodo')
+  const inicioActividades = per && per.length === 6 ? `01/${per.slice(4, 6)}/${per.slice(0, 4)}` : null
+  return { nombre, domicilio, inicioActividades }
+}
+
+export async function consultarEmisor(opts: { ta: TA; cuit: string; ambiente?: Ambiente; fetchImpl?: typeof fetch }): Promise<EmisorAfip> {
+  const ambiente = opts.ambiente ?? 'produccion'
+  const doFetch = opts.fetchImpl ?? fetch
+  const res = await doFetch(PADRON_URL[ambiente], {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '' },
+    body: construirSoapConstancia(opts.ta, opts.cuit),
+  })
+  const text = await res.text()
+  const fault = extraerTag(text, 'faultstring')
+  if (fault) throw new PadronError(fault)
+  return parseEmisor(text)
+}
+
 /** Consulta la constancia con un TA ya obtenido de WSAA. Tira PadronError si falla. */
 export async function consultarConstancia(opts: {
   ta: TA

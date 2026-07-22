@@ -429,6 +429,7 @@ export type Database = {
           nombre: string
           doc_tipo: number | null
           doc_nro: string | null
+          condicion_iva: number | null
           created_at: string
           updated_at: string
         }
@@ -438,6 +439,7 @@ export type Database = {
           nombre: string
           doc_tipo?: number | null
           doc_nro?: string | null
+          condicion_iva?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -447,6 +449,7 @@ export type Database = {
           nombre?: string
           doc_tipo?: number | null
           doc_nro?: string | null
+          condicion_iva?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -516,6 +519,9 @@ export type Database = {
           periodo_desde: string | null
           periodo_hasta: string | null
           punto_venta: string | null
+          items: Json | null
+          iva_receptor: number | null
+          vto_pago: string | null
           created_at: string
         }
         Insert: {
@@ -534,6 +540,9 @@ export type Database = {
           periodo_desde?: string | null
           periodo_hasta?: string | null
           punto_venta?: string | null
+          items?: Json | null
+          iva_receptor?: number | null
+          vto_pago?: string | null
           created_at?: string
         }
         Update: {
@@ -552,6 +561,9 @@ export type Database = {
           periodo_desde?: string | null
           periodo_hasta?: string | null
           punto_venta?: string | null
+          items?: Json | null
+          iva_receptor?: number | null
+          vto_pago?: string | null
           created_at?: string
         }
         Relationships: []

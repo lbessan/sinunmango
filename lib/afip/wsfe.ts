@@ -153,6 +153,7 @@ export type FacturaC = {
   docTipo: number // 80 CUIT, 96 DNI, 99 consumidor final
   docNro: number
   importe: number // total (Factura C: neto = total, sin IVA)
+  condicionIvaReceptor?: number // 1 RI, 4 Exento, 5 CF, 6 Monotributo (default: 5 CF / 1 RI)
   fecha?: string // YYYYMMDD (default hoy)
   fchServDesde?: string
   fchServHasta?: string
@@ -166,22 +167,30 @@ function yyyymmdd(d: Date): string {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`
 }
 
-/** Arma el FECAESolicitar para una Factura C. `cbteNro` = número a autorizar. */
+/**
+ * Arma el FECAESolicitar para una Factura C. `cbteNro` = número a autorizar.
+ * OJO: el orden de los elementos importa (es un XSD sequence). Orden correcto:
+ * ...ImpTrib, ImpIVA, [FchServ*], MonId, MonCotiz, CondicionIVAReceptorId.
+ */
 export function construirFECAESolicitar(ta: TA, cuit: string, f: FacturaC, cbteNro: number): string {
   const fecha = f.fecha ?? yyyymmdd(new Date())
   const importe = Number(f.importe.toFixed(2))
-  // Para servicios (2) o ambos (3), AFIP exige fechas de servicio + vto de pago.
+  // Para servicios (2) o ambos (3), AFIP exige fechas de servicio + vto de pago,
+  // que van ANTES de MonId/MonCotiz.
   const servicio = f.concepto !== 1
     ? `<ar:FchServDesde>${f.fchServDesde ?? fecha}</ar:FchServDesde><ar:FchServHasta>${f.fchServHasta ?? fecha}</ar:FchServHasta><ar:FchVtoPago>${f.fchVtoPago ?? fecha}</ar:FchVtoPago>`
     : ''
+  // Condición frente al IVA del receptor (obligatoria desde 2024): 5 CF, 1 RI.
+  const condIva = f.condicionIvaReceptor ?? (f.docTipo === 99 ? 5 : 1)
   const det =
     `<ar:FECAEDetRequest>` +
     `<ar:Concepto>${f.concepto}</ar:Concepto><ar:DocTipo>${f.docTipo}</ar:DocTipo><ar:DocNro>${f.docNro}</ar:DocNro>` +
     `<ar:CbteDesde>${cbteNro}</ar:CbteDesde><ar:CbteHasta>${cbteNro}</ar:CbteHasta><ar:CbteFch>${fecha}</ar:CbteFch>` +
     `<ar:ImpTotal>${importe}</ar:ImpTotal><ar:ImpTotConc>0</ar:ImpTotConc><ar:ImpNeto>${importe}</ar:ImpNeto>` +
-    `<ar:ImpOpEx>0</ar:ImpOpEx><ar:ImpIVA>0</ar:ImpIVA><ar:ImpTrib>0</ar:ImpTrib>` +
-    `<ar:MonId>PES</ar:MonId><ar:MonCotiz>1</ar:MonCotiz>` +
+    `<ar:ImpOpEx>0</ar:ImpOpEx><ar:ImpTrib>0</ar:ImpTrib><ar:ImpIVA>0</ar:ImpIVA>` +
     servicio +
+    `<ar:MonId>PES</ar:MonId><ar:MonCotiz>1</ar:MonCotiz>` +
+    `<ar:CondicionIVAReceptorId>${condIva}</ar:CondicionIVAReceptorId>` +
     `</ar:FECAEDetRequest>`
   return (
     `<ar:FECAESolicitar>${authXml(ta, cuit)}<ar:FeCAEReq>` +
