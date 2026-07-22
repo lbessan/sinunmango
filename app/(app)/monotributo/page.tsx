@@ -14,6 +14,7 @@ import { Plus, Pencil, AlertTriangle, TrendingUp, Calendar, Settings, Info, Refr
 import { getAuthedClient } from '@/lib/supabase/server'
 import { DeleteButton } from '@/components/delete-button'
 import { ImportarFacturaButton } from './importar-factura'
+import { TraerFacturasAfip } from './traer-facturas-afip'
 import {
   facturacionPeriodoEvaluacion,
   periodoEvaluacion,
@@ -61,13 +62,15 @@ export default async function MonotributoPage() {
   if (!user) redirect('/login')
 
   // ── Queries en paralelo ──
-  const [{ data: configRaw }, { data: facturasRaw }] = await Promise.all([
+  const [{ data: configRaw }, { data: facturasRaw }, { data: conxRaw }] = await Promise.all([
     supabase.from('monotributo_config').select('*').eq('user_id', user.id).maybeSingle(),
     supabase.from('facturas_emitidas').select('*').eq('user_id', user.id).order('fecha', { ascending: false }),
+    supabase.from('afip_conexion').select('cert_cipher').eq('user_id', user.id).maybeSingle(),
   ])
 
   const config   = configRaw   as Config | null
   const facturas = (facturasRaw ?? []) as FacturaEmitida[]
+  const afipConectado = !!conxRaw?.cert_cipher
 
   // ── Si no hay config, empty state con CTA ──
   if (!config) {
@@ -162,6 +165,7 @@ export default async function MonotributoPage() {
           >
             <Settings size={14} />Config
           </Link>
+          {afipConectado && <TraerFacturasAfip />}
           <ImportarFacturaButton />
           <Link
             href="/monotributo/nueva"

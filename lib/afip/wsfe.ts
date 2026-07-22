@@ -97,6 +97,53 @@ export async function ultimoComprobante(o: BaseOpts & { ptoVta: number; cbteTipo
   return Number(nro ?? 0)
 }
 
+// ── Consultar un comprobante (para importar los emitidos) ────────────────────
+export type Comprobante = {
+  ptoVta: number
+  cbteTipo: number
+  cbteNro: number
+  fecha: string // YYYYMMDD (CbteFch)
+  docTipo: number
+  docNro: string
+  impTotal: number
+  concepto: number
+  cae: string | null // CodAutorizacion
+  caeVto: string | null // FchVto
+}
+
+export function parseComprobante(xml: string, ptoVta: number, cbteTipo: number): Comprobante | null {
+  const rg = xml.match(/<ResultGet>([\s\S]*?)<\/ResultGet>/i)?.[1]
+  if (!rg) return null
+  const cbteNro = Number(tag(rg, 'CbteDesde') ?? 0)
+  if (!cbteNro) return null
+  return {
+    ptoVta,
+    cbteTipo,
+    cbteNro,
+    fecha: tag(rg, 'CbteFch') ?? '',
+    docTipo: Number(tag(rg, 'DocTipo') ?? 0),
+    docNro: tag(rg, 'DocNro') ?? '0',
+    impTotal: Number(tag(rg, 'ImpTotal') ?? 0),
+    concepto: Number(tag(rg, 'Concepto') ?? 0),
+    cae: tag(rg, 'CodAutorizacion'),
+    caeVto: tag(rg, 'FchVto'),
+  }
+}
+
+/** Consulta un comprobante puntual. Devuelve null si no existe. */
+export async function consultarComprobante(
+  o: BaseOpts & { ptoVta: number; cbteTipo: number; cbteNro: number },
+): Promise<Comprobante | null> {
+  const xml = await call(o, 'FECompConsultar',
+    `<ar:FECompConsultar>${authXml(o.ta, o.cuit)}<ar:FeCompConsReq><ar:CbteTipo>${o.cbteTipo}</ar:CbteTipo><ar:CbteNro>${o.cbteNro}</ar:CbteNro><ar:PtoVta>${o.ptoVta}</ar:PtoVta></ar:FeCompConsReq></ar:FECompConsultar>`)
+  const comp = parseComprobante(xml, o.ptoVta, o.cbteTipo)
+  if (!comp) {
+    const err = extraerErrores(xml)
+    if (err) throw new WsfeError(err)
+  }
+  return comp
+}
+
 // ── Emitir Factura C ─────────────────────────────────────────────────────────
 const CBTE_FACTURA_C = 11
 

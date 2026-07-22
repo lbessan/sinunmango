@@ -2,6 +2,7 @@ import { adminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron-auth'
 import { sincronizarPorCert } from '@/lib/afip/sync'
+import { importarComprobantes } from '@/lib/afip/comprobantes'
 
 // ─── Cron de re-sincronización de monotributo con AFIP (por certificado) ─────
 // Semanal. Para cada conexión con certificado, vuelve a leer la categoría
@@ -27,14 +28,18 @@ export async function GET(req: NextRequest) {
   const conexiones = (rows ?? []) as ConexionRow[]
   if (conexiones.length === 0) return NextResponse.json({ ok: true, synced: 0, message: 'Nada para sincronizar.' })
 
-  const results: { user: string; ok: boolean; detalle?: string }[] = []
+  const results: { user: string; ok: boolean; detalle?: string; importadas?: number }[] = []
   let synced = 0
 
   for (const c of conexiones) {
     try {
       const { datos } = await sincronizarPorCert(adminClient, c.user_id)
+      // Traer facturas emitidas (best-effort: un problema de wsfe no debe voltear
+      // la sync de categoría, que ya funcionó).
+      let importadas = 0
+      try { importadas = (await importarComprobantes(adminClient, c.user_id)).importados } catch { /* wsfe opcional */ }
       synced++
-      results.push({ user: c.user_id, ok: true, detalle: datos.categoria ?? undefined })
+      results.push({ user: c.user_id, ok: true, detalle: datos.categoria ?? undefined, importadas })
     } catch (e) {
       const msg = (e as Error).message || 'Error de sincronización'
       await adminClient.from('afip_conexion')
