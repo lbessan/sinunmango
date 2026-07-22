@@ -422,6 +422,36 @@ export type Database = {
         }
         Relationships: []
       }
+      clientes: {
+        Row: {
+          id: string
+          user_id: string
+          nombre: string
+          doc_tipo: number | null
+          doc_nro: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          nombre: string
+          doc_tipo?: number | null
+          doc_nro?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          nombre?: string
+          doc_tipo?: number | null
+          doc_nro?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       monotributo_config: {
         Row: {
           categoria: string

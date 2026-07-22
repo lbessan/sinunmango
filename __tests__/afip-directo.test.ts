@@ -6,6 +6,7 @@ import {
 } from '@/lib/afip/wsaa'
 import {
   parseConstancia, construirSoapConstancia, consultarConstancia, PadronError,
+  parseNombrePersona, consultarPersona,
 } from '@/lib/afip/padron'
 
 // Keypair + cert self-signed para firmar (una vez).
@@ -118,6 +119,37 @@ describe('construirSoapConstancia', () => {
     expect(soap).toContain('<token>T</token>')
     expect(soap).toContain('<sign>S</sign>')
     expect(soap).toContain('<idPersona>20302960497</idPersona>')
+  })
+})
+
+describe('parseNombrePersona', () => {
+  it('jurídica → razón social', () => {
+    const r = parseNombrePersona('<datosGenerales><razonSocial>MERCADOLIBRE S.R.L.</razonSocial><tipoPersona>JURIDICA</tipoPersona></datosGenerales>')
+    expect(r).toEqual({ nombre: 'MERCADOLIBRE S.R.L.', tipoPersona: 'JURIDICA' })
+  })
+  it('física → nombre + apellido', () => {
+    const r = parseNombrePersona('<datosGenerales><apellido>BESSAN</apellido><nombre>LUCIANO</nombre><tipoPersona>FISICA</tipoPersona></datosGenerales>')
+    expect(r.nombre).toBe('LUCIANO BESSAN')
+  })
+  it('sin datos → null', () => {
+    expect(parseNombrePersona('<x/>').nombre).toBeNull()
+  })
+})
+
+describe('construirSoapConstancia', () => {
+  it('consulta a un tercero con idPersona distinto', () => {
+    const soap = construirSoapConstancia({ token: 'T', sign: 'S', expira: '' }, '20302960497', '30703088534')
+    expect(soap).toContain('<cuitRepresentada>20302960497</cuitRepresentada>')
+    expect(soap).toContain('<idPersona>30703088534</idPersona>')
+  })
+})
+
+describe('consultarPersona', () => {
+  it('devuelve el nombre de un CUIT tercero', async () => {
+    const xml = '<getPersona_v2Response><personaReturn><datosGenerales><razonSocial>MERCADOLIBRE S.R.L.</razonSocial><tipoPersona>JURIDICA</tipoPersona></datosGenerales></personaReturn></getPersona_v2Response>'
+    const fetchImpl = vi.fn().mockResolvedValue(jsonText(xml))
+    const r = await consultarPersona({ ta: { token: 'T', sign: 'S', expira: '' }, cuitConsultante: '20302960497', cuit: '30703088534', fetchImpl })
+    expect(r.nombre).toBe('MERCADOLIBRE S.R.L.')
   })
 })
 

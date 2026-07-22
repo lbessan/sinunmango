@@ -55,9 +55,46 @@ export function parseConstancia(xml: string): DatosMonotributo {
   }
 }
 
-/** Arma el SOAP de getPersona_v2 para consultar los datos del propio CUIT. */
-export function construirSoapConstancia(ta: TA, cuit: string): string {
-  return `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:a5="http://a5.soap.ws.server.puc.sr/"><soapenv:Header/><soapenv:Body><a5:getPersona_v2><token>${ta.token}</token><sign>${ta.sign}</sign><cuitRepresentada>${cuit}</cuitRepresentada><idPersona>${cuit}</idPersona></a5:getPersona_v2></soapenv:Body></soapenv:Envelope>`
+/** Arma el SOAP de getPersona_v2. `idPersona` = a quién se consulta (default: uno mismo). */
+export function construirSoapConstancia(ta: TA, cuitRepresentada: string, idPersona: string = cuitRepresentada): string {
+  return `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:a5="http://a5.soap.ws.server.puc.sr/"><soapenv:Header/><soapenv:Body><a5:getPersona_v2><token>${ta.token}</token><sign>${ta.sign}</sign><cuitRepresentada>${cuitRepresentada}</cuitRepresentada><idPersona>${idPersona}</idPersona></a5:getPersona_v2></soapenv:Body></soapenv:Envelope>`
+}
+
+export type PersonaAfip = { nombre: string | null; tipoPersona: string | null }
+
+/** Nombre/razón social desde datosGenerales (razonSocial para jurídicas, nombre+apellido para físicas). */
+export function parseNombrePersona(xml: string): PersonaAfip {
+  const dg = xml.match(/<datosGenerales>([\s\S]*?)<\/datosGenerales>/i)?.[1] ?? ''
+  const razon = extraerTag(dg, 'razonSocial')
+  const nombre = razon
+    ? razon
+    : ([extraerTag(dg, 'nombre'), extraerTag(dg, 'apellido')].filter(Boolean).join(' ').trim() || null)
+  return { nombre, tipoPersona: extraerTag(dg, 'tipoPersona') }
+}
+
+/**
+ * Consulta el nombre/razón social de CUALQUIER CUIT en el padrón (para la
+ * libreta de clientes). El padrón es público: con el cert propio consultás a
+ * terceros. Tira PadronError si falla.
+ */
+export async function consultarPersona(opts: {
+  ta: TA
+  cuitConsultante: string
+  cuit: string
+  ambiente?: Ambiente
+  fetchImpl?: typeof fetch
+}): Promise<PersonaAfip> {
+  const ambiente = opts.ambiente ?? 'produccion'
+  const doFetch = opts.fetchImpl ?? fetch
+  const res = await doFetch(PADRON_URL[ambiente], {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '' },
+    body: construirSoapConstancia(opts.ta, opts.cuitConsultante, opts.cuit),
+  })
+  const text = await res.text()
+  const fault = extraerTag(text, 'faultstring')
+  if (fault) throw new PadronError(fault)
+  return parseNombrePersona(text)
 }
 
 /** Consulta la constancia con un TA ya obtenido de WSAA. Tira PadronError si falla. */

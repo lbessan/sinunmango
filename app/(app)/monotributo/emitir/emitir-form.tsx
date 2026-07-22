@@ -2,12 +2,15 @@
 
 // ─── Emitir Factura C (wsfe, directo a AFIP) ─────────────────────────────────
 // Emite un documento fiscal REAL: pide confirmación antes de solicitar el CAE.
+// Integra la libreta de clientes: elegís uno (autocompleta doc) o traés el
+// nombre desde AFIP por CUIT. Al emitir, guarda/actualiza el cliente.
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Check, AlertCircle, FileText } from 'lucide-react'
+import { Loader2, Check, AlertCircle, FileText, Search } from 'lucide-react'
 
 type Pto = { nro: number; tipo: string | null; bloqueado: boolean }
+type Cliente = { nombre: string; doc_tipo: number | null; doc_nro: string | null }
 type Fase = 'form' | 'confirmar' | 'emitiendo' | 'ok'
 
 const DOC_TIPOS = [
@@ -23,6 +26,7 @@ const hoy = () => new Date().toISOString().slice(0, 10)
 export function EmitirFacturaForm() {
   const router = useRouter()
   const [ptos, setPtos] = useState<Pto[]>([])
+  const [clientes, setClientes] = useState<Cliente[]>([])
   const [ptoVta, setPtoVta] = useState<number | ''>('')
   const [concepto, setConcepto] = useState<1 | 2 | 3>(2)
   const [cliente, setCliente] = useState('')
@@ -31,6 +35,7 @@ export function EmitirFacturaForm() {
   const [importe, setImporte] = useState('')
   const [fecha, setFecha] = useState(hoy())
   const [fase, setFase] = useState<Fase>('form')
+  const [buscando, setBuscando] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<{ cae: string; caeVto: string; numero: string } | null>(null)
 
@@ -44,10 +49,30 @@ export function EmitirFacturaForm() {
         if (activos.length === 1) setPtoVta(activos[0].nro)
       })
       .catch(() => setError('No se pudieron cargar los puntos de venta'))
+    fetch('/api/monotributo/clientes').then(r => r.json()).then(j => setClientes(j.clientes ?? [])).catch(() => {})
   }, [])
 
   const importeNum = Number(importe)
   const valido = ptoVta !== '' && importeNum > 0 && (docTipo === 99 || Number(docNro) > 0)
+
+  // Al tipear/elegir un nombre, si matchea un cliente guardado, autocompleta el doc.
+  function onNombre(nombre: string) {
+    setCliente(nombre)
+    const c = clientes.find(x => x.nombre === nombre)
+    if (c && c.doc_nro) { setDocTipo(c.doc_tipo ?? 80); setDocNro(c.doc_nro) }
+  }
+
+  // Trae el nombre del CUIT desde el padrón de AFIP.
+  async function buscarNombre() {
+    if (docNro.length !== 11) return
+    setBuscando(true); setError('')
+    try {
+      const r = await fetch(`/api/monotributo/afip/consultar-cuit?cuit=${docNro}`)
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'No se encontró')
+      setCliente(j.nombre)
+    } catch (e) { setError((e as Error).message) } finally { setBuscando(false) }
+  }
 
   async function emitir() {
     setFase('emitiendo'); setError('')
@@ -65,6 +90,13 @@ export function EmitirFacturaForm() {
       const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'No se pudo emitir')
       setResult({ cae: j.cae, caeVto: j.caeVto, numero: j.numero }); setFase('ok'); router.refresh()
+      // Guardar/actualizar el cliente (best-effort).
+      if (cliente.trim() && docTipo !== 99) {
+        fetch('/api/monotributo/clientes', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre: cliente, doc_tipo: docTipo, doc_nro: docNro }),
+        }).catch(() => {})
+      }
     } catch (e) { setError((e as Error).message); setFase('form') }
   }
 
@@ -78,10 +110,8 @@ export function EmitirFacturaForm() {
             <p className="text-sm text-slate-500">CAE <b>{result.cae}</b> · vence {result.caeVto}</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => { setFase('form'); setResult(null); setImporte(''); setCliente(''); setDocNro('') }}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--accent)' }}>Emitir otra</button>
-        </div>
+        <button onClick={() => { setFase('form'); setResult(null); setImporte(''); setCliente(''); setDocNro('') }}
+          className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: 'var(--accent)' }}>Emitir otra</button>
       </div>
     )
   }
@@ -93,10 +123,7 @@ export function EmitirFacturaForm() {
           <AlertCircle size={16} className="shrink-0 mt-0.5" /> <span>{error}</span>
         </div>
       )}
-
-      {ptos.length === 0 && !error && (
-        <p className="text-sm text-slate-500">Cargando puntos de venta…</p>
-      )}
+      {ptos.length === 0 && !error && <p className="text-sm text-slate-500">Cargando puntos de venta…</p>}
 
       <div className="grid grid-cols-2 gap-3">
         <label className="text-sm">
@@ -126,18 +153,27 @@ export function EmitirFacturaForm() {
         {docTipo !== 99 && (
           <label className="text-sm">
             <span className="block font-medium text-slate-700 mb-1">{docTipo === 80 ? 'CUIT' : docTipo === 96 ? 'DNI' : 'Nº documento'}</span>
-            <input value={docNro} onChange={e => setDocNro(e.target.value.replace(/\D/g, ''))} inputMode="numeric"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+            <div className="flex gap-1.5">
+              <input value={docNro} onChange={e => setDocNro(e.target.value.replace(/\D/g, ''))} inputMode="numeric"
+                className="flex-1 min-w-0 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              {docTipo === 80 && (
+                <button type="button" onClick={buscarNombre} disabled={buscando || docNro.length !== 11} title="Traer nombre desde AFIP"
+                  className="px-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 shrink-0">
+                  {buscando ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                </button>
+              )}
+            </div>
           </label>
         )}
       </div>
 
       <label className="text-sm block">
-        <span className="block font-medium text-slate-700 mb-1">Nombre <span className="font-normal text-slate-400">(para tu resumen)</span></span>
-        <input value={cliente} onChange={e => setCliente(e.target.value)} placeholder="Nombre o razón social"
+        <span className="block font-medium text-slate-700 mb-1">Cliente <span className="font-normal text-slate-400">(nombre, para tu resumen)</span></span>
+        <input value={cliente} onChange={e => onNombre(e.target.value)} placeholder="Elegí uno guardado o escribí" list="clientes-dl"
           className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+        <datalist id="clientes-dl">{clientes.map(c => <option key={c.nombre} value={c.nombre} />)}</datalist>
         <span className="block text-[11px] text-slate-400 mt-1">
-          AFIP identifica al cliente por su {docTipo === 99 ? 'documento' : 'CUIT/DNI'} y pone el nombre legal solo. Este campo es para tu resumen “por cliente”.
+          AFIP identifica al cliente por su {docTipo === 99 ? 'documento' : 'CUIT/DNI'}; el nombre es para tu resumen. Tip: poné el CUIT y tocá 🔍 para traer el nombre.
         </span>
       </label>
 

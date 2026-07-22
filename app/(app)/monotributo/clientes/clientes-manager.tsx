@@ -1,0 +1,112 @@
+'use client'
+
+// Libreta de clientes: importar desde facturas, agregar por CUIT (con nombre
+// autocompletado del padrón) o a mano, y ver/editar la lista.
+
+import { useState } from 'react'
+import { Loader2, Search, Plus, CloudDownload, User } from 'lucide-react'
+
+type Cliente = { id: string; nombre: string; doc_tipo: number | null; doc_nro: string | null }
+
+const docLabel = (t: number | null) => (t === 80 ? 'CUIT' : t === 96 ? 'DNI' : t === 86 ? 'CUIL' : 'Doc')
+
+export function ClientesManager({ iniciales, afipConectado }: { iniciales: Cliente[]; afipConectado: boolean }) {
+  const [clientes, setClientes] = useState<Cliente[]>(iniciales)
+  const [nombre, setNombre] = useState('')
+  const [cuit, setCuit] = useState('')
+  const [buscando, setBuscando] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+  const [importando, setImportando] = useState(false)
+  const [error, setError] = useState('')
+  const [msg, setMsg] = useState('')
+
+  async function reload() {
+    const j = await fetch('/api/monotributo/clientes').then(r => r.json())
+    setClientes(j.clientes ?? [])
+  }
+
+  async function buscar() {
+    if (cuit.replace(/\D/g, '').length !== 11) return
+    setBuscando(true); setError('')
+    try {
+      const j = await fetch(`/api/monotributo/afip/consultar-cuit?cuit=${cuit.replace(/\D/g, '')}`).then(r => r.json())
+      if (j.error) throw new Error(j.error)
+      setNombre(j.nombre)
+    } catch (e) { setError((e as Error).message) } finally { setBuscando(false) }
+  }
+
+  async function agregar() {
+    if (!nombre.trim()) return
+    setGuardando(true); setError('')
+    try {
+      const cuitLimpio = cuit.replace(/\D/g, '')
+      const r = await fetch('/api/monotributo/clientes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, doc_tipo: cuitLimpio ? 80 : null, doc_nro: cuitLimpio || null }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error)
+      setNombre(''); setCuit(''); await reload()
+    } catch (e) { setError((e as Error).message) } finally { setGuardando(false) }
+  }
+
+  async function importar() {
+    setImportando(true); setError(''); setMsg('')
+    try {
+      const j = await fetch('/api/monotributo/clientes/importar', { method: 'POST' }).then(r => r.json())
+      if (j.error) throw new Error(j.error)
+      setMsg(j.importados > 0 ? `Importados ${j.importados} de tus facturas` : 'No había clientes nuevos para importar')
+      await reload()
+    } catch (e) { setError((e as Error).message) } finally { setImportando(false); setTimeout(() => setMsg(''), 5000) }
+  }
+
+  return (
+    <div className="space-y-5">
+      <button onClick={importar} disabled={importando}
+        className="inline-flex items-center gap-2 text-sm text-slate-600 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+        {importando ? <Loader2 size={14} className="animate-spin" /> : <CloudDownload size={14} />} Importar de mis facturas
+      </button>
+      {msg && <p className="text-xs text-emerald-600">{msg}</p>}
+
+      {/* Agregar */}
+      <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+        <p className="text-sm font-semibold text-slate-700">Agregar cliente</p>
+        {error && <p className="text-xs text-red-600">{error}</p>}
+        <div className="flex gap-2">
+          <input value={cuit} onChange={e => setCuit(e.target.value.replace(/[^\d-]/g, ''))} placeholder="CUIT (opcional)" inputMode="numeric"
+            className="w-40 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+          {afipConectado && (
+            <button type="button" onClick={buscar} disabled={buscando || cuit.replace(/\D/g, '').length !== 11} title="Traer nombre de AFIP"
+              className="px-3 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 inline-flex items-center gap-1.5 text-sm text-slate-600">
+              {buscando ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />} Buscar
+            </button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre o razón social"
+            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+          <button onClick={agregar} disabled={guardando || !nombre.trim()}
+            className="px-4 rounded-lg text-sm font-semibold text-white disabled:opacity-40 inline-flex items-center gap-1.5" style={{ background: 'var(--accent)' }}>
+            {guardando ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Agregar
+          </button>
+        </div>
+      </div>
+
+      {/* Lista */}
+      <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+        {clientes.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-8">Todavía no tenés clientes. Importalos de tus facturas o agregá uno.</p>
+        ) : clientes.map(c => (
+          <div key={c.id} className="flex items-center gap-3 px-4 py-3">
+            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><User size={15} className="text-slate-400" /></div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-800 truncate">{c.nombre}</p>
+              <p className="text-xs text-slate-400">{c.doc_nro ? `${docLabel(c.doc_tipo)} ${c.doc_nro}` : 'Sin CUIT'}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-slate-400">{clientes.length} cliente{clientes.length === 1 ? '' : 's'}</p>
+    </div>
+  )
+}
