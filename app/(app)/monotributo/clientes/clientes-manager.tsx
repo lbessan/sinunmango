@@ -4,7 +4,7 @@
 // autocompletado del padrón) o a mano, y ver/editar la lista.
 
 import { useState } from 'react'
-import { Loader2, Search, Plus, CloudDownload, User } from 'lucide-react'
+import { Loader2, Search, Plus, CloudDownload, User, FileUp } from 'lucide-react'
 
 type Cliente = { id: string; nombre: string; doc_tipo: number | null; doc_nro: string | null }
 
@@ -73,12 +73,42 @@ export function ClientesManager({ iniciales, afipConectado }: { iniciales: Clien
     } catch (e) { setError((e as Error).message) } finally { setImportando(false); setTimeout(() => setMsg(''), 5000) }
   }
 
+  async function subirCsv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setImportando(true); setError(''); setMsg('')
+    try {
+      const csv = await file.text()
+      const r = await fetch('/api/monotributo/importar-csv', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'No se pudo importar')
+      setMsg(`${j.importadas} facturas nuevas · ${j.enriquecidas} completadas · ${j.clientes} clientes actualizados`)
+      await reload()
+    } catch (err) { setError((err as Error).message) } finally { setImportando(false); setTimeout(() => setMsg(''), 8000) }
+  }
+
   return (
     <div className="space-y-5">
-      <button onClick={importar} disabled={importando}
-        className="inline-flex items-center gap-2 text-sm text-slate-600 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
-        {importando ? <Loader2 size={14} className="animate-spin" /> : <CloudDownload size={14} />} Importar de mis facturas
-      </button>
+      <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 space-y-2">
+        <p className="text-sm font-semibold text-slate-800">Traé todo desde AFIP</p>
+        <p className="text-xs text-slate-500">
+          Bajá el CSV de <b>Mis Comprobantes → Emitidos</b> (descomprimí el .zip) y subilo: importamos tus facturas
+          con el CUIT y el nombre del cliente, y completamos la libreta. Sirve también para las hechas en el facturador online.
+        </p>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <label className="inline-flex items-center gap-2 text-sm font-semibold text-white px-3 py-2 rounded-lg cursor-pointer" style={{ background: 'var(--accent)' }}>
+            <input type="file" accept=".csv,text/csv" className="hidden" onChange={subirCsv} disabled={importando} />
+            {importando ? <Loader2 size={14} className="animate-spin" /> : <FileUp size={14} />} Subir CSV de Mis Comprobantes
+          </label>
+          <button onClick={importar} disabled={importando}
+            className="inline-flex items-center gap-2 text-sm text-slate-600 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50">
+            <CloudDownload size={14} /> Solo nombres (de facturas ya cargadas)
+          </button>
+        </div>
+      </div>
       {msg && <p className="text-xs text-emerald-600">{msg}</p>}
 
       {/* Agregar */}
