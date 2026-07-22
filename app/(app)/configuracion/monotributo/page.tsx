@@ -38,7 +38,7 @@ export default async function MonotributoConfigPage() {
         <span className="text-2xl">🔗</span>
         <span className="flex-1">
           <span className="block text-sm font-semibold text-slate-800">Conectar con AFIP <span className="ml-1 text-[10px] font-bold uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">beta</span></span>
-          <span className="block text-xs text-slate-500">Traé tu categoría y facturación automáticamente, sin cargar nada a mano ni dar tu clave fiscal.</span>
+          <span className="block text-xs text-slate-500">Traé tu categoría automáticamente desde AFIP con tu certificado — sin clave fiscal.</span>
         </span>
         <span className="text-slate-400">→</span>
       </Link>

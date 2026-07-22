@@ -1,0 +1,81 @@
+// ─── lib/afip/padron.ts ──────────────────────────────────────────────────────
+//
+// Lectura de la categoría de monotributo directo de AFIP (sin terceros), con el
+// certificado del usuario. Usa el servicio de Constancia de Inscripción
+// (ws_sr_constancia_inscripcion), que devuelve `datosMonotributo` con la
+// categoría, actividades e impuestos.
+//
+// Nota: el padrón NO trae la facturación acumulada (eso no vive acá; se obtiene
+// por wsfe leyendo los comprobantes, o se calcula al emitir).
+
+import type { TA, Ambiente } from './wsaa'
+import { extraerTag } from './wsaa'
+
+/** Servicio WSAA que hay que pedir para consultar la constancia. */
+export const SERVICIO_CONSTANCIA = 'ws_sr_constancia_inscripcion'
+
+// La constancia se sirve por el endpoint de padrón A5 (getPersona_v2).
+const PADRON_URL: Record<Ambiente, string> = {
+  produccion: 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5',
+  homologacion: 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5',
+}
+
+export type DatosMonotributo = {
+  categoria: string | null            // 'H'
+  descripcionCategoria: string | null // 'H LOCACIONES DE SERVICIOS'
+  periodo: string | null              // '202602'
+  actividad: string | null            // descripción de la actividad monotributista
+  activo: boolean                     // impuesto MONOTRIBUTO en estado AC
+}
+
+export class PadronError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'PadronError'
+  }
+}
+
+/** Parsea la respuesta de getPersona_v2 (constancia) → datos de monotributo. */
+export function parseConstancia(xml: string): DatosMonotributo {
+  const mono = xml.match(/<datosMonotributo>([\s\S]*?)<\/datosMonotributo>/i)?.[1] ?? ''
+  const catBloque = mono.match(/<categoriaMonotributo>([\s\S]*?)<\/categoriaMonotributo>/i)?.[1] ?? ''
+  const descripcion = extraerTag(catBloque, 'descripcionCategoria')
+  // La categoría es la primera "palabra" de la descripción: "H LOCACIONES…" → "H".
+  const categoria = descripcion ? descripcion.trim().split(/\s+/)[0] : null
+
+  const impuesto = mono.match(/<impuesto>([\s\S]*?)<\/impuesto>/i)?.[1] ?? ''
+  const actividadMono = mono.match(/<actividadMonotributista>([\s\S]*?)<\/actividadMonotributista>/i)?.[1] ?? ''
+
+  return {
+    categoria,
+    descripcionCategoria: descripcion,
+    periodo: extraerTag(catBloque, 'periodo'),
+    actividad: extraerTag(actividadMono, 'descripcionActividad'),
+    activo: extraerTag(impuesto, 'estadoImpuesto') === 'AC',
+  }
+}
+
+/** Arma el SOAP de getPersona_v2 para consultar los datos del propio CUIT. */
+export function construirSoapConstancia(ta: TA, cuit: string): string {
+  return `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:a5="http://a5.soap.ws.server.puc.sr/"><soapenv:Header/><soapenv:Body><a5:getPersona_v2><token>${ta.token}</token><sign>${ta.sign}</sign><cuitRepresentada>${cuit}</cuitRepresentada><idPersona>${cuit}</idPersona></a5:getPersona_v2></soapenv:Body></soapenv:Envelope>`
+}
+
+/** Consulta la constancia con un TA ya obtenido de WSAA. Tira PadronError si falla. */
+export async function consultarConstancia(opts: {
+  ta: TA
+  cuit: string
+  ambiente?: Ambiente
+  fetchImpl?: typeof fetch
+}): Promise<DatosMonotributo> {
+  const ambiente = opts.ambiente ?? 'produccion'
+  const doFetch = opts.fetchImpl ?? fetch
+  const res = await doFetch(PADRON_URL[ambiente], {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '' },
+    body: construirSoapConstancia(opts.ta, opts.cuit),
+  })
+  const text = await res.text()
+  const fault = extraerTag(text, 'faultstring')
+  if (fault) throw new PadronError(fault)
+  return parseConstancia(text)
+}

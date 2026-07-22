@@ -375,6 +375,7 @@ export type Database = {
           sync_job_id: string | null
           sync_data: Json | null
           sync_error: string | null
+          ta_cache: Json | null
           ultima_sync: string | null
           created_at: string
           updated_at: string
@@ -394,6 +395,7 @@ export type Database = {
           sync_job_id?: string | null
           sync_data?: Json | null
           sync_error?: string | null
+          ta_cache?: Json | null
           ultima_sync?: string | null
           created_at?: string
           updated_at?: string
@@ -413,6 +415,7 @@ export type Database = {
           sync_job_id?: string | null
           sync_data?: Json | null
           sync_error?: string | null
+          ta_cache?: Json | null
           ultima_sync?: string | null
           created_at?: string
           updated_at?: string
