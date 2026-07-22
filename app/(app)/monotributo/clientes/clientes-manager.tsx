@@ -19,10 +19,23 @@ export function ClientesManager({ iniciales, afipConectado }: { iniciales: Clien
   const [importando, setImportando] = useState(false)
   const [error, setError] = useState('')
   const [msg, setMsg] = useState('')
+  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [editCuit, setEditCuit] = useState('')
 
   async function reload() {
     const j = await fetch('/api/monotributo/clientes').then(r => r.json())
     setClientes(j.clientes ?? [])
+  }
+
+  // Completa el CUIT de un cliente ya existente (upsert por nombre lo actualiza).
+  async function guardarCuit(c: Cliente) {
+    const cuitLimpio = editCuit.replace(/\D/g, '')
+    if (cuitLimpio.length !== 11) return
+    await fetch('/api/monotributo/clientes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: c.nombre, doc_tipo: 80, doc_nro: cuitLimpio }),
+    })
+    setEditandoId(null); setEditCuit(''); await reload()
   }
 
   async function buscar() {
@@ -97,12 +110,27 @@ export function ClientesManager({ iniciales, afipConectado }: { iniciales: Clien
         {clientes.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-8">Todavía no tenés clientes. Importalos de tus facturas o agregá uno.</p>
         ) : clientes.map(c => (
-          <div key={c.id} className="flex items-center gap-3 px-4 py-3">
-            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><User size={15} className="text-slate-400" /></div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-800 truncate">{c.nombre}</p>
-              <p className="text-xs text-slate-400">{c.doc_nro ? `${docLabel(c.doc_tipo)} ${c.doc_nro}` : 'Sin CUIT'}</p>
+          <div key={c.id} className="px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0"><User size={15} className="text-slate-400" /></div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-800 truncate">{c.nombre}</p>
+                <p className="text-xs text-slate-400">{c.doc_nro ? `${docLabel(c.doc_tipo)} ${c.doc_nro}` : 'Sin CUIT'}</p>
+              </div>
+              {!c.doc_nro && editandoId !== c.id && (
+                <button onClick={() => { setEditandoId(c.id); setEditCuit('') }}
+                  className="text-xs text-[color:var(--accent)] hover:underline shrink-0">+ CUIT</button>
+              )}
             </div>
+            {editandoId === c.id && (
+              <div className="flex gap-2 mt-2 ml-11">
+                <input value={editCuit} onChange={e => setEditCuit(e.target.value.replace(/[^\d-]/g, ''))} placeholder="CUIT" inputMode="numeric" autoFocus
+                  className="w-40 border border-slate-200 rounded-lg px-3 py-1.5 text-sm" />
+                <button onClick={() => guardarCuit(c)} disabled={editCuit.replace(/\D/g, '').length !== 11}
+                  className="px-3 rounded-lg text-sm text-white disabled:opacity-40" style={{ background: 'var(--accent)' }}>Guardar</button>
+                <button onClick={() => { setEditandoId(null); setEditCuit('') }} className="px-3 rounded-lg text-sm text-slate-500 border border-slate-200">Cancelar</button>
+              </div>
+            )}
           </div>
         ))}
       </div>
