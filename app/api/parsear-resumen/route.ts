@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
    Devolvé null en los que no encuentres.
 
 Para cada item extraé:
-- fecha (formato YYYY-MM-DD)
+- fecha: la fecha que figura en ESA línea del consumo (la fecha de la compra), en formato YYYY-MM-DD. Copiala EXACTA del resumen — el día Y EL MES tal como aparecen en esa línea. Prestá MUCHA atención a no equivocar el mes (ej. no confundas "JUL"/julio con "JUN"/junio, ni "MAY" con "MAR"). NO la ajustes al período, al mes de cierre, ni a ninguna otra fecha del encabezado.
 - detalle (descripción limpia, sin códigos internos ni número de cupón)
 - monto_ars (monto en pesos como número positivo. Si es en dólares, poné null)
 - monto_usd (monto en dólares como número positivo. Si es en pesos, poné null)

@@ -27,9 +27,13 @@ export const MODEL_ASISTENTE_MOBILE = process.env.CLAUDE_MODEL_ASISTENTE_MOBILE
 export const MODEL_PARSEAR_TARJETA_PDF = process.env.CLAUDE_MODEL_PARSEAR_TARJETA_PDF
   ?? 'claude-haiku-4-5-20251001'
 
-/** Idéntica tarea a la anterior — variante histórica que conviene unificar. */
+/** Parsear resumen de tarjeta. 4 de los 5 resúmenes de Lucho son PDFs de
+ *  IMAGEN (sin texto) → se leen con visión, y ahí Haiku confundía el mes
+ *  (leía "JUL" como "JUN"). Sonnet lee las fechas de la imagen mucho mejor.
+ *  El checksum ataja lo que se le escape. Env-configurable por si hay que
+ *  volver a Haiku (más rápido) en el tope de 60s de Vercel Hobby. */
 export const MODEL_PARSEAR_RESUMEN = process.env.CLAUDE_MODEL_PARSEAR_RESUMEN
-  ?? 'claude-haiku-4-5-20251001'
+  ?? 'claude-sonnet-4-6'
 
 /** Parsear PDF de factura emitida (monotributo). Extracción estructurada de
  *  1 comprobante: cliente, monto, CAE, período, etc. Más simple que un
