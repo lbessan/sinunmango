@@ -13,6 +13,8 @@ type ConfigUpsert = {
   actividad:                'servicios' | 'venta_bienes'
   limite_facturacion_anual: number
   costo_mensual:            number
+  obra_social_adherentes:   number
+  arba_mensual:             number
   vigente_desde:            string
   gasto_fijo_id:            string | null
   notas:                    string | null
@@ -37,6 +39,12 @@ function validateConfig(raw: unknown): Validated<ConfigUpsert> {
   })
   if (!costo.ok) return costo
 
+  const adherentesRes = optional(raw.obra_social_adherentes, v => validatePositiveNumber(v, { allowZero: true, max: 30, field: 'adherentes' }))
+  if (!adherentesRes.ok) return adherentesRes
+
+  const arbaRes = optional(raw.arba_mensual, v => validatePositiveNumber(v, { allowZero: true, max: 100_000_000, field: 'ARBA' }))
+  if (!arbaRes.ok) return arbaRes
+
   const vigente = validateISODate(raw.vigente_desde, 'vigente_desde')
   if (!vigente.ok) return vigente
 
@@ -53,6 +61,8 @@ function validateConfig(raw: unknown): Validated<ConfigUpsert> {
       actividad:                actividad.data,
       limite_facturacion_anual: limite.data,
       costo_mensual:            costo.data,
+      obra_social_adherentes:   Math.trunc(adherentesRes.data ?? 0),
+      arba_mensual:             arbaRes.data ?? 0,
       vigente_desde:            vigente.data,
       gasto_fijo_id:            gastoFijoRes.data ?? null,
       notas:                    notasRes.data ?? null,

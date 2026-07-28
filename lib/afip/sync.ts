@@ -19,6 +19,7 @@ export type ConfigResuelta = {
   categoria: string
   limite_facturacion_anual: number
   costo_mensual: number
+  obra_social_unit: number
   actividad: 'servicios' | 'venta_bienes'
 }
 
@@ -35,6 +36,7 @@ export function resolverConfig(datos: DatosMonotributo, escala: EscalaRow[]): Co
     categoria: datos.categoria,
     limite_facturacion_anual: row.limite_anual,
     costo_mensual: esBienes ? row.cuota_bienes : row.cuota_servicios,
+    obra_social_unit: row.obra_social,
     actividad: esBienes ? 'venta_bienes' : 'servicios',
   }
 }
@@ -85,6 +87,7 @@ async function escribirConfig(supabase: DB, userId: string, cfg: ConfigResuelta)
       categoria: cfg.categoria,
       limite_facturacion_anual: cfg.limite_facturacion_anual,
       costo_mensual: cfg.costo_mensual,
+      obra_social_unit: cfg.obra_social_unit,
       actividad: cfg.actividad,
     }).eq('user_id', userId)
     return !error
@@ -94,6 +97,7 @@ async function escribirConfig(supabase: DB, userId: string, cfg: ConfigResuelta)
     categoria: cfg.categoria,
     limite_facturacion_anual: cfg.limite_facturacion_anual,
     costo_mensual: cfg.costo_mensual,
+    obra_social_unit: cfg.obra_social_unit,
     actividad: cfg.actividad,
     vigente_desde: new Date().toISOString().slice(0, 10),
   })

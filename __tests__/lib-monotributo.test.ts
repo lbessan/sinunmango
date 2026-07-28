@@ -14,6 +14,8 @@ import {
   estacionalidad,
   concentracionClientes,
   proyeccionAnual,
+  desgloseCosto,
+  costoTotalMensual,
   type FacturaEmitida,
   type MonotributoConfig,
 } from '@/lib/monotributo'
@@ -387,5 +389,56 @@ describe('proyeccionAnual', () => {
 
   it('sin facturas del año → null', () => {
     expect(proyeccionAnual([], 2026, HOY)).toBeNull()
+  })
+})
+
+describe('desgloseCosto', () => {
+  it('sin adherentes ni ARBA → total = costo base', () => {
+    const d = desgloseCosto({ costo_mensual: 522_707 })
+    expect(d.base).toBe(522_707)
+    expect(d.adherentes).toBe(0)
+    expect(d.obraSocial).toBe(0)
+    expect(d.arba).toBe(0)
+    expect(d.total).toBe(522_707)
+  })
+
+  it('suma obra social por adherente + ARBA (replica credencial cat H)', () => {
+    // base escala (ya incluye la obra social del titular) + 1 adherente × 55.485 + ARBA
+    const d = desgloseCosto({
+      costo_mensual:           522_707,
+      obra_social_unit:        55_485,
+      obra_social_adherentes:  1,
+      arba_mensual:            179_010,
+    })
+    expect(d.obraSocial).toBe(55_485)
+    expect(d.arba).toBe(179_010)
+    expect(d.total).toBe(757_202) // 522.707 + 55.485 + 179.010
+  })
+
+  it('los adherentes multiplican el aporte unitario', () => {
+    const d = desgloseCosto({
+      costo_mensual:          100_000,
+      obra_social_unit:       55_485,
+      obra_social_adherentes: 3,
+    })
+    expect(d.obraSocial).toBe(166_455)
+    expect(d.total).toBe(266_455)
+  })
+
+  it('tolera null/undefined/negativos (trunca y clampa a 0)', () => {
+    const d = desgloseCosto({
+      costo_mensual:          100_000,
+      obra_social_unit:       null,
+      obra_social_adherentes: -2,
+      arba_mensual:           null,
+    })
+    expect(d.adherentes).toBe(0)
+    expect(d.obraSocial).toBe(0)
+    expect(d.total).toBe(100_000)
+  })
+
+  it('costoTotalMensual === desgloseCosto().total', () => {
+    const c = { costo_mensual: 522_707, obra_social_unit: 55_485, obra_social_adherentes: 1, arba_mensual: 179_010 }
+    expect(costoTotalMensual(c)).toBe(desgloseCosto(c).total)
   })
 })

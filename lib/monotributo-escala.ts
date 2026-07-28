@@ -13,6 +13,7 @@ export type EscalaRow = {
   limite_anual: number       // ingresos brutos anuales (tope)
   cuota_servicios: number    // total mensual — locaciones y prestaciones de servicios
   cuota_bienes: number       // total mensual — venta de cosas muebles
+  obra_social: number        // aporte de obra social por persona (para sumar adherentes)
 }
 
 const FUENTE = 'https://www.afip.gob.ar/monotributo/categorias.asp'
@@ -49,6 +50,7 @@ export function parseEscala(html: string): EscalaRow[] {
       limite_anual: limite,
       cuota_servicios: parseMonto(celda(html, cat, 'th_total_loc_t15')) ?? 0,
       cuota_bienes: parseMonto(celda(html, cat, 'th_total_ven_t15')) ?? 0,
+      obra_social: parseMonto(celda(html, cat, 'th_ap_obra_soc_t15')) ?? 0,
     })
   }
   return rows

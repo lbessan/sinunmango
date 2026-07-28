@@ -23,6 +23,7 @@ import {
   facturasAgrupadasPorCliente,
   proximaRecategorizacion,
   generarAlertasMonotributo,
+  desgloseCosto,
   type FacturaEmitida,
 } from '@/lib/monotributo'
 
@@ -45,6 +46,9 @@ type Config = {
   actividad:                string
   limite_facturacion_anual: number
   costo_mensual:            number
+  obra_social_unit:         number
+  obra_social_adherentes:   number
+  arba_mensual:             number
   vigente_desde:            string
   gasto_fijo_id:            string | null
   notas:                    string | null
@@ -109,6 +113,7 @@ export default async function MonotributoPage() {
   const proyeccion   = proyeccionMesesHastaLimite(facturas, limite, facturado12)
   const porCliente   = facturasAgrupadasPorCliente(facturas)
   const recientes    = facturas.slice(0, 10)
+  const costo        = desgloseCosto(config)
 
   // ── Asistente: alertas + próxima recategorización ──
   const recat        = proximaRecategorizacion()
@@ -243,7 +248,14 @@ export default async function MonotributoPage() {
         {/* Costo mensual */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Costo mensual</p>
-          <p className="text-2xl font-bold text-slate-800 tabular-nums">${fmt(config.costo_mensual)}</p>
+          <p className="text-2xl font-bold text-slate-800 tabular-nums">${fmt(costo.total)}</p>
+          {(costo.obraSocial > 0 || costo.arba > 0) && (
+            <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+              ${fmt(costo.base)} monotributo
+              {costo.obraSocial > 0 && <> · ${fmt(costo.obraSocial)} obra social ({costo.adherentes} adh.)</>}
+              {costo.arba > 0 && <> · ${fmt(costo.arba)} ARBA</>}
+            </p>
+          )}
           {gastoFijo ? (
             <p className="text-xs text-slate-500 mt-2">
               <Calendar size={11} className="inline mr-1" />

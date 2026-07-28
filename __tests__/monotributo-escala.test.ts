@@ -42,6 +42,7 @@ describe('parseEscala', () => {
     expect(a.limite_anual).toBe(12009410.45)
     expect(a.cuota_servicios).toBe(49527.18)   // total, no el impuesto integrado
     expect(a.cuota_bienes).toBe(49527.18)
+    expect(a.obra_social).toBe(25694.55)       // aporte de obra social del titular
     const b = escala.find(e => e.categoria === 'B')!
     expect(b.limite_anual).toBe(17595182.74)
     expect(b.cuota_servicios).toBe(55000)

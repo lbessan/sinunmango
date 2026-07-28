@@ -9,6 +9,8 @@ type Config = {
   actividad:                string
   limite_facturacion_anual: number
   costo_mensual:            number
+  obra_social_adherentes?:  number
+  arba_mensual?:            number
   vigente_desde:            string
   gasto_fijo_id:            string | null
   notas:                    string | null
@@ -39,6 +41,8 @@ export function MonotributoConfigForm({
     actividad:                initialConfig?.actividad                ?? 'servicios',
     limite_facturacion_anual: initialConfig?.limite_facturacion_anual ?? 0,
     costo_mensual:            initialConfig?.costo_mensual            ?? 0,
+    obra_social_adherentes:   initialConfig?.obra_social_adherentes   ?? 0,
+    arba_mensual:             initialConfig?.arba_mensual             ?? 0,
     vigente_desde:            initialConfig?.vigente_desde            ?? today,
     gasto_fijo_id:            initialConfig?.gasto_fijo_id            ?? '',
     notas:                    initialConfig?.notas                    ?? '',
@@ -61,6 +65,8 @@ export function MonotributoConfigForm({
           actividad:                form.actividad,
           limite_facturacion_anual: Number(form.limite_facturacion_anual),
           costo_mensual:            Number(form.costo_mensual),
+          obra_social_adherentes:   Number(form.obra_social_adherentes) || 0,
+          arba_mensual:             Number(form.arba_mensual) || 0,
           vigente_desde:            form.vigente_desde,
           gasto_fijo_id:            form.gasto_fijo_id || null,
           notas:                    form.notas || null,
@@ -117,13 +123,36 @@ export function MonotributoConfigForm({
           />
         </Field>
 
-        <Field label="Costo mensual" hint="Impuesto integrado + jubilación + obra social">
+        <Field label="Costo mensual (monotributo AFIP)" hint="Solo el nacional del titular. ARBA y adherentes van abajo.">
           <input
             type="number" step="0.01" min="0" required
             value={form.costo_mensual || ''}
             onChange={e => update('costo_mensual', parseFloat(e.target.value) || 0)}
             className={inputCls}
             placeholder="35000"
+          />
+        </Field>
+      </div>
+
+      {/* Adherentes obra social + ARBA (para el costo total real) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="Adherentes de obra social" hint="Familiares a cargo, además de vos. Cada uno suma un aporte.">
+          <input
+            type="number" step="1" min="0"
+            value={form.obra_social_adherentes || ''}
+            onChange={e => update('obra_social_adherentes', parseInt(e.target.value) || 0)}
+            className={inputCls}
+            placeholder="0"
+          />
+        </Field>
+
+        <Field label="ARBA mensual (IIBB)" hint="Solo Prov. Bs. As. Copialo de tu credencial de pago.">
+          <input
+            type="number" step="0.01" min="0"
+            value={form.arba_mensual || ''}
+            onChange={e => update('arba_mensual', parseFloat(e.target.value) || 0)}
+            className={inputCls}
+            placeholder="0"
           />
         </Field>
       </div>

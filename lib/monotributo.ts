@@ -20,6 +20,29 @@ export type MonotributoConfig = {
 
 export type GaugeStatus = 'ok' | 'warning' | 'danger'
 
+// ─── Costo mensual real = monotributo AFIP + adherentes obra social + ARBA ───
+// costo_mensual (de la escala) es solo el monotributo nacional del titular.
+// El total suma los adherentes de obra social y el IIBB de ARBA (Prov. Bs. As.).
+
+export type CostoConfig = {
+  costo_mensual:           number
+  obra_social_unit?:       number | null // aporte de obra social por persona (escala)
+  obra_social_adherentes?: number | null // adherentes extra (además del titular)
+  arba_mensual?:           number | null
+}
+
+export function desgloseCosto(c: CostoConfig) {
+  const base = Number(c.costo_mensual) || 0
+  const adherentes = Math.max(0, Math.trunc(Number(c.obra_social_adherentes) || 0))
+  const obraSocial = (Number(c.obra_social_unit) || 0) * adherentes
+  const arba = Number(c.arba_mensual) || 0
+  return { base, adherentes, obraSocial, arba, total: Math.round((base + obraSocial + arba) * 100) / 100 }
+}
+
+export function costoTotalMensual(c: CostoConfig): number {
+  return desgloseCosto(c).total
+}
+
 // ─── 1) Facturación del período de evaluación de recategorización ────────────
 // IMPORTANTE: ARCA NO evalúa "los últimos 12 meses móviles desde hoy". Alinea
 // el período al semestre de recategorización:

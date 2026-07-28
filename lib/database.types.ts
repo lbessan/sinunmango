@@ -461,6 +461,9 @@ export type Database = {
           actividad: string
           limite_facturacion_anual: number
           costo_mensual: number
+          obra_social_unit: number
+          obra_social_adherentes: number
+          arba_mensual: number
           vigente_desde: string
           gasto_fijo_id: string | null
           notas: string | null
@@ -473,6 +476,9 @@ export type Database = {
           actividad?: string
           limite_facturacion_anual: number
           costo_mensual: number
+          obra_social_unit?: number
+          obra_social_adherentes?: number
+          arba_mensual?: number
           vigente_desde?: string
           gasto_fijo_id?: string | null
           notas?: string | null
@@ -485,6 +491,9 @@ export type Database = {
           actividad?: string
           limite_facturacion_anual?: number
           costo_mensual?: number
+          obra_social_unit?: number
+          obra_social_adherentes?: number
+          arba_mensual?: number
           vigente_desde?: string
           gasto_fijo_id?: string | null
           notas?: string | null
