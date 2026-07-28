@@ -5,6 +5,7 @@ import { getEffectivePlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, isOnboardingActive, usageHeaders } from '@/lib/usage-limits'
 import { parseClaudeJSON, recoverPartialArray } from '@/lib/parse-claude-json'
 import { dedupTransaccionesCuotas, marcarYaExistentes, filtrarPagosTarjeta } from '@/lib/dedup-transacciones'
+import { verificarResumen, type ControlResumen } from '@/lib/resumen-checksum'
 import { MODEL_PARSEAR_RESUMEN } from '@/lib/claude-models'
 import { isPdfEncrypted, extractTextFromPdf } from '@/lib/pdf-decrypt'
 import { encryptSecret, decryptSecret } from '@/lib/crypto'
@@ -215,10 +216,18 @@ export async function POST(req: NextRequest) {
    IMPORTANTE — NO DUPLIQUES: cada consumo va UNA SOLA VEZ. Muchos resúmenes listan las compras en cuotas en DOS lugares: en los consumos del mes Y en una sección aparte de "Detalle de cuotas", "Plan de cuotas", "Cuotas a vencer", "Financiación" o "Próximas cuotas". Tomá la cuota SOLO de los consumos del período (la que efectivamente se cobra este mes, ej. "C.05/12"). IGNORÁ por completo las secciones que proyectan cuotas futuras / a vencer — esas NO son consumos de este resumen.
 2. DESCUENTOS Y CRÉDITOS A FAVOR que aparezcan EN CUALQUIER PARTE del resumen (incluso fuera de la sección de consumos, en el encabezado o en secciones propias). Ejemplos: "CR.RG ...", "BONIF. CONSUMO ...", "REINTEGRO ...", "DESCUENTO ...", ajustes con monto negativo.
 3. TODOS los items INDIVIDUALES de la sección "Impuestos, cargos e intereses" (si existe), cada uno por separado
-4. FECHAS DEL PRÓXIMO PERÍODO si figuran en el resumen (típicamente en el encabezado o pie):
-   - proximo_cierre: fecha del próximo cierre del resumen (YYYY-MM-DD). Buscá frases como "Próximo cierre", "Próximo resumen cierra el", "Cierre próximo", etc.
-   - proximo_vencimiento: fecha del próximo vencimiento de pago (YYYY-MM-DD). Buscá "Próximo vencimiento", "Vence el", "Pague hasta el". OJO: tiene que ser una fecha FUTURA al cierre.
-   Si no figuran explícitamente, devolvé null en ambos campos. NO infieras ni calcules.
+4. FECHAS. Leé las etiquetas EXACTAS del encabezado, NO las confundas entre sí:
+   - cierre_actual: la fecha de "CIERRE ACTUAL" / "Cierre" de ESTE resumen (YYYY-MM-DD).
+   - vencimiento_actual: la fecha de "VENCIMIENTO ACTUAL" / "Vencimiento" de ESTE resumen (YYYY-MM-DD).
+   - proximo_cierre: SOLO el valor de la etiqueta "PRÓXIMO CIERRE" (YYYY-MM-DD). NO uses el vencimiento actual acá — son distintos.
+   - proximo_vencimiento: SOLO el valor de la etiqueta "PRÓXIMO VENCIMIENTO" (YYYY-MM-DD).
+   Devolvé null en las que no figuren explícitamente. NO infieras ni calcules ninguna fecha.
+5. TOTALES DE CONTROL del encabezado/resumen de saldos (los usamos para verificar que no falte ni sobre nada). Todos en PESOS, como número:
+   - saldo_anterior: "SALDO ANTERIOR" en pesos.
+   - su_pago: el pago del resumen anterior ("SU PAGO EN PESOS", "Su pago"), como número POSITIVO (aunque figure con signo menos).
+   - total_consumos: el "TOTAL CONSUMOS" / "Total consumos de ..." en pesos (si hay varias tarjetas/titulares, la SUMA de todos los "Total consumos").
+   - saldo_actual: "SALDO ACTUAL" en pesos.
+   Devolvé null en los que no encuentres.
 
 Para cada item extraé:
 - fecha (formato YYYY-MM-DD)
@@ -237,8 +246,16 @@ Para descuentos: incluílos individualmente con monto POSITIVO y es_descuento: t
 
 Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni texto adicional:
 {
-  "proximo_cierre": "2026-06-23",
-  "proximo_vencimiento": "2026-07-10",
+  "cierre_actual": "2026-07-23",
+  "vencimiento_actual": "2026-08-03",
+  "proximo_cierre": "2026-08-20",
+  "proximo_vencimiento": "2026-09-03",
+  "control": {
+    "saldo_anterior": 545412.11,
+    "su_pago": 545412.11,
+    "total_consumos": 482948.65,
+    "saldo_actual": 488744.03
+  },
   "transacciones": [
     {
       "fecha": "2026-04-14",
@@ -292,6 +309,7 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
 }
 
 Notas importantes:
+- NO incluyas la sección de CUOTAS FUTURAS: "Total de cuotas a vencer", "Cuotas a vencer", "Próximas cuotas", "Plan de cuotas a vencer", las columnas por mes (Agosto/26, Setiembre/26, …). Esas son cuotas de meses SIGUIENTES, NO consumos de este resumen. Tomá cada compra en cuotas UNA sola vez, de la sección de consumos del período (la que dice "C.XX/YY"). Si sumás las cuotas a vencer, el total no va a cerrar.
 - NO incluyas los PAGOS de la tarjeta (ej. "Su pago en pesos", "SU PAGO", "PAGO RECIBIDO", "Pago mínimo", "Pagos y créditos"). NO son consumos NI descuentos: son la cancelación del saldo del resumen anterior. Ignoralos por completo aunque figuren con monto a favor / en verde.
 - SÍ incluí descuentos y créditos a favor aunque estén fuera de la sección de consumos (bonificaciones, reintegros, ajustes) — pero un PAGO no es un descuento.
 - INCLUÍ consumos del titular principal Y de tarjetas adicionales — identificando cada uno con su titular en el campo correspondiente
@@ -331,6 +349,7 @@ Notas importantes:
   async function buildFechasPropuestas(
     proxCierreRaw: unknown,
     proxVencRaw:   unknown,
+    vencActualRaw: unknown,   // "VENCIMIENTO ACTUAL" del resumen — para el sanity check
   ): Promise<{
     proximo_cierre:        string
     proximo_vencimiento:   string
@@ -354,6 +373,14 @@ Notas importantes:
 
     // El vencimiento debe ser posterior al cierre (sanity)
     if (new Date(proxVencRaw + 'T12:00:00') <= new Date(proxCierreRaw + 'T12:00:00')) return null
+
+    // Sanity anti-confusión: el PRÓXIMO cierre tiene que ser POSTERIOR al
+    // vencimiento ACTUAL del resumen. El bug clásico es que el modelo tome el
+    // "VENCIMIENTO ACTUAL" (ej. 03-Ago) y lo devuelva como próximo cierre.
+    if (typeof vencActualRaw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(vencActualRaw)
+        && new Date(proxCierreRaw + 'T12:00:00') <= new Date(vencActualRaw + 'T12:00:00')) {
+      return null
+    }
 
     // Leer la cuenta actual para comparar
     const { data: cuentaActual } = await supabase
@@ -426,14 +453,20 @@ Notas importantes:
     transacciones?:        unknown[]
     proximo_cierre?:       unknown
     proximo_vencimiento?:  unknown
+    vencimiento_actual?:   unknown
+    control?:              ControlResumen
   }>(rawText)
   if (parsed) {
-    const fechas_propuestas = await buildFechasPropuestas(parsed.proximo_cierre, parsed.proximo_vencimiento)
+    const fechas_propuestas = await buildFechasPropuestas(parsed.proximo_cierre, parsed.proximo_vencimiento, parsed.vencimiento_actual)
     // Dedup defensivo: Claude a veces repite una cuota que el resumen lista en
     // dos secciones (consumos + plan de cuotas). Colapsamos antes de dispatch.
     const sinDuplicados = dedupTransaccionesCuotas(parsed.transacciones ?? [])
     // Sacamos los pagos de la tarjeta (no son consumos ni descuentos).
     const sinPagos      = filtrarPagosTarjeta(sinDuplicados)
+    // Checksum: verificamos que lo extraído cuadre con los totales que declara
+    // el resumen (saldo anterior − pago + consumos + impuestos = saldo actual).
+    // Corre sobre lo extraído SIN pagos (los pagos no son consumos).
+    const verificacion  = verificarResumen(sinPagos, parsed.control ?? {})
     // Dedup contra lo YA cargado en el período (por monto+moneda, sin depender
     // del nombre ni la fecha). Setea ya_existe en cada tx.
     const marcadas      = marcarYaExistentes(sinPagos, movimientosExistentes)
@@ -443,6 +476,7 @@ Notas importantes:
       ok: true,
       transacciones,
       fechas_propuestas,
+      verificacion,
     }, { headers: committed ? usageHeaders(committed) : {} })
   }
 
@@ -457,11 +491,14 @@ Notas importantes:
     const sinPagos      = filtrarPagosTarjeta(sinDuplicados)
     const marcadas      = marcarYaExistentes(sinPagos, movimientosExistentes)
     const transacciones = await dispatchTitulares(marcadas)
+    // JSON truncado → no tenemos el bloque de control → checksum no aplicable.
+    const verificacion  = verificarResumen(sinPagos, {})
     const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
     return NextResponse.json({
       ok: true,
       transacciones,
       fechas_propuestas: null,
+      verificacion,
     }, { headers: committed ? usageHeaders(committed) : {} })
   }
 

@@ -521,6 +521,16 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const [fechasPropuestas,   setFechasPropuestas]   = useState<FechasPropuestas | null>(null)
   const [fechasApplying,     setFechasApplying]     = useState(false)
   const [fechasError,        setFechasError]        = useState<string | null>(null)
+
+  // ── Checksum: el resumen se verifica contra sus propios totales ───────────
+  // El endpoint suma lo extraído y lo compara con "saldo anterior − pago +
+  // consumos + impuestos = saldo actual". Si no cuadra, mostramos un cartel
+  // ámbar para que el user sepa que puede faltar o sobrar algo (en vez de
+  // importar a ciegas).
+  type Verificacion = {
+    aplicable: boolean; cuadra: boolean; diferencia: number | null; mensaje: string
+  }
+  const [verificacion, setVerificacion] = useState<Verificacion | null>(null)
   const [fechasUltimoApply,  setFechasUltimoApply]  = useState<FechasPropuestas | null>(null)
   const [fechasUndoTimer,    setFechasUndoTimer]    = useState(0)
   // Si la última aplicación fue diferida (el ciclo actual no venció), las
@@ -615,6 +625,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
     }))
     setTxs(parsed)
     if (d.fechas_propuestas) setFechasPropuestas(d.fechas_propuestas)
+    setVerificacion(d.verificacion ?? null)
     setStep('review')
     return true
   }
@@ -1036,6 +1047,26 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
         {step === 'review' && (
           <>
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
+              {/* ── Checksum: ¿lo extraído cuadra con los totales del resumen? ──
+                  El sistema se controla solo. Verde = cuadra; ámbar = puede
+                  faltar o sobrar algo (el user revisa en vez de importar a ciegas). */}
+              {verificacion?.aplicable && (
+                <div className={`rounded-xl p-3 flex items-start gap-2.5 border ${
+                  verificacion.cuadra
+                    ? 'bg-emerald-50 border-emerald-200'
+                    : 'bg-amber-50 border-amber-200'
+                }`}>
+                  {verificacion.cuadra
+                    ? <CheckCircle size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                    : <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />}
+                  <p className={`text-xs ${verificacion.cuadra ? 'text-emerald-800' : 'text-amber-800'}`}>
+                    {verificacion.cuadra
+                      ? <><span className="font-semibold">Verificado.</span> {verificacion.mensaje}</>
+                      : <><span className="font-semibold">Revisá:</span> {verificacion.mensaje}</>}
+                  </p>
+                </div>
+              )}
 
               {/* ── Fechas propuestas (auto-detectadas en el resumen) ──
                   Las fechas de cierre/vencimiento de tarjeta cambian mes a
