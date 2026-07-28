@@ -546,16 +546,18 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   // se procesó el resumen (avanzó a review), false si pidió password.
   const callParsearResumen = async (base64: string, password?: string, savePwdFlag = false): Promise<boolean> => {
     setLoading(true); setError(''); setFechasPropuestas(null); setFechasError(null)
-    // Incluimos moneda + monto_usd cuando aplica para que Claude pueda
-    // matchear correctamente movs USD del resumen contra movs ya cargados.
-    // (Antes solo mandábamos monto en ARS — un consumo USD del resumen
-    // como "U$S 5.00" no matcheaba contra "monto=5840" con la cotización
-    // aplicada, y Claude lo proponía como nuevo aunque ya existiera.)
+    // Mandamos el monto NATIVO por cuota (no monto_estimado en ARS) + la moneda
+    // + la posición de cuota. El server dedup-ea contra estos por
+    // monto+moneda+cuota SIN mirar el nombre — así detecta un consumo ya
+    // cargado aunque en el resumen figure con otro texto. (Antes mandábamos
+    // monto ARS y sin cuotas, y el match dependía de que Claude adivinara por
+    // nombre.)
     const movsExist = movimientosExistentes.map(m => ({
-      detalle: m.detalle,
-      monto:   m.monto_estimado ?? m.monto,
-      moneda:  m.moneda ?? 'ARS',
-      fecha:   m.fecha,
+      monto:        m.monto,          // USD si moneda USD, ARS si ARS
+      moneda:       m.moneda ?? 'ARS',
+      fecha:        m.fecha,
+      cuotas:       m.cuota_actual,
+      cuotas_total: m.cuotas_total,
     }))
     const res = await fetch('/api/parsear-resumen', {
       method: 'POST',

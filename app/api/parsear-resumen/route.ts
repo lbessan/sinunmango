@@ -4,7 +4,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 import { getEffectivePlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, isOnboardingActive, usageHeaders } from '@/lib/usage-limits'
 import { parseClaudeJSON, recoverPartialArray } from '@/lib/parse-claude-json'
-import { dedupTransaccionesCuotas } from '@/lib/dedup-transacciones'
+import { dedupTransaccionesCuotas, marcarYaExistentes } from '@/lib/dedup-transacciones'
 import { MODEL_PARSEAR_RESUMEN } from '@/lib/claude-models'
 import { isPdfEncrypted, extractTextFromPdf } from '@/lib/pdf-decrypt'
 import { encryptSecret, decryptSecret } from '@/lib/crypto'
@@ -62,7 +62,9 @@ export async function POST(req: NextRequest) {
 
   const { pdf, movimientosExistentes = [], cuenta_id, resumen_password, save_password } = (await req.json()) as {
     pdf: string
-    movimientosExistentes: { detalle: string | null; monto: number; moneda?: string; fecha: string }[]
+    // monto = NATIVO por cuota (ARS si moneda ARS, USD si USD). El dedup contra
+    // estos movs lo hace el código (marcarYaExistentes), no Claude.
+    movimientosExistentes: { monto: number; moneda?: string; fecha: string; cuotas?: number; cuotas_total?: number }[]
     /** Opcional. Si viene, intentamos detectar próximas fechas de cierre/venc
      *  del resumen y devolverlas para que el client confirme la actualización
      *  de la cuenta. Si no viene, ignoramos esa parte (compat con flows que
@@ -162,18 +164,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Listado de movs ya cargados que mandamos a Claude para que detecte
-  // duplicados (campo `ya_existe` en la respuesta). Incluímos la moneda
-  // explícitamente — antes asumíamos $ y los consumos USD del resumen no
-  // matcheaban contra el mismo mov ya cargado en ARS con cotización aplicada.
-  const movsResumen = movimientosExistentes.length > 0
-    ? `\nMovimientos ya cargados en el sistema (para comparar y NO duplicar):\n${
-        movimientosExistentes.map(m => {
-          const moneda = m.moneda === 'USD' ? 'U$S' : '$'
-          return `- ${m.fecha} | ${m.detalle ?? '(sin detalle)'} | ${moneda} ${m.monto}`
-        }).join('\n')
-      }\n`
-    : ''
+  // Nota: el dedup contra movs ya cargados NO se hace acá por prompt (era poco
+  // confiable cuando el nombre difería). Claude solo EXTRAE; el `ya_existe` lo
+  // recalcula el código con marcarYaExistentes() por monto+moneda+cuota.
 
   let claudeRes: Response
   try {
@@ -226,7 +219,7 @@ export async function POST(req: NextRequest) {
    - proximo_cierre: fecha del próximo cierre del resumen (YYYY-MM-DD). Buscá frases como "Próximo cierre", "Próximo resumen cierra el", "Cierre próximo", etc.
    - proximo_vencimiento: fecha del próximo vencimiento de pago (YYYY-MM-DD). Buscá "Próximo vencimiento", "Vence el", "Pague hasta el". OJO: tiene que ser una fecha FUTURA al cierre.
    Si no figuran explícitamente, devolvé null en ambos campos. NO infieras ni calcules.
-${movsResumen}
+
 Para cada item extraé:
 - fecha (formato YYYY-MM-DD)
 - detalle (descripción limpia, sin códigos internos ni número de cupón)
@@ -234,7 +227,7 @@ Para cada item extraé:
 - monto_usd (monto en dólares como número positivo. Si es en pesos, poné null)
 - cuotas (número de cuota actual si dice "C.XX/YY", sino 1)
 - cuotas_total (total de cuotas si dice "C.XX/YY", sino 1)
-- ya_existe (true si coincide con alguno de los movimientos ya cargados por fecha y monto similar)
+- ya_existe (dejá SIEMPRE en false — el sistema detecta los duplicados por su cuenta)
 - es_impuesto (true para CADA item de la sección impuestos/cargos/intereses, individualmente)
 - es_descuento (true para bonificaciones, reintegros, descuentos y créditos a favor — siempre monto POSITIVO)
 - titular (string con el NOMBRE DEL TITULAR exacto tal como figura en el resumen en el header de la sección donde está el consumo — ej: "Celeste Cerono", "L Bessan Nofal". Si el consumo es del titular principal y no hay subsección, o si es un descuento/impuesto general sin titular asociado, devolvé null. Es el dato que usamos para dispatchar consumos a la tarjeta adicional correcta.)
@@ -439,7 +432,10 @@ Notas importantes:
     // Dedup defensivo: Claude a veces repite una cuota que el resumen lista en
     // dos secciones (consumos + plan de cuotas). Colapsamos antes de dispatch.
     const sinDuplicados = dedupTransaccionesCuotas(parsed.transacciones ?? [])
-    const transacciones = await dispatchTitulares(sinDuplicados)
+    // Dedup contra lo YA cargado en el período (por monto+moneda+cuota, sin
+    // depender del nombre). Setea ya_existe en cada tx.
+    const marcadas      = marcarYaExistentes(sinDuplicados, movimientosExistentes)
+    const transacciones = await dispatchTitulares(marcadas)
     const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
     return NextResponse.json({
       ok: true,
@@ -456,7 +452,8 @@ Notas importantes:
   if (recovered) {
     console.warn(`[parsear-resumen] Partial parse recovered ${recovered.length} transactions`)
     const sinDuplicados = dedupTransaccionesCuotas(recovered)
-    const transacciones = await dispatchTitulares(sinDuplicados)
+    const marcadas      = marcarYaExistentes(sinDuplicados, movimientosExistentes)
+    const transacciones = await dispatchTitulares(marcadas)
     const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
     return NextResponse.json({
       ok: true,

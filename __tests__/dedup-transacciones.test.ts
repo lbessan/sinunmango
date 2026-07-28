@@ -1,6 +1,6 @@
 // Tests para dedupTransaccionesCuotas — quita cuotas repetidas del parseo.
 import { describe, it, expect } from 'vitest'
-import { dedupTransaccionesCuotas } from '@/lib/dedup-transacciones'
+import { dedupTransaccionesCuotas, marcarYaExistentes, type MovExistente } from '@/lib/dedup-transacciones'
 
 const cuota = (detalle: string, monto: number, c: number, total: number, fecha = '2026-01-05') => ({
   fecha, detalle, monto_ars: monto, monto_usd: null, cuotas: c, cuotas_total: total,
@@ -66,5 +66,83 @@ describe('dedupTransaccionesCuotas', () => {
 
   it('lista vacía → []', () => {
     expect(dedupTransaccionesCuotas([])).toEqual([])
+  })
+})
+
+// ─── marcarYaExistentes — dedup contra lo ya cargado, sin depender del nombre ──
+const tx = (over: Record<string, unknown> = {}) => ({
+  fecha: '2026-01-05', detalle: 'Lo que sea', monto_ars: 12000, monto_usd: null,
+  cuotas: 3, cuotas_total: 6, es_impuesto: false, es_descuento: false, ...over,
+})
+const mov = (over: Partial<MovExistente> = {}): MovExistente => ({
+  monto: 12000, moneda: 'ARS', fecha: '2026-01-05', cuotas: 3, cuotas_total: 6, ...over,
+})
+
+describe('marcarYaExistentes', () => {
+  it('marca una cuota ya cargada aunque tenga OTRO nombre (mismo monto+cuota)', () => {
+    const out = marcarYaExistentes(
+      [tx({ detalle: 'MERPAGO*NEGOCIO NUEVO' })],
+      [mov()],  // ya cargado como "Mercado Pago", mismo monto y misma cuota 3/6
+    ) as Array<{ ya_existe: boolean }>
+    expect(out[0].ya_existe).toBe(true)
+  })
+
+  it('NO marca si es otra posición de cuota (3/6 vs 4/6)', () => {
+    const out = marcarYaExistentes([tx({ cuotas: 4 })], [mov({ cuotas: 3 })]) as Array<{ ya_existe: boolean }>
+    expect(out[0].ya_existe).toBe(false)
+  })
+
+  it('NO marca si el plan difiere (3/6 vs 3/12)', () => {
+    const out = marcarYaExistentes([tx({ cuotas_total: 12 })], [mov({ cuotas_total: 6 })]) as Array<{ ya_existe: boolean }>
+    expect(out[0].ya_existe).toBe(false)
+  })
+
+  it('tolera diferencia de centavos al partir cuotas', () => {
+    const out = marcarYaExistentes([tx({ monto_ars: 12000.49 })], [mov({ monto: 12000 })]) as Array<{ ya_existe: boolean }>
+    expect(out[0].ya_existe).toBe(true)
+  })
+
+  it('consumo simple: mismo monto + misma fecha + otro nombre → marca', () => {
+    const out = marcarYaExistentes(
+      [tx({ detalle: 'YPF RUTA 2', cuotas: 1, cuotas_total: 1 })],
+      [mov({ cuotas: 1, cuotas_total: 1 })],  // guardado como "Nafta"
+    ) as Array<{ ya_existe: boolean }>
+    expect(out[0].ya_existe).toBe(true)
+  })
+
+  it('consumo simple: mismo monto pero DISTINTA fecha → NO marca (repetido legítimo)', () => {
+    const out = marcarYaExistentes(
+      [tx({ cuotas: 1, cuotas_total: 1, fecha: '2026-01-20' })],
+      [mov({ cuotas: 1, cuotas_total: 1, fecha: '2026-01-05' })],
+    ) as Array<{ ya_existe: boolean }>
+    expect(out[0].ya_existe).toBe(false)
+  })
+
+  it('matchea consumos en USD por monto_usd', () => {
+    const out = marcarYaExistentes(
+      [tx({ monto_ars: null, monto_usd: 5, cuotas: 1, cuotas_total: 1 })],
+      [mov({ monto: 5, moneda: 'USD', cuotas: 1, cuotas_total: 1 })],
+    ) as Array<{ ya_existe: boolean }>
+    expect(out[0].ya_existe).toBe(true)
+  })
+
+  it('NO cruza monedas (USD 5 no matchea ARS 5)', () => {
+    const out = marcarYaExistentes(
+      [tx({ monto_ars: null, monto_usd: 5, cuotas: 1, cuotas_total: 1 })],
+      [mov({ monto: 5, moneda: 'ARS', cuotas: 1, cuotas_total: 1 })],
+    ) as Array<{ ya_existe: boolean }>
+    expect(out[0].ya_existe).toBe(false)
+  })
+
+  it('sin existentes → todo ya_existe=false', () => {
+    const out = marcarYaExistentes([tx(), tx({ cuotas: 4 })], []) as Array<{ ya_existe: boolean }>
+    expect(out.every(o => o.ya_existe === false)).toBe(true)
+  })
+
+  it('preserva el resto de los campos de la transacción', () => {
+    const out = marcarYaExistentes([tx({ detalle: 'X', es_descuento: true })], [mov()]) as Array<Record<string, unknown>>
+    expect(out[0].detalle).toBe('X')
+    expect(out[0].es_descuento).toBe(true)
+    expect(out[0].ya_existe).toBe(true)
   })
 })
