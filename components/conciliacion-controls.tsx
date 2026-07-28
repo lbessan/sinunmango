@@ -713,6 +713,11 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const setCuentaForTx = (i: number, cuentaOrigen: string) =>
     setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, cuentaOrigen } : t))
 
+  // Red de seguridad: si el dedup marcó algo como "ya cargada" y en realidad es
+  // nuevo, un clic lo devuelve a la lista de nuevos (y lo selecciona).
+  const reincluir = (i: number) =>
+    setTxs(prev => prev.map((t, idx) => idx === i ? { ...t, ya_existe: false, seleccionada: true } : t))
+
   const toggleAll = () => {
     const allSel = txs.filter(t => !t.ya_existe).every(t => t.seleccionada)
     setTxs(prev => prev.map(t => t.ya_existe ? t : { ...t, seleccionada: !allSel }))
@@ -1168,13 +1173,22 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
                         ? `$${tx.monto_ars.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
                         : `U$S ${tx.monto_usd?.toFixed(2)}`
                       return (
-                        <div key={i} className="flex items-center gap-3 px-4 py-2.5 opacity-50">
-                          <CheckCircle size={15} className="text-emerald-400 shrink-0" />
-                          <div className="flex-1 min-w-0">
+                        <div key={i} className="flex items-center gap-3 px-4 py-2.5 group">
+                          <CheckCircle size={15} className="text-emerald-400 shrink-0 opacity-60" />
+                          <div className="flex-1 min-w-0 opacity-60">
                             <p className="text-sm text-slate-500 truncate">{tx.detalle}</p>
                             <p className="text-xs text-slate-400">{tx.fecha}</p>
                           </div>
-                          <span className="text-sm text-slate-400 whitespace-nowrap">{monto}</span>
+                          <span className="text-sm text-slate-400 whitespace-nowrap opacity-60">{monto}</span>
+                          {/* Red de seguridad: si en realidad NO estaba cargada,
+                              la devolvés a "nuevas" con un clic. */}
+                          <button
+                            onClick={() => reincluir(i)}
+                            className="text-[11px] font-medium text-blue-500 hover:text-blue-700 whitespace-nowrap shrink-0 px-2 py-1 rounded-md hover:bg-blue-50"
+                            title="En realidad es nueva — importala igual"
+                          >
+                            Importar igual
+                          </button>
                         </div>
                       )
                     })}

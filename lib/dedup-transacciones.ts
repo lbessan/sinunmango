@@ -66,27 +66,28 @@ export function dedupTransaccionesCuotas<T>(transacciones: readonly T[]): T[] {
 
 // ─── Dedup contra movimientos YA cargados (independiente del nombre) ─────────
 //
-// Marca `ya_existe: true` en cada transacción parseada que coincida con un
-// movimiento ya cargado en el período. A diferencia del dedup in-PDF, este
-// IGNORA el detalle/nombre: el mismo consumo suele quedar guardado con un
-// texto distinto al que trae el resumen (ej. "MERPAGO*NuevoNeg" vs "Mercado
-// Pago", o un nombre que el usuario editó a mano). Matcheamos por lo que NO
-// cambia: monto + moneda + cuota.
+// Marca `ya_existe: true` en cada transacción parseada que ya está cargada en el
+// período. IGNORA el detalle/nombre (el mismo consumo suele quedar guardado con
+// otro texto: "MERPAGO*X" vs "Mercado Pago", o un nombre que el user editó a
+// mano) y también la FECHA (el resumen y el mov guardado muestran fechas
+// distintas seguido). El único dato confiable es el MONTO + moneda.
 //
-//   - Compras en cuotas (cuotas_total > 1): monto por cuota + moneda + posición
-//     de la cuota (cuota_actual / cuotas_total). La FECHA no entra — el resumen
-//     y el mov guardado muestran fechas distintas para la misma cuota.
-//   - Consumos de 1 pago (cuotas_total <= 1): monto + moneda + FECHA. Pedimos la
-//     fecha para no colapsar dos compras legítimas del mismo valor en el mismo
-//     período (ej. dos cargas de SUBE). Igual ignora el nombre.
+// La posición de cuota se usa SOLO para desempatar cuando AMBOS lados son
+// compras en cuotas (así no confundimos cuota 3/6 con 5/6 del mismo valor). Si
+// alguno de los dos NO tiene cuotas, alcanza con monto + moneda — antes exigía
+// fecha idéntica y descartaba si el estado de cuota no coincidía, y eso hacía
+// que un consumo con el mismo valor exacto se ofreciera como nuevo.
 //
-// Reemplaza al `ya_existe` que antes calculaba Claude por prompt (poco confiable
-// cuando el nombre difería). El LLM ahora solo extrae; el dedup lo hace el código.
+// Matching 1-a-1: cada mov ya cargado "consume" a lo sumo una transacción del
+// resumen. Si tenés 1 cargado y el resumen trae 2 iguales, solo 1 se marca como
+// repetido y el otro queda para importar.
+//
+// Reemplaza al `ya_existe` que antes calculaba Claude por prompt.
 
 export type MovExistente = {
   monto:         number          // monto NATIVO por cuota (ARS si moneda ARS, USD si USD)
   moneda?:       string | null   // 'ARS' | 'USD' (default ARS)
-  fecha?:        string | null   // YYYY-MM-DD
+  fecha?:        string | null   // ya no se usa en el match; se deja por compat
   cuotas?:       number | null   // cuota actual
   cuotas_total?: number | null
 }
@@ -100,51 +101,87 @@ function num(v: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-/** Coincidencia de monto con tolerancia — absorbe redondeos de centavos al
- *  partir una compra en cuotas. */
+/** Coincidencia de monto con tolerancia — absorbe redondeos de centavos. */
 function montoCoincide(a: number, b: number, moneda: 'USD' | 'ARS'): boolean {
   const tol = moneda === 'USD' ? 0.05 : 1
   return Math.abs(Math.abs(a) - Math.abs(b)) <= tol
 }
 
+type Rasgos = { moneda: 'USD' | 'ARS'; monto: number; total: number; cuota: number; esCuota: boolean }
+
+function rasgosTx(tx: TxParseada): Rasgos | null {
+  const usd = num(tx.monto_usd)
+  const ars = num(tx.monto_ars)
+  const moneda: 'USD' | 'ARS' = usd !== null ? 'USD' : 'ARS'
+  const monto = usd !== null ? usd : ars
+  if (monto === null) return null
+  const total = num(tx.cuotas_total) ?? 1
+  const cuota = num(tx.cuotas) ?? 1
+  return { moneda, monto, total, cuota, esCuota: total > 1 }
+}
+
+function rasgosMov(e: MovExistente): Rasgos {
+  const total = num(e.cuotas_total) ?? 1
+  const cuota = num(e.cuotas) ?? 1
+  return { moneda: monedaDe(e.moneda), monto: e.monto, total, cuota, esCuota: total > 1 }
+}
+
+function coincide(a: Rasgos, b: Rasgos): boolean {
+  if (a.moneda !== b.moneda) return false
+  if (!montoCoincide(a.monto, b.monto, a.moneda)) return false
+  // Ambos en cuotas → misma posición de cuota. Si alguno no es cuota, monto +
+  // moneda alcanza (nombre y fecha no son confiables).
+  if (a.esCuota && b.esCuota) return a.cuota === b.cuota && a.total === b.total
+  return true
+}
+
 /**
  * Devuelve las transacciones con `ya_existe` recalculado contra los movs ya
- * cargados. No filtra: marca. La UI usa `ya_existe` para separar "nuevas" de
- * "ya en el sistema" y para no preseleccionar las repetidas.
+ * cargados (match 1-a-1 por monto + moneda, sin depender del nombre ni la
+ * fecha). No filtra: marca. La UI usa `ya_existe` para separar "nuevas" de "ya
+ * en el sistema" y para no preseleccionar las repetidas.
  */
 export function marcarYaExistentes(
   transacciones: readonly unknown[],
   existentes:    readonly MovExistente[],
 ): unknown[] {
-  const tieneExistentes = existentes.length > 0
+  const pool  = existentes.map(rasgosMov)
+  const usado = new Array(pool.length).fill(false)
+
   return transacciones.map(t => {
     if (typeof t !== 'object' || t === null) return t
-    if (!tieneExistentes) return { ...t, ya_existe: false }
+    const r = rasgosTx(t as TxParseada)
+    if (!r) return { ...t, ya_existe: false }
 
-    const tx    = t as TxParseada
-    const usd   = num(tx.monto_usd)
-    const ars   = num(tx.monto_ars)
-    const txMon: 'USD' | 'ARS' = usd !== null ? 'USD' : 'ARS'
-    const monto = usd !== null ? usd : ars
-    if (monto === null) return { ...t, ya_existe: false }
+    // Primer mov ya cargado, todavía sin usar, que coincida (1-a-1).
+    let idx = -1
+    for (let i = 0; i < pool.length; i++) {
+      if (usado[i]) continue
+      if (coincide(r, pool[i])) { idx = i; break }
+    }
+    if (idx >= 0) usado[idx] = true
+    return { ...t, ya_existe: idx >= 0 }
+  })
+}
 
-    const txTotal = num(tx.cuotas_total) ?? 1
-    const txCuota = num(tx.cuotas) ?? 1
-    const esCuota = txTotal > 1
+// ─── Pagos de la tarjeta (NO son consumos ni descuentos) ─────────────────────
+//
+// El pago del resumen anterior ("Su pago en pesos", "PAGO RECIBIDO", "Pago
+// mínimo", etc.) a veces lo devuelve el parser como un crédito a favor
+// (es_descuento). No es un gasto ni un descuento: es la cancelación del saldo.
+// Lo sacamos por completo. Anclado al inicio del detalle para no pisar comercios
+// que contengan "pago" (Mercado Pago, Openpay, Rapipago, Pago Fácil).
 
-    const ya = existentes.some(e => {
-      if (monedaDe(e.moneda) !== txMon) return false
-      if (!montoCoincide(monto, e.monto, txMon)) return false
-      const eTotal = num(e.cuotas_total) ?? 1
-      const eCuota = num(e.cuotas) ?? 1
-      if (esCuota) {
-        // misma posición de cuota dentro del mismo plan
-        return eTotal === txTotal && eCuota === txCuota
-      }
-      // consumo simple: mismo día (no colapsar repetidos legítimos)
-      if (eTotal > 1) return false
-      return !!e.fecha && !!tx.fecha && String(e.fecha) === String(tx.fecha)
-    })
-    return { ...t, ya_existe: ya }
+const RE_PAGO_TARJETA = /^\s*(su\s+pago\b|pago\s+(recibido|en\s+pesos|online|efectuado|m[ií]nimo|total|realizado))/i
+
+export function esPagoTarjeta(detalle: unknown): boolean {
+  return typeof detalle === 'string' && RE_PAGO_TARJETA.test(detalle)
+}
+
+/** Saca los pagos de la tarjeta del array de transacciones parseadas. */
+export function filtrarPagosTarjeta(transacciones: readonly unknown[]): unknown[] {
+  return transacciones.filter(t => {
+    if (typeof t !== 'object' || t === null) return true
+    return !esPagoTarjeta((t as { detalle?: unknown }).detalle)
   })
 }

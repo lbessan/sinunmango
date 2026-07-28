@@ -1,6 +1,6 @@
 // Tests para dedupTransaccionesCuotas — quita cuotas repetidas del parseo.
 import { describe, it, expect } from 'vitest'
-import { dedupTransaccionesCuotas, marcarYaExistentes, type MovExistente } from '@/lib/dedup-transacciones'
+import { dedupTransaccionesCuotas, marcarYaExistentes, esPagoTarjeta, filtrarPagosTarjeta, type MovExistente } from '@/lib/dedup-transacciones'
 
 const cuota = (detalle: string, monto: number, c: number, total: number, fecha = '2026-01-05') => ({
   fecha, detalle, monto_ars: monto, monto_usd: null, cuotas: c, cuotas_total: total,
@@ -102,20 +102,32 @@ describe('marcarYaExistentes', () => {
     expect(out[0].ya_existe).toBe(true)
   })
 
-  it('consumo simple: mismo monto + misma fecha + otro nombre → marca', () => {
+  it('consumo simple: mismo monto + otro nombre → marca (aunque la fecha difiera)', () => {
     const out = marcarYaExistentes(
-      [tx({ detalle: 'YPF RUTA 2', cuotas: 1, cuotas_total: 1 })],
-      [mov({ cuotas: 1, cuotas_total: 1 })],  // guardado como "Nafta"
+      [tx({ detalle: 'YPF RUTA 2', cuotas: 1, cuotas_total: 1, fecha: '2026-01-20' })],
+      [mov({ cuotas: 1, cuotas_total: 1, fecha: '2026-01-05' })],  // guardado como "Nafta", otra fecha
     ) as Array<{ ya_existe: boolean }>
     expect(out[0].ya_existe).toBe(true)
   })
 
-  it('consumo simple: mismo monto pero DISTINTA fecha → NO marca (repetido legítimo)', () => {
+  it('consumo SIN cuota del resumen matchea una compra guardada EN cuotas (caso Samsung)', () => {
+    // "Samsung - Promo BBVA" viene como consumo simple pero está cargado como
+    // cuota. Antes se descartaba por el mismatch de estado-de-cuota; ahora
+    // matchea porque alcanza monto + moneda cuando alguno no es cuota.
     const out = marcarYaExistentes(
-      [tx({ cuotas: 1, cuotas_total: 1, fecha: '2026-01-20' })],
-      [mov({ cuotas: 1, cuotas_total: 1, fecha: '2026-01-05' })],
+      [tx({ detalle: 'Samsung - Promo BBVA', cuotas: 1, cuotas_total: 1 })],
+      [mov({ cuotas: 3, cuotas_total: 12 })],  // guardado en cuotas, mismo monto
     ) as Array<{ ya_existe: boolean }>
-    expect(out[0].ya_existe).toBe(false)
+    expect(out[0].ya_existe).toBe(true)
+  })
+
+  it('1-a-1: 1 cargado + 2 iguales en el resumen → marca solo 1 (el otro queda para importar)', () => {
+    const out = marcarYaExistentes(
+      [tx({ cuotas: 1, cuotas_total: 1 }), tx({ cuotas: 1, cuotas_total: 1 })],
+      [mov({ cuotas: 1, cuotas_total: 1 })],  // solo 1 cargado
+    ) as Array<{ ya_existe: boolean }>
+    expect(out.filter(o => o.ya_existe)).toHaveLength(1)
+    expect(out.filter(o => !o.ya_existe)).toHaveLength(1)
   })
 
   it('matchea consumos en USD por monto_usd', () => {
@@ -144,5 +156,38 @@ describe('marcarYaExistentes', () => {
     expect(out[0].detalle).toBe('X')
     expect(out[0].es_descuento).toBe(true)
     expect(out[0].ya_existe).toBe(true)
+  })
+})
+
+describe('esPagoTarjeta / filtrarPagosTarjeta', () => {
+  it('detecta pagos de tarjeta', () => {
+    expect(esPagoTarjeta('Su pago en pesos')).toBe(true)
+    expect(esPagoTarjeta('SU PAGO')).toBe(true)
+    expect(esPagoTarjeta('PAGO RECIBIDO')).toBe(true)
+    expect(esPagoTarjeta('Pago recibido gracias')).toBe(true)
+    expect(esPagoTarjeta('Pago mínimo')).toBe(true)
+  })
+
+  it('NO confunde comercios que contienen "pago"', () => {
+    expect(esPagoTarjeta('Mercado Pago')).toBe(false)
+    expect(esPagoTarjeta('Openpay Mi Apet SRL')).toBe(false)
+    expect(esPagoTarjeta('Rapipago Sucursal')).toBe(false)
+    expect(esPagoTarjeta('Pago Fácil')).toBe(false)          // "pago" pero no seguido de recibido/en pesos/etc
+    expect(esPagoTarjeta('Pago Mis Cuentas')).toBe(false)
+  })
+
+  it('filtra el pago pero deja los consumos', () => {
+    const txs = [
+      { detalle: 'Su pago en pesos', monto_ars: 545412.11, es_descuento: true },
+      { detalle: 'Samsung - Promo BBVA', monto_ars: 61388.83, es_descuento: false },
+      { detalle: 'Mercado Pago Uber', monto_ars: 5000, es_descuento: false },
+    ]
+    const out = filtrarPagosTarjeta(txs) as Array<{ detalle: string }>
+    expect(out).toHaveLength(2)
+    expect(out.map(o => o.detalle)).toEqual(['Samsung - Promo BBVA', 'Mercado Pago Uber'])
+  })
+
+  it('tolera elementos no-objeto sin romper', () => {
+    expect(filtrarPagosTarjeta([null, 'x', { detalle: 'Su pago en pesos' }])).toEqual([null, 'x'])
   })
 })

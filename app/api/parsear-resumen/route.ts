@@ -4,7 +4,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 import { getEffectivePlan } from '@/lib/subscription'
 import { checkMonthlyLimit, commitMonthlyUsage, isOnboardingActive, usageHeaders } from '@/lib/usage-limits'
 import { parseClaudeJSON, recoverPartialArray } from '@/lib/parse-claude-json'
-import { dedupTransaccionesCuotas, marcarYaExistentes } from '@/lib/dedup-transacciones'
+import { dedupTransaccionesCuotas, marcarYaExistentes, filtrarPagosTarjeta } from '@/lib/dedup-transacciones'
 import { MODEL_PARSEAR_RESUMEN } from '@/lib/claude-models'
 import { isPdfEncrypted, extractTextFromPdf } from '@/lib/pdf-decrypt'
 import { encryptSecret, decryptSecret } from '@/lib/crypto'
@@ -292,8 +292,8 @@ Devolvé ÚNICAMENTE un JSON válido con este formato exacto, sin markdown ni te
 }
 
 Notas importantes:
-- Ignorá SOLO los pagos realizados (sección "Pagos" del resumen)
-- SÍ incluí descuentos y créditos a favor aunque estén fuera de la sección de consumos
+- NO incluyas los PAGOS de la tarjeta (ej. "Su pago en pesos", "SU PAGO", "PAGO RECIBIDO", "Pago mínimo", "Pagos y créditos"). NO son consumos NI descuentos: son la cancelación del saldo del resumen anterior. Ignoralos por completo aunque figuren con monto a favor / en verde.
+- SÍ incluí descuentos y créditos a favor aunque estén fuera de la sección de consumos (bonificaciones, reintegros, ajustes) — pero un PAGO no es un descuento.
 - INCLUÍ consumos del titular principal Y de tarjetas adicionales — identificando cada uno con su titular en el campo correspondiente
 - Para cuotas: si dice "C.04/12" significa cuota 4 de 12 — extraé SOLO esa cuota tal cual aparece
 - Limpiá el detalle: "CARREFOUR MAR DEL PLATA" → "Carrefour Mar del Plata". NUNCA uses markdown (no links, no asteriscos, solo texto plano)
@@ -432,9 +432,11 @@ Notas importantes:
     // Dedup defensivo: Claude a veces repite una cuota que el resumen lista en
     // dos secciones (consumos + plan de cuotas). Colapsamos antes de dispatch.
     const sinDuplicados = dedupTransaccionesCuotas(parsed.transacciones ?? [])
-    // Dedup contra lo YA cargado en el período (por monto+moneda+cuota, sin
-    // depender del nombre). Setea ya_existe en cada tx.
-    const marcadas      = marcarYaExistentes(sinDuplicados, movimientosExistentes)
+    // Sacamos los pagos de la tarjeta (no son consumos ni descuentos).
+    const sinPagos      = filtrarPagosTarjeta(sinDuplicados)
+    // Dedup contra lo YA cargado en el período (por monto+moneda, sin depender
+    // del nombre ni la fecha). Setea ya_existe en cada tx.
+    const marcadas      = marcarYaExistentes(sinPagos, movimientosExistentes)
     const transacciones = await dispatchTitulares(marcadas)
     const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
     return NextResponse.json({
@@ -452,7 +454,8 @@ Notas importantes:
   if (recovered) {
     console.warn(`[parsear-resumen] Partial parse recovered ${recovered.length} transactions`)
     const sinDuplicados = dedupTransaccionesCuotas(recovered)
-    const marcadas      = marcarYaExistentes(sinDuplicados, movimientosExistentes)
+    const sinPagos      = filtrarPagosTarjeta(sinDuplicados)
+    const marcadas      = marcarYaExistentes(sinPagos, movimientosExistentes)
     const transacciones = await dispatchTitulares(marcadas)
     const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
     return NextResponse.json({
