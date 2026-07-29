@@ -12,15 +12,16 @@ import { isPdfEncrypted, extractTextFromPdf } from '@/lib/pdf-decrypt'
 import { encryptSecret, decryptSecret } from '@/lib/crypto'
 
 const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario. PDFs típicos < 2 MB.
-// Vercel Hobby corta a 60s. Dejamos 50s para el fetch a Claude + 10s de
-// margen para el dispatch + commit de usage + response. Con el modelo
-// Haiku (más rápido que Sonnet) y max_tokens reducido, alcanza para
-// resúmenes con adicionales (~20-25s en práctica).
-const CLAUDE_TIMEOUT_MS    = 50_000
+// Cuenta Vercel PRO → las funciones pueden correr hasta 300s. Le damos margen
+// generoso a cada llamada a Claude (con el split por páginas + paralelo, cada
+// una termina mucho antes; esto cubre el caso de PDF grande que no se pudo
+// partir, o una página lenta).
+const CLAUDE_TIMEOUT_MS    = 280_000
 
-// Hobby tope = 60s. Lo dejamos explícito para que cuando migremos a Pro
-// solo subir este número (y opcionalmente CLAUDE_TIMEOUT_MS).
-export const maxDuration = 60
+// Vercel Pro permite hasta 300s por request (Hobby era 60s). Antes esto estaba
+// clavado en 60 con un comentario de "Hobby" que era incorrecto — de ahí venían
+// los timeouts de Sonnet en el PDF grande.
+export const maxDuration = 300
 
 // ─── POST /api/parsear-resumen ────────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), lo procesa con Claude y
