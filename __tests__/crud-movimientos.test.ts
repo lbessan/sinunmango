@@ -57,9 +57,9 @@ describe('POST /api/movimientos — auth + parsing', () => {
     expect(body.error).toContain('Sin registros')
   })
 
-  it('400 si más de 100 registros', async () => {
+  it('400 si más de 500 registros', async () => {
     createClientMock.mockResolvedValueOnce({ supabase: {}, user: { id: 'u' } })
-    const arr = Array.from({ length: 101 }, () => VALID_GASTO)
+    const arr = Array.from({ length: 501 }, () => VALID_GASTO)
     const res = await POST(req(arr))
     expect(res.status).toBe(400)
     const body = await res.json()

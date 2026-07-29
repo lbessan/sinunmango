@@ -7,10 +7,11 @@ import { parseClaudeJSON, recoverPartialArray, recoverObject } from '@/lib/parse
 import { MODEL_PARSEAR_TARJETA_PDF } from '@/lib/claude-models'
 
 const MAX_PDF_BASE64_BYTES = 5 * 1024 * 1024  // ~3.75 MB binario
-// Mismo razonamiento que parsear-resumen: Vercel Hobby tope 60s.
-const CLAUDE_TIMEOUT_MS    = 50_000
+// La cuenta es Vercel PRO (hasta 300s). Antes esto estaba en 60 con comentario
+// de "Hobby" y era incorrecto → timeouts en resúmenes grandes del onboarding.
+const CLAUDE_TIMEOUT_MS    = 280_000
 
-export const maxDuration = 60
+export const maxDuration = 300
 
 // ─── POST /api/parsear-tarjeta-pdf ────────────────────────────────────────────
 // Recibe un PDF de resumen de tarjeta (base64), extrae metadata de la tarjeta

@@ -19,7 +19,7 @@ import { htmlToPdf } from '@/lib/reporte-mes/pdf'
 // Response: application/pdf binary con Content-Disposition: attachment.
 
 export const runtime     = 'nodejs'    // puppeteer no es edge-compatible
-export const maxDuration = 60          // Vercel Hobby max; Pro acepta 300+
+export const maxDuration = 300         // cuenta Pro (puppeteer + gráficos puede tardar)
 
 function isValidMes(s: string): boolean {
   if (!/^\d{4}-\d{2}$/.test(s)) return false

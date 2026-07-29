@@ -127,7 +127,10 @@ export async function POST(req: NextRequest) {
   // Soporta tanto un único record como un array (cuotas, multi-insert)
   const records = Array.isArray(body) ? body : [body]
   if (records.length === 0) return NextResponse.json({ error: 'Sin registros' }, { status: 400 })
-  if (records.length > 100) return NextResponse.json({ error: 'Demasiados registros (máx 100)' }, { status: 400 })
+  // 500: una importación de resumen con muchas compras en cuotas genera N×cuotas
+  // filas y superaba el viejo tope de 100 → fallaba TODA la importación. El
+  // insert de Supabase maneja 500 filas sin problema.
+  if (records.length > 500) return NextResponse.json({ error: 'Demasiados registros (máx 500)' }, { status: 400 })
 
   const validated: MovimientoInsert[] = []
   for (let i = 0; i < records.length; i++) {
