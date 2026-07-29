@@ -41,9 +41,9 @@ describe('claude-models — defaults', () => {
     expect(m.MODEL_PARSEAR_TARJETA_PDF).toBe('claude-haiku-4-5-20251001')
   })
 
-  it('MODEL_PARSEAR_RESUMEN default es Haiku 4.5 (rápido para Hobby)', async () => {
+  it('MODEL_PARSEAR_RESUMEN default es Sonnet (lee mejor las fechas de PDFs de imagen)', async () => {
     const m = await import('@/lib/claude-models')
-    expect(m.MODEL_PARSEAR_RESUMEN).toBe('claude-haiku-4-5-20251001')
+    expect(m.MODEL_PARSEAR_RESUMEN).toBe('claude-sonnet-4-6')
   })
 
   it('MODEL_LEER_TICKET default es Haiku 4.5 (visual simple)', async () => {
@@ -120,11 +120,13 @@ describe('claude-models — coherencia interna', () => {
     expect(m.MODEL_ASISTENTE).toBe(m.MODEL_ASISTENTE_MOBILE)
   })
 
-  it('parseo de tarjeta (PDF y resumen) usan el MISMO modelo', async () => {
-    // Si estos divergen accidentalmente, los resultados pueden no ser
-    // comparables entre las dos vías de entrada.
+  it('resumen usa Sonnet (parte páginas + lee mejor fechas); tarjeta-pdf sigue Haiku', async () => {
+    // Divergen A PROPÓSITO: /api/parsear-resumen parte el PDF en páginas y las
+    // procesa en paralelo, así que puede usar Sonnet (más nítido) sin pasarse de
+    // los 60s. /api/parsear-tarjeta-pdf manda el PDF entero → se queda en Haiku.
     const m = await import('@/lib/claude-models')
-    expect(m.MODEL_PARSEAR_TARJETA_PDF).toBe(m.MODEL_PARSEAR_RESUMEN)
+    expect(m.MODEL_PARSEAR_RESUMEN).toBe('claude-sonnet-4-6')
+    expect(m.MODEL_PARSEAR_TARJETA_PDF).toBe('claude-haiku-4-5-20251001')
   })
 
   it('todas las constantes son strings no vacíos por default', async () => {

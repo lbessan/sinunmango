@@ -6,6 +6,7 @@ import { checkMonthlyLimit, commitMonthlyUsage, isOnboardingActive, usageHeaders
 import { parseClaudeJSON, recoverPartialArray } from '@/lib/parse-claude-json'
 import { dedupTransaccionesCuotas, marcarYaExistentes, filtrarPagosTarjeta } from '@/lib/dedup-transacciones'
 import { verificarResumen, type ControlResumen } from '@/lib/resumen-checksum'
+import { splitPdfEnChunks } from '@/lib/pdf-split'
 import { MODEL_PARSEAR_RESUMEN } from '@/lib/claude-models'
 import { isPdfEncrypted, extractTextFromPdf } from '@/lib/pdf-decrypt'
 import { encryptSecret, decryptSecret } from '@/lib/crypto'
@@ -169,23 +170,30 @@ export async function POST(req: NextRequest) {
   // confiable cuando el nombre difería). Claude solo EXTRAE; el `ya_existe` lo
   // recalcula el código con marcarYaExistentes() por monto+moneda+cuota.
 
-  let claudeRes: Response
-  try {
-    claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+  type ParsedResumen = {
+    transacciones?:       unknown[]
+    control?:             ControlResumen
+    cierre_actual?:       unknown
+    vencimiento_actual?:  unknown
+    proximo_cierre?:      unknown
+    proximo_vencimiento?: unknown
+  }
+
+  // Una llamada a Claude con UN documento (PDF base64) o con el texto ya
+  // extraído. Devuelve el JSON parseado (o recuperado si vino truncado), o null
+  // si falló el parse. Los timeouts los deja propagar para que el caller decida.
+  async function callClaude(docBase64: string | null): Promise<ParsedResumen | null> {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     signal: AbortSignal.timeout(CLAUDE_TIMEOUT_MS),
     headers: {
       'Content-Type':      'application/json',
-      'x-api-key':         apiKey,
+      'x-api-key':         apiKey!,   // garantizado por el guard de arriba (if !apiKey → 503)
       'anthropic-version': '2023-06-01',
       'anthropic-beta':    'pdfs-2024-09-25',
     },
     body: JSON.stringify({
       model:      MODEL_PARSEAR_RESUMEN,
-      // 10000 tokens cubre ~80 transacciones (un resumen típico tiene
-      // 20-40). Si llegara a cortarse, recoverPartialArray rescata las
-      // que ya entraron en el JSON parcial. Bajar de 16000 acelera
-      // Claude entre 20-30% (genera menos output).
       max_tokens: 10000,
       messages: [
         {
@@ -205,7 +213,7 @@ export async function POST(req: NextRequest) {
                   source: {
                     type:       'base64' as const,
                     media_type: 'application/pdf' as const,
-                    data:       pdf,
+                    data:       docBase64 ?? '',
                   },
                 }]),
             {
@@ -323,7 +331,69 @@ Notas importantes:
         },
       ],
     }),
-  })
+    })
+    if (!res.ok) {
+      console.error('[parsear-resumen] Claude API error:', await res.text().catch(() => ''))
+      return null
+    }
+    const data    = await res.json()
+    const rawText = data.content?.[0]?.text ?? ''
+    const p = parseClaudeJSON<ParsedResumen>(rawText)
+    if (p) return p
+    const rec = recoverPartialArray(rawText, 'transacciones')
+    if (rec) {
+      console.warn(`[parsear-resumen] Partial parse recovered ${rec.length} transactions`)
+      return { transacciones: rec }
+    }
+    console.error('[parsear-resumen] Could not parse Claude response:', rawText.slice(0, 300))
+    return null
+  }
+
+  // Une el resultado de varias páginas: concatena transacciones y toma de cada
+  // campo de encabezado / control el primer valor no nulo que haya aparecido.
+  function mergeParsed(parts: ParsedResumen[]): ParsedResumen {
+    const firstNonNull = (k: keyof ParsedResumen) => {
+      for (const p of parts) { const v = p[k]; if (v !== undefined && v !== null) return v }
+      return undefined
+    }
+    const control: ControlResumen = {}
+    for (const p of parts) {
+      if (!p.control) continue
+      for (const k of ['saldo_anterior', 'su_pago', 'total_consumos', 'saldo_actual'] as const) {
+        const v = p.control[k]
+        if ((control[k] === undefined || control[k] === null) && v !== undefined && v !== null) control[k] = v
+      }
+    }
+    return {
+      transacciones:       parts.flatMap(p => Array.isArray(p.transacciones) ? p.transacciones : []),
+      control,
+      cierre_actual:       firstNonNull('cierre_actual'),
+      vencimiento_actual:  firstNonNull('vencimiento_actual'),
+      proximo_cierre:      firstNonNull('proximo_cierre'),
+      proximo_vencimiento: firstNonNull('proximo_vencimiento'),
+    }
+  }
+
+  // Extracción: si es texto (PDF desencriptado) → 1 llamada. Si es PDF binario →
+  // lo partimos en páginas y las procesamos EN PARALELO, porque los resúmenes de
+  // imagen no entran enteros en el tope de 60s de Vercel Hobby. Cada página es
+  // chica y rápida; el wall-clock total ≈ la página más lenta.
+  let parsed: ParsedResumen | null
+  try {
+    if (extractedText !== null) {
+      parsed = await callClaude(null)
+    } else {
+      const chunks = await splitPdfEnChunks(pdf)
+      if (chunks.length <= 1) {
+        parsed = await callClaude(chunks[0])
+      } else {
+        // Si una página puntual falla/timeoutea, la dejamos en null (el checksum
+        // avisa si por eso no cuadra) y seguimos con las demás.
+        const parts = await Promise.all(chunks.map(c => callClaude(c).catch(() => null)))
+        const ok = parts.filter((p): p is ParsedResumen => p !== null)
+        parsed = ok.length > 0 ? mergeParsed(ok) : null
+      }
+    }
   } catch (err) {
     if (err instanceof DOMException && err.name === 'TimeoutError') {
       console.error('[parsear-resumen] Claude timeout')
@@ -332,15 +402,6 @@ Notas importantes:
     console.error('[parsear-resumen] Claude fetch error:', err)
     return NextResponse.json({ error: 'No pudimos contactar al servicio de IA.' }, { status: 502 })
   }
-
-  if (!claudeRes.ok) {
-    const err = await claudeRes.text()
-    console.error('[parsear-resumen] Claude API error:', err)
-    return NextResponse.json({ error: 'Error al procesar el PDF con IA.' }, { status: 502 })
-  }
-
-  const claudeData = await claudeRes.json()
-  const rawText    = claudeData.content?.[0]?.text ?? ''
 
   // ── Helper: si vino cuenta_id, calcular fechas_propuestas comparando con la
   //   cuenta actual. Solo devolvemos algo si las fechas son válidas (futuras,
@@ -448,63 +509,28 @@ Notas importantes:
     })
   }
 
-  // Intento de parse normal
-  const parsed = parseClaudeJSON<{
-    transacciones?:        unknown[]
-    proximo_cierre?:       unknown
-    proximo_vencimiento?:  unknown
-    vencimiento_actual?:   unknown
-    control?:              ControlResumen
-  }>(rawText)
-  if (parsed) {
-    const fechas_propuestas = await buildFechasPropuestas(parsed.proximo_cierre, parsed.proximo_vencimiento, parsed.vencimiento_actual)
-    // Dedup defensivo: Claude a veces repite una cuota que el resumen lista en
-    // dos secciones (consumos + plan de cuotas). Colapsamos antes de dispatch.
-    const sinDuplicados = dedupTransaccionesCuotas(parsed.transacciones ?? [])
-    // Sacamos los pagos de la tarjeta (no son consumos ni descuentos).
-    const sinPagos      = filtrarPagosTarjeta(sinDuplicados)
-    // Checksum: verificamos que lo extraído cuadre con los totales que declara
-    // el resumen (saldo anterior − pago + consumos + impuestos = saldo actual).
-    // Corre sobre lo extraído SIN pagos (los pagos no son consumos).
-    const verificacion  = verificarResumen(sinPagos, parsed.control ?? {})
-    // Dedup contra lo YA cargado en el período (por monto+moneda, sin depender
-    // del nombre ni la fecha). Setea ya_existe en cada tx.
-    const marcadas      = marcarYaExistentes(sinPagos, movimientosExistentes)
-    const transacciones = await dispatchTitulares(marcadas)
-    const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
-    return NextResponse.json({
-      ok: true,
-      transacciones,
-      fechas_propuestas,
-      verificacion,
-    }, { headers: committed ? usageHeaders(committed) : {} })
+  if (!parsed) {
+    return NextResponse.json(
+      { error: 'No se pudieron extraer los datos del resumen.' },
+      { status: 422 },
+    )
   }
 
-  // Si el JSON está truncado, intentar rescatar el array de transacciones.
-  // En este path no intentamos extraer fechas propuestas — si el JSON se
-  // truncó, lo más probable es que las fechas (que están en el encabezado)
-  // estén OK, pero no podemos garantizarlo y preferimos no proponer.
-  const recovered = recoverPartialArray(rawText, 'transacciones')
-  if (recovered) {
-    console.warn(`[parsear-resumen] Partial parse recovered ${recovered.length} transactions`)
-    const sinDuplicados = dedupTransaccionesCuotas(recovered)
-    const sinPagos      = filtrarPagosTarjeta(sinDuplicados)
-    const marcadas      = marcarYaExistentes(sinPagos, movimientosExistentes)
-    const transacciones = await dispatchTitulares(marcadas)
-    // JSON truncado → no tenemos el bloque de control → checksum no aplicable.
-    const verificacion  = verificarResumen(sinPagos, {})
-    const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
-    return NextResponse.json({
-      ok: true,
-      transacciones,
-      fechas_propuestas: null,
-      verificacion,
-    }, { headers: committed ? usageHeaders(committed) : {} })
-  }
-
-  console.error('[parsear-resumen] Could not parse Claude response:', rawText.slice(0, 500))
-  return NextResponse.json(
-    { error: 'No se pudieron extraer los datos del resumen.' },
-    { status: 422 }
-  )
+  const fechas_propuestas = await buildFechasPropuestas(parsed.proximo_cierre, parsed.proximo_vencimiento, parsed.vencimiento_actual)
+  // Dedup defensivo: a veces una cuota figura en dos secciones (consumos + plan).
+  const sinDuplicados = dedupTransaccionesCuotas(parsed.transacciones ?? [])
+  // Sacamos los pagos de la tarjeta (no son consumos ni descuentos).
+  const sinPagos      = filtrarPagosTarjeta(sinDuplicados)
+  // Checksum: ¿lo extraído cuadra con los totales que declara el resumen?
+  const verificacion  = verificarResumen(sinPagos, parsed.control ?? {})
+  // Dedup contra lo YA cargado (por monto+moneda, sin depender del nombre/fecha).
+  const marcadas      = marcarYaExistentes(sinPagos, movimientosExistentes)
+  const transacciones = await dispatchTitulares(marcadas)
+  const committed = inOnboarding ? null : await commitMonthlyUsage(supabase, 'resumen', plan.has_pro_access)
+  return NextResponse.json({
+    ok: true,
+    transacciones,
+    fechas_propuestas,
+    verificacion,
+  }, { headers: committed ? usageHeaders(committed) : {} })
 }

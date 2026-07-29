@@ -27,7 +27,8 @@ const fmt = (n: number) => n.toLocaleString('es-AR', { minimumFractionDigits: 2,
 /** Totales de control que declara el resumen (los lee el modelo del encabezado). */
 export type ControlResumen = {
   saldo_anterior?: number | null
-  pago?:           number | null   // "Su pago en pesos", valor positivo
+  su_pago?:        number | null   // "Su pago en pesos", valor positivo (lo devuelve el modelo)
+  pago?:           number | null   // alias — algunos callers/tests usan este nombre
   saldo_actual?:   number | null
   total_consumos?: number | null   // "Total consumos" (chequeo secundario)
 }
@@ -70,7 +71,7 @@ export function verificarResumen(items: readonly unknown[], control: ControlResu
   }
 
   const sa   = num(control.saldo_anterior)
-  const pago = num(control.pago)
+  const pago = num(control.su_pago ?? control.pago)
   const sact = num(control.saldo_actual)
 
   // Chequeo principal: la ecuación del resumen.

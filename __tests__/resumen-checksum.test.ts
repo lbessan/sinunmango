@@ -70,6 +70,14 @@ describe('verificarResumen — comportamiento general', () => {
     expect(v.sumaConsumos).toBe(10000)
   })
 
+  it('lee su_pago (el nombre que devuelve el modelo, no solo "pago")', () => {
+    const v = verificarResumen(
+      [{ monto_ars: 10000, es_impuesto: false, es_descuento: false }],
+      { saldo_anterior: 5000, su_pago: 5000, saldo_actual: 10000 },
+    )
+    expect(v.cuadra).toBe(true)
+  })
+
   it('usa total_consumos como fallback si no hay saldos', () => {
     const v = verificarResumen(
       [{ monto_ars: 50000, es_impuesto: false, es_descuento: false }],
