@@ -43,20 +43,23 @@ export function dedupTransaccionesCuotas<T>(transacciones: readonly T[]): T[] {
     const total = tx.cuotas_total
     const esCuota = typeof total === 'number' && total > 1
 
-    if (!esCuota) {
-      out.push(t)            // consumos de 1 cuota: nunca se dedup-ean
-      continue
+    let key: string | null = null
+    if (esCuota) {
+      // Cuota repetida (consumos + plan de cuotas): misma compra, cuota y plan.
+      key = ['cuota', norm(tx.detalle), norm(tx.monto_ars), norm(tx.monto_usd), norm(tx.cuotas), norm(tx.cuotas_total)].join('|')
+    } else if (tx.es_impuesto === true || tx.es_descuento === true) {
+      // Impuestos/descuentos duplicados: el parser a veces los lista dos veces,
+      // a veces con el nombre un poco distinto ("CR.RG..M" vs "CR.RG..M (M)").
+      // Colapsamos por tipo + monto + moneda + fecha, SIN mirar el detalle. Si
+      // por error colapsáramos uno legítimo, el checksum del resumen lo delata.
+      const tipo = tx.es_impuesto === true ? 'imp' : 'desc'
+      key = [tipo, norm(tx.monto_ars), norm(tx.monto_usd), norm(tx.fecha)].join('|')
     }
+    // Consumos de 1 pago (ni impuesto ni descuento): NO se dedup-ean (dos compras
+    // iguales el mismo día son legítimas).
 
-    const key = [
-      norm(tx.detalle),
-      norm(tx.monto_ars),
-      norm(tx.monto_usd),
-      norm(tx.cuotas),
-      norm(tx.cuotas_total),
-    ].join('|')
-
-    if (seen.has(key)) continue   // cuota duplicada → descartar
+    if (key === null) { out.push(t); continue }
+    if (seen.has(key)) continue   // duplicado → descartar
     seen.add(key)
     out.push(t)
   }
@@ -72,11 +75,10 @@ export function dedupTransaccionesCuotas<T>(transacciones: readonly T[]): T[] {
 // mano) y también la FECHA (el resumen y el mov guardado muestran fechas
 // distintas seguido). El único dato confiable es el MONTO + moneda.
 //
-// La posición de cuota se usa SOLO para desempatar cuando AMBOS lados son
-// compras en cuotas (así no confundimos cuota 3/6 con 5/6 del mismo valor). Si
-// alguno de los dos NO tiene cuotas, alcanza con monto + moneda — antes exigía
-// fecha idéntica y descartaba si el estado de cuota no coincidía, y eso hacía
-// que un consumo con el mismo valor exacto se ofreciera como nuevo.
+// Tampoco mira la posición de cuota: si un consumo del resumen tiene el mismo
+// valor que uno ya cargado en el período, es repetido ("si es la cuota 4, obvio
+// que ya lo tengo"). Antes exigía misma posición de cuota (o misma fecha) y eso
+// hacía que consumos con el mismo valor exacto se ofrecieran como nuevos.
 //
 // Matching 1-a-1: cada mov ya cargado "consume" a lo sumo una transacción del
 // resumen. Si tenés 1 cargado y el resumen trae 2 iguales, solo 1 se marca como
@@ -107,7 +109,7 @@ function montoCoincide(a: number, b: number, moneda: 'USD' | 'ARS'): boolean {
   return Math.abs(Math.abs(a) - Math.abs(b)) <= tol
 }
 
-type Rasgos = { moneda: 'USD' | 'ARS'; monto: number; total: number; cuota: number; esCuota: boolean }
+type Rasgos = { moneda: 'USD' | 'ARS'; monto: number }
 
 function rasgosTx(tx: TxParseada): Rasgos | null {
   const usd = num(tx.monto_usd)
@@ -115,24 +117,19 @@ function rasgosTx(tx: TxParseada): Rasgos | null {
   const moneda: 'USD' | 'ARS' = usd !== null ? 'USD' : 'ARS'
   const monto = usd !== null ? usd : ars
   if (monto === null) return null
-  const total = num(tx.cuotas_total) ?? 1
-  const cuota = num(tx.cuotas) ?? 1
-  return { moneda, monto, total, cuota, esCuota: total > 1 }
+  return { moneda, monto }
 }
 
 function rasgosMov(e: MovExistente): Rasgos {
-  const total = num(e.cuotas_total) ?? 1
-  const cuota = num(e.cuotas) ?? 1
-  return { moneda: monedaDe(e.moneda), monto: e.monto, total, cuota, esCuota: total > 1 }
+  return { moneda: monedaDe(e.moneda), monto: e.monto }
 }
 
+// Coincidencia: monto + moneda. NO exigimos posición de cuota ni fecha — si un
+// consumo del resumen tiene el mismo valor que uno ya cargado en el período, lo
+// damos por repetido ("si es la cuota 4, obvio que ya lo tengo"). El matching
+// 1-a-1 + el botón "Importar igual" cubren los raros falsos positivos.
 function coincide(a: Rasgos, b: Rasgos): boolean {
-  if (a.moneda !== b.moneda) return false
-  if (!montoCoincide(a.monto, b.monto, a.moneda)) return false
-  // Ambos en cuotas → misma posición de cuota. Si alguno no es cuota, monto +
-  // moneda alcanza (nombre y fecha no son confiables).
-  if (a.esCuota && b.esCuota) return a.cuota === b.cuota && a.total === b.total
-  return true
+  return a.moneda === b.moneda && montoCoincide(a.monto, b.monto, a.moneda)
 }
 
 /**

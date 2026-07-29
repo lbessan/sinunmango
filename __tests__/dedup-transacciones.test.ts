@@ -64,6 +64,39 @@ describe('dedupTransaccionesCuotas', () => {
     expect(out).toHaveLength(3)  // 1 COTO + 2 Nafta
   })
 
+  it('colapsa descuentos duplicados aunque el nombre difiera (CR.RG..M vs CR.RG..M (M))', () => {
+    const txs = [
+      { fecha: '2026-07-06', detalle: 'CR.RG 5617 30% M',     monto_ars: 80198.77, monto_usd: null, cuotas: 1, cuotas_total: 1, es_descuento: true },
+      { fecha: '2026-07-06', detalle: 'CR.RG 5617 30% M (M)', monto_ars: 80198.77, monto_usd: null, cuotas: 1, cuotas_total: 1, es_descuento: true },
+    ]
+    expect(dedupTransaccionesCuotas(txs)).toHaveLength(1)
+  })
+
+  it('colapsa impuestos duplicados (mismo monto+fecha) pero mantiene los distintos', () => {
+    const txs = [
+      { fecha: '2026-07-23', detalle: 'Comisión Black', monto_ars: 65206.61, monto_usd: null, cuotas: 1, cuotas_total: 1, es_impuesto: true },
+      { fecha: '2026-07-23', detalle: 'Comisión Black', monto_ars: 65206.61, monto_usd: null, cuotas: 1, cuotas_total: 1, es_impuesto: true }, // dup
+      { fecha: '2026-07-23', detalle: 'IVA',            monto_ars: 13693.39, monto_usd: null, cuotas: 1, cuotas_total: 1, es_impuesto: true }, // distinto
+    ]
+    expect(dedupTransaccionesCuotas(txs)).toHaveLength(2)
+  })
+
+  it('NO colapsa un impuesto con un descuento del mismo monto (distinto tipo)', () => {
+    const txs = [
+      { fecha: '2026-07-06', detalle: 'X', monto_ars: 80198.77, monto_usd: null, cuotas: 1, cuotas_total: 1, es_impuesto: true },
+      { fecha: '2026-07-06', detalle: 'Y', monto_ars: 80198.77, monto_usd: null, cuotas: 1, cuotas_total: 1, es_descuento: true },
+    ]
+    expect(dedupTransaccionesCuotas(txs)).toHaveLength(2)
+  })
+
+  it('NO colapsa consumos normales del mismo monto (dos cafés siguen siendo legítimos)', () => {
+    const txs = [
+      consumo('Café', 3500),
+      consumo('Café', 3500),
+    ]
+    expect(dedupTransaccionesCuotas(txs)).toHaveLength(2)
+  })
+
   it('lista vacía → []', () => {
     expect(dedupTransaccionesCuotas([])).toEqual([])
   })
@@ -87,14 +120,17 @@ describe('marcarYaExistentes', () => {
     expect(out[0].ya_existe).toBe(true)
   })
 
-  it('NO marca si es otra posición de cuota (3/6 vs 4/6)', () => {
+  it('marca aunque difiera la posición de cuota — mismo monto = ya cargado (caso Cuota 4/12)', () => {
+    // El usuario: "si es la cuota 4, obvio que ya lo tengo cargado". El monto
+    // idéntico alcanza; no exigimos que la posición de cuota coincida (la
+    // guardada quedó con otra posición por cómo se generó antes).
     const out = marcarYaExistentes([tx({ cuotas: 4 })], [mov({ cuotas: 3 })]) as Array<{ ya_existe: boolean }>
-    expect(out[0].ya_existe).toBe(false)
+    expect(out[0].ya_existe).toBe(true)
   })
 
-  it('NO marca si el plan difiere (3/6 vs 3/12)', () => {
+  it('marca aunque difiera el plan — el monto manda', () => {
     const out = marcarYaExistentes([tx({ cuotas_total: 12 })], [mov({ cuotas_total: 6 })]) as Array<{ ya_existe: boolean }>
-    expect(out[0].ya_existe).toBe(false)
+    expect(out[0].ya_existe).toBe(true)
   })
 
   it('tolera diferencia de centavos al partir cuotas', () => {
