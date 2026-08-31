@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
       subcategoria:    null,
       cotizacion:      null,
       conciliado:      false,
-      periodo_tarjeta: calcularPeriodo(fechaCuota, cierre, vence, isTarjeta && accion.moneda !== 'USD'),
+      periodo_tarjeta: calcularPeriodo(fechaCuota, cierre, vence, isTarjeta),
       cuotas_total:    cuotas,
       cuota_actual:    i + 1,
       ciclo_actual:    1,

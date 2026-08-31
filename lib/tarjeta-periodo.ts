@@ -10,9 +10,17 @@
 // El "período" se guarda como YYYY-MM-01 (el mes en que vence el pago) para que
 // las queries y agregaciones por período sean simples.
 //
-// Si no es tarjeta o es un consumo en USD (que típicamente se cobra al cambio
-// del día de vencimiento, sin diferimiento), el período es simplemente el mes
-// de la fecha de compra.
+// REGLA ÚNICA: si la cuenta es tarjeta de crédito y tiene fechas de cierre y
+// vencimiento cargadas, el movimiento se difiere al período del resumen —
+// SIEMPRE, sin importar la moneda ni el tipo. Un consumo en dólares o un
+// reintegro figuran en el resumen igual que cualquier otro y se pagan en su
+// vencimiento. Si no es tarjeta (o le faltan fechas), el período es el mes de
+// la fecha del movimiento.
+//
+// NO agregar condiciones extra (moneda !== 'USD', tipo === 'Gasto', etc.) en
+// los callers: cada carve-out hace que el movimiento se guarde con un período
+// distinto del que muestra el formulario de edición (que usa
+// calcularPeriodoCuenta), y el usuario ve "período mal, lo abro y se corrige".
 
 /**
  * Calcula el período de tarjeta (YYYY-MM-01) en que vence el pago de la compra.

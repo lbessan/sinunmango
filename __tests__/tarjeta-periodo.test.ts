@@ -223,3 +223,42 @@ describe('debeDeferirFechas', () => {
     expect(debeDeferirFechas(undefined, new Date('2026-06-26T12:00:00'))).toBe(false)
   })
 })
+
+// ─── Regla única: el período NO depende de moneda ni de tipo de movimiento ───
+//
+// Regresión de un bug real: varios flujos automáticos (email del banco,
+// asistente, importar email, alta desde la tarjeta) aplicaban carve-outs
+// propios —"si es USD no difieras", "solo si es Gasto"— mientras que el
+// formulario de edición usa calcularPeriodoCuenta, que difiere SIEMPRE.
+// Resultado: el movimiento se guardaba con un período y al abrir el editor
+// aparecía otro ("lo abro, lo guardo y se corrige solo").
+describe('regla única de período (sin carve-outs por moneda/tipo)', () => {
+  const TARJETA = {
+    tipo_cuenta: 'Tarjeta Credito',
+    fecha_cierre_tarjeta: '2026-08-25',      // cierra día 25
+    fecha_vencimiento_tarjeta: '2026-09-10', // vence día 10
+  }
+
+  it('el editor (calcularPeriodoCuenta) y los flujos automáticos dan el MISMO período', () => {
+    // Lo que hace un flujo automático: calcularPeriodo(fecha, cierre, vence, esTarjeta)
+    for (const fecha of ['2026-08-05', '2026-08-27', '2026-12-27', '2026-01-31']) {
+      expect(calcularPeriodo(fecha, 25, 10, true)).toBe(calcularPeriodoCuenta(fecha, TARJETA))
+    }
+  })
+
+  it('un consumo en USD se difiere igual que uno en pesos', () => {
+    // Antes: USD caía al mes de la compra (2026-08-01) y el editor decía 2026-10-01.
+    expect(calcularPeriodoCuenta('2026-08-27', TARJETA)).toBe('2026-10-01')
+    expect(calcularPeriodo('2026-08-27', 25, 10, true)).toBe('2026-10-01')
+  })
+
+  it('un reintegro/descuento (Ingreso) se difiere igual que un gasto', () => {
+    // Antes: los Ingresos de tarjeta no se diferían y quedaban en el mes de la fecha.
+    expect(calcularPeriodo('2026-08-05', 25, 10, true)).toBe('2026-09-01')
+  })
+
+  it('sigue sin diferir si la cuenta no es tarjeta o le faltan fechas', () => {
+    expect(calcularPeriodoCuenta('2026-08-27', { tipo_cuenta: 'Banco' })).toBe('2026-08-01')
+    expect(calcularPeriodoCuenta('2026-08-27', { ...TARJETA, fecha_cierre_tarjeta: null })).toBe('2026-08-01')
+  })
+})

@@ -73,7 +73,7 @@ export function ImportarEmailClient({ cuentas, categorias }: {
   // Period preview for first cuota
   const periodoActual = useMemo(() => {
     if (!fecha) return null
-    return calcularPeriodo(fecha, cierreDay, venceDay, isTarjeta && moneda !== 'USD')
+    return calcularPeriodo(fecha, cierreDay, venceDay, isTarjeta)
   }, [fecha, cierreDay, venceDay, isTarjeta, moneda])
 
   // ─── Parse handler ──────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ export function ImportarEmailClient({ cuentas, categorias }: {
 
     const records = Array.from({ length: cuotas }, (_, i) => {
       const fechaCuota   = addMonths(fecha, i)
-      const periodoCuota = calcularPeriodo(fechaCuota, cierreDay, venceDay, isTarjeta && !isUSD)
+      const periodoCuota = calcularPeriodo(fechaCuota, cierreDay, venceDay, isTarjeta)
       return {
         id:              crypto.randomUUID(),
         fecha:           fechaCuota,

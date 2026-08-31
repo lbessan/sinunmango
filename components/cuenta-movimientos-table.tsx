@@ -65,7 +65,7 @@ function AddMovModal({ cuentaId, isTarjeta, cierreDay, venceDay, categorias: cat
 
   // Período calculado para la primera cuota
   const periodoCalculado = useMemo(() =>
-    calcularPeriodo(fecha, cierreDay, venceDay, isTarjeta && tipo === 'Gasto'),
+    calcularPeriodo(fecha, cierreDay, venceDay, isTarjeta),
     [fecha, cierreDay, venceDay, isTarjeta, tipo]
   )
 
@@ -74,7 +74,7 @@ function AddMovModal({ cuentaId, isTarjeta, cierreDay, venceDay, categorias: cat
     if (cuotas <= 1) return []
     return Array.from({ length: cuotas }, (_, i) => {
       const f = addMonths(fecha, i)
-      const p = calcularPeriodo(f, cierreDay, venceDay, isTarjeta && tipo === 'Gasto')
+      const p = calcularPeriodo(f, cierreDay, venceDay, isTarjeta)
       return { cuota: i + 1, fecha: f, periodo: p }
     })
   }, [cuotas, fecha, cierreDay, venceDay, isTarjeta, tipo])
@@ -91,7 +91,7 @@ function AddMovModal({ cuentaId, isTarjeta, cierreDay, venceDay, categorias: cat
     const isTransf = tipo === 'Transferencia'
     const nuevosMovs = Array.from({ length: isTransf ? 1 : cuotas }, (_, i) => {
       const fechaCuota   = addMonths(fecha, i)
-      const periodoCuota = calcularPeriodo(fechaCuota, cierreDay, venceDay, isTarjeta && tipo === 'Gasto')
+      const periodoCuota = calcularPeriodo(fechaCuota, cierreDay, venceDay, isTarjeta)
       return {
         id:              crypto.randomUUID(),
         fecha:           fechaCuota,

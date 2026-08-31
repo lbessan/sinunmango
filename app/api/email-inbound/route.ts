@@ -499,7 +499,7 @@ export async function POST(req: NextRequest) {
       `parsed_fecha=${parsed.fecha} parsed_moneda=${parsed.moneda} ` +
       `parsed_detalle="${parsed.detalle}" parsed_monto=${parsed.monto} ` +
       `isTarjeta=${isTarjeta} isIngreso=${isIngreso} ` +
-      `aplica_diferimiento=${isTarjeta && !isIngreso && parsed.moneda !== 'USD'}`
+      `aplica_diferimiento=${isTarjeta}`
     )
 
     // Los ingresos no se dividen en cuotas
@@ -510,11 +510,8 @@ export async function POST(req: NextRequest) {
 
     const records = Array.from({ length: cuotasEfectivas }, (_, i) => {
       const fechaCuota   = addMonths(parsed.fecha, i)
-      // El periodo de tarjeta aplica solo a gastos con tarjeta
-      const periodoCuota = calcularPeriodo(
-        fechaCuota, cierreDay, venceDay,
-        isTarjeta && !isIngreso && parsed.moneda !== 'USD'
-      )
+      // Período del resumen: se difiere siempre que sea tarjeta (ver lib/tarjeta-periodo)
+      const periodoCuota = calcularPeriodo(fechaCuota, cierreDay, venceDay, isTarjeta)
 
       // Log por cuota (uno por movimiento creado) — el período calculado
       // es el dato clave a comparar contra lo que muestra el form al editar.

@@ -41,12 +41,15 @@ export async function POST(
     fecha_vencimiento_tarjeta: string | null
   }
 
-  // Compras no conciliadas de la tarjeta
+  // Movimientos no conciliados de la tarjeta. Incluye Ingresos (reintegros,
+  // bonificaciones, descuentos): también figuran en el resumen y se difieren al
+  // mismo período — antes se filtraban y quedaban sin reparar.
+  // Los conciliados NO se tocan: no reescribimos períodos ya cerrados.
   const { data: movsRaw, error: errMovs } = await supabase
     .from('movimientos')
     .select('id, fecha, periodo_tarjeta')
     .eq('cuenta_origen', id)
-    .eq('tipo_movimiento', 'Gasto')
+    .in('tipo_movimiento', ['Gasto', 'Ingreso'])
     .eq('conciliado', false)
     .eq('user_id', user.id)
 
