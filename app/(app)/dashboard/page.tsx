@@ -10,14 +10,8 @@ import { CargarIngresosCTA } from '@/components/cargar-ingresos-cta'
 import { InstallPWAButton } from '@/components/install-pwa-button'
 import { todayAR, todayPartsAR } from '@/lib/timezone'
 import { getCurrentWorkspace } from '@/lib/workspace'
-import {
-  calcularSaldoInicial,
-  bifurcarGastosFijos,
-  sumarMontoARS,
-  calcularTotalTCMes,
-  calcularProyeccionesIterativo,
-  calcularSkipCount,
-} from '@/lib/proyecciones'
+import { type ProyeccionMes } from '@/lib/proyecciones'
+import { calcularProyeccionesServer } from '@/lib/proyecciones-server'
 
 type DB = SupabaseClient<Database>
 
@@ -222,7 +216,7 @@ function ProyeccionesStrip({ proyecciones, saldoBase, label }: {
                 </p>
                 <div className="mt-2 space-y-0.5 relative z-10">
                   {p.ingresos > 0 && <p className="text-xs text-slate-400 tabular-nums">+${fmt(p.ingresos)} ingresos</p>}
-                  <p className="text-xs text-slate-400 tabular-nums">-${fmt(p.gastos_fijos + p.gastos_tarjeta)} gastos</p>
+                  <p className="text-xs text-slate-400 tabular-nums">-${fmt(p.gastos_fijos + p.gastos_tarjeta + p.gastos_otros)} gastos</p>
                 </div>
                 <p className="text-xs text-slate-300 mt-2 group-hover:text-slate-400 transition-colors relative z-10">Ver mes →</p>
               </Link>
@@ -232,96 +226,6 @@ function ProyeccionesStrip({ proyecciones, saldoBase, label }: {
       </div>
     </div>
   )
-}
-
-// ─── Tipos / calcularProyecciones ─────────────────────────────────────────────
-type ProyeccionMes = {
-  periodo: string; label: string
-  ingresos: number; gastos_fijos: number; gastos_tarjeta: number
-  proyeccion: number; diferencia: number
-}
-
-async function calcularProyecciones(supabase: DB, userId: string, desde: string, meses = 4) {
-  const { year: cyAR, month: cmAR } = todayPartsAR()
-  const [{ data: resumen }, { data: gastosFijosRaw }, { data: tarjetasRaw }, { data: params }] =
-    await Promise.all([
-      supabase.from('dashboard_resumen').select('*').eq('user_id', userId).single(),
-      supabase.from('gastos_fijos').select('*, cuentas(tipo_cuenta)').eq('activo', true).eq('user_id', userId),
-      supabase.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('activa', true).eq('user_id', userId),
-      supabase.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', userId).single(),
-    ])
-  if (!resumen) return {
-    saldoBase: 0, startSaldo: 0, saldoInicioMes: 0,
-    datosDelMes: { totalIng: 0, gastosFijosEfectivo: 0, gastosFijosTarjeta: 0, totalTC: 0 },
-    proyecciones: [] as ProyeccionMes[],
-  }
-
-  // ── Cálculo de inputs (lib/proyecciones) ───────────────────────────────
-  const dolar      = params?.valor ?? 1410
-  const tarjetaIds = new Set((tarjetasRaw ?? []).map(t => t.id))
-  const startSaldo = calcularSaldoInicial(resumen)
-  const { efectivo: gastosFijosEfectivo, tarjeta: gastosFijosTarjeta } =
-    bifurcarGastosFijos(
-      (gastosFijosRaw ?? []).map(g => ({
-        monto_estimado: g.monto_estimado,
-        moneda:         g.moneda,
-        cuentas:        g.cuentas as CuentaJoin,
-      })),
-      dolar,
-    )
-
-  // ── Pre-fetch en paralelo de todos los meses ──────────────────────────
-  // Antes el loop hacía await secuencialmente — ahora resolvemos todos los
-  // meses en paralelo y después se procesa el cálculo iterativo de forma pura.
-  const skipCount = calcularSkipCount({
-    currentYear:  cyAR, currentMonth: cmAR,
-    desdeYear:    Number(desde.slice(0, 4)),
-    desdeMonth:   Number(desde.slice(5, 7)),
-  })
-  const totalLoop = skipCount + meses
-
-  const periodos: string[] = []
-  for (let i = 1; i <= totalLoop; i++) {
-    const fecha = new Date(cyAR, cmAR - 1 + i, 1)
-    periodos.push(fecha.toISOString().slice(0, 10))
-  }
-
-  const monthData = await Promise.all(periodos.map(async (periodo) => {
-    const [{ data: ingresos }, { data: gastosTC }] = await Promise.all([
-      supabase.from('movimientos').select('monto, moneda')
-        .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodo).eq('user_id', userId),
-      supabase.from('movimientos').select('monto, moneda, cuenta_origen')
-        .eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', periodo).eq('user_id', userId),
-    ])
-    return {
-      periodo,
-      totalIngresos: sumarMontoARS(ingresos ?? [], dolar),
-      totalTC:       calcularTotalTCMes(gastosTC ?? [], tarjetaIds, dolar),
-    }
-  }))
-
-  // ── Cálculo iterativo (función pura, testeada) ─────────────────────────
-  const { saldoBase, saldoInicioMes, proyecciones, datosDelMes } =
-    calcularProyeccionesIterativo({
-      startSaldo,
-      gastosFijosEfectivo,
-      gastosFijosTarjeta,
-      skipCount,
-      meses: monthData,
-    })
-
-  return {
-    saldoBase,
-    startSaldo:     Math.round(startSaldo),
-    saldoInicioMes,
-    datosDelMes: {
-      totalIng:            datosDelMes.totalIng,
-      gastosFijosEfectivo: Math.round(gastosFijosEfectivo),
-      gastosFijosTarjeta:  Math.round(gastosFijosTarjeta),
-      totalTC:             datosDelMes.totalTC,
-    },
-    proyecciones,
-  }
 }
 
 // ─── Past month data ──────────────────────────────────────────────────────────
@@ -415,37 +319,62 @@ async function fetchPastMonth(supabase: DB, userId: string, mes: string) {
 // ─── Future month data ────────────────────────────────────────────────────────
 async function fetchFutureMonth(supabase: DB, userId: string, mes: string) {
   const mesStart = `${mes}-01`
-  const [{ data: cuotasRaw }, { data: gastosFijos }, { data: tcuentas }, { data: ingresosRaw }, { data: params }] = await Promise.all([
-    supabase.from('movimientos')
-      .select('id, detalle, monto, moneda, cuenta_origen, cuentas(nombre_cuenta, imagen_url, color_primario)')
-      .eq('user_id', userId).eq('tipo_movimiento', 'Gasto').eq('periodo_tarjeta', mesStart),
+  const [{ data: movsRaw, error: errMovs }, { data: gastosFijos }, { data: tcuentas }, { data: params }] = await Promise.all([
+    // Todos los movimientos del período (Gasto + Ingreso) con el link a gasto fijo:
+    // los Ingresos de tarjeta son reintegros (restan del pago de tarjetas), y los
+    // gasto_fijo_id marcan qué gastos fijos ya tienen su consumo cargado.
+    supabase.from('movimientos_completos')
+      .select('id, detalle, monto, monto_estimado, moneda, tipo_movimiento, cuenta_origen, gasto_fijo_id, cuentas:cuenta_origen(nombre_cuenta, imagen_url, color_primario)')
+      .eq('user_id', userId).in('tipo_movimiento', ['Gasto', 'Ingreso']).eq('periodo_tarjeta', mesStart),
     supabase.from('gastos_fijos')
       .select('*, cuentas(nombre_cuenta, tipo_cuenta)')
       .eq('activo', true).eq('user_id', userId).order('dia_vencimiento'),
+    // Sin filtro de activa: la deuda de una tarjeta dada de baja se sigue debiendo.
     supabase.from('cuentas').select('id').eq('tipo_cuenta', 'Tarjeta Credito').eq('user_id', userId),
-    supabase.from('movimientos')
-      .select('monto, moneda')
-      .eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', mesStart).eq('user_id', userId),
     supabase.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', userId).single(),
   ])
-  // Misma conversión USD que calcularProyecciones para que la fórmula cierre
-  const dolar         = params?.valor ?? 1410
-  const tarjetaIds    = new Set((tcuentas ?? []).map(t => t.id))
-  const cuotasTC      = (cuotasRaw ?? []).filter(m => tarjetaIds.has(m.cuenta_origen ?? ''))
-  const totalCuotasTC = cuotasTC.reduce((s, m) => s + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
+  // Error visible > números errados en silencio (ej. migración sin aplicar).
+  if (errMovs) throw new Error(`mes futuro ${mes}: ${errMovs.message}`)
+  const dolar      = params?.valor ?? 1410
+  const tarjetaIds = new Set((tcuentas ?? []).map(t => t.id))
+  type MovFut = {
+    id: string; detalle: string | null; monto: number; monto_estimado: number | null
+    moneda: string | null; tipo_movimiento: string | null; cuenta_origen: string | null
+    gasto_fijo_id: string | null
+    cuentas: { nombre_cuenta: string | null; imagen_url: string | null; color_primario: string | null } | null
+  }
+  const movs  = (movsRaw ?? []) as unknown as MovFut[]
+  const enARS = (m: MovFut) => m.monto_estimado ?? (m.moneda === 'USD' ? m.monto * dolar : m.monto)
+  const esTC  = (m: MovFut) => m.cuenta_origen != null && tarjetaIds.has(m.cuenta_origen)
 
-  // Separar gastos fijos: efectivo/banco vs tarjeta de crédito (con conversión USD)
-  const gfEfectivo        = (gastosFijos ?? []).filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta !== 'Tarjeta Credito')
-  const gfTarjeta         = (gastosFijos ?? []).filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta === 'Tarjeta Credito')
-  const totalGF_efectivo  = gfEfectivo.reduce((s, g) => s + (g.moneda === 'USD' ? (g.monto_estimado ?? 0) * dolar : (g.monto_estimado ?? 0)), 0)
-  const totalGF_tarjeta   = gfTarjeta.reduce((s, g) => s + (g.moneda === 'USD' ? (g.monto_estimado ?? 0) * dolar : (g.monto_estimado ?? 0)), 0)
-  // Total pago tarjetas = cuotas ya registradas + gastos fijos recurrentes de tarjeta
+  const cuotasTC      = movs.filter(m => m.tipo_movimiento === 'Gasto' && esTC(m))
+  const reintegrosTC  = movs.filter(m => m.tipo_movimiento === 'Ingreso' && esTC(m)).reduce((s, m) => s + enARS(m), 0)
+  const totalCuotasTC = cuotasTC.reduce((s, m) => s + enARS(m), 0) - reintegrosTC
+  const otrosGastos   = movs.filter(m => m.tipo_movimiento === 'Gasto' && !esTC(m))
+  const totalOtros    = otrosGastos.reduce((s, m) => s + enARS(m), 0)
+
+  // Gastos fijos: los que ya tienen su consumo cargado como movimiento en este
+  // período no se vuelven a contar (el consumo real ya está en las cuotas).
+  const vinculados = new Set(movs.filter(m => m.gasto_fijo_id).map(m => m.gasto_fijo_id as string))
+  const conCargado = (g: NonNullable<typeof gastosFijos>[number]) => ({ ...g, cargado: vinculados.has(g.id) })
+  const gfEfectivo = (gastosFijos ?? []).filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta !== 'Tarjeta Credito').map(conCargado)
+  const gfTarjeta  = (gastosFijos ?? []).filter(g => (g.cuentas as CuentaJoin)?.tipo_cuenta === 'Tarjeta Credito').map(conCargado)
+  const sumaPendientes = (gs: ReadonlyArray<{ cargado: boolean; moneda: string; monto_estimado: number }>) =>
+    gs.filter(g => !g.cargado).reduce((s, g) => s + (g.moneda === 'USD' ? (g.monto_estimado ?? 0) * dolar : (g.monto_estimado ?? 0)), 0)
+  const totalGF_efectivo  = sumaPendientes(gfEfectivo)
+  const totalGF_tarjeta   = sumaPendientes(gfTarjeta)
   const totalPagoTarjetas = totalCuotasTC + totalGF_tarjeta
 
-  const totalIngresos = (ingresosRaw ?? []).reduce((s, m) => s + (m.moneda === 'USD' ? m.monto * dolar : m.monto), 0)
+  const totalIngresos = movs
+    .filter(m => m.tipo_movimiento === 'Ingreso' && !esTC(m))
+    .reduce((s, m) => s + enARS(m), 0)
+
   return {
     cuotasTC,
     totalCuotasTC:     Math.round(totalCuotasTC),
+    reintegrosTC:      Math.round(reintegrosTC),
+    otrosGastos,
+    totalOtros:        Math.round(totalOtros),
     gfEfectivo,
     gfTarjeta,
     totalGF_efectivo:  Math.round(totalGF_efectivo),
@@ -495,7 +424,7 @@ export default async function DashboardPage({
         .eq('periodo_tarjeta', inicioMesCur)
         .eq('cuenta_origen_tipo', 'Tarjeta Credito')
         .eq('user_id', wsId),
-      calcularProyecciones(supabase, wsId, cur, 4),
+      calcularProyeccionesServer(supabase, wsId, cur, 4),
     ])
     if (!resumen) return <EmptyState />
 
@@ -835,7 +764,7 @@ export default async function DashboardPage({
   // ── FUTURE MONTH ───────────────────────────────────────────────────────────
   const [future, { saldoBase: saldoMes, saldoInicioMes: saldoInicio, datosDelMes, proyecciones }] = await Promise.all([
     fetchFutureMonth(supabase, wsId, mes),
-    calcularProyecciones(supabase, wsId, mes, 4),
+    calcularProyeccionesServer(supabase, wsId, mes, 4),
   ])
 
   return (
@@ -867,9 +796,12 @@ export default async function DashboardPage({
               </div>
               {[
                 { label: 'Saldo proyectado inicio del mes',  value: saldoInicio,                                                    color: 'var(--accent, #1a6b5a)', signo: ''  },
-                { label: 'Ingresos cargados',                value: datosDelMes.totalIng,                                            color: 'var(--accent, #1a6b5a)', signo: '+' },
-                { label: 'Gastos fijos en efectivo / banco', value: datosDelMes.gastosFijosEfectivo,                                  color: '#dc2626',                signo: '-' },
-                { label: 'Pago tarjetas estimado',           value: datosDelMes.gastosFijosTarjeta + datosDelMes.totalTC,             color: '#d97706',                signo: '-' },
+                { label: 'Ingresos cargados',                    value: datosDelMes.totalIng,                                 color: 'var(--accent, #1a6b5a)', signo: '+' },
+                { label: 'Gastos fijos pendientes (efectivo)',   value: datosDelMes.gfEfectivo,                               color: '#dc2626',                signo: '-' },
+                { label: 'Pago tarjetas estimado',               value: datosDelMes.gfTarjeta + datosDelMes.totalTC,          color: '#d97706',                signo: '-' },
+                ...(datosDelMes.totalOtros !== 0
+                  ? [{ label: 'Otros gastos del período',        value: datosDelMes.totalOtros,                               color: '#dc2626',                signo: '-' }]
+                  : []),
               ].map(row => (
                 <div key={row.label} className="flex items-center justify-between px-5 py-3.5 border-b border-slate-50 last:border-0">
                   <p className="text-sm text-slate-600">{row.label}</p>
@@ -909,12 +841,15 @@ export default async function DashboardPage({
                 ) : (
                   <div className="divide-y divide-slate-50 max-h-80 overflow-y-auto">
                     {future.gfEfectivo.map(g => (
-                      <div key={g.id} className="flex items-center justify-between px-5 py-3">
+                      <div key={g.id} className={`flex items-center justify-between px-5 py-3 ${g.cargado ? 'opacity-50' : ''}`}>
                         <div>
-                          <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
+                          <p className="text-sm text-slate-700">
+                            {g.nombre_gasto}
+                            {g.cargado && <span className="ml-2 text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-full font-semibold">ya cargado</span>}
+                          </p>
                           <p className="text-xs text-slate-400">Día {g.dia_vencimiento} · {(g.cuentas as CuentaJoin)?.nombre_cuenta ?? '—'}</p>
                         </div>
-                        <p className="text-sm font-medium text-slate-800">${fmt(g.monto_estimado ?? 0)}</p>
+                        <p className={`text-sm font-medium ${g.cargado ? 'text-slate-400 line-through' : 'text-slate-800'}`}>${fmt(g.monto_estimado ?? 0)}</p>
                       </div>
                     ))}
                   </div>
@@ -940,12 +875,15 @@ export default async function DashboardPage({
                     </div>
                     <div className="divide-y divide-slate-50">
                       {future.gfTarjeta.map(g => (
-                        <div key={g.id} className="flex items-center justify-between px-5 py-2.5">
+                        <div key={g.id} className={`flex items-center justify-between px-5 py-2.5 ${g.cargado ? 'opacity-50' : ''}`}>
                           <div>
-                            <p className="text-sm text-slate-700">{g.nombre_gasto}</p>
+                            <p className="text-sm text-slate-700">
+                              {g.nombre_gasto}
+                              {g.cargado && <span className="ml-2 text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-full font-semibold">ya cargado</span>}
+                            </p>
                             <p className="text-xs text-slate-400">{(g.cuentas as CuentaJoin)?.nombre_cuenta ?? '—'}</p>
                           </div>
-                          <p className="text-sm font-medium text-slate-800">${fmt(g.monto_estimado ?? 0)}</p>
+                          <p className={`text-sm font-medium ${g.cargado ? 'text-slate-400 line-through' : 'text-slate-800'}`}>${fmt(g.monto_estimado ?? 0)}</p>
                         </div>
                       ))}
                     </div>
@@ -972,6 +910,12 @@ export default async function DashboardPage({
                         <p className="text-sm font-medium text-slate-800 shrink-0 ml-3">${fmt(m.monto)}</p>
                       </div>
                     ))}
+                  </div>
+                )}
+                {future.reintegrosTC > 0 && (
+                  <div className="px-5 py-2 border-t border-slate-50 flex justify-between">
+                    <p className="text-xs text-slate-400">Reintegros y descuentos</p>
+                    <p className="text-xs font-semibold text-emerald-600">−${fmt(future.reintegrosTC)}</p>
                   </div>
                 )}
                 <div className="px-5 py-3 border-t border-slate-50 bg-slate-50/60 flex justify-between">

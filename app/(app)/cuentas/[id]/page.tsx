@@ -42,7 +42,8 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
   const isOwn = workspace.isOwn
 
   const { id } = await params
-  const today   = todayAR()
+  const today           = todayAR()
+  const inicioMesActual = today.slice(0, 7) + '-01'
 
   const [{ data: cuenta }, { data: extra }, { data: movPasados }, { data: movFuturos }, { data: categorias }, { data: subcategorias }, { data: otrasCuentas }] =
     await Promise.all([
@@ -53,12 +54,17 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
       // permite que el invitee vea TAMBIÉN sus propios movs cargados en
       // esta cuenta compartida (sino se "perdían" porque su user_id =
       // invitee y wsId = owner).
+      // Corte por PERÍODO (no por fecha): el agrupado de abajo es por
+      // periodo_tarjeta, y el período va 1-2 meses delante de la fecha. Con el
+      // corte por fecha, el consumo del ciclo en curso caía en "pasados" y su
+      // card de período futuro quedaba incompleta.
       supabase.from('movimientos_completos').select('*')
         .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
-        .lte('fecha', today).order('fecha', { ascending: false }).limit(200),
+        .lt('periodo_tarjeta', inicioMesActual)
+        .order('fecha', { ascending: false }).limit(200),
       supabase.from('movimientos_completos').select('*')
         .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
-        .gt('fecha', today)
+        .gte('periodo_tarjeta', inicioMesActual)
         .order('periodo_tarjeta', { ascending: true }).order('fecha', { ascending: true }),
       supabase.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', wsId).order('nombre_categoria'),
       supabase.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', wsId),

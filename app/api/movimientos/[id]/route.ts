@@ -32,6 +32,17 @@ function validateMovimientoUpdate(raw: unknown): Validated<Record<string, unknow
     if (!v.ok) return v
     updates.fecha = v.data
   }
+  // Link al gasto fijo que este movimiento paga (gastos_fijos.id es text
+  // legacy, no uuid). No es compartible: el link es de ESTE movimiento.
+  if (b.gasto_fijo_id !== undefined) {
+    if (b.gasto_fijo_id === null || b.gasto_fijo_id === '') {
+      updates.gasto_fijo_id = null
+    } else {
+      const v = validateString(b.gasto_fijo_id, { min: 1, max: 64, field: 'gasto_fijo_id' })
+      if (!v.ok) return v
+      updates.gasto_fijo_id = v.data
+    }
+  }
   if (b.monto !== undefined) {
     const v = validatePositiveNumber(b.monto, { max: MONTO_MAX, field: 'monto' })
     if (!v.ok) return v

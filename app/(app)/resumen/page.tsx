@@ -64,8 +64,10 @@ export default async function ResumenPage({
   const { tipo = 'ingresos' } = await searchParams
   const meta = TIPOS[tipo as keyof typeof TIPOS] ?? TIPOS.ingresos
 
-  const { year: yAR, month: mAR } = todayPartsAR()
-  const today         = new Date(yAR, mAR - 1, 1)
+  const { year: yAR, month: mAR, day: dAR } = todayPartsAR()
+  // OJO: con día 1 acá, today.getDate() daba SIEMPRE 1 y la lista de "gastos
+  // fijos pendientes" mostraba todos los del mes (no cerraba con el total).
+  const today         = new Date(yAR, mAR - 1, dAR)
   const todayStr      = todayAR()
   const inicioMes     = `${yAR}-${String(mAR).padStart(2, '0')}-01`
   const periodoActual = inicioMes
@@ -169,7 +171,11 @@ export default async function ResumenPage({
     const [{ data: res }, { data: gastosFijos }, { data: ingresosFuturos }, { data: params }] = await Promise.all([
       supabase.from('dashboard_resumen').select('*').eq('user_id', wsId).single(),
       supabase.from('gastos_fijos').select('*, cuentas(nombre_cuenta, tipo_cuenta), categorias(nombre_categoria, icono)').eq('activo', true).eq('user_id', wsId).order('dia_vencimiento'),
-      supabase.from('movimientos_completos').select('*').eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodoActual).eq('user_id', wsId).gt('fecha', todayStr),
+      // Espeja el predicado de la vista: los Ingresos de TARJETA (reintegros) ya
+      // restan en deuda_tarjetas_periodo y la vista los excluye de
+      // ingresos_futuros_mes — la lista tiene que excluirlos igual o no cierra
+      // con el total. El or() con is.null preserva ingresos sin cuenta.
+      supabase.from('movimientos_completos').select('*').eq('tipo_movimiento', 'Ingreso').eq('periodo_tarjeta', periodoActual).eq('user_id', wsId).gt('fecha', todayStr).or('cuenta_origen_tipo.is.null,cuenta_origen_tipo.neq.Tarjeta Credito'),
       supabase.from('parametros').select('valor').eq('id', 'Dolar_Tarjeta_BNA').eq('user_id', wsId).single(),
     ])
     resumenData = { res, gastosFijos, ingresosFuturos, dolarBna: params?.valor ?? 1410 }
@@ -536,7 +542,9 @@ export default async function ResumenPage({
           ingresosFuturos: MovRow[]       | null
         }
         if (!res) return null
-        const deudaRestante = Math.max(0, res.deuda_tarjetas_periodo - res.pagos_tarjeta_mes)
+        // Mismo clamp que calcularSaldoInicial: el sobrepago no inventa plata,
+        // pero un crédito neto del período (reintegros > gastos) sí pasa.
+        const deudaRestante = Math.max(Math.min(0, res.deuda_tarjetas_periodo), res.deuda_tarjetas_periodo - res.pagos_tarjeta_mes)
         const proyectado    = res.disponible_real + res.ingresos_futuros_mes - res.gastos_fijos_pendientes - deudaRestante
         const esPositivo    = proyectado >= 0
 

@@ -17,9 +17,13 @@ function req(body: unknown): NextRequest {
   })
 }
 
-function supaSuccess() {
+function supaSuccess(cuentas: Array<Record<string, unknown>> = []) {
   const insert = vi.fn(() => Promise.resolve({ error: null }))
-  const from = vi.fn(() => ({ insert }))
+  // .from('cuentas').select(...).in(...) → cuentas para derivar el período
+  // cuando algún registro llega sin periodo_tarjeta
+  const inFn = vi.fn(() => Promise.resolve({ data: cuentas, error: null }))
+  const select = vi.fn(() => ({ in: inFn }))
+  const from = vi.fn(() => ({ insert, select }))
   createClientMock.mockResolvedValueOnce({ supabase: { from }, user: { id: 'u1' } })
   return { insert }
 }
@@ -175,7 +179,9 @@ describe('POST /api/movimientos — happy path', () => {
 
   it('400 si insert falla en DB (FK violation, RLS, etc)', async () => {
     const insert = vi.fn(() => Promise.resolve({ error: { message: 'cuenta no existe' } }))
-    const from = vi.fn(() => ({ insert }))
+    const inFn = vi.fn(() => Promise.resolve({ data: [], error: null }))
+    const select = vi.fn(() => ({ in: inFn }))
+    const from = vi.fn(() => ({ insert, select }))
     createClientMock.mockResolvedValueOnce({ supabase: { from }, user: { id: 'u' } })
 
     const res = await POST(req(VALID_GASTO))

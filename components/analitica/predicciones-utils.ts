@@ -57,65 +57,6 @@ export function calcularPromediosMensuales(
 }
 
 /**
- * Proyección híbrida a N meses hacia adelante: para cada mes usa lo que el
- * usuario ya tiene cargado SI es mayor que el promedio histórico, sino usa
- * el promedio. Así respeta ingresos/gastos futuros pre-cargados.
- *
- * Heurística:
- *   ingreso[mes] = max(loaded, historicoMensualProm)
- *   gasto[mes]   = max(loaded, historicoMensualProm)
- *
- * Razonamiento:
- *   - Si cargaste ingresos para el futuro (sueldo, bonus, freelance conocido),
- *     probablemente son mayores que el promedio → usamos los cargados.
- *   - Para gastos, lo cargado típicamente son sólo cuotas / gastos fijos que
- *     se proyectan automáticamente. El resto del gasto discrecional viene
- *     del promedio histórico. Usar max evita subestimar.
- */
-export function calcularProyeccionHibrida(
-  movs: MovAnalitica[],
-  promedios: ProyeccionMensual,
-  meses = 12,
-): { total: number; byMonth: MesProyectado[] } {
-  const hoy = new Date()
-  const byMonth: MesProyectado[] = []
-  let total = 0
-
-  for (let i = 0; i < meses; i++) {
-    const mY = hoy.getFullYear()
-    const mM = hoy.getMonth() + i
-    const mesStart = new Date(mY, mM, 1)
-    const mesEnd   = new Date(mY, mM + 1, 0)
-    const mesKey   = `${mesStart.getFullYear()}-${String(mesStart.getMonth() + 1).padStart(2, '0')}`
-
-    const movsMes = movs.filter(m => {
-      const f = parseFecha(m.fecha)
-      return f >= mesStart && f <= mesEnd
-    })
-
-    const loadedIng = movsMes.filter(m => m.tipo_movimiento === 'Ingreso').reduce((a, m) => a + montoOf(m), 0)
-    const loadedGas = movsMes.filter(m => m.tipo_movimiento === 'Gasto').reduce((a, m) => a + montoOf(m), 0)
-
-    const ingreso = Math.max(loadedIng, promedios.ingresoMensualProm)
-    const gasto   = Math.max(loadedGas, promedios.gastoMensualProm)
-    const neto    = ingreso - gasto
-
-    total += neto
-    byMonth.push({
-      mes:      mesKey,
-      label:    mesStart.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' })
-                  .replace('.', '').replace(/^\w/, c => c.toUpperCase()),
-      ingreso,
-      gasto,
-      neto,
-      isLoaded: loadedIng > 0 || loadedGas > 0,
-    })
-  }
-
-  return { total, byMonth }
-}
-
-/**
  * Run-rate del mes en curso: cuánto vas a gastar fin de mes a este ritmo.
  */
 export type RunRate = {

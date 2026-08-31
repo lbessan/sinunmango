@@ -44,6 +44,7 @@ export type CuentaOpcion = {
 }
 export type CategoriaOpcion = { id: string; nombre_categoria: string; icono: string | null; tipo_default?: string }
 export type SubcategoriaOpcion = { id: string; categoria_padre: string; nombre_subcategoria: string }
+export type GastoFijoOpcion = { id: string; nombre_gasto: string }
 
 /** Lo que devolvemos al contenedor cuando el guardado salió bien. */
 export type MovimientoGuardado = {
@@ -84,15 +85,19 @@ export function MovimientoForm({
   cuentas,
   categorias,
   subcategorias,
+  gastosFijos = [],
   onSaved,
   onCancel,
   onDeleted,
   textoGuardar = 'Guardar cambios',
 }: {
-  movimiento:    MovimientoEditable
+  movimiento:    MovimientoEditable & { gasto_fijo_id?: string | null }
   cuentas:       CuentaOpcion[]
   categorias:    CategoriaOpcion[]
   subcategorias: SubcategoriaOpcion[]
+  /** Gastos fijos activos para vincular ("este movimiento ES el pago de ...").
+   *  El link evita que la proyección reste el gasto fijo Y el consumo. */
+  gastosFijos?:  GastoFijoOpcion[]
   /** Se llama tras el PATCH OK, con los valores ya guardados. */
   onSaved:       (mov: MovimientoGuardado) => void
   onCancel:      () => void
@@ -122,6 +127,7 @@ export function MovimientoForm({
     subcategoria:   movimiento.subcategoria ?? '',
     periodo_mes:    (movimiento.periodo_tarjeta ?? '').slice(0, 7),
     periodo_manual: false as boolean,
+    gasto_fijo_id:  movimiento.gasto_fijo_id ?? '',
   })
 
   const set = (k: string, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
@@ -192,6 +198,7 @@ export function MovimientoForm({
         fecha:           form.fecha,
         detalle:         form.detalle || null,
         periodo_tarjeta: periodo,
+        gasto_fijo_id:   form.gasto_fijo_id || null,
       }),
     })
 
@@ -303,6 +310,20 @@ export function MovimientoForm({
           ))}
         </select>
       </div>
+
+      {/* Gasto fijo vinculado: marca que este movimiento ES el pago de ese
+          gasto fijo — la proyección deja de restarlo por separado. */}
+      {gastosFijos.length > 0 && (
+        <div>
+          <label className={labelClass}>Gasto fijo que paga (opcional)</label>
+          <select value={form.gasto_fijo_id} onChange={e => set('gasto_fijo_id', e.target.value)} className={inputClass}>
+            <option value="">— ninguno —</option>
+            {gastosFijos.map(g => (
+              <option key={g.id} value={g.id}>{g.nombre_gasto}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Conciliado: siempre visible. Antes estaba anidado dentro del bloque de
           dólares, así que en un movimiento en pesos no se podía tocar. */}

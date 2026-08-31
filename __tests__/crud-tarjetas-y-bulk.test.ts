@@ -73,9 +73,13 @@ describe('POST /api/tarjetas', () => {
 
 // ── Ingresos Bulk ──────────────────────────────────────────────────────────
 describe('POST /api/ingresos-bulk', () => {
-  function supaSuccess() {
+  function supaSuccess(cuenta: Record<string, unknown> | null = { tipo_cuenta: 'Banco', fecha_cierre_tarjeta: null, fecha_vencimiento_tarjeta: null }) {
     const insert = vi.fn(() => Promise.resolve({ error: null }))
-    const from = vi.fn(() => ({ insert }))
+    // .from('cuentas').select(...).eq(...).maybeSingle() → la cuenta (para el período)
+    const maybeSingle = vi.fn(() => Promise.resolve({ data: cuenta, error: null }))
+    const eq = vi.fn(() => ({ maybeSingle }))
+    const select = vi.fn(() => ({ eq }))
+    const from = vi.fn(() => ({ insert, select }))
     createClientMock.mockResolvedValueOnce({ supabase: { from }, user: { id: 'u1' } })
     return { insert }
   }
@@ -136,6 +140,10 @@ describe('POST /api/ingresos-bulk', () => {
     expect(inserted[0].fecha).toBe('2026-06-05')
     expect(inserted[1].fecha).toBe('2026-07-05')
     expect(inserted[2].fecha).toBe('2026-08-05')
+    // Regresión: sin periodo_tarjeta estos ingresos eran INVISIBLES para las
+    // proyecciones (filtran por .eq(periodo), que nunca matchea NULL).
+    expect(inserted[0].periodo_tarjeta).toBe('2026-06-01')
+    expect(inserted[2].periodo_tarjeta).toBe('2026-08-01')
   })
 
   it('día que no existe en mes (31) → usa último día del mes', async () => {

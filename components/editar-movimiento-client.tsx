@@ -12,6 +12,7 @@ import {
   type CuentaOpcion,
   type CategoriaOpcion,
   type SubcategoriaOpcion,
+  type GastoFijoOpcion,
 } from '@/components/movimiento-form'
 
 export function EditarMovimientoClient({
@@ -19,11 +20,13 @@ export function EditarMovimientoClient({
   cuentas,
   categorias,
   subcategorias,
+  gastosFijos,
 }: {
-  movimiento:    MovimientoEditable
+  movimiento:    MovimientoEditable & { gasto_fijo_id?: string | null }
   cuentas:       CuentaOpcion[]
   categorias:    CategoriaOpcion[]
   subcategorias: SubcategoriaOpcion[]
+  gastosFijos?:  GastoFijoOpcion[]
 }) {
   const router = useRouter()
 
@@ -44,6 +47,7 @@ export function EditarMovimientoClient({
           cuentas={cuentas}
           categorias={categorias}
           subcategorias={subcategorias}
+          gastosFijos={gastosFijos}
           onSaved={() => {
             // Pequeña pausa para que se vea el "✓ Guardado" antes de volver.
             setTimeout(() => { router.refresh(); router.back() }, 900)

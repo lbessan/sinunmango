@@ -1,4 +1,5 @@
 import { createClientForRequest } from '@/lib/supabase/route'
+import { calcularPeriodoCuenta } from '@/lib/tarjeta-periodo'
 import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import {
@@ -30,6 +31,7 @@ type MovimientoInsert = {
   cuota_actual:    number
   ciclo_actual:    number
   grupo_cuotas:    string | null
+  gasto_fijo_id:   string | null
 }
 
 function validateMovimiento(raw: unknown): Validated<MovimientoInsert> {
@@ -94,6 +96,10 @@ function validateMovimiento(raw: unknown): Validated<MovimientoInsert> {
   const grupoOpt = optional(b.grupo_cuotas, v => validateId(v, 'grupo_cuotas'))
   if (!grupoOpt.ok) return grupoOpt
 
+  // Link opcional al gasto fijo que este movimiento paga (id text legacy)
+  const gastoFijoOpt = optional(b.gasto_fijo_id, v => validateString(v, { min: 1, max: 64, field: 'gasto_fijo_id' }))
+  if (!gastoFijoOpt.ok) return gastoFijoOpt
+
   return {
     ok: true,
     data: {
@@ -113,6 +119,7 @@ function validateMovimiento(raw: unknown): Validated<MovimientoInsert> {
       cuota_actual:    cuotaActualOpt.data ?? 1,
       ciclo_actual:    cicloOpt.data ?? 1,
       grupo_cuotas:    grupoOpt.data,
+      gasto_fijo_id:   gastoFijoOpt.data,
     },
   }
 }
@@ -144,7 +151,12 @@ export async function POST(req: NextRequest) {
   // asignamos un grupo_cuotas común para poder linkearlos después.
   if (validated.length > 1) {
     const primer = validated[0]
-    const sonHermanas = primer.cuotas_total > 1 && validated.every(r =>
+    // cuota_actual distintos entre TODAS las filas: es lo que distingue un plan
+    // real (4..12) de varias compras sueltas que casualmente están en su última
+    // cuota (12/12 y 12/12) — agruparlas violaría el unique index
+    // (user_id, grupo_cuotas, cuota_actual) y tiraba el insert entero.
+    const cuotasDistintas = new Set(validated.map(r => r.cuota_actual)).size === validated.length
+    const sonHermanas = primer.cuotas_total > 1 && cuotasDistintas && validated.every(r =>
       r.cuotas_total   === primer.cuotas_total &&
       r.cuenta_origen  === primer.cuenta_origen &&
       r.tipo_movimiento === primer.tipo_movimiento &&
@@ -153,6 +165,23 @@ export async function POST(req: NextRequest) {
     if (sonHermanas) {
       const grupo = crypto.randomUUID()
       for (const r of validated) r.grupo_cuotas = grupo
+    }
+  }
+
+  // Período faltante: derivarlo server-side. Un periodo_tarjeta NULL hace al
+  // movimiento INVISIBLE para dashboard, cuenta y proyecciones (filtran por
+  // período y NULL nunca matchea) — mismo bug histórico de ingresos-bulk.
+  // Cubre clientes externos (app mobile) que no lo manden.
+  const sinPeriodo = validated.filter(r => !r.periodo_tarjeta && r.cuenta_origen)
+  if (sinPeriodo.length > 0) {
+    const cuentaIds = [...new Set(sinPeriodo.map(r => r.cuenta_origen as string))]
+    const { data: cuentasRows } = await supabase
+      .from('cuentas')
+      .select('id, tipo_cuenta, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta')
+      .in('id', cuentaIds)
+    const porId = new Map((cuentasRows ?? []).map(c => [c.id, c]))
+    for (const r of sinPeriodo) {
+      r.periodo_tarjeta = calcularPeriodoCuenta(r.fecha, porId.get(r.cuenta_origen as string))
     }
   }
 

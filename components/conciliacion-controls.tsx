@@ -6,9 +6,10 @@ import { NuevoItemModal }  from '@/components/nuevo-item-modal'
 import { IconoCategoria }  from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodo, addMonths, stripCuotaSuffix } from '@/lib/tarjeta-periodo'
+import { expandirCuotasResumen } from '@/lib/cuotas-import'
 import { todayAR } from '@/lib/timezone'
 import { LimitReachedModal, tryParseLimitReached, type LimitReachedInfo } from '@/components/limit-reached-modal'
-import { MovimientoForm, type CuentaOpcion as CuentaForm } from '@/components/movimiento-form'
+import { MovimientoForm, type CuentaOpcion as CuentaForm, type GastoFijoOpcion } from '@/components/movimiento-form'
 
 const fmt = (n: number) =>
   n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -23,12 +24,20 @@ type Mov = {
   categoria?: string | null; subcategoria?: string | null
   periodo_tarjeta?: string | null
   cuenta_origen?: string | null
+  gasto_fijo_id?: string | null
 }
 type Categoria   = { id: string; nombre_categoria: string; icono: string | null; tipo_default?: string }
 type Subcategoria = { id: string; categoria_padre: string; nombre_subcategoria: string }
 
 // ─── Helpers período ──────────────────────────────────────────────────────────
 // calcularPeriodo + addMonths importados de @/lib/tarjeta-periodo
+/** Meses de diferencia entre dos períodos YYYY-MM-01 (b − a). */
+function mesesEntre(a: string, b: string): number {
+  const [ya, ma] = a.split('-').map(Number)
+  const [yb, mb] = b.split('-').map(Number)
+  return (yb - ya) * 12 + (mb - ma)
+}
+
 function formatPeriodo(p: string): string {
   return new Date(p + 'T12:00:00')
     .toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -40,9 +49,10 @@ function formatPeriodo(p: string): string {
 // (components/movimiento-form.tsx). Antes este modal tenía su propia copia del
 // form y quedaba corto: no dejaba cambiar la cuenta, ni aplicar el cambio a las
 // cuotas hermanas, ni eliminar el movimiento.
-function EditModal({ mov, cuentas, categorias, subcategorias, onSave, onDelete, onClose }: {
+function EditModal({ mov, cuentas, categorias, subcategorias, gastosFijos, onSave, onDelete, onClose }: {
   mov: Mov
   cuentas: CuentaForm[]
+  gastosFijos?: GastoFijoOpcion[]
   categorias: Categoria[]; subcategorias: Subcategoria[]
   onSave: (u: Partial<Mov>) => void
   onDelete: () => void
@@ -74,10 +84,12 @@ function EditModal({ mov, cuentas, categorias, subcategorias, onSave, onDelete, 
               cuotas_total:    mov.cuotas_total,
               cuota_actual:    mov.cuota_actual,
               tipo_movimiento: mov.tipo_movimiento ?? null,
+              gasto_fijo_id:   mov.gasto_fijo_id ?? null,
             }}
             cuentas={cuentas}
             categorias={categorias}
             subcategorias={subcategorias}
+            gastosFijos={gastosFijos}
             onSaved={u => {
               onSave({
                 fecha:            u.fecha,
@@ -623,28 +635,39 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       // no el total de la compra. Cada cuota hermana se carga con ese mismo monto.
       const montoCuota = tx.monto_usd ?? Math.abs(tx.monto_ars ?? 0)
       const tipoMov   = tx.es_descuento ? 'Ingreso' : 'Gasto'
-      // Si la transacción tiene cuotas, generamos un grupo_cuotas común para
-      // linkear las N cuotas hermanas (compra única partida en cuotas).
+      // El resumen informa la cuota ACTUAL ("C.04/12"): se crean SOLO la actual
+      // y las que faltan (4..12) — las anteriores ya se cobraron en resúmenes
+      // previos. Antes se creaban las 12 desde la 1 con esta fecha como inicio:
+      // inventaba cuotas viejas corridas de mes y cada re-import duplicaba el
+      // plan entero (una compra podía terminar cuadruplicada en noviembre).
+      // ANCLAJE: tx.fecha es la fecha de COMPRA original (el parser la copia
+      // tal cual), que puede ser meses atrás. La cuota ACTUAL se cobra en EL
+      // PERÍODO DE ESTE RESUMEN — el resumen es la prueba. Corremos todas las
+      // fechas generadas para que la cuota actual caiga en `periodo` y las
+      // siguientes avancen de a un mes.
+      const delta = tx.cuotas_total > 1
+        ? Math.max(0, mesesEntre(calcularPeriodo(tx.fecha, cierreDay ?? null, venceDay ?? null, isTarjeta), periodo))
+        : 0
+      const cuotas = expandirCuotasResumen(tx)
+        .map(c => (delta > 0 ? { ...c, fecha: addMonths(c.fecha, delta) } : c))
+      // grupo_cuotas: también para la última cuota suelta de un plan (queda
+      // linkeable y no entra a la heurística de auto-grupo del server).
       const grupo = tx.cuotas_total > 1 ? crypto.randomUUID() : null
-      return Array.from({ length: tx.cuotas_total }, (_, i) => {
-        const fechaCuota   = addMonths(tx.fecha, i)
-        const periodoCuota = calcularPeriodo(fechaCuota, cierreDay ?? null, venceDay ?? null, isTarjeta)
-        return {
-          id: crypto.randomUUID(), fecha: fechaCuota,
-          detalle: tx.cuotas_total > 1 ? `${tx.detalle} (Cuota ${i + 1}/${tx.cuotas_total})` : tx.detalle,
-          monto: montoCuota,
-          moneda: tx.monto_usd ? 'USD' : 'ARS',
-          tipo_movimiento: tipoMov,
-          // tx.cuentaOrigen viene del dispatcher del server (matcheado por
-          // titular contra adicionales). Si el user lo override en la review,
-          // ese valor sobreescribe la sugerencia. Fallback a cuentaId si no.
-          cuenta_origen: tx.cuentaOrigen ?? cuentaId, categoria: tx.catId || null, subcategoria: tx.subcatId || null,
-          cotizacion: null, conciliado: true,
-          periodo_tarjeta: periodoCuota,
-          cuotas_total: tx.cuotas_total, cuota_actual: i + 1, ciclo_actual: 1,
-          grupo_cuotas: grupo,
-        }
-      })
+      return cuotas.map(c => ({
+        id: crypto.randomUUID(), fecha: c.fecha,
+        detalle: c.detalle,
+        monto: montoCuota,
+        moneda: tx.monto_usd ? 'USD' : 'ARS',
+        tipo_movimiento: tipoMov,
+        // tx.cuentaOrigen viene del dispatcher del server (matcheado por
+        // titular contra adicionales). Si el user lo override en la review,
+        // ese valor sobreescribe la sugerencia. Fallback a cuentaId si no.
+        cuenta_origen: tx.cuentaOrigen ?? cuentaId, categoria: tx.catId || null, subcategoria: tx.subcatId || null,
+        cotizacion: null, conciliado: true,
+        periodo_tarjeta: calcularPeriodo(c.fecha, cierreDay ?? null, venceDay ?? null, isTarjeta),
+        cuotas_total: c.cuotas_total, cuota_actual: c.cuota_actual, ciclo_actual: 1,
+        grupo_cuotas: grupo,
+      }))
     })
 
     const res = await fetch('/api/movimientos', {
@@ -1138,13 +1161,15 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, categorias, subcategorias, cierreDay, venceDay, cuentasFamilia, cuentas = [] }: {
+export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, categorias, subcategorias, cierreDay, venceDay, cuentasFamilia, cuentas = [], gastosFijos = [] }: {
   movimientos: Mov[]; cuentaId: string; periodo: string
   categorias: Categoria[]; subcategorias: Subcategoria[]
   cierreDay?: number | null; venceDay?: number | null
   /** Todas las cuentas activas — el formulario de edición deja cambiar la
    *  cuenta del movimiento, igual que en /movimientos/[id]/editar. */
   cuentas?: CuentaForm[]
+  /** Gastos fijos activos, para el selector de vínculo del formulario. */
+  gastosFijos?: GastoFijoOpcion[]
   /** Tarjeta principal + sus adicionales con nombre_titular. Usado en el
    *  selector del ImportarPdfModal para que el user pueda override la
    *  cuenta destino de cada consumo del resumen. */
@@ -1520,6 +1545,7 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
         <EditModal
           mov={editando}
           cuentas={cuentas}
+          gastosFijos={gastosFijos}
           categorias={categorias}
           subcategorias={subcategorias}
           onSave={u => setMovs(prev => {

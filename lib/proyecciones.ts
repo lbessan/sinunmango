@@ -45,8 +45,9 @@ export type ProyeccionMes = {
   periodo:        string
   label:          string
   ingresos:       number
-  gastos_fijos:   number
-  gastos_tarjeta: number
+  gastos_fijos:   number   // gastos fijos PENDIENTES del mes (efectivo + tarjeta, sin los ya cargados como movimiento)
+  gastos_tarjeta: number   // gastos de tarjeta del período, neto de reintegros
+  gastos_otros:   number   // gastos por período en cuentas NO tarjeta (cuotas en banco, movs a futuro)
   proyeccion:     number
   diferencia:     number
 }
@@ -83,14 +84,18 @@ export function sumarGastosFijosARS(items: ReadonlyArray<GastoFijoInput>, dolar:
  *              - gastos_fijos_pendientes
  *              - max(0, deuda_tarjetas_periodo - pagos_tarjeta_mes)
  *
- * El "deudaRest" se clampa a 0 porque si ya pagaste más que la deuda del
- * período (cosa rara pero posible), no queremos restarla negativa al saldo.
+ * El clamp de "deudaRest": si ya pagaste más que la deuda del período, el
+ * sobrepago no inventa plata (piso en la propia deuda). Pero si la deuda del
+ * período es NEGATIVA (crédito neto: reintegros > gastos, posible desde que la
+ * vista resta los Ingresos de tarjeta), ese crédito SÍ pasa — un piso fijo en
+ * 0 lo descartaba y el mes actual quedaba subestimado vs los futuros.
  */
 export function calcularSaldoInicial(resumen: ResumenInput | null | undefined): number {
   if (!resumen) return 0
+  const deuda = resumen.deuda_tarjetas_periodo ?? 0
   const deudaRest = Math.max(
-    0,
-    (resumen.deuda_tarjetas_periodo ?? 0) - (resumen.pagos_tarjeta_mes ?? 0),
+    Math.min(0, deuda),
+    deuda - (resumen.pagos_tarjeta_mes ?? 0),
   )
   return (resumen.disponible_real ?? 0)
     + (resumen.ingresos_futuros_mes ?? 0)
@@ -141,70 +146,146 @@ export function calcularTotalTCMes(
   )
 }
 
-// ── Cálculo iterativo de proyecciones ─────────────────────────────────────
+// ── Resumen mensual (movimientos + gastos fijos pendientes) ──────────────
+
+/** Gasto fijo con id — para poder descontar los que ya tienen movimiento vinculado. */
+export type GastoFijoConId = GastoFijoInput & { id: string }
+
+/** Movimiento del mes tal como lo devuelve movimientos_completos. */
+export type MovMesInput = {
+  tipo_movimiento: string | null
+  monto:           number
+  monto_estimado:  number | null   // ya en ARS (respeta cotización si está conciliado)
+  moneda:          string | null
+  cuenta_origen:   string | null
+  gasto_fijo_id:   string | null
+}
 
 /**
- * Datos por mes que el orquestador pre-fetchea de Supabase. Cada slot
- * corresponde a un mes futuro (i=1, 2, 3, ... totalLoop), todos en
- * `periodo_tarjeta` format YYYY-MM-01.
+ * Datos de un mes de proyección, ya agregados:
+ *   - totalIngresos: ingresos "cash" (excluye reintegros de tarjeta)
+ *   - totalTC: gastos de tarjeta del período NETOS de reintegros
+ *   - totalOtrosGastos: gastos por período en cuentas no-tarjeta (cuotas en
+ *     banco, movimientos con fecha futura) — antes se perdían
+ *   - gfEfectivoPendiente / gfTarjetaPendiente: gastos fijos del mes SIN
+ *     movimiento vinculado (los vinculados ya están dentro de los totales de
+ *     movimientos — restarlos de nuevo era el doble conteo)
  */
 export type MesData = {
-  periodo:      string          // YYYY-MM-01
-  totalIngresos: number          // suma en ARS
-  totalTC:       number          // suma en ARS
+  periodo:             string  // YYYY-MM-01
+  totalIngresos:       number
+  totalTC:             number
+  totalOtrosGastos:    number
+  gfEfectivoPendiente: number
+  gfTarjetaPendiente:  number
 }
+
+/** Monto en ARS de un movimiento de la vista: monto_estimado si vino, sino conversión manual. */
+function montoARS(m: MovMesInput, dolar: number): number {
+  if (m.monto_estimado != null) return m.monto_estimado
+  return m.moneda === 'USD' ? m.monto * dolar : m.monto
+}
+
+/**
+ * Agrega los movimientos de un período + los gastos fijos en el MesData que
+ * consume el cálculo iterativo. Función pura — el fetching queda afuera.
+ */
+export function resumirMesProyeccion(opts: {
+  periodo:     string
+  movs:        ReadonlyArray<MovMesInput>
+  gastosFijos: ReadonlyArray<GastoFijoConId>
+  tarjetaIds:  ReadonlySet<string>
+  dolar:       number
+}): MesData {
+  const esTarjeta = (m: MovMesInput) =>
+    m.cuenta_origen != null && opts.tarjetaIds.has(m.cuenta_origen)
+
+  let ingresosCash = 0, reintegrosTC = 0, gastosTC = 0, otrosGastos = 0
+  const vinculados = new Set<string>()
+
+  for (const m of opts.movs) {
+    if (m.gasto_fijo_id) vinculados.add(m.gasto_fijo_id)
+    const ars = montoARS(m, opts.dolar)
+    if (m.tipo_movimiento === 'Ingreso') {
+      if (esTarjeta(m)) reintegrosTC += ars
+      else              ingresosCash += ars
+    } else if (m.tipo_movimiento === 'Gasto') {
+      if (esTarjeta(m)) gastosTC    += ars
+      else              otrosGastos += ars
+    }
+    // Transferencias: no cambian el neto proyectado (mueven plata entre cuentas propias).
+  }
+
+  let gfEfectivoPendiente = 0, gfTarjetaPendiente = 0
+  for (const g of opts.gastosFijos) {
+    if (vinculados.has(g.id)) continue  // su consumo ya está cargado como movimiento
+    const ars = g.moneda === 'USD' ? g.monto_estimado * opts.dolar : g.monto_estimado
+    if (g.cuentas?.tipo_cuenta === 'Tarjeta Credito') gfTarjetaPendiente += ars
+    else                                              gfEfectivoPendiente += ars
+  }
+
+  return {
+    periodo:             opts.periodo,
+    totalIngresos:       ingresosCash,
+    totalTC:             gastosTC - reintegrosTC,
+    totalOtrosGastos:    otrosGastos,
+    gfEfectivoPendiente,
+    gfTarjetaPendiente,
+  }
+}
+
+// ── Cálculo iterativo de proyecciones ─────────────────────────────────────
 
 /**
  * Itera mes a mes acumulando el saldo:
  *
- *   saldo_t = saldo_{t-1} + ingresos_t - gastosFijosEfectivo - gastosFijosTarjeta - gastosTC_t
+ *   saldo_t = saldo_{t-1} + ingresos_t
+ *           - gfEfectivoPendiente_t - gfTarjetaPendiente_t
+ *           - gastosTC_t - otrosGastos_t
  *
- * Los primeros `skipCount` meses NO se devuelven (corresponden al mes actual
- * + previos al "desde" — el user no los ve, pero se computan para que el
- * saldo arrastrado sea correcto).
+ * Los gastos fijos entran POR MES y solo los pendientes (sin movimiento
+ * vinculado en ese período) — así un consumo ya cargado no se resta dos veces.
  *
- * Devuelve también `saldoBase` (saldo al final del skipCount-ésimo mes, que
- * es el "punto de partida" del primer mes mostrado) y `saldoInicioMes`
- * (saldo justo ANTES de procesar ese mes).
+ * Los primeros `skipCount` meses no se devuelven (mes actual + previos al
+ * "desde"), pero se computan para arrastrar el saldo.
  */
 export function calcularProyeccionesIterativo(opts: {
-  startSaldo:          number
-  gastosFijosEfectivo: number
-  gastosFijosTarjeta:  number
-  meses:               ReadonlyArray<MesData>  // length = totalLoop
-  skipCount:           number
+  startSaldo: number
+  meses:      ReadonlyArray<MesData>
+  skipCount:  number
 }): {
   saldoBase:      number
   saldoInicioMes: number
   proyecciones:   ProyeccionMes[]
-  datosDelMes:    { totalIng: number; totalTC: number }
+  datosDelMes:    { totalIng: number; totalTC: number; totalOtros: number; gfEfectivo: number; gfTarjeta: number }
 } {
   let saldo          = Math.round(opts.startSaldo)
   let saldoBase      = saldo
   let saldoInicioMes = Math.round(opts.startSaldo)
-  let datosDelMes    = { totalIng: 0, totalTC: 0 }
+  let datosDelMes    = { totalIng: 0, totalTC: 0, totalOtros: 0, gfEfectivo: 0, gfTarjeta: 0 }
   const proyecciones: ProyeccionMes[] = []
 
-  // Tomamos length de meses como totalLoop (debería = skipCount + Nmeses)
   for (let i = 1; i <= opts.meses.length; i++) {
-    const idx = i - 1
-    const m   = opts.meses[idx]
+    const m = opts.meses[i - 1]
 
-    // Capturar saldo ANTES de procesar el mes mostrado
     if (i === opts.skipCount) saldoInicioMes = saldo
 
     saldo = Math.round(
       saldo + m.totalIngresos
-        - opts.gastosFijosEfectivo
-        - opts.gastosFijosTarjeta
+        - m.gfEfectivoPendiente
+        - m.gfTarjetaPendiente
         - m.totalTC
+        - m.totalOtrosGastos
     )
 
     if (i === opts.skipCount) {
       saldoBase = saldo
       datosDelMes = {
-        totalIng: Math.round(m.totalIngresos),
-        totalTC:  Math.round(m.totalTC),
+        totalIng:   Math.round(m.totalIngresos),
+        totalTC:    Math.round(m.totalTC),
+        totalOtros: Math.round(m.totalOtrosGastos),
+        gfEfectivo: Math.round(m.gfEfectivoPendiente),
+        gfTarjeta:  Math.round(m.gfTarjetaPendiente),
       }
     }
 
@@ -223,8 +304,9 @@ export function calcularProyeccionesIterativo(opts: {
         periodo:        m.periodo,
         label,
         ingresos:       Math.round(m.totalIngresos),
-        gastos_fijos:   Math.round(opts.gastosFijosEfectivo),
+        gastos_fijos:   Math.round(m.gfEfectivoPendiente + m.gfTarjetaPendiente),
         gastos_tarjeta: Math.round(m.totalTC),
+        gastos_otros:   Math.round(m.totalOtrosGastos),
         proyeccion:     saldo,
         diferencia:     saldo - prev,
       })

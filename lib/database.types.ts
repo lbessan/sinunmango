@@ -590,6 +590,7 @@ export type Database = {
           cuotas_total: number
           detalle: string | null
           fecha: string
+          gasto_fijo_id: string | null
           foto_comprobante: string | null
           grupo_cuotas: string | null
           id: string
@@ -613,6 +614,7 @@ export type Database = {
           cuotas_total?: number
           detalle?: string | null
           fecha: string
+          gasto_fijo_id?: string | null
           foto_comprobante?: string | null
           grupo_cuotas?: string | null
           id: string
@@ -636,6 +638,7 @@ export type Database = {
           cuotas_total?: number
           detalle?: string | null
           fecha?: string
+          gasto_fijo_id?: string | null
           foto_comprobante?: string | null
           grupo_cuotas?: string | null
           id?: string
@@ -970,6 +973,7 @@ export type Database = {
           cuotas_total: number | null
           detalle: string | null
           fecha: string | null
+          gasto_fijo_id: string | null
           foto_comprobante: string | null
           grupo_cuotas: string | null
           id: string | null

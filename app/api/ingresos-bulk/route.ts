@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
+import { calcularPeriodoCuenta } from '@/lib/tarjeta-periodo'
 import { checkRateLimit } from '@/lib/rate-limit'
 import {
   validateString, validatePositiveNumber, validateEnum,
@@ -83,6 +84,16 @@ export async function POST(req: NextRequest) {
     fechas.push(iso)
   }
 
+  // La cuenta define el período de imputación (mes de la fecha para cuentas
+  // sin diferimiento). Antes esto no se seteaba → periodo_tarjeta NULL → los
+  // ingresos eran INVISIBLES para todas las proyecciones (filtran con .eq(),
+  // que nunca matchea NULL) y el faltante se arrastraba mes a mes.
+  const { data: cuentaRow } = await supabase
+    .from('cuentas')
+    .select('tipo_cuenta, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta')
+    .eq('id', cuenta.data)
+    .maybeSingle()
+
   // ─── Crear los movimientos en bulk ──
   const rows = fechas.map(fecha => ({
     id:              crypto.randomUUID(),
@@ -98,6 +109,7 @@ export async function POST(req: NextRequest) {
     cuotas_total:    1,
     cuota_actual:    1,
     ciclo_actual:    1,
+    periodo_tarjeta: calcularPeriodoCuenta(fecha, cuentaRow),
   }))
 
   const { error } = await supabase.from('movimientos').insert(rows as never)

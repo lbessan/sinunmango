@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClientForRequest } from '@/lib/supabase/route'
 import { getUserPlan } from '@/lib/subscription'
 import { todayAR, todayPartsAR } from '@/lib/timezone'
+import { calcularProyeccionesServer } from '@/lib/proyecciones-server'
 
 // ─── GET /api/dashboard-mobile ───────────────────────────────────────────────
 // Returns dashboard summary + cuentas + últimos movimientos for the mobile app.
@@ -145,14 +146,26 @@ export async function GET(req: NextRequest) {
     else                    deudaArs += raw
   }
 
-  // Calcular proyectado a fin de mes (solo para mes actual)
-  const deudaRestante = Math.max(0, (resumen.deuda_tarjetas_periodo ?? 0) - (resumen.pagos_tarjeta_mes ?? 0))
-  const proyectadoActual = Math.round(
+  // Proyectado a fin del mes NAVEGADO. Para el mes actual es la fórmula del
+  // resumen; para un mes futuro se camina mes a mes con la misma implementación
+  // que el dashboard web (antes devolvía SIEMPRE el del mes actual aunque
+  // navegaras — dos pantallas del mismo mes daban números distintos).
+  const deudaPeriodo  = resumen.deuda_tarjetas_periodo ?? 0
+  // Mismo clamp que calcularSaldoInicial (crédito neto pasa; sobrepago no)
+  const deudaRestante = Math.max(Math.min(0, deudaPeriodo), deudaPeriodo - (resumen.pagos_tarjeta_mes ?? 0))
+  let proyectadoActual = Math.round(
     (resumen.disponible_real ?? 0) +
     (resumen.ingresos_futuros_mes ?? 0) -
     (resumen.gastos_fijos_pendientes ?? 0) -
     deudaRestante
   )
+  const { year: pyAR, month: pmAR } = todayPartsAR()
+  const mesNavegado = `${mesDate.getFullYear()}-${String(mesDate.getMonth() + 1).padStart(2, '0')}`
+  const mesActualStr = `${pyAR}-${String(pmAR).padStart(2, '0')}`
+  if (mesNavegado > mesActualStr) {
+    const proy = await calcularProyeccionesServer(supabase, user.id, mesNavegado, 1)
+    proyectadoActual = proy.saldoBase
+  }
 
   // Saldo total en USD (cuentas en USD, sin convertir)
   const saldoUsd = (cuentas ?? [])

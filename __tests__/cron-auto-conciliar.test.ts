@@ -67,6 +67,17 @@ beforeEach(() => {
   adminFromMock.mockReset()
   todayPartsMock.mockReset()
   process.env.CRON_SECRET = 'cron-secret'
+  // Fallback genérico para las queries del paso de vinculación (gastos_fijos,
+  // movimientos del período, historial): cualquier cadena select/eq/in/not
+  // resuelve vacío. Los mockReturnValueOnce de cada test tienen prioridad.
+  const cadenaVacia = (): Record<string, unknown> => {
+    const nodo: Record<string, unknown> = {}
+    const sig = () => cadenaVacia()
+    for (const m of ['select', 'eq', 'in', 'not', 'update', 'lt', 'is']) nodo[m] = vi.fn(sig)
+    nodo.then = (res: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(res)
+    return nodo
+  }
+  adminFromMock.mockImplementation(() => cadenaVacia())
 })
 
 describe('GET /api/cron/auto-conciliar — auth', () => {
@@ -113,8 +124,9 @@ describe('GET /api/cron/auto-conciliar — matching de día', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.procesadas).toEqual([])  // no procesó nada
-    // No se llamó from('movimientos') porque no hubo match
-    expect(adminFromMock).toHaveBeenCalledTimes(1)
+    // 1 (tarjetas) + 3 (vinculación: gastos_fijos + movs período + historial).
+    // No hubo NINGÚN update de conciliación porque ninguna tarjeta matcheó.
+    expect(adminFromMock).toHaveBeenCalledTimes(4)
   })
 
   it('procesa tarjeta si vence HOY', async () => {
