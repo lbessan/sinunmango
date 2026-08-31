@@ -51,7 +51,7 @@ export default async function ConciliacionDetallePage({
   // que solo se trae lo que el user puede ver.
   // Movs scoped por cuenta (no user_id) → RLS permite mis propios movs +
   // movs en cuentas compartidas (workspace V2).
-  const [{ data: cuenta }, { data: movimientos }, { data: categorias }, { data: subcategorias }] =
+  const [{ data: cuenta }, { data: movimientos }, { data: categorias }, { data: subcategorias }, { data: cuentasActivas }] =
     await Promise.all([
       supabase.from('cuentas').select('*').eq('id', cuentaId).eq('user_id', wsId).single(),
       supabase
@@ -70,6 +70,12 @@ export default async function ConciliacionDetallePage({
         .from('subcategorias')
         .select('id, categoria_padre, nombre_subcategoria')
         .eq('user_id', wsId),
+      // Todas las cuentas activas: el form de edición permite mover el
+      // movimiento a otra cuenta, igual que en /movimientos/[id]/editar.
+      supabase
+        .from('cuentas')
+        .select('id, nombre_cuenta, tipo_cuenta, fecha_cierre_tarjeta, fecha_vencimiento_tarjeta')
+        .eq('activa', true).eq('user_id', wsId),
     ])
 
   if (!cuenta) notFound()
@@ -108,6 +114,7 @@ export default async function ConciliacionDetallePage({
         cierreDay={cierreDay}
         venceDay={venceDay}
         cuentasFamilia={cuentasFamilia}
+        cuentas={(cuentasActivas ?? []) as ConcProps['cuentas']}
       />
     </div>
   )
