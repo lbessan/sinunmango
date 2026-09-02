@@ -200,10 +200,24 @@ Reglas para tipo_movimiento:
 
 Otras reglas:
 - "monto" es siempre POSITIVO, como número sin símbolos
+- CUIDADO con el separador decimal: los bancos argentinos usan formato AR
+  ("1.234,56" = 1234.56) pero las Alertas de Compras Visa usan formato US con
+  PUNTO decimal ("147.26" = 147.26, o sea $147 con 26 centavos — NO 14726).
+  Si el número tiene UN solo punto y 2 dígitos después, el punto es decimal.
+- Ignorá texto pegado al monto como "(puede haber una diferencia en el monto real)"
 - "cuotas" es 1 si no se menciona cuotas (los ingresos siempre tienen cuotas=1)
-- "terminacion" son los últimos 4 dígitos de la tarjeta o cuenta bancaria si se mencionan, si no null
+- "terminacion" son los últimos 4 dígitos de la tarjeta o cuenta bancaria si se
+  mencionan (ej: "Tarjeta: 7420" o "terminación 7420" → "7420"), si no null
 - Si hay múltiples transacciones en el email, incluí todas
-- La fecha debe ser la fecha de la transacción, no la del email
+- La fecha debe ser la fecha de la transacción, no la del email. Si el email NO
+  indica la fecha de la transacción (las Alertas de Compras Visa no la traen),
+  usá la fecha de hoy (${today}) — NUNCA inventes otra fecha.
+
+Ejemplo — "Alerta de Compras Visa" (purchasealerts.visa.com):
+  Su tarjeta Visa con terminación 7420 se acaba de usar...
+  Comercio: TELEPEAJE PLUS / Tipo de transacción: Compra / Moneda: ARS
+  Monto: 147.26(puede haber una diferencia en el monto real)
+→ [{"fecha":"${today}","detalle":"TELEPEAJE PLUS","monto":147.26,"moneda":"ARS","cuotas":1,"terminacion":"7420","tipo_movimiento":"Gasto"}]
 
 Email:
 ${emailText.slice(0, 3000)}`
