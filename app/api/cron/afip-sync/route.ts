@@ -14,6 +14,10 @@ export const maxDuration = 60
 
 type ConexionRow = { user_id: string; cert_not_after: string | null }
 
+/** wsfe no ve lo emitido en "Comprobantes en línea" — no es un error, es su alcance. */
+export const AVISO_SIN_COMPROBANTES =
+  'wsfe no tiene comprobantes autorizados. Si facturás desde "Comprobantes en línea", ese subsistema no es visible con el certificado: importá el CSV de Mis Comprobantes o emití desde la app.'
+
 export async function GET(req: NextRequest) {
   const unauthorized = requireCronAuth(req)
   if (unauthorized) return unauthorized
@@ -28,18 +32,27 @@ export async function GET(req: NextRequest) {
   const conexiones = (rows ?? []) as ConexionRow[]
   if (conexiones.length === 0) return NextResponse.json({ ok: true, synced: 0, message: 'Nada para sincronizar.' })
 
-  const results: { user: string; ok: boolean; detalle?: string; importadas?: number }[] = []
+  const results: { user: string; ok: boolean; detalle?: string; importadas?: number; avisoFacturas?: string }[] = []
   let synced = 0
 
   for (const c of conexiones) {
     try {
       const { datos } = await sincronizarPorCert(adminClient, c.user_id)
-      // Traer facturas emitidas (best-effort: un problema de wsfe no debe voltear
-      // la sync de categoría, que ya funcionó).
+      // Traer facturas emitidas. Un problema de wsfe NO debe voltear la sync de
+      // categoría (que ya funcionó), pero tampoco puede desaparecer: antes este
+      // catch era mudo y ocultó dos meses de imports que no traían nada.
       let importadas = 0
-      try { importadas = (await importarComprobantes(adminClient, c.user_id)).importados } catch { /* wsfe opcional */ }
+      let avisoFacturas: string | undefined
+      try {
+        const r = await importarComprobantes(adminClient, c.user_id)
+        importadas = r.importados
+        if (r.sinComprobantes) avisoFacturas = AVISO_SIN_COMPROBANTES
+      } catch (e) {
+        avisoFacturas = `wsfe: ${(e as Error).message}`.slice(0, 300)
+        console.error(`[afip-sync] import de facturas falló para ${c.user_id}:`, avisoFacturas)
+      }
       synced++
-      results.push({ user: c.user_id, ok: true, detalle: datos.categoria ?? undefined, importadas })
+      results.push({ user: c.user_id, ok: true, detalle: datos.categoria ?? undefined, importadas, avisoFacturas })
     } catch (e) {
       const msg = (e as Error).message || 'Error de sincronización'
       await adminClient.from('afip_conexion')

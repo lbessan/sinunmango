@@ -14,6 +14,7 @@ import { Plus, Pencil, AlertTriangle, TrendingUp, Calendar, Settings, Info, Refr
 import { getAuthedClient } from '@/lib/supabase/server'
 import { DeleteButton } from '@/components/delete-button'
 import { ImportarFacturaButton } from './importar-factura'
+import { ImportarComprobantesButton } from './importar-comprobantes'
 import { TraerFacturasAfip } from './traer-facturas-afip'
 import {
   facturacionPeriodoEvaluacion,
@@ -177,6 +178,7 @@ export default async function MonotributoPage() {
             <Settings size={14} />Config
           </Link>
           {afipConectado && <TraerFacturasAfip />}
+          <ImportarComprobantesButton />
           <ImportarFacturaButton />
           <Link
             href={afipConectado ? '/monotributo/emitir' : '/monotributo/nueva'}

@@ -48,6 +48,8 @@ export function ConectorAfip({
   const [copiado, setCopiado] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [avisoFacturas, setAvisoFacturas] = useState('')
+  const [okFacturas, setOkFacturas] = useState('')
 
   async function generarCsr() {
     setError(''); setLoading(true)
@@ -74,7 +76,7 @@ export function ConectorAfip({
   }
 
   async function sincronizar() {
-    setError(''); setPaso('sincronizando'); setLoading(true)
+    setError(''); setAvisoFacturas(''); setOkFacturas(''); setPaso('sincronizando'); setLoading(true)
     try {
       const r = await fetch('/api/monotributo/afip/sincronizar', { method: 'POST' })
       const j = await r.json()
@@ -82,6 +84,14 @@ export function ConectorAfip({
         throw new Error(j.noAutorizado
           ? 'Tu certificado no tiene habilitado el servicio de Constancia de Inscripción. Asocialo en AFIP (Administrador de Relaciones → Nueva Relación → Constancia de Inscripción) y reintentá.'
           : (j.error || 'No se pudo sincronizar'))
+      }
+      // La sincronización también trae las facturas: mostramos qué pasó con
+      // ellas aunque la categoría haya salido bien.
+      const f = j.facturas as { estado: string; importadas?: number; aviso?: string } | undefined
+      if (f?.estado === 'ok') {
+        setOkFacturas(f.importadas ? `+${f.importadas} factura${f.importadas === 1 ? '' : 's'} nueva${f.importadas === 1 ? '' : 's'}` : 'Facturas al día')
+      } else if (f?.aviso) {
+        setAvisoFacturas(f.aviso)
       }
       setDatos(j.datos); setPaso('estado'); router.refresh()
     } catch (e) { setError((e as Error).message); setPaso('estado') } finally { setLoading(false) }
@@ -130,6 +140,20 @@ export function ConectorAfip({
           </button>
           <button onClick={() => { setPaso(1); setError('') }} className="text-sm text-slate-500 hover:text-slate-700">Usar otro certificado</button>
         </div>
+
+        {okFacturas && (
+          <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">{okFacturas}</p>
+        )}
+        {avisoFacturas && (
+          <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5">
+            <AlertCircle size={14} className="shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">La categoría se actualizó, pero las facturas no se pudieron traer</p>
+              <p className="mt-1 leading-relaxed">{avisoFacturas}</p>
+              <a href="/monotributo" className="inline-block mt-1.5 font-medium underline">Ir a Monotributo para importarlas →</a>
+            </div>
+          </div>
+        )}
 
         {ultimaSync && <p className="text-xs text-slate-400">Última sincronización: {new Date(ultimaSync).toLocaleString('es-AR')}</p>}
         {syncError && !error && <p className="text-xs text-amber-600">Último error: {syncError}</p>}

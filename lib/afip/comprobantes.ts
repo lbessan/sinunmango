@@ -55,16 +55,34 @@ export function comprobanteAFactura(userId: string, c: Comprobante): FacturaInse
   }
 }
 
+export type ResultadoImport = {
+  importados: number
+  revisados:  number
+  /** Puntos de venta que wsfe reporta habilitados para web service. */
+  ptosVenta:  number[]
+  /** true si NINGÚN punto de venta de wsfe tiene comprobantes autorizados.
+   *  Es la firma de "emite por Comprobantes en línea": ese subsistema no es
+   *  visible desde wsfe, así que este import nunca va a encontrar nada.
+   *  La UI lo usa para explicar en vez de decir "al día". */
+  sinComprobantes: boolean
+}
+
 /**
  * Trae las Facturas C emitidas desde AFIP y guarda las que falten.
  * `maxPorPto` acota la primera corrida para no colgar la función (default 400).
+ *
+ * OJO — alcance real: wsfe SOLO conoce lo que autorizó wsfe. Las facturas
+ * emitidas en "Comprobantes en línea" (el portal de ARCA) usan otro punto de
+ * venta y otro subsistema: para esas, FECompUltimoAutorizado devuelve 0 y no
+ * hay forma de leerlas con el certificado. Se traen con el CSV de
+ * "Mis Comprobantes" (ver lib/afip/mis-comprobantes.ts).
  */
 export async function importarComprobantes(
   supabase: DB,
   userId: string,
   deps: ImportDeps = defaultDeps,
   maxPorPto = 400,
-): Promise<{ importados: number; revisados: number }> {
+): Promise<ResultadoImport> {
   const cert = await cargarCert(supabase, userId)
   const ta = await obtenerTA(supabase, userId, SERVICIO_WSFE, cert, deps.loginWSAA)
   const base = { ta, cuit: cert.cuit, ambiente: cert.ambiente }
@@ -79,8 +97,10 @@ export async function importarComprobantes(
 
   const nuevos: FacturaInsert[] = []
   let revisados = 0
+  let algunoConComprobantes = false
   for (const pto of ptos.filter(p => !p.bloqueado)) {
     const ultimo = await deps.ultimoComprobante({ ...base, ptoVta: pto.nro, cbteTipo: CBTE_FACTURA_C })
+    if (ultimo > 0) algunoConComprobantes = true
     const desde = Math.max(1, ultimo - maxPorPto + 1)
     for (let n = ultimo; n >= desde; n--) {
       revisados++
@@ -98,7 +118,15 @@ export async function importarComprobantes(
   let importados = 0
   if (nuevos.length) {
     const { error } = await supabase.from('facturas_emitidas').insert(nuevos)
-    if (!error) importados = nuevos.length
+    // Antes un error de insert se tragaba y devolvíamos importados=0, que la UI
+    // mostraba como "Al día ✓". Ahora se propaga.
+    if (error) throw new Error(`No se pudieron guardar las facturas traídas: ${error.message}`)
+    importados = nuevos.length
   }
-  return { importados, revisados }
+  return {
+    importados,
+    revisados,
+    ptosVenta: ptos.map(p => p.nro),
+    sinComprobantes: !algunoConComprobantes,
+  }
 }
