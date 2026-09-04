@@ -511,6 +511,63 @@ export type Database = {
           },
         ]
       }
+      factura_plantillas: {
+        Row: {
+          id: string
+          user_id: string
+          nombre: string
+          cliente_id: string | null
+          cliente_nombre: string | null
+          doc_tipo: number | null
+          doc_nro: string | null
+          condicion_iva: number | null
+          concepto: number
+          pto_vta: number | null
+          items: Json
+          periodo_modo: string
+          dias_vto_pago: number
+          orden: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          nombre: string
+          cliente_id?: string | null
+          cliente_nombre?: string | null
+          doc_tipo?: number | null
+          doc_nro?: string | null
+          condicion_iva?: number | null
+          concepto?: number
+          pto_vta?: number | null
+          items?: Json
+          periodo_modo?: string
+          dias_vto_pago?: number
+          orden?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          nombre?: string
+          cliente_id?: string | null
+          cliente_nombre?: string | null
+          doc_tipo?: number | null
+          doc_nro?: string | null
+          condicion_iva?: number | null
+          concepto?: number
+          pto_vta?: number | null
+          items?: Json
+          periodo_modo?: string
+          dias_vto_pago?: number
+          orden?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       facturas_emitidas: {
         Row: {
           id: string

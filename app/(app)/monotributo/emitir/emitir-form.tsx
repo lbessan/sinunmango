@@ -7,7 +7,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Check, AlertCircle, FileText, Search, Plus, X, Download } from 'lucide-react'
+import { Loader2, Check, AlertCircle, FileText, Search, Plus, X, Download, Bookmark, BookmarkPlus, Trash2 } from 'lucide-react'
+import { aplicarPlantilla, totalPlantilla, normalizarItems, type Plantilla } from '@/lib/monotributo-plantillas'
 
 type Pto = { nro: number; bloqueado: boolean }
 type Cliente = { id: string; nombre: string; doc_tipo: number | null; doc_nro: string | null; condicion_iva: number | null }
@@ -46,6 +47,14 @@ export function EmitirFacturaForm() {
 
   const [fase, setFase] = useState<Fase>('form')
   const [error, setError] = useState('')
+
+  // Plantillas: las facturas que se repiten mes a mes. Aplicar una llena el
+  // formulario entero; después se editan importes o se agrega/saca un ítem.
+  const [plantillas, setPlantillas] = useState<Plantilla[]>([])
+  const [guardando, setGuardando] = useState(false)
+  const [nombrePlantilla, setNombrePlantilla] = useState('')
+  const [pidiendoNombre, setPidiendoNombre] = useState(false)
+  const [aplicada, setAplicada] = useState('')
   const [result, setResult] = useState<{ cae: string; caeVto: string; numero: string; id: string | null } | null>(null)
 
   useEffect(() => {
@@ -56,6 +65,11 @@ export function EmitirFacturaForm() {
       if (activos.length === 1) setPtoVta(activos[0].nro)
     }).catch(() => setError('No se pudieron cargar los puntos de venta'))
     fetch('/api/monotributo/clientes').then(r => r.json()).then(j => setClientes(j.clientes ?? [])).catch(() => {})
+    fetch('/api/monotributo/plantillas').then(r => r.json())
+      // items viene como JSON de la DB: lo normalizamos para que una plantilla
+      // malformada no rompa el render del listado.
+      .then(j => setPlantillas(((j.plantillas ?? []) as Plantilla[]).map(p => ({ ...p, items: normalizarItems(p.items) }))))
+      .catch(() => {})
   }, [])
 
   const total = items.reduce((s, it) => s + (Number(it.cantidad) || 0) * (Number(it.precio) || 0), 0)
@@ -83,6 +97,69 @@ export function EmitirFacturaForm() {
       if (j.error) throw new Error(j.error)
       setNombre(j.nombre)
     } catch (e) { setError((e as Error).message) } finally { setBuscando(false) }
+  }
+
+  // ── Plantillas ─────────────────────────────────────────────────────────────
+  function usarPlantilla(p: Plantilla) {
+    const f = aplicarPlantilla(p, fecha)   // se arma sobre la fecha de emisión elegida
+    setConcepto(f.concepto as 1 | 2 | 3)
+    setNombre(f.clienteNombre)
+    setDocTipo(f.docTipo)
+    setDocNro(f.docNro)
+    setCondIva(f.condIva)
+    // El cliente viene de la plantilla, no de la libreta: mostramos los campos
+    // cargados para que se puedan corregir antes de emitir.
+    setClienteSel('nuevo')
+    if (f.ptoVta) setPtoVta(f.ptoVta)
+    setItems(f.items.map(it => ({
+      descripcion: it.descripcion,
+      cantidad: String(it.cantidad),
+      precio: String(it.precio),
+    })))
+    setPeriodoDesde(f.periodoDesde)
+    setPeriodoHasta(f.periodoHasta)
+    setVtoPago(f.vtoPago)
+    setAplicada(p.nombre)
+    setError('')
+  }
+
+  async function guardarPlantilla() {
+    const nom = nombrePlantilla.trim()
+    if (!nom) return
+    setGuardando(true); setError('')
+    try {
+      // Guardamos los ítems tal cual están en el form. Si la descripción tiene
+      // el mes escrito a mano conviene cambiarlo por {mes} {anio} para que se
+      // actualice solo — se explica en el placeholder del input.
+      const r = await fetch('/api/monotributo/plantillas', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nom, cliente_nombre: nombre, doc_tipo: docTipo, doc_nro: docNro,
+          condicion_iva: condIva, concepto, pto_vta: ptoVta || null,
+          items: items.filter(it => Number(it.precio) > 0).map(it => ({
+            descripcion: it.descripcion, cantidad: Number(it.cantidad) || 1, precio: Number(it.precio),
+          })),
+          periodo_modo: periodoModoSugerido(), dias_vto_pago: diasHasta(fecha, vtoPago),
+        }),
+      })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'No se pudo guardar')
+      setPlantillas(ps => [...ps.filter(x => x.nombre !== nom), j.plantilla])
+      setPidiendoNombre(false); setNombrePlantilla(''); setAplicada(nom)
+    } catch (e) { setError((e as Error).message) } finally { setGuardando(false) }
+  }
+
+  async function borrarPlantilla(id: string) {
+    setPlantillas(ps => ps.filter(p => p.id !== id))
+    await fetch(`/api/monotributo/plantillas/${id}`, { method: 'DELETE' }).catch(() => {})
+  }
+
+  /** Deduce el modo de período mirando lo que quedó cargado en el form. */
+  function periodoModoSugerido(): 'mes_actual' | 'mes_anterior' | 'dia_emision' {
+    if (periodoDesde === periodoHasta) return 'dia_emision'
+    const [ay, am] = periodoDesde.split('-').map(Number)
+    const [hy, hm] = fecha.split('-').map(Number)
+    return (hy - ay) * 12 + (hm - am) >= 1 ? 'mes_anterior' : 'mes_actual'
   }
 
   const setItem = (i: number, patch: Partial<Item>) => setItems(its => its.map((it, j) => j === i ? { ...it, ...patch } : it))
@@ -142,6 +219,45 @@ export function EmitirFacturaForm() {
       {error && (
         <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2.5">
           <AlertCircle size={16} className="shrink-0 mt-0.5" /> <span>{error}</span>
+        </div>
+      )}
+
+      {/* Plantillas — las facturas que se repiten todos los meses */}
+      {plantillas.length > 0 && (
+        <div className="rounded-xl border border-slate-200 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+              <Bookmark size={14} className="text-[color:var(--accent)]" />Plantillas
+            </p>
+            {aplicada && <span className="text-xs text-emerald-700">Aplicada: {aplicada}</span>}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {plantillas.map(p => (
+              <div key={p.id} className="group relative">
+                <button
+                  type="button"
+                  onClick={() => usarPlantilla(p)}
+                  className={`text-left rounded-lg border px-3 py-2 pr-7 hover:bg-slate-50 transition ${aplicada === p.nombre ? 'border-[color:var(--accent)] bg-emerald-50/40' : 'border-slate-200'}`}
+                >
+                  <span className="block text-sm text-slate-800">{p.nombre}</span>
+                  <span className="block text-[11px] text-slate-400">
+                    {p.items.length} {p.items.length === 1 ? 'ítem' : 'ítems'} · ref. {money(totalPlantilla(p.items))}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => borrarPlantilla(p.id)}
+                  title="Borrar plantilla"
+                  className="absolute top-1.5 right-1.5 p-1 rounded text-slate-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-2">
+            Se cargan los ítems y se recalculan período y vencimiento. Después editás lo que haga falta.
+          </p>
         </div>
       )}
 
@@ -208,7 +324,7 @@ export function EmitirFacturaForm() {
         {items.map((it, i) => (
           <div key={i} className="flex items-end gap-2">
             <Field label={i === 0 ? 'Descripción' : ''} className="flex-1 min-w-0">
-              <input value={it.descripcion} onChange={e => setItem(i, { descripcion: e.target.value })} placeholder="Detalle" className="input" />
+              <input value={it.descripcion} onChange={e => setItem(i, { descripcion: e.target.value })} placeholder="Detalle — podés usar {mes} y {anio}" className="input" />
             </Field>
             <Field label={i === 0 ? 'Cant.' : ''} className="w-16">
               <input value={it.cantidad} onChange={e => setItem(i, { cantidad: e.target.value.replace(/[^\d.]/g, '') })} inputMode="decimal" className="input text-center" />
@@ -219,7 +335,10 @@ export function EmitirFacturaForm() {
             <button onClick={() => delItem(i)} disabled={items.length === 1} className="mb-2 p-1.5 text-slate-300 hover:text-red-400 disabled:opacity-30"><X size={15} /></button>
           </div>
         ))}
-        <div className="flex justify-end pt-1 border-t border-slate-100">
+        <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+          <p className="text-[11px] text-slate-400">
+            En una plantilla, <code>{'{mes}'}</code> y <code>{'{anio}'}</code> se reemplazan por los del período facturado.
+          </p>
           <p className="text-sm text-slate-600">Total: <b className="text-slate-900 text-base">{money(total)}</b></p>
         </div>
       </div>
@@ -243,10 +362,38 @@ export function EmitirFacturaForm() {
           </div>
         </div>
       ) : (
-        <button onClick={() => setFase('confirmar')} disabled={!valido || fase === 'emitiendo'}
-          className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-40 inline-flex items-center gap-2" style={{ background: 'var(--accent)' }}>
-          {fase === 'emitiendo' ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />} Emitir factura
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setFase('confirmar')} disabled={!valido || fase === 'emitiendo'}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-40 inline-flex items-center gap-2" style={{ background: 'var(--accent)' }}>
+            {fase === 'emitiendo' ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />} Emitir factura
+          </button>
+
+          {pidiendoNombre ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                value={nombrePlantilla}
+                onChange={e => setNombrePlantilla(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') guardarPlantilla(); if (e.key === 'Escape') setPidiendoNombre(false) }}
+                placeholder="Nombre de la plantilla"
+                autoFocus
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[color:var(--accent)]"
+              />
+              <button onClick={guardarPlantilla} disabled={guardando || !nombrePlantilla.trim()}
+                className="px-3 py-2 rounded-lg text-sm border border-slate-200 hover:bg-slate-50 disabled:opacity-40 inline-flex items-center gap-1.5">
+                {guardando ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Guardar
+              </button>
+              <button onClick={() => setPidiendoNombre(false)} className="p-2 text-slate-400 hover:text-slate-600"><X size={15} /></button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setPidiendoNombre(true); setNombrePlantilla(aplicada || nombre) }}
+              disabled={items.every(it => !(Number(it.precio) > 0))}
+              title="Guardar esta factura como plantilla para reusarla"
+              className="px-3 py-2 rounded-lg text-sm text-slate-600 border border-slate-200 hover:bg-slate-50 disabled:opacity-40 inline-flex items-center gap-1.5">
+              <BookmarkPlus size={15} /> Guardar como plantilla
+            </button>
+          )}
+        </div>
       )}
 
       <style jsx>{`.input{width:100%;border:1px solid rgb(226 232 240);border-radius:0.5rem;padding:0.5rem 0.75rem;font-size:0.875rem;outline:none}.input:focus{box-shadow:0 0 0 2px var(--accent)}`}</style>
@@ -261,4 +408,11 @@ function Field({ label, children, className = '' }: { label: string; children: R
       {children}
     </label>
   )
+}
+
+/** Días enteros entre dos fechas ISO (para guardar el vto. como offset). */
+function diasHasta(desde: string, hasta: string): number {
+  const p = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d) }
+  const dias = Math.round((p(hasta) - p(desde)) / 86_400_000)
+  return dias >= 0 && dias <= 365 ? dias : 7
 }
