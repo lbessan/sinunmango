@@ -139,3 +139,34 @@ export function calcularPeriodoCuenta(
   const vence  = new Date(cuenta.fecha_vencimiento_tarjeta + 'T12:00:00').getDate()
   return calcularPeriodo(fecha, cierre, vence, true)
 }
+
+/**
+ * ¿Este movimiento va en la sección "futuros" de la pantalla de una cuenta?
+ *
+ * REGLA ÚNICA, y depende del tipo de cuenta porque "futuro" significa cosas
+ * distintas según qué estés mirando:
+ *
+ * - **Tarjeta de crédito** → futuro = el movimiento cae en un resumen que
+ *   todavía no venció (`periodo_tarjeta` >= mes actual). El consumo de hoy ya
+ *   está hecho, pero lo vas a PAGAR en el resumen que viene: mostrarlo agrupado
+ *   con su período es lo que hace que la card del resumen esté completa.
+ *
+ * - **Cualquier otra cuenta** (billetera, banco, efectivo) → futuro = lo que
+ *   todavía no pasó: `fecha` posterior a hoy. Acá el período es simplemente el
+ *   mes del movimiento, así que cortar por período mandaba TODO el mes en curso
+ *   a "futuros" y la lista principal quedaba congelada en el mes anterior.
+ *   Es el mismo criterio que usa /movimientos (`fecha > hoy`), así que las dos
+ *   pantallas coinciden.
+ */
+export function esMovimientoFuturo(
+  mov: { fecha?: string | null; periodo_tarjeta?: string | null },
+  opts: { esTarjeta: boolean; hoy: string }
+): boolean {
+  if (opts.esTarjeta) {
+    // Sin período no podemos ubicarlo en un resumen: lo tratamos como historial.
+    if (!mov.periodo_tarjeta) return false
+    return mov.periodo_tarjeta >= opts.hoy.slice(0, 7) + '-01'
+  }
+  if (!mov.fecha) return false
+  return mov.fecha > opts.hoy
+}

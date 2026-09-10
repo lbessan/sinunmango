@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { todayAR } from '@/lib/timezone'
+import { esMovimientoFuturo } from '@/lib/tarjeta-periodo'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { Pencil, ArrowLeft } from 'lucide-react'
@@ -34,6 +35,12 @@ function esColorOscuro(hex: string): boolean {
   return (r * 299 + g * 587 + b * 114) / 1000 < 128
 }
 
+// Tope de movimientos que traemos para la pantalla de la cuenta. Ordenamos por
+// fecha desc, así que si una cuenta lo supera se recorta el historial más viejo
+// y nunca lo reciente. Antes eran 200 solo para los pasados y esta cuenta ya
+// estaba en 196: el próximo mes hubiera empezado a perder movimientos.
+const MAX_MOVIMIENTOS = 1000
+
 export default async function CuentaDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const { supabase, user } = await getAuthedClient()
   if (!user) redirect('/login')
@@ -42,10 +49,9 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
   const isOwn = workspace.isOwn
 
   const { id } = await params
-  const today           = todayAR()
-  const inicioMesActual = today.slice(0, 7) + '-01'
+  const today = todayAR()
 
-  const [{ data: cuenta }, { data: extra }, { data: movPasados }, { data: movFuturos }, { data: categorias }, { data: subcategorias }, { data: otrasCuentas }] =
+  const [{ data: cuenta }, { data: extra }, { data: movTodos }, { data: categorias }, { data: subcategorias }, { data: otrasCuentas }] =
     await Promise.all([
       supabase.from('saldo_actual_cuentas').select('*').eq('id', id).eq('user_id', wsId).single(),
       supabase.from('cuentas').select('imagen_url, imagen_banner_url, color_primario, fecha_cierre_pendiente, fecha_vencimiento_pendiente').eq('id', id).eq('user_id', wsId).single(),
@@ -54,18 +60,20 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
       // permite que el invitee vea TAMBIÉN sus propios movs cargados en
       // esta cuenta compartida (sino se "perdían" porque su user_id =
       // invitee y wsId = owner).
-      // Corte por PERÍODO (no por fecha): el agrupado de abajo es por
-      // periodo_tarjeta, y el período va 1-2 meses delante de la fecha. Con el
-      // corte por fecha, el consumo del ciclo en curso caía en "pasados" y su
-      // card de período futuro quedaba incompleta.
+      //
+      // UNA sola query y el corte pasado/futuro se hace en memoria con
+      // `esMovimientoFuturo`, porque la regla depende del TIPO de cuenta y el
+      // tipo lo sabemos recién cuando resuelve este Promise.all. Antes eran dos
+      // queries que cortaban por período: en una tarjeta está bien, pero en una
+      // billetera el período ES el mes del movimiento, así que TODO el mes en
+      // curso caía en "futuros" y la lista principal quedaba clavada en el mes
+      // anterior.
+      //
+      // Orden por fecha desc: si una cuenta supera el tope, lo que se recorta es
+      // lo más viejo (el historial), nunca lo reciente ni lo futuro.
       supabase.from('movimientos_completos').select('*')
         .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
-        .lt('periodo_tarjeta', inicioMesActual)
-        .order('fecha', { ascending: false }).limit(200),
-      supabase.from('movimientos_completos').select('*')
-        .or(`cuenta_origen.eq.${id},cuenta_destino.eq.${id}`)
-        .gte('periodo_tarjeta', inicioMesActual)
-        .order('periodo_tarjeta', { ascending: true }).order('fecha', { ascending: true }),
+        .order('fecha', { ascending: false }).limit(MAX_MOVIMIENTOS),
       supabase.from('categorias').select('id, nombre_categoria, icono, tipo_default').eq('user_id', wsId).order('nombre_categoria'),
       supabase.from('subcategorias').select('id, categoria_padre, nombre_subcategoria').eq('user_id', wsId),
       supabase.from('cuentas').select('id, nombre_cuenta').eq('activa', true).eq('user_id', wsId).neq('id', id).order('nombre_cuenta'),
@@ -84,8 +92,21 @@ export default async function CuentaDetallePage({ params }: { params: Promise<{ 
   const textColor  = textoClaro ? 'white' : '#1e293b'
   const fallbackEmoji = isEfectivo ? '💵' : isTarjeta ? '💳' : '🏦'
 
-  type MovItem = NonNullable<typeof movFuturos>[number]
-  const futurosPorPeriodo = (movFuturos ?? []).reduce<Record<string, MovItem[]>>((acc, mov) => {
+  type MovItem = NonNullable<typeof movTodos>[number]
+
+  // Corte pasado/futuro con la regla única (depende del tipo de cuenta).
+  const movFuturos: MovItem[] = []
+  const movPasados: MovItem[] = []
+  for (const mov of movTodos ?? []) {
+    (esMovimientoFuturo(mov, { esTarjeta: isTarjeta, hoy: today }) ? movFuturos : movPasados).push(mov)
+  }
+  // Los futuros se muestran agrupados por período y ascendente (lo que viene
+  // primero, arriba); los pasados quedan como vienen: fecha desc.
+  movFuturos.sort((a, b) =>
+    (a.periodo_tarjeta ?? '').localeCompare(b.periodo_tarjeta ?? '') ||
+    (a.fecha ?? '').localeCompare(b.fecha ?? ''))
+
+  const futurosPorPeriodo = movFuturos.reduce<Record<string, MovItem[]>>((acc, mov) => {
     const key = mov.periodo_tarjeta ?? 'sin-periodo'
     if (!acc[key]) acc[key] = []
     acc[key].push(mov)

@@ -4,6 +4,7 @@ import {
   calcularPeriodoCuenta,
   addMonths,
   stripCuotaSuffix,
+  esMovimientoFuturo,
   debeDeferirFechas,
 } from '@/lib/tarjeta-periodo'
 
@@ -260,5 +261,68 @@ describe('regla única de período (sin carve-outs por moneda/tipo)', () => {
   it('sigue sin diferir si la cuenta no es tarjeta o le faltan fechas', () => {
     expect(calcularPeriodoCuenta('2026-08-27', { tipo_cuenta: 'Banco' })).toBe('2026-08-01')
     expect(calcularPeriodoCuenta('2026-08-27', { ...TARJETA, fecha_cierre_tarjeta: null })).toBe('2026-08-01')
+  })
+})
+
+// ─── esMovimientoFuturo ──────────────────────────────────────────────────────
+// Qué va a la sección "futuros" de la pantalla de una cuenta. La regla cambia
+// según el tipo de cuenta: ver el comentario en lib/tarjeta-periodo.ts.
+describe('esMovimientoFuturo', () => {
+  const HOY = '2026-09-10'
+
+  describe('cuentas que NO son tarjeta (billetera, banco, efectivo)', () => {
+    const opts = { esTarjeta: false, hoy: HOY }
+
+    it('BUG REAL: un movimiento del mes en curso NO es futuro', () => {
+      // Mercado Pago, 2026-09-03. El período es 2026-09-01 (el mes del
+      // movimiento), y cortar por período mandaba los 12 movimientos de
+      // septiembre a "futuros": la lista principal quedaba clavada el 31/08.
+      expect(esMovimientoFuturo(
+        { fecha: '2026-09-03', periodo_tarjeta: '2026-09-01' }, opts,
+      )).toBe(false)
+    })
+
+    it('el de hoy tampoco es futuro', () => {
+      expect(esMovimientoFuturo({ fecha: HOY, periodo_tarjeta: '2026-09-01' }, opts)).toBe(false)
+    })
+
+    it('futuro = fecha posterior a hoy (mismo criterio que /movimientos)', () => {
+      expect(esMovimientoFuturo({ fecha: '2026-09-11', periodo_tarjeta: '2026-09-01' }, opts)).toBe(true)
+      expect(esMovimientoFuturo({ fecha: '2026-12-01', periodo_tarjeta: '2026-12-01' }, opts)).toBe(true)
+    })
+
+    it('el período es irrelevante para estas cuentas', () => {
+      // Aunque el período diga un mes adelante, lo que manda es la fecha.
+      expect(esMovimientoFuturo({ fecha: '2026-08-15', periodo_tarjeta: '2026-11-01' }, opts)).toBe(false)
+    })
+  })
+
+  describe('tarjeta de crédito', () => {
+    const opts = { esTarjeta: true, hoy: HOY }
+
+    it('un consumo de hoy que cae en el resumen que viene SÍ es futuro', () => {
+      // Ya lo gastaste, pero lo pagás en el resumen de octubre: va agrupado con
+      // su período para que la card del resumen esté completa.
+      expect(esMovimientoFuturo({ fecha: '2026-09-03', periodo_tarjeta: '2026-10-01' }, opts)).toBe(true)
+    })
+
+    it('el resumen del mes en curso todavía cuenta como futuro (no venció)', () => {
+      expect(esMovimientoFuturo({ fecha: '2026-08-20', periodo_tarjeta: '2026-09-01' }, opts)).toBe(true)
+    })
+
+    it('los resúmenes ya vencidos son historial', () => {
+      expect(esMovimientoFuturo({ fecha: '2026-07-15', periodo_tarjeta: '2026-08-01' }, opts)).toBe(false)
+    })
+
+    it('una cuota lejana sigue siendo futura', () => {
+      expect(esMovimientoFuturo({ fecha: '2027-03-15', periodo_tarjeta: '2027-04-01' }, opts)).toBe(true)
+    })
+  })
+
+  it('sin datos no se pierde: cae en historial, no desaparece', () => {
+    // Con las dos queries viejas, un período NULL no matcheaba ni `lt` ni
+    // `gte` y el movimiento no aparecía en NINGUNA lista.
+    expect(esMovimientoFuturo({ fecha: null, periodo_tarjeta: null }, { esTarjeta: false, hoy: HOY })).toBe(false)
+    expect(esMovimientoFuturo({ fecha: '2026-09-03', periodo_tarjeta: null }, { esTarjeta: true, hoy: HOY })).toBe(false)
   })
 })
