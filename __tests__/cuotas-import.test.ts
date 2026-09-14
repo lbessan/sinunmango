@@ -71,3 +71,51 @@ describe('anclaje de cuotas al período del resumen (composición caller)', () =
   })
 })
 
+
+// ── motivoTxNoImportable: por qué una fila del resumen no se puede importar ───
+// Regresión del bug real (14/09/2026): una fila degradada del parser (sin monto
+// o sin fecha) hacía 400 el lote entero con error invisible. Ahora se detecta
+// en el cliente con el mismo criterio que valida el endpoint.
+import { motivoTxNoImportable } from '@/lib/cuotas-import'
+
+describe('motivoTxNoImportable', () => {
+  const ok = { fecha: '2026-09-05', monto_ars: 50000, monto_usd: null, cuotas_total: 12 }
+
+  it('una transacción normal es importable (null)', () => {
+    expect(motivoTxNoImportable(ok)).toBeNull()
+  })
+
+  it('un consumo en USD es importable', () => {
+    expect(motivoTxNoImportable({ ...ok, monto_ars: null, monto_usd: 15.5 })).toBeNull()
+  })
+
+  it('sin fecha → no importable', () => {
+    expect(motivoTxNoImportable({ ...ok, fecha: null })).toBe('sin fecha válida')
+    expect(motivoTxNoImportable({ ...ok, fecha: '' })).toBe('sin fecha válida')
+    expect(motivoTxNoImportable({ ...ok, fecha: '05/09/2026' })).toBe('sin fecha válida')
+  })
+
+  it('sin monto (impuesto que el parser no pudo leer) → no importable', () => {
+    expect(motivoTxNoImportable({ ...ok, monto_ars: null, monto_usd: null })).toBe('sin monto')
+    expect(motivoTxNoImportable({ ...ok, monto_ars: 0, monto_usd: null })).toBe('sin monto')
+  })
+
+  it('cuotas_total fuera del rango del endpoint (>60) → no importable', () => {
+    expect(motivoTxNoImportable({ ...ok, cuotas_total: 100 })).toContain('cuotas fuera de rango')
+  })
+
+  it('el límite exacto (60) sí entra', () => {
+    expect(motivoTxNoImportable({ ...ok, cuotas_total: 60 })).toBeNull()
+  })
+})
+
+describe('motivoTxNoImportable — detalle largo', () => {
+  const ok = { fecha: '2026-09-05', monto_ars: 50000, monto_usd: null, cuotas_total: 12 }
+  it('detalle > 480 chars → no importable (excede el tope del endpoint con el sufijo de cuota)', () => {
+    expect(motivoTxNoImportable({ ...ok, detalle: 'x'.repeat(500) })).toBe('detalle demasiado largo')
+  })
+  it('detalle normal o ausente → OK', () => {
+    expect(motivoTxNoImportable({ ...ok, detalle: 'Carrefour' })).toBeNull()
+    expect(motivoTxNoImportable(ok)).toBeNull()
+  })
+})

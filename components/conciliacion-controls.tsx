@@ -6,7 +6,7 @@ import { NuevoItemModal }  from '@/components/nuevo-item-modal'
 import { IconoCategoria }  from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodo, addMonths, stripCuotaSuffix } from '@/lib/tarjeta-periodo'
-import { expandirCuotasResumen } from '@/lib/cuotas-import'
+import { expandirCuotasResumen, motivoTxNoImportable } from '@/lib/cuotas-import'
 import { todayAR } from '@/lib/timezone'
 import { LimitReachedModal, tryParseLimitReached, type LimitReachedInfo } from '@/components/limit-reached-modal'
 import { MovimientoForm, type CuentaOpcion as CuentaForm, type GastoFijoOpcion } from '@/components/movimiento-form'
@@ -36,6 +36,22 @@ function mesesEntre(a: string, b: string): number {
   const [ya, ma] = a.split('-').map(Number)
   const [yb, mb] = b.split('-').map(Number)
   return (yb - ya) * 12 + (mb - ma)
+}
+
+// Arma el aviso de las filas que quedaron afuera del import por datos
+// incompletos: "2 con datos incompletos, sin seleccionar: 'X' (sin monto),
+// 'Y' (sin fecha). Tocá Importar de nuevo para el resto."
+function avisoInvalidas(
+  txs: { detalle: string }[],
+  invalidas: Record<number, string>,
+): string {
+  const items = Object.entries(invalidas)
+    .slice(0, 4)
+    .map(([i, motivo]) => `“${txs[Number(i)]?.detalle ?? 'sin detalle'}” (${motivo})`)
+  const n = Object.keys(invalidas).length
+  const extra = n > 4 ? ` y ${n - 4} más` : ''
+  const plural = n === 1 ? 'transacción quedó' : 'transacciones quedaron'
+  return `${n} ${plural} sin seleccionar por datos incompletos: ${items.join(', ')}${extra}. Cargala a mano si corresponde y tocá Importar para el resto.`
 }
 
 function formatPeriodo(p: string): string {
@@ -384,6 +400,9 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   const [saving,  setSaving]  = useState(false)
   const [limitInfo, setLimitInfo] = useState<LimitReachedInfo | null>(null)
   const [editingIdx, setEditingIdx] = useState<number | null>(null)  // fila con detalle en edición inline
+  // Filas que quedaron afuera del último intento de importar por datos
+  // incompletos del parser (índice → motivo). Se muestran en rojo en la fila.
+  const [motivosInvalidos, setMotivosInvalidos] = useState<Record<number, string>>({})
 
   // ── Estado del PDF encriptado ───────────────────────────────────────────
   // Cuando el server devuelve 'requires_password' o 'wrong_password',
@@ -512,7 +531,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       // Si no llegó por algún motivo, fallback al cuenta_id del contexto.
       cuentaOrigen: typeof t.cuenta_origen_sugerida === 'string' ? t.cuenta_origen_sugerida : cuentaId,
     }))
-    setTxs(parsed)
+    setTxs(parsed); setMotivosInvalidos({})
     if (d.fechas_propuestas) setFechasPropuestas(d.fechas_propuestas)
     setVerificacion(d.verificacion ?? null)
     setStep('review')
@@ -624,8 +643,31 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
   }
 
   const handleImportar = async () => {
-    const seleccionadas = txs.filter(t => t.seleccionada)
-    if (!seleccionadas.length) { setError('Seleccioná al menos una transacción'); return }
+    const seleccionadasIdx = txs.map((t, i) => ({ t, i })).filter(({ t }) => t.seleccionada)
+    if (!seleccionadasIdx.length) { setError('Seleccioná al menos una transacción'); return }
+
+    // Guard de importabilidad. El parser a veces devuelve filas incompletas
+    // (sin fecha, sin monto, o cuotas mal leídas). UNA sola de esas hacía que
+    // el POST rechazara el lote ENTERO con un error que además quedaba fuera de
+    // vista — se perdía toda la categorización y parecía que "no pasó nada".
+    // Ahora las detectamos: si hay, las desmarcamos, las pintamos en rojo con
+    // el motivo y frenamos con un aviso. El resto entra al volver a tocar
+    // Importar (mismo criterio que valida /api/movimientos, así lo que pasa
+    // este filtro no lo rechaza el server).
+    const invalidas: Record<number, string> = {}
+    for (const { t, i } of seleccionadasIdx) {
+      const motivo = motivoTxNoImportable(t)
+      if (motivo) invalidas[i] = motivo
+    }
+    if (Object.keys(invalidas).length > 0) {
+      setMotivosInvalidos(invalidas)
+      setTxs(prev => prev.map((t, i) => invalidas[i] ? { ...t, seleccionada: false } : t))
+      setError(avisoInvalidas(txs, invalidas))
+      return
+    }
+    setMotivosInvalidos({})
+
+    const seleccionadas = seleccionadasIdx.map(({ t }) => t)
     setSaving(true); setError('')
 
     const isTarjeta = !!(cierreDay && venceDay)
@@ -670,11 +712,23 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       }))
     })
 
+    // El endpoint corta en 500 filas. Una selección con muchas compras en
+    // cuotas se expande y puede pasarlo: avisamos claro en vez de comerse un
+    // 400 genérico.
+    if (nuevosMovs.length > 500) {
+      setSaving(false)
+      setError(`Son ${nuevosMovs.length} movimientos (con las cuotas expandidas) y el máximo por import es 500. Desmarcá algunas y hacelo en dos tandas.`)
+      return
+    }
+
     const res = await fetch('/api/movimientos', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nuevosMovs),
-    })
+    }).catch(() => null)
     setSaving(false)
-    if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error'); return }
+    // Sin respuesta = falló la red / se cortó. Antes esto tiraba una excepción
+    // sin manejar y el botón quedaba clavado en "Importando...".
+    if (!res) { setError('No pudimos conectar para guardar. Revisá tu conexión y reintentá.'); return }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error ?? 'No se pudieron guardar los movimientos.'); return }
 
     // Devolver solo los que caen en el período actual
     const movsDelPeriodo = seleccionadas
@@ -731,8 +785,9 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
     // Subcategorías de la categoría elegida (vacío si la cat no tiene)
     const subsDeCat = tx.catId ? subcategorias.filter(sc => sc.categoria_padre === tx.catId) : []
     const isEditing = editingIdx === idx
+    const motivoInvalida = motivosInvalidos[idx]
     return (
-      <div className={`px-4 py-3 border-b border-slate-50 last:border-0 transition-colors ${tx.seleccionada ? selBg : 'hover:bg-slate-50'}`}>
+      <div className={`px-4 py-3 border-b border-slate-50 last:border-0 transition-colors ${motivoInvalida ? 'bg-red-50/60 ring-1 ring-inset ring-red-200' : tx.seleccionada ? selBg : 'hover:bg-slate-50'}`}>
         <div className="flex items-start gap-3">
           <button
             onClick={() => toggleTx(idx)}
@@ -785,6 +840,12 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
           </div>
           <span className={`text-sm font-semibold whitespace-nowrap mt-0.5 ${esDescuento ? 'text-emerald-600' : 'text-slate-700'}`}>{montoLabel}</span>
         </div>
+        {motivoInvalida && (
+          <p className="ml-8 mt-1 text-[11px] text-red-600 flex items-center gap-1">
+            <AlertCircle size={12} className="shrink-0" />
+            No se importa: {motivoInvalida}. Cargala a mano si corresponde.
+          </p>
+        )}
         {tx.seleccionada && (
           <div className="ml-8 space-y-1.5">
             <CatSelect
@@ -1133,15 +1194,19 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
                 </div>
               )}
 
-              {error && (
-                <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">
-                  <AlertCircle size={15} />{error}
-                </div>
-              )}
             </div>
 
-            <div className="px-5 pb-5 pt-3 border-t border-slate-100 flex gap-3">
-              <button onClick={() => { setStep('upload'); setTxs([]) }}
+            <div className="px-5 pb-5 pt-3 border-t border-slate-100 space-y-3">
+              {/* Error SIEMPRE visible: va en el footer fijo, no adentro de la
+                  lista scrolleable (antes quedaba scrolleado fuera de vista y
+                  parecía que el import "no hacía nada"). */}
+              {error && (
+                <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 border border-red-100 px-4 py-2.5 rounded-lg">
+                  <AlertCircle size={15} className="shrink-0 mt-0.5" /><span>{error}</span>
+                </div>
+              )}
+              <div className="flex gap-3">
+              <button onClick={() => { setStep('upload'); setTxs([]); setMotivosInvalidos({}); setError('') }}
                 className="px-4 py-2.5 rounded-xl text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50">
                 ← Cambiar PDF
               </button>
@@ -1150,6 +1215,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
                 style={{ background: 'linear-gradient(90deg, var(--accent2, #1B3A6B), var(--accent, #1a6b5a))' }}>
                 {saving ? 'Importando...' : `Importar ${selCount} transacción${selCount !== 1 ? 'es' : ''}`}
               </button>
+              </div>
             </div>
           </>
         )}

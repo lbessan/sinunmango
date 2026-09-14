@@ -51,3 +51,34 @@ export function expandirCuotasResumen(tx: {
     detalle:      `${tx.detalle} (Cuota ${actual + i}/${total})`,
   }))
 }
+
+/**
+ * ¿Esta transacción parseada del resumen se puede importar? Devuelve el motivo
+ * (string) si NO, o null si está OK.
+ *
+ * El parser a veces devuelve filas degradadas (un chunk que recuperó parcial):
+ * sin fecha, sin monto, o con cuotas_total mal leído. Antes UNA sola de estas
+ * filas hacía que el POST rechazara el lote ENTERO con un error genérico e
+ * invisible — el usuario perdía toda la categorización. Ahora las detectamos
+ * en el cliente, las dejamos afuera y le decimos exactamente cuál y por qué.
+ *
+ * Los límites (monto > 0, cuotas_total 1..60) son los mismos que valida el
+ * endpoint /api/movimientos, así que lo que pasa este filtro entra seguro.
+ */
+export function motivoTxNoImportable(tx: {
+  fecha:        string | null
+  detalle?:     string | null
+  monto_ars:    number | null
+  monto_usd:    number | null
+  cuotas_total: number
+}): string | null {
+  if (!tx.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(tx.fecha)) return 'sin fecha válida'
+  const monto = tx.monto_usd ?? Math.abs(tx.monto_ars ?? 0)
+  if (!Number.isFinite(monto) || monto <= 0) return 'sin monto'
+  const total = Math.trunc(tx.cuotas_total)
+  if (total > 60) return `cuotas fuera de rango (${total})`
+  // El detalle importado lleva " (Cuota X/YY)" agregado; el tope del endpoint
+  // es 500. Dejamos margen para el sufijo.
+  if ((tx.detalle ?? '').length > 480) return 'detalle demasiado largo'
+  return null
+}
