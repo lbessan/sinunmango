@@ -2,6 +2,25 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
+  // Puppeteer + el Chromium serverless de @sparticuz NO deben bundlearse: el
+  // paquete resuelve su binario por una ruta relativa a su propio directorio
+  // (node_modules/@sparticuz/chromium/bin). Si el bundler lo relocaliza, esa
+  // carpeta "no existe" en runtime y la generacion de PDF explota:
+  //   "The input directory .../@sparticuz/chromium/bin does not exist ...
+  //    you must externalize @sparticuz/chromium so it is not relocated"
+  // Next 16 buildea con Turbopack por default y NO respeta la lista interna de
+  // auto-externalizacion como lo hacia webpack, asi que hay que declararlo.
+  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
+
+  // Los binarios de Chromium (bin/*.br) los carga @sparticuz por una ruta
+  // calculada en runtime (dirname/../../bin), NO por require, asi que el
+  // file-tracing de Next no los detecta y no los sube al deploy -> en Vercel
+  // el bin/ "no existe". Los forzamos a incluirse en las 2 rutas que generan
+  // PDF. (glob resuelto desde la raiz del proyecto)
+  outputFileTracingIncludes: {
+    '/api/monotributo/afip/factura-pdf': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+    '/api/reportes/mes-pdf':             ['./node_modules/@sparticuz/chromium/bin/**/*'],
+  },
   images: {
     // Permitir cargar imágenes desde Supabase Storage (cuenta.imagen_url,
     // cuenta.imagen_banner_url, etc. que el user sube via /api/upload-imagen).
