@@ -9,6 +9,7 @@ export type FacturaEmitida = {
   cliente:   string
   monto:     number
   concepto?: string | null
+  cae?:      string | null   // presente si se emitió (habilita descargar PDF)
 }
 
 export type MonotributoConfig = {

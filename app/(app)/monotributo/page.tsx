@@ -10,7 +10,7 @@
 
 import Link  from 'next/link'
 import { redirect } from 'next/navigation'
-import { Plus, Pencil, AlertTriangle, TrendingUp, Calendar, Settings, Info, RefreshCw, BarChart3, Users } from 'lucide-react'
+import { Plus, Pencil, AlertTriangle, TrendingUp, Calendar, Settings, Info, RefreshCw, BarChart3, Users, Download } from 'lucide-react'
 import { getAuthedClient } from '@/lib/supabase/server'
 import { DeleteButton } from '@/components/delete-button'
 import { ImportarFacturaButton } from './importar-factura'
@@ -332,6 +332,17 @@ export default async function MonotributoPage() {
                   </p>
                 </div>
                 <span className="text-sm font-bold text-slate-800 tabular-nums shrink-0">${fmt(f.monto)}</span>
+                {f.cae && (
+                  <a
+                    href={`/api/monotributo/afip/factura-pdf?id=${f.id}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="p-2 rounded-lg text-slate-300 hover:text-emerald-600 hover:bg-slate-100"
+                    title="Descargar PDF"
+                  >
+                    <Download size={14} />
+                  </a>
+                )}
                 <Link
                   href={`/monotributo/${f.id}/editar`}
                   className="p-2 rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100"
