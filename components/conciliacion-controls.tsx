@@ -728,6 +728,13 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
     // Sin respuesta = falló la red / se cortó. Antes esto tiraba una excepción
     // sin manejar y el botón quedaba clavado en "Importando...".
     if (!res) { setError('No pudimos conectar para guardar. Revisá tu conexión y reintentá.'); return }
+    if (res.status === 401) {
+      // Sesión vencida. Con el proxy de refresh esto no debería pasar salvo que
+      // el refresh token también haya expirado (muchos días sin entrar). La
+      // categorización sigue en pantalla: recargar y reintentar no la pierde.
+      setError('Se venció tu sesión. Recargá la página (F5) y volvé a tocar Importar — no perdés lo que cargaste.')
+      return
+    }
     if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error ?? 'No se pudieron guardar los movimientos.'); return }
 
     // Devolver solo los que caen en el período actual
