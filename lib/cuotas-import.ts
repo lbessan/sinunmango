@@ -82,3 +82,35 @@ export function motivoTxNoImportable(tx: {
   if ((tx.detalle ?? '').length > 480) return 'detalle demasiado largo'
   return null
 }
+
+/**
+ * Corrige el AÑO de un consumo suelto usando el período del resumen.
+ *
+ * Por qué: los PDFs de resumen (MP y otros) muestran los consumos con día/mes
+ * pero SIN año en cada línea. El modelo entonces alucina el año (leyó 2024 en
+ * un resumen de 2026). El día y el mes SÍ son confiables. Y un consumo suelto
+ * siempre pertenece al ciclo de ESTE resumen, así que su año es el del período
+ * — no el que haya inventado el parser.
+ *
+ * Regla: se toma el día/mes del parser y se elige el año que ubica esa fecha
+ * en/antes del período. Si el mes del consumo es <= el mes del período, es el
+ * año del período; si es mayor (ej. un consumo de diciembre en un resumen que
+ * vence en enero), es el año anterior.
+ *
+ * OJO: esto es SOLO para sueltos (cuotas_total <= 1). Las cuotas conservan su
+ * fecha de compra original (puede ser de años atrás, legítimamente) y se anclan
+ * por meses en el caller — ahí el año se corrige solo al correr las fechas.
+ */
+export function fecharConsumoEnPeriodo(fecha: string, periodo: string): string {
+  const [, mStr, dStr] = fecha.split('-')
+  const m = Number(mStr), d = Number(dStr)
+  const [pyStr, pmStr] = periodo.split('-')
+  const py = Number(pyStr), pm = Number(pmStr)
+  // Datos raros: no tocamos (que lo agarre el guard de importabilidad).
+  if (!m || !d || !py || !pm) return fecha
+  const anio = pm >= m ? py : py - 1
+  // Clamp del día al último del mes destino (ej. 31 en un mes de 30).
+  const ultimo = new Date(Date.UTC(anio, m, 0)).getUTCDate()
+  const dd = Math.min(d, ultimo)
+  return `${anio}-${String(m).padStart(2, '0')}-${String(dd).padStart(2, '0')}`
+}

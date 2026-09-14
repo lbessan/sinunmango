@@ -6,7 +6,7 @@ import { NuevoItemModal }  from '@/components/nuevo-item-modal'
 import { IconoCategoria }  from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodo, addMonths, stripCuotaSuffix } from '@/lib/tarjeta-periodo'
-import { expandirCuotasResumen, motivoTxNoImportable } from '@/lib/cuotas-import'
+import { expandirCuotasResumen, motivoTxNoImportable, fecharConsumoEnPeriodo } from '@/lib/cuotas-import'
 import { todayAR } from '@/lib/timezone'
 import { LimitReachedModal, tryParseLimitReached, type LimitReachedInfo } from '@/components/limit-reached-modal'
 import { MovimientoForm, type CuentaOpcion as CuentaForm, type GastoFijoOpcion } from '@/components/movimiento-form'
@@ -687,11 +687,20 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
       // PERÍODO DE ESTE RESUMEN — el resumen es la prueba. Corremos todas las
       // fechas generadas para que la cuota actual caiga en `periodo` y las
       // siguientes avancen de a un mes.
-      const delta = tx.cuotas_total > 1
+      const esCuota = tx.cuotas_total > 1
+      const delta = esCuota
         ? Math.max(0, mesesEntre(calcularPeriodo(tx.fecha, cierreDay ?? null, venceDay ?? null, isTarjeta), periodo))
         : 0
-      const cuotas = expandirCuotasResumen(tx)
-        .map(c => (delta > 0 ? { ...c, fecha: addMonths(c.fecha, delta) } : c))
+      // AÑO de consumos SUELTOS: el PDF no trae el año por línea y el modelo lo
+      // alucina (leyó 2024 en un resumen de 2026). Un suelto pertenece a ESTE
+      // resumen, así que su año sale del período (día/mes del parser intactos).
+      // Las cuotas NO se tocan acá: su fecha original puede ser vieja de verdad
+      // y el anclaje por meses (delta) ya les corrige el año.
+      const cuotas = expandirCuotasResumen(tx).map(c =>
+        esCuota
+          ? (delta > 0 ? { ...c, fecha: addMonths(c.fecha, delta) } : c)
+          : { ...c, fecha: fecharConsumoEnPeriodo(c.fecha, periodo) }
+      )
       // grupo_cuotas: también para la última cuota suelta de un plan (queda
       // linkeable y no entra a la heurística de auto-grupo del server).
       const grupo = tx.cuotas_total > 1 ? crypto.randomUUID() : null
@@ -737,16 +746,20 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
     }
     if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error ?? 'No se pudieron guardar los movimientos.'); return }
 
-    // Devolver solo los que caen en el período actual
+    // Devolver solo los que caen en el período actual. Para sueltos usamos la
+    // fecha con el año ya corregido (sino un consumo de 2026 leído como 2024
+    // caía en el período equivocado y no aparecía tras importar).
+    const fechaVisible = (tx: Transaccion) =>
+      tx.cuotas_total > 1 ? tx.fecha : fecharConsumoEnPeriodo(tx.fecha, periodo)
     const movsDelPeriodo = seleccionadas
-      .filter(tx => calcularPeriodo(tx.fecha, cierreDay ?? null, venceDay ?? null, isTarjeta) === periodo)
+      .filter(tx => calcularPeriodo(fechaVisible(tx), cierreDay ?? null, venceDay ?? null, isTarjeta) === periodo)
       .map(tx => {
         const cat = categorias.find(c => c.id === tx.catId)
         const isUsdTx = !!tx.monto_usd
         const montoAbs = Math.abs(tx.monto_ars ?? tx.monto_usd ?? 0)
         const montoFinal = isUsdTx ? (tx.monto_usd ?? montoAbs) : montoAbs
         return {
-          id: crypto.randomUUID(), fecha: tx.fecha,
+          id: crypto.randomUUID(), fecha: fechaVisible(tx),
           detalle: tx.detalle,
           monto: montoFinal,
           monto_estimado: isUsdTx ? montoAbs : montoAbs,
@@ -829,7 +842,10 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
               {esDescuento && <span className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-1.5 py-0.5 rounded-full shrink-0">DESCUENTO</span>}
             </div>
             <p className="text-xs text-slate-400">
-              {tx.fecha}{tx.cuotas_total > 1 ? ` · Cuota ${tx.cuotas}/${tx.cuotas_total}` : ''}
+              {/* Sueltos: mostramos la fecha con el año ya corregido al del período
+                  (lo que se va a guardar), así el review no muestra un año que
+                  el modelo alucinó. Cuotas: fecha de compra original tal cual. */}
+              {tx.cuotas_total > 1 ? `${tx.fecha} · Cuota ${tx.cuotas}/${tx.cuotas_total}` : fecharConsumoEnPeriodo(tx.fecha, periodo)}
               {/* Si la familia tiene más de una cuenta (adicionales) y el
                   consumo NO va a la principal por default, mostramos un
                   badge con el nombre de la adicional sugerida. Visual cue

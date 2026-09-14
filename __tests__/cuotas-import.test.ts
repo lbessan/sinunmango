@@ -119,3 +119,39 @@ describe('motivoTxNoImportable — detalle largo', () => {
     expect(motivoTxNoImportable(ok)).toBeNull()
   })
 })
+
+// ── fecharConsumoEnPeriodo: corrige el año alucinado de consumos sueltos ──────
+// Caso real (14/09/2026): resumen MP de Septiembre 2026, el modelo leyó los
+// consumos sueltos con año 2024 (el PDF no trae el año por línea). Los cuotas
+// quedaron bien por el anclaje; los sueltos se guardaron en 2024.
+import { fecharConsumoEnPeriodo } from '@/lib/cuotas-import'
+
+describe('fecharConsumoEnPeriodo', () => {
+  it('corrige el año a partir del período (datos reales del resumen roto)', () => {
+    expect(fecharConsumoEnPeriodo('2024-08-13', '2026-09-01')).toBe('2026-08-13')
+    expect(fecharConsumoEnPeriodo('2024-09-12', '2026-09-01')).toBe('2026-09-12')
+    expect(fecharConsumoEnPeriodo('2024-08-17', '2026-09-01')).toBe('2026-08-17')
+  })
+
+  it('es idempotente si el año ya estaba bien', () => {
+    expect(fecharConsumoEnPeriodo('2026-08-21', '2026-09-01')).toBe('2026-08-21')
+  })
+
+  it('mes mayor al del período → año anterior (consumo de dic en resumen que vence en enero)', () => {
+    expect(fecharConsumoEnPeriodo('2030-12-28', '2026-01-01')).toBe('2025-12-28')
+  })
+
+  it('conserva día y mes exactos, solo cambia el año', () => {
+    expect(fecharConsumoEnPeriodo('2024-09-12', '2026-09-01')).toBe('2026-09-12')
+  })
+
+  it('clampa el día si el mes destino es más corto (no inventa 31 de un mes de 30)', () => {
+    // parser dio 31 pero en un contexto donde el mes es de 30
+    expect(fecharConsumoEnPeriodo('2024-11-31', '2026-11-01')).toBe('2026-11-30')
+  })
+
+  it('datos rotos → devuelve la fecha tal cual (la agarra el guard de importabilidad)', () => {
+    expect(fecharConsumoEnPeriodo('', '2026-09-01')).toBe('')
+    expect(fecharConsumoEnPeriodo('2024-08-13', '')).toBe('2024-08-13')
+  })
+})
