@@ -7,6 +7,7 @@ import { IconoCategoria }  from '@/components/icono-categoria'
 import { CategoriaSelect } from '@/components/categoria-select'
 import { calcularPeriodo, addMonths, stripCuotaSuffix } from '@/lib/tarjeta-periodo'
 import { expandirCuotasResumen, motivoTxNoImportable, fecharConsumoEnPeriodo } from '@/lib/cuotas-import'
+import { montoFirmado } from '@/lib/conciliacion-totales'
 import { todayAR } from '@/lib/timezone'
 import { LimitReachedModal, tryParseLimitReached, type LimitReachedInfo } from '@/components/limit-reached-modal'
 import { MovimientoForm, type CuentaOpcion as CuentaForm, type GastoFijoOpcion } from '@/components/movimiento-form'
@@ -1307,7 +1308,12 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
   const conciliados      = movs.filter(m => m.conciliado)
 
   // USD info
-  const totalUSD       = movsUSD.reduce((a, m) => a + m.monto, 0)
+  // Monto USD firmado: Gastos suman, Ingresos (reintegros) RESTAN — igual que ARS.
+  // Antes los totales USD sumaban m.monto crudo, así que los reintegros se
+  // sumaban en vez de restar y el total daba de más (bug visto en Visa Francés:
+  // mostraba U$S 464,44 en vez de 443,80, exactamente 2× los reintegros).
+  const signedUSD = (m: Mov) => montoFirmado(m, { usarEstimado: false })
+  const totalUSD       = movsUSD.reduce((a, m) => a + signedUSD(m), 0)
   const hasUSD         = movsUSD.length > 0
   const usdSinCotiz    = movsUSD.filter(m => !m.cotizacion).length
   const currentAvgRate = movsUSD.length > 0 && movsUSD.every(m => m.cotizacion)
@@ -1335,21 +1341,18 @@ export function ConciliacionControls({ movimientos: inicial, cuentaId, periodo, 
   }
 
   // Monto firmado: Gastos suman, Ingresos (descuentos) restan
-  const signedARS = (m: Mov) => {
-    const base = m.monto_estimado ?? m.monto
-    return m.tipo_movimiento === 'Ingreso' ? -base : base
-  }
+  const signedARS = (m: Mov) => montoFirmado(m, { usarEstimado: true })
 
   // Totales ARS netos (gastos − descuentos)
   const totalPeriodoPesos    = movsARS.reduce((a, m) => a + signedARS(m), 0)
   const totalConciliadoPesos = conciliadosARS.reduce((a, m) => a + signedARS(m), 0)
   const totalPendientePesos  = noConciliadosARS.reduce((a, m) => a + signedARS(m), 0)
   // Totales USD (en dólares)
-  const totalUSDPeriodo    = movsUSD.reduce((a, m) => a + m.monto, 0)
-  const totalUSDConciliado = conciliadosUSD.reduce((a, m) => a + m.monto, 0)
-  const totalUSDPendiente  = noConciliadosUSD.reduce((a, m) => a + m.monto, 0)
+  const totalUSDPeriodo    = movsUSD.reduce((a, m) => a + signedUSD(m), 0)
+  const totalUSDConciliado = conciliadosUSD.reduce((a, m) => a + signedUSD(m), 0)
+  const totalUSDPendiente  = noConciliadosUSD.reduce((a, m) => a + signedUSD(m), 0)
   // helper para convertir USD a pesos (panel informativo)
-  const usdEnPesos = (arr: Mov[]) => arr.reduce((a, m) => a + (m.cotizacion ? m.monto * m.cotizacion : 0), 0)
+  const usdEnPesos = (arr: Mov[]) => arr.reduce((a, m) => a + (m.cotizacion ? signedUSD(m) * m.cotizacion : 0), 0)
 
   const toggle = async (id: string, actual: boolean) => {
     setLoading(id)
