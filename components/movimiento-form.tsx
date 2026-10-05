@@ -14,9 +14,9 @@
 // sirve en una página y adentro de un modal.
 
 import { useState, useEffect } from 'react'
-import { Link2, AlertTriangle } from 'lucide-react'
+import { Link2, AlertTriangle, Layers } from 'lucide-react'
 import { CategoriaSelect } from '@/components/categoria-select'
-import { calcularPeriodoCuenta } from '@/lib/tarjeta-periodo'
+import { calcularPeriodoCuenta, addMonths } from '@/lib/tarjeta-periodo'
 
 export type MovimientoEditable = {
   id:               string
@@ -114,6 +114,13 @@ export function MovimientoForm({
   const [hermanas, setHermanas]                   = useState<CuotaHermana[]>([])
   const [aplicarAGrupo, setAplicarAGrupo]         = useState(false)
   const [eliminarTodoGrupo, setEliminarTodoGrupo] = useState(false)
+
+  // Convertir un consumo suelto en cuotas (agujero del canal de Visa: la alerta
+  // trae el total, no las cuotas).
+  const [convCuotas,  setConvCuotas]  = useState('')
+  const [convEsTotal, setConvEsTotal] = useState(true)
+  const [converting,  setConverting]  = useState(false)
+  const [convError,   setConvError]   = useState('')
 
   const [form, setForm] = useState({
     fecha:          movimiento.fecha ?? '',
@@ -225,6 +232,45 @@ export function MovimientoForm({
       categoria_nombre: categoriaSeleccionada?.nombre_categoria ?? null,
       categoria_icono:  categoriaSeleccionada?.icono ?? null,
       monto_estimado:   cotizNum ? montoNum * cotizNum : montoNum,
+    })
+  }
+
+  // ── Conversión a cuotas ────────────────────────────────────────────────────
+  const esSuelto     = (movimiento.cuotas_total ?? 1) <= 1
+  const puedeConvertir = esSuelto && isTarjeta
+  const nCuotas      = parseInt(convCuotas) || 0
+  const montoActual  = parseFloat(form.monto) || 0
+  const montoCuotaPreview = nCuotas > 0 ? (convEsTotal ? montoActual / nCuotas : montoActual) : 0
+  const convValido   = nCuotas >= 2 && nCuotas <= 60 && montoActual > 0 && !!form.fecha
+  const mesLabel = (f: string) =>
+    new Date(f + 'T12:00:00').toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }).replace('.', '')
+
+  const handleConvertir = async () => {
+    if (!convValido) return
+    setConverting(true); setConvError('')
+    const res = await fetch(`/api/movimientos/${movimiento.id}/convertir-cuotas`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cuotas_total: nCuotas, monto_es_total: convEsTotal }),
+    }).catch(() => null)
+    setConverting(false)
+    if (!res) { setConvError('No pudimos conectar. Reintentá.'); return }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setConvError(d.error ?? 'No se pudo convertir'); return }
+    const d = await res.json().catch(() => ({}))
+    // Reusamos el flujo de guardado: el contenedor refresca y vuelve, y ahí se
+    // ven las cuotas creadas. Pasamos los valores de la cuota 1.
+    const periodo = (periodoEfectivo || periodoAuto) + '-01'
+    const tipoMov = categoriaSeleccionada?.tipo_default ?? movimiento.tipo_movimiento ?? 'Gasto'
+    setSaved(true)
+    onSaved({
+      fecha: form.fecha, detalle: form.detalle || null,
+      monto: Number(d.monto_cuota ?? montoCuotaPreview),
+      moneda: form.moneda, cotizacion: isUSD && form.cotizacion ? parseFloat(form.cotizacion) : null,
+      conciliado: form.conciliado, cuenta_origen: form.cuenta_origen,
+      categoria: form.categoria || null, subcategoria: form.subcategoria || null,
+      tipo_movimiento: tipoMov, periodo_tarjeta: periodo,
+      categoria_nombre: categoriaSeleccionada?.nombre_categoria ?? null,
+      categoria_icono: categoriaSeleccionada?.icono ?? null,
+      monto_estimado: Number(d.monto_cuota ?? montoCuotaPreview),
     })
   }
 
@@ -392,6 +438,65 @@ export function MovimientoForm({
               )}
             </div>
           </label>
+        </div>
+      )}
+
+      {/* Convertir consumo suelto en cuotas. Solo en consumos sueltos de tarjeta:
+          la alerta de Visa trae el total pero no las cuotas, así que esto deja
+          pasar a mano una compra que en realidad fue en cuotas. */}
+      {puedeConvertir && (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 space-y-3">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-indigo-700">
+            <Layers size={14} /> ¿Fue una compra en cuotas?
+          </div>
+          <p className="text-xs text-indigo-600 leading-relaxed">
+            El aviso de la tarjeta no informa las cuotas. Si esta compra fue en cuotas,
+            armá el plan acá: se crea una cuota por mes y se agrupan.
+          </p>
+
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-600 whitespace-nowrap">Cantidad de cuotas</label>
+            <input
+              type="number" min="2" max="60" inputMode="numeric"
+              value={convCuotas} onChange={e => setConvCuotas(e.target.value)}
+              placeholder="12"
+              className="w-20 px-2 py-1.5 border border-indigo-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-100 bg-white"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            {[{ v: true, t: 'El monto es el total' }, { v: false, t: 'Es una sola cuota' }].map(o => (
+              <button
+                key={String(o.v)} type="button"
+                onClick={() => setConvEsTotal(o.v)}
+                className={`flex-1 text-xs px-2 py-1.5 rounded-lg border transition-colors ${
+                  convEsTotal === o.v
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {o.t}
+              </button>
+            ))}
+          </div>
+
+          {convValido && (
+            <p className="text-xs text-indigo-700 bg-white/60 rounded-lg px-3 py-2">
+              {nCuotas} cuotas de <b>${fmt(montoCuotaPreview)}</b>
+              {form.fecha && <> · {mesLabel(form.fecha)} a {mesLabel(addMonths(form.fecha, nCuotas - 1))}</>}
+            </p>
+          )}
+
+          {convError && <p className="text-xs text-red-500">{convError}</p>}
+
+          <button
+            onClick={handleConvertir}
+            disabled={!convValido || converting || saved}
+            className="w-full py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+            style={{ background: '#4f46e5' }}
+          >
+            {converting ? 'Convirtiendo...' : convValido ? `Convertir en ${nCuotas} cuotas` : 'Convertir en cuotas'}
+          </button>
         </div>
       )}
 
