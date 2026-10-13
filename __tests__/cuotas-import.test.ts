@@ -150,6 +150,13 @@ describe('fecharConsumoEnPeriodo', () => {
     expect(fecharConsumoEnPeriodo('2024-11-31', '2026-11-01')).toBe('2026-11-30')
   })
 
+  it('fecha NULL no explota (bug SINUNMANGO-WEB-7: crasheaba la review con .split de null)', () => {
+    // @ts-expect-error — el parser devuelve null en runtime aunque el tipo diga string
+    expect(fecharConsumoEnPeriodo(null, '2026-10-01')).toBe('')
+    // @ts-expect-error
+    expect(fecharConsumoEnPeriodo(undefined, '2026-10-01')).toBe('')
+  })
+
   it('datos rotos → devuelve la fecha tal cual (la agarra el guard de importabilidad)', () => {
     expect(fecharConsumoEnPeriodo('', '2026-09-01')).toBe('')
     expect(fecharConsumoEnPeriodo('2024-08-13', '')).toBe('2024-08-13')

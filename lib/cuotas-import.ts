@@ -101,7 +101,11 @@ export function motivoTxNoImportable(tx: {
  * fecha de compra original (puede ser de años atrás, legítimamente) y se anclan
  * por meses en el caller — ahí el año se corrige solo al correr las fechas.
  */
-export function fecharConsumoEnPeriodo(fecha: string, periodo: string): string {
+export function fecharConsumoEnPeriodo(fecha: string | null | undefined, periodo: string): string {
+  // El parser a veces devuelve una fila sin fecha (null). Esto se llama también
+  // al RENDERIZAR la review (antes de que el guard de importabilidad filtre esa
+  // fila), así que tiene que ser null-safe o crashea toda la pantalla.
+  if (!fecha || !periodo) return fecha ?? ''
   const [, mStr, dStr] = fecha.split('-')
   const m = Number(mStr), d = Number(dStr)
   const [pyStr, pmStr] = periodo.split('-')

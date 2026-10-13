@@ -846,7 +846,9 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
               {/* Sueltos: mostramos la fecha con el año ya corregido al del período
                   (lo que se va a guardar), así el review no muestra un año que
                   el modelo alucinó. Cuotas: fecha de compra original tal cual. */}
-              {tx.cuotas_total > 1 ? `${tx.fecha} · Cuota ${tx.cuotas}/${tx.cuotas_total}` : fecharConsumoEnPeriodo(tx.fecha, periodo)}
+              {tx.cuotas_total > 1
+                ? `${tx.fecha ?? 'sin fecha'} · Cuota ${tx.cuotas}/${tx.cuotas_total}`
+                : (tx.fecha ? fecharConsumoEnPeriodo(tx.fecha, periodo) : 'sin fecha')}
               {/* Si la familia tiene más de una cuenta (adicionales) y el
                   consumo NO va a la principal por default, mostramos un
                   badge con el nombre de la adicional sugerida. Visual cue
@@ -1193,7 +1195,7 @@ function ImportarPdfModal({ cuentaId, periodo, cierreDay, venceDay, movimientosE
                           <CheckCircle size={15} className="text-emerald-400 shrink-0 opacity-60" />
                           <div className="flex-1 min-w-0 opacity-60">
                             <p className="text-sm text-slate-500 truncate">{tx.detalle}</p>
-                            <p className="text-xs text-slate-400">{tx.fecha}</p>
+                            <p className="text-xs text-slate-400">{tx.fecha ?? 'sin fecha'}</p>
                           </div>
                           <span className="text-sm text-slate-400 whitespace-nowrap opacity-60">{monto}</span>
                           {/* Red de seguridad: si en realidad NO estaba cargada,
