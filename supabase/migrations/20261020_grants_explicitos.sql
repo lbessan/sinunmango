@@ -1,0 +1,43 @@
+-- ─── Permisos de la API escritos para todo lo que ya existe en public ───────
+--
+-- POR QUÉ: desde el 2026-10-30, Supabase deja de darles permisos de la Data
+-- API (PostgREST / supabase-js), solos, a las tablas y vistas nuevas de
+-- `public`. Lo mismo vale para lo que se arme desde cero: un proyecto nuevo
+-- (restaurar en otro proyecto, un staging) no le da permisos a NADA. Hasta
+-- hoy, todas las tablas de esta app dependían de esos permisos automáticos:
+-- en el repo no había ni un grant de tabla. Sin esto, una base armada desde
+-- el repo daría «permission denied» en todas las tablas, también al servidor
+-- (service_role saltea la RLS, no los grants).
+--
+-- EN PROD NO CAMBIA NADA: las tablas que ya existen conservan sus permisos, y
+-- éstos ya los tienen. Correrla ahí es inocuo (un grant repetido no hace
+-- nada), pero no hace falta. Sirve para que la cadena quede completa.
+--
+-- QUÉ DA:
+--   - authenticated (la app con la sesión del usuario, web y mobile) y
+--     service_role (el servidor: crons, webhooks, adminClient): leer y escribir
+--     todas las tablas y vistas de public, y usar sus secuencias. La RLS sigue
+--     decidiendo qué filas ve cada uno.
+--   - anon (la clave pública sin sesión): NADA. La app no lee ni escribe
+--     ninguna tabla sin sesión: el navegador usa la clave pública sólo para el
+--     login, y las páginas públicas (login, invitación, privacidad) leen con el
+--     servidor o no leen. Si algún día una tabla se lee sin sesión, lleva su
+--     `grant select ... to anon` y su policy para anon.
+--
+-- QUÉ NO HACE, a propósito:
+--   - No toca los permisos por defecto (`alter default privileges`): la idea
+--     del cambio de Supabase es que lo nuevo no quede expuesto solo. Cada
+--     tabla o vista nueva lleva sus grants en su propia migración, y
+--     scripts/check-grants.mjs lo frena en el CI.
+--   - No revoca nada: en el repo no hay revokes de tablas que repetir (los de
+--     docs/migration-usage-admin-atomic.sql son de una función).
+--   - No toca las funciones (el cambio de Supabase tampoco las toca).
+--
+-- ORDEN: `on all tables` cubre lo que existe en el momento en que se corre.
+-- En una base armada desde cero va DESPUÉS de todo lo demás (los pasos de
+-- docs/schema-snapshot.sql y las migraciones de docs/ y de esta carpeta).
+--
+-- Idempotente: se puede correr las veces que haga falta.
+
+grant select, insert, update, delete on all tables in schema public to authenticated, service_role;
+grant usage, select on all sequences in schema public to authenticated, service_role;

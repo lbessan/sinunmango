@@ -16,6 +16,10 @@
 --   2. Aplicar este archivo (views, functions, triggers, indexes)
 --   3. Aplicar migration-rls-policies.sql
 --   4. Restaurar datos desde el ultimo backup automatico de Supabase
+--   5. Aplicar supabase/migrations/20261020_grants_explicitos.sql, despues de
+--      crear todas las tablas y vistas (cubre lo que existe cuando se corre):
+--      desde el 2026-10-30 un proyecto nuevo no da permisos de la API solos,
+--      y sin esto todas las tablas dan "permission denied" (ver docs/README.md)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 
