@@ -18,6 +18,12 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      # Permisos de las tablas nuevas de public (2026-10-20): desde el 2026-10-30
+      # Supabase no les da permisos de la API solos. Una tabla o vista nueva sin
+      # su grant daría «permission denied» en PROD, hasta para el servidor, y
+      # nada lo mostraría antes (las migraciones se aplican a mano). FRENA.
+      - name: Guardia de los permisos de las tablas nuevas
+        run: node scripts/check-grants.mjs
       - name: Type check
         run: npx tsc --noEmit
       - name: Tests
