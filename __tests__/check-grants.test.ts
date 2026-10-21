@@ -54,6 +54,21 @@ describe('lo que una migración crea en public', () => {
     ])
   })
 
+  it('un «/*» dentro de un «--» (un camino como scripts/*.mjs) no abre un comentario: la tabla de abajo se ve', () => {
+    const sql = '-- ver scripts/*.mjs\ncreate table public.x (id int);\n/* nota */'
+    expect(objetosCreadosEnPublic(sql).map((o) => o.nombre)).toEqual(['x'])
+  })
+
+  it('«--» y «/*» dentro de un texto entre comillas no son comentarios: la tabla de abajo se ve', () => {
+    const sql = "comment on table public.y is 'a -- b /* c';\ncreate table public.z (id int);"
+    expect(objetosCreadosEnPublic(sql).map((o) => o.nombre)).toEqual(['z'])
+  })
+
+  it('un comentario de bloque anidado (como en Postgres) tapa todo lo de adentro, un create table incluido', () => {
+    const sql = '/* afuera /* adentro */ create table public.oculta (id int); */\ncreate table public.visible (id int);'
+    expect(objetosCreadosEnPublic(sql).map((o) => o.nombre)).toEqual(['visible'])
+  })
+
   it('los grants: por tabla, varias juntas, «on all tables in schema public»; los de secuencias y funciones no cuentan', () => {
     const { porTabla, todas } = grantsEnPublic(`
       grant select, insert, update, delete on public.a, public.b to authenticated, service_role;
